@@ -6,25 +6,45 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2025
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup MSVC
       uses: microsoft/setup-msbuild@v1.1
     
     - name: Setup CMake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: '3.26.x'
     
     - name: Setup wxWidgets
       run: |
-        choco install wxwidgets
-        echo "C:\Program Files (x86)\wxWidgets-3.0.5" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        choco install wxwidgets -y
+        $wxPath = "C:\wxWidgets-3.3.1"
+        if (Test-Path $wxPath) {
+          echo "$wxPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "wxWidgets found at: $wxPath"
+        } else {
+          echo "wxWidgets not found at expected location"
+          Get-ChildItem "C:\" -Directory | Where-Object { $_.Name -like "*wxWidgets*" }
+        }
+      shell: pwsh
+    
+    - name: Setup wxWidgets Environment
+      run: |
+        $wxPath = "C:\wxWidgets-3.3.1"
+        if (Test-Path $wxPath) {
+          echo "wxWidgets_ROOT=$wxPath" >> $env:GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$wxPath" >> $env:GITHUB_ENV
+        }
+      shell: pwsh
     
     - name: Build
       run: |
@@ -32,24 +52,27 @@ jobs:
         cd build
         cmake .. -G "Visual Studio 17 2022" -A x64
         cmake --build . --config Release
+      shell: pwsh
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: SDEP-Windows
         path: build/Release/SDEP.exe
         retention-days: 7
+        if-no-files-found: ignore
 
   build-linux:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake libwxgtk3.0-gtk3-dev libsqlite3-dev
+        sudo apt-get install -y build-essential cmake libwxgtk3.2-dev libsqlite3-dev
     
     - name: Build
       run: |
@@ -60,20 +83,22 @@ jobs:
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: SDEP-Linux
         path: build/SDEP
         retention-days: 7
+        if-no-files-found: ignore
 
   build-macos:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install Dependencies
       run: |
-        brew install cmake wxmac sqlite3
+        brew install cmake wxwidgets sqlite3
     
     - name: Build
       run: |
@@ -84,7 +109,9 @@ jobs:
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: SDEP-macOS
         path: build/SDEP
         retention-days: 7
+        if-no-files-found: ignore

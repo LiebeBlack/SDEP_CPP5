@@ -3,6 +3,7 @@
 
 #include "models/models.h"
 #include "database/Repositories.h"
+#include "SecurityManager.h"
 #include <vector>
 #include <memory>
 #include <string>

@@ -2,6 +2,8 @@
 #define MAINFRAME_H
 
 #include <wx/wx.h>
+#include <wx/listctrl.h>
+#include <wx/notebook.h>
 #include "services/Services.h"
 
 namespace SDEP {

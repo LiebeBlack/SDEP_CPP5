@@ -34,7 +34,7 @@ jobs:
         cmake --build . --config Release
     
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: SDEP-Windows
         path: build/Release/SDEP.exe
@@ -59,7 +59,7 @@ jobs:
         make -j$(nproc)
     
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: SDEP-Linux
         path: build/SDEP
@@ -83,7 +83,7 @@ jobs:
         make -j$(sysctl -n hw.ncpu)
     
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: SDEP-macOS
         path: build/SDEP

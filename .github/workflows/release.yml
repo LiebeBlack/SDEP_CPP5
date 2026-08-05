@@ -38,7 +38,7 @@ jobs:
         fi
 
     - name: Upload Linux Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: SDEP-Linux
         path: build/SDEP-Linux.tar.gz

@@ -12,6 +12,7 @@ permissions:
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
   CMAKE_VERSION: '3.30.x'
+  VCPKG_DEFAULT_BINARY_CACHE: ''
 
 jobs:
   build-windows:
@@ -36,7 +37,6 @@ jobs:
       with:
         vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
         vcpkgJsonGlob: 'vcpkg.json'
-        doNotCache: true
     
     - name: Build
       run: |

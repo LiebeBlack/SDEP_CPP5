@@ -1,4 +1,5 @@
 #include "services/SecurityManager.h"
+#include "models/models.h"
 #include <algorithm>
 #include <random>
 #include <sstream>

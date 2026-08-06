@@ -2,6 +2,7 @@
 #define ATTENDANCEDIALOG_H
 
 #include <wx/wx.h>
+#include <wx/datectrl.h>
 #include "models/models.h"
 #include "services/Services.h"
 
@@ -51,9 +52,9 @@ private:
 enum {
     ID_ATTENDANCE_SAVE = wxID_HIGHEST + 700,
     ID_ATTENDANCE_CANCEL,
-    ID_STUDENT_COMBO,
-    ID_COURSE_COMBO,
-    ID_DATE
+    ID_ATTENDANCE_STUDENT_COMBO,
+    ID_ATTENDANCE_COURSE_COMBO,
+    ID_ATTENDANCE_DATE
 };
 
 } // namespace GUI

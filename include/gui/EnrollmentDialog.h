@@ -2,6 +2,7 @@
 #define ENROLLMENTDIALOG_H
 
 #include <wx/wx.h>
+#include <wx/datectrl.h>
 #include "models/models.h"
 #include "services/Services.h"
 
@@ -51,9 +52,9 @@ private:
 enum {
     ID_ENROLLMENT_SAVE = wxID_HIGHEST + 600,
     ID_ENROLLMENT_CANCEL,
-    ID_STUDENT_COMBO,
-    ID_COURSE_COMBO,
-    ID_ENROLLMENT_DATE
+    ID_ENROLLMENT_STUDENT_COMBO,
+    ID_ENROLLMENT_COURSE_COMBO,
+    ID_ENROLLMENT_ENROLLMENT_DATE
 };
 
 } // namespace GUI

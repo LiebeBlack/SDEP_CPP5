@@ -4,6 +4,8 @@
 #include <wx/wx.h>
 #include <wx/listctrl.h>
 #include <wx/notebook.h>
+#include <wx/datectrl.h>
+#include <wx/spinctrl.h>
 #include "services/Services.h"
 
 namespace SDEP {

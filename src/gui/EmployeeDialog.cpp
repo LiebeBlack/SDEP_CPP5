@@ -30,7 +30,7 @@ EmployeeDialog::EmployeeDialog(wxWindow* parent, Services::EmployeeService* empl
     main_sizer->Add(title_text, 0, wxALL, 10);
     
     // Create notebook for organizing tabs
-    notebook_ = new wxNotebook(panel);
+    notebook_ = new wxNotebook(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNB_DEFAULT);
     
     CreatePersonalPanel();
     CreateProfessionalPanel();

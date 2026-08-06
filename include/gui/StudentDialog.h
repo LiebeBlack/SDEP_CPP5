@@ -2,6 +2,7 @@
 #define STUDENTDIALOG_H
 
 #include <wx/wx.h>
+#include <wx/datectrl.h>
 #include "models/models.h"
 #include "services/Services.h"
 
@@ -49,9 +50,9 @@ private:
 };
 
 enum {
-    ID_SAVE_BUTTON = wxID_HIGHEST + 200,
-    ID_CANCEL_BUTTON,
-    ID_ENROLLMENT_DATE
+    ID_STUDENT_SAVE_BUTTON = wxID_HIGHEST + 200,
+    ID_STUDENT_CANCEL_BUTTON,
+    ID_STUDENT_ENROLLMENT_DATE
 };
 
 } // namespace GUI

@@ -84,7 +84,7 @@ void MainFrame::CreateMenuBar() {
 }
 
 void MainFrame::CreateStatusBar() {
-    CreateStatusBar(2);
+    wxFrame::CreateStatusBar(2);
     SetStatusText("Welcome to SDEP Educational Management System", 0);
     SetStatusText(wxDateTime::Now().Format(wxT("%H:%M:%S")), 1);
 }
@@ -95,7 +95,7 @@ void MainFrame::CreateMainPanel() {
     wxBoxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
     
     // Create notebook for different panels
-    notebook_ = new wxNotebook(main_panel_, ID_NOTEBOOK);
+    notebook_ = new wxNotebook(main_panel_, ID_NOTEBOOK, wxDefaultPosition, wxDefaultSize, wxNB_DEFAULT);
     
     // Create all panels
     CreateDashboardPanel();
@@ -692,7 +692,7 @@ void MainFrame::CreateSettingsPanel() {
     sizer->Add(title, 0, wxALL, 10);
     
     // Create notebook for settings categories
-    wxNotebook* settings_notebook = new wxNotebook(settings_panel_);
+    wxNotebook* settings_notebook = new wxNotebook(settings_panel_, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNB_DEFAULT);
     
     // General settings panel
     wxPanel* general_panel = new wxPanel(settings_notebook);
@@ -908,7 +908,7 @@ void MainFrame::OnEditStudent(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select a student to edit", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -935,7 +935,7 @@ void MainFrame::OnDeleteStudent(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select a student to delete", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -995,7 +995,7 @@ void MainFrame::OnEditTeacher(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select a teacher to edit", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1022,7 +1022,7 @@ void MainFrame::OnDeleteTeacher(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select a teacher to delete", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1082,7 +1082,7 @@ void MainFrame::OnEditCourse(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select a course to edit", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1109,7 +1109,7 @@ void MainFrame::OnDeleteCourse(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select a course to delete", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1170,7 +1170,7 @@ void MainFrame::OnEditEmployee(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select an employee to edit", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1197,7 +1197,7 @@ void MainFrame::OnDeleteEmployee(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select an employee to delete", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1257,7 +1257,7 @@ void MainFrame::OnEditEnrollment(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select an enrollment to edit", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1284,7 +1284,7 @@ void MainFrame::OnDeleteEnrollment(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select an enrollment to delete", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1344,7 +1344,7 @@ void MainFrame::OnEditAttendance(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select an attendance record to edit", "Information", wxOK | wxICON_INFORMATION);
         return;
@@ -1371,7 +1371,7 @@ void MainFrame::OnDeleteAttendance(wxListCtrl* list_ctrl) {
         return;
     }
     
-    long selected_item = list_ctrl->GetFirstSelected();
+    long selected_item = list_ctrl->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selected_item == -1) {
         wxMessageBox("Please select an attendance record to delete", "Information", wxOK | wxICON_INFORMATION);
         return;

@@ -1,5 +1,6 @@
 #include "gui/EnrollmentDialog.h"
 #include <wx/datectrl.h>
+#include <wx/dateevt.h>
 #include <wx/msgdlg.h>
 
 namespace SDEP {
@@ -8,8 +9,8 @@ namespace GUI {
 wxBEGIN_EVENT_TABLE(EnrollmentDialog, wxDialog)
     EVT_BUTTON(ID_ENROLLMENT_SAVE, EnrollmentDialog::OnSave)
     EVT_BUTTON(ID_ENROLLMENT_CANCEL, EnrollmentDialog::OnCancel)
-    EVT_COMBOBOX(ID_STUDENT_COMBO, EnrollmentDialog::OnStudentChanged)
-    EVT_COMBOBOX(ID_COURSE_COMBO, EnrollmentDialog::OnCourseChanged)
+    EVT_COMBOBOX(ID_ENROLLMENT_STUDENT_COMBO, EnrollmentDialog::OnStudentChanged)
+    EVT_COMBOBOX(ID_ENROLLMENT_COURSE_COMBO, EnrollmentDialog::OnCourseChanged)
 wxEND_EVENT_TABLE()
 
 EnrollmentDialog::EnrollmentDialog(wxWindow* parent, Services::EnrollmentService* enrollment_service,
@@ -39,19 +40,19 @@ EnrollmentDialog::EnrollmentDialog(wxWindow* parent, Services::EnrollmentService
     
     // Student
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Student*:"), 0, wxALIGN_RIGHT | wxALL, 5);
-    student_combo_ = new wxComboBox(panel, ID_STUDENT_COMBO);
+    student_combo_ = new wxComboBox(panel, ID_ENROLLMENT_STUDENT_COMBO);
     LoadStudents();
     grid_sizer->Add(student_combo_, 1, wxEXPAND | wxALL, 5);
     
     // Course
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Course*:"), 0, wxALIGN_RIGHT | wxALL, 5);
-    course_combo_ = new wxComboBox(panel, ID_COURSE_COMBO);
+    course_combo_ = new wxComboBox(panel, ID_ENROLLMENT_COURSE_COMBO);
     LoadCourses();
     grid_sizer->Add(course_combo_, 1, wxEXPAND | wxALL, 5);
     
     // Enrollment Date
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Enrollment Date:"), 0, wxALIGN_RIGHT | wxALL, 5);
-    enrollment_date_ctrl_ = new wxDatePickerCtrl(panel, ID_ENROLLMENT_DATE);
+    enrollment_date_ctrl_ = new wxDatePickerCtrl(panel, ID_ENROLLMENT_ENROLLMENT_DATE);
     enrollment_date_ctrl_->SetValue(wxDateTime::Now());
     grid_sizer->Add(enrollment_date_ctrl_, 1, wxEXPAND | wxALL, 5);
     

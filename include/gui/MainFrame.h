@@ -6,6 +6,7 @@
 #include <wx/notebook.h>
 #include <wx/datectrl.h>
 #include <wx/spinctrl.h>
+#include <wx/panel.h>
 #include "services/Services.h"
 
 namespace SDEP {

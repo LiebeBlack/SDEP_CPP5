@@ -1,9 +1,10 @@
 #!/bin/bash
 # Script de compilación automatizado para Linux/macOS
 # SDEP Educational Management System - C++ Version
+# Updated for 2026 - C++20, CMake 3.20+
 
 echo "===================================="
-echo "SDEP C++ Build Script"
+echo "SDEP C++ Build Script (2026 Edition)"
 echo "===================================="
 echo ""
 
@@ -11,8 +12,12 @@ echo ""
 echo "Verificando dependencias..."
 if ! command -v cmake &> /dev/null; then
     echo "ERROR: cmake no está instalado"
+    echo "Por favor instale CMake 3.20 o superior"
     exit 1
 fi
+
+CMAKE_VERSION=$(cmake --version | head -n1 | awk '{print $3}')
+echo "CMake version: $CMAKE_VERSION"
 
 if ! command -v g++ &> /dev/null && ! command -v clang++ &> /dev/null; then
     echo "ERROR: No se encontró compilador C++ (g++ o clang++)"
@@ -27,8 +32,8 @@ fi
 
 cd build
 
-echo "Configurando con CMake..."
-cmake ..
+echo "Configurando con CMake (C++20)..."
+cmake .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON
 if [ $? -ne 0 ]; then
     echo "ERROR: CMake configuration failed"
     exit 1
@@ -44,9 +49,11 @@ fi
 
 echo ""
 echo "===================================="
-echo "BUILD EXITOSO"
+echo "BUILD EXITOSO - CERO ERRORES"
 echo "===================================="
 echo "Ejecutable: build/SDEP"
+echo "C++ Standard: C++20"
+echo "CMake Version: $CMAKE_VERSION"
 echo ""
 
 # Hacer el script ejecutable

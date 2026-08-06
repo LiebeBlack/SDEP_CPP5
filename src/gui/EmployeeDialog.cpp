@@ -1,5 +1,6 @@
 #include "gui/EmployeeDialog.h"
 #include <wx/datectrl.h>
+#include <wx/dateevt.h>
 #include <wx/msgdlg.h>
 #include <wx/splitter.h>
 

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cctype>
+#include <chrono>
 
 namespace SDEP {
 namespace Services {
@@ -21,7 +22,7 @@ void SecurityManager::initializeDefaultUsers() {
     admin.password_hash = admin.hashPassword("Admin123!");
     admin.role = "admin";
     admin.is_active = true;
-    admin.created_at = getCurrentTimestamp();
+    admin.created_at = Models::BaseModel::getCurrentTimestamp();
     admin.password_changed_at = admin.created_at;
     
     users_[admin.username] = admin;
@@ -41,7 +42,7 @@ bool SecurityManager::createUser(const Models::User& user) {
     
     Models::User new_user = user;
     new_user.password_hash = new_user.hashPassword(user.password_hash);
-    new_user.created_at = getCurrentTimestamp();
+    new_user.created_at = Models::BaseModel::getCurrentTimestamp();
     new_user.password_changed_at = new_user.created_at;
     
     users_[new_user.username] = new_user;
@@ -134,13 +135,13 @@ bool SecurityManager::changePassword(const std::string& username, const std::str
     
     // Change password
     user.password_hash = user.hashPassword(new_password);
-    user.password_changed_at = getCurrentTimestamp();
+    user.password_changed_at = Models::BaseModel::getCurrentTimestamp();
     user.must_change_password = false;
     
     // Update password history
     auto& history = password_history_[username];
     history.push_back(user.password_hash);
-    if (history.size() > password_history_count_) {
+    if (history.size() > static_cast<size_t>(password_history_count_)) {
         history.erase(history.begin());
     }
     
@@ -150,7 +151,7 @@ bool SecurityManager::changePassword(const std::string& username, const std::str
 }
 
 bool SecurityManager::validatePasswordStrength(const std::string& password) const {
-    if (password.length() < password_min_length_) {
+    if (password.length() < static_cast<size_t>(password_min_length_)) {
         return false;
     }
     
@@ -275,7 +276,7 @@ void SecurityManager::logAction(const std::string& action, const std::string& re
     log.success = success;
     log.error_message = error_message;
     log.ip_address = ip_address;
-    log.timestamp = getCurrentTimestamp();
+    log.timestamp = Models::BaseModel::getCurrentTimestamp();
     
     audit_logs_.push_back(log);
 }
@@ -323,6 +324,7 @@ std::string SecurityManager::generateSessionToken() const {
 }
 
 bool SecurityManager::isSessionExpired(const std::string& token) const {
+    (void)token; // Parameter will be used in production implementation
     // Simplified - in production, implement proper session expiration
     return false;
 }

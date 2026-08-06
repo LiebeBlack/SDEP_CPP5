@@ -3,6 +3,9 @@
 
 #include <wx/wx.h>
 #include <wx/datectrl.h>
+#include <wx/dateevt.h>
+#include <wx/textctrl.h>
+#include <wx/combobox.h>
 #include "models/models.h"
 #include "services/Services.h"
 
@@ -51,10 +54,10 @@ private:
 
 enum {
     ID_ATTENDANCE_SAVE = wxID_HIGHEST + 700,
-    ID_ATTENDANCE_CANCEL,
-    ID_ATTENDANCE_STUDENT_COMBO,
-    ID_ATTENDANCE_COURSE_COMBO,
-    ID_ATTENDANCE_DATE
+    ID_ATTENDANCE_CANCEL = wxID_HIGHEST + 701,
+    ID_ATTENDANCE_STUDENT_COMBO = wxID_HIGHEST + 702,
+    ID_ATTENDANCE_COURSE_COMBO = wxID_HIGHEST + 703,
+    ID_ATTENDANCE_DATE = wxID_HIGHEST + 704
 };
 
 } // namespace GUI

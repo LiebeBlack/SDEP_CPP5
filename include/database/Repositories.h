@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <optional>
 
 namespace SDEP {
 namespace Database {

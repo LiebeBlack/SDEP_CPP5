@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <stdexcept>
+#include <optional>
 
 namespace SDEP {
 namespace Services {

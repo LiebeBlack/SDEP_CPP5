@@ -1,6 +1,4 @@
 #include "gui/StudentDialog.h"
-#include <wx/datectrl.h>
-#include <wx/dateevt.h>
 #include <wx/msgdlg.h>
 #include <wx/valtext.h>
 
@@ -8,9 +6,8 @@ namespace SDEP {
 namespace GUI {
 
 wxBEGIN_EVENT_TABLE(StudentDialog, wxDialog)
-    EVT_BUTTON(ID_SAVE_BUTTON, StudentDialog::OnSave)
-    EVT_BUTTON(ID_CANCEL_BUTTON, StudentDialog::OnCancel)
-    EVT_DATE_CHANGED(ID_ENROLLMENT_DATE, StudentDialog::OnDateChanged)
+    EVT_BUTTON(ID_STUDENT_SAVE_BUTTON, StudentDialog::OnSave)
+    EVT_BUTTON(ID_STUDENT_CANCEL_BUTTON, StudentDialog::OnCancel)
 wxEND_EVENT_TABLE()
 
 StudentDialog::StudentDialog(wxWindow* parent, Services::StudentService* student_service,
@@ -64,8 +61,8 @@ StudentDialog::StudentDialog(wxWindow* parent, Services::StudentService* student
     
     // Enrollment Date
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Enrollment Date:"), 0, wxALIGN_RIGHT | wxALL, 5);
-    wxDatePickerCtrl* date_ctrl = new wxDatePickerCtrl(panel, ID_ENROLLMENT_DATE);
-    grid_sizer->Add(date_ctrl, 1, wxEXPAND | wxALL, 5);
+    enrollment_date_ctrl_ = new wxTextCtrl(panel, wxID_ANY);
+    grid_sizer->Add(enrollment_date_ctrl_, 1, wxEXPAND | wxALL, 5);
     
     // Grade
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Grade:"), 0, wxALIGN_RIGHT | wxALL, 5);
@@ -109,8 +106,8 @@ StudentDialog::StudentDialog(wxWindow* parent, Services::StudentService* student
     wxPanel* button_panel = new wxPanel(panel);
     wxBoxSizer* button_sizer = new wxBoxSizer(wxHORIZONTAL);
     
-    wxButton* save_button = new wxButton(button_panel, ID_SAVE_BUTTON, "Save");
-    wxButton* cancel_button = new wxButton(button_panel, ID_CANCEL_BUTTON, "Cancel");
+    wxButton* save_button = new wxButton(button_panel, ID_STUDENT_SAVE_BUTTON, "Save");
+    wxButton* cancel_button = new wxButton(button_panel, ID_STUDENT_CANCEL_BUTTON, "Cancel");
     
     button_sizer->Add(save_button, 0, wxALL, 5);
     button_sizer->Add(cancel_button, 0, wxALL, 5);
@@ -144,10 +141,7 @@ void StudentDialog::PopulateFields() {
     emergency_contact_ctrl_->SetValue(student_.emergency_contact);
     
     // Set enrollment date if available
-    if (!student_.enrollment_date.empty()) {
-        // Parse date string and set to date picker
-        // This would need proper date parsing
-    }
+    enrollment_date_ctrl_->SetValue(student_.enrollment_date);
 }
 
 bool StudentDialog::ValidateInputs() {
@@ -203,12 +197,8 @@ bool StudentDialog::SaveStudent() {
         student_.parent_phone = parent_phone_ctrl_->GetValue().ToStdString();
         student_.emergency_contact = emergency_contact_ctrl_->GetValue().ToStdString();
         
-        // Get enrollment date from date picker
-        wxDatePickerCtrl* date_ctrl = static_cast<wxDatePickerCtrl*>(FindWindow(ID_ENROLLMENT_DATE));
-        if (date_ctrl) {
-            wxDateTime date = date_ctrl->GetValue();
-            student_.enrollment_date = date.FormatISODate().ToStdString();
-        }
+        // Get enrollment date from text control
+        student_.enrollment_date = enrollment_date_ctrl_->GetValue().ToStdString();
         
         // Validate
         if (!student_.validate()) {
@@ -258,11 +248,6 @@ void StudentDialog::OnSave(wxCommandEvent& event) {
 
 void StudentDialog::OnCancel(wxCommandEvent& event) {
     EndModal(wxID_CANCEL);
-}
-
-void StudentDialog::OnDateChanged(wxDateEvent& event) {
-    // Handle date change if needed
-    event.Skip();
 }
 
 } // namespace GUI

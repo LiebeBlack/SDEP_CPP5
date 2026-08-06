@@ -2,6 +2,9 @@
 #define LOGINDIALOG_H
 
 #include <wx/wx.h>
+#include <wx/textctrl.h>
+#include <wx/button.h>
+#include <wx/stattext.h>
 #include "services/Services.h"
 
 namespace SDEP {
@@ -35,7 +38,7 @@ private:
 
 enum {
     ID_LOGIN_BUTTON = wxID_HIGHEST + 100,
-    ID_CANCEL_BUTTON
+    ID_CANCEL_BUTTON = wxID_HIGHEST + 101
 };
 
 } // namespace GUI

@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <ctime>
+#include <optional>
 
 namespace SDEP {
 namespace Services {

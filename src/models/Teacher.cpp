@@ -2,6 +2,7 @@
 #include <sstream>
 #include <algorithm>
 #include <regex>
+#include <chrono>
 
 namespace SDEP {
 namespace Models {
@@ -9,7 +10,7 @@ namespace Models {
 // Teacher implementation
 Teacher::Teacher(const std::string& fname, const std::string& lname)
     : first_name(fname), last_name(lname) {
-    created_at = getCurrentTimestamp();
+    created_at = BaseModel::getCurrentTimestamp();
     updated_at = created_at;
 }
 

@@ -862,10 +862,12 @@ void MainFrame::OnNotebookPageChanged(wxBookCtrlEvent& event) {
 }
 
 void MainFrame::OnExit(wxCommandEvent& event) {
+    (void)event;
     Close(true);
 }
 
 void MainFrame::OnAbout(wxCommandEvent& event) {
+    (void)event;
     wxMessageBox("SDEP Educational Management System v1.0\n\n"
                  "A comprehensive educational management system built with C++ and wxWidgets.\n\n"
                  "Features:\n"
@@ -881,6 +883,7 @@ void MainFrame::OnAbout(wxCommandEvent& event) {
 }
 
 void MainFrame::OnLogout(wxCommandEvent& event) {
+    (void)event;
     if (wxMessageBox("Are you sure you want to logout?", "Logout Confirmation", 
                      wxYES_NO | wxICON_QUESTION) == wxYES) {
         // Perform logout

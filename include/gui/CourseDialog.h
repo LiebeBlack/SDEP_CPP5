@@ -2,6 +2,9 @@
 #define COURSEDIALOG_H
 
 #include <wx/wx.h>
+#include <wx/textctrl.h>
+#include <wx/combobox.h>
+#include <wx/checkbox.h>
 #include "models/models.h"
 #include "services/Services.h"
 
@@ -50,8 +53,8 @@ private:
 
 enum {
     ID_COURSE_SAVE = wxID_HIGHEST + 400,
-    ID_COURSE_CANCEL,
-    ID_TEACHER_COMBO
+    ID_COURSE_CANCEL = wxID_HIGHEST + 401,
+    ID_TEACHER_COMBO = wxID_HIGHEST + 402
 };
 
 } // namespace GUI

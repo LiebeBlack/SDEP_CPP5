@@ -1,22 +1,33 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 project(SDEP VERSION 1.0.0 LANGUAGES CXX)
 
-# C++ Standard
-set(CMAKE_CXX_STANDARD 17)
+# C++ Standard (updated for 2026 compatibility)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Compiler flags
 if(MSVC)
-    add_compile_options(/W4)
+    add_compile_options(/W4 /permissive-)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
+    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 endif()
 
 # Find packages
 find_package(wxWidgets REQUIRED COMPONENTS core base net)
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
+
+# Check if packages are found
+if(NOT wxWidgets_FOUND)
+    message(FATAL_ERROR "wxWidgets not found")
+endif()
+if(NOT SQLite3_FOUND)
+    message(FATAL_ERROR "SQLite3 not found")
+endif()
+if(NOT Threads_FOUND)
+    message(FATAL_ERROR "Threads not found")
+endif()
 
 # Include wxWidgets
 include(${wxWidgets_USE_FILE})
@@ -67,6 +78,13 @@ target_link_libraries(${PROJECT_NAME}
     ${wxWidgets_LIBRARIES}
     ${SQLITE3_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+)
+
+# Set target properties
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
 )
 
 # Copy resources to build directory

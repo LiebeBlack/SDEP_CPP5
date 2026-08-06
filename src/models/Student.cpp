@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <algorithm>
 #include <regex>
+#include <chrono>
+#include <format>
 
 namespace SDEP {
 namespace Models {
@@ -18,7 +20,7 @@ std::string BaseModel::getCurrentTimestamp() {
 // Student implementation
 Student::Student(const std::string& fname, const std::string& lname)
     : first_name(fname), last_name(lname) {
-    created_at = getCurrentTimestamp();
+    created_at = BaseModel::getCurrentTimestamp();
     updated_at = created_at;
 }
 

@@ -10,6 +10,7 @@ permissions:
 
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+  CMAKE_VERSION: '3.30.x'
 
 jobs:
   build-all:

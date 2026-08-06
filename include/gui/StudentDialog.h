@@ -3,6 +3,9 @@
 
 #include <wx/wx.h>
 #include <wx/datectrl.h>
+#include <wx/textctrl.h>
+#include <wx/combobox.h>
+#include <wx/checkbox.h>
 #include "models/models.h"
 #include "services/Services.h"
 
@@ -40,7 +43,6 @@ private:
     
     void OnSave(wxCommandEvent& event);
     void OnCancel(wxCommandEvent& event);
-    void OnDateChanged(wxDateEvent& event);
     
     bool ValidateInputs();
     void PopulateFields();
@@ -51,8 +53,7 @@ private:
 
 enum {
     ID_STUDENT_SAVE_BUTTON = wxID_HIGHEST + 200,
-    ID_STUDENT_CANCEL_BUTTON,
-    ID_STUDENT_ENROLLMENT_DATE
+    ID_STUDENT_CANCEL_BUTTON = wxID_HIGHEST + 201
 };
 
 } // namespace GUI

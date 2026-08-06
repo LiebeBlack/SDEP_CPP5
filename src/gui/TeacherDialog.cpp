@@ -1,5 +1,6 @@
 #include "gui/TeacherDialog.h"
 #include <wx/datectrl.h>
+#include <wx/dateevt.h>
 #include <wx/msgdlg.h>
 
 namespace SDEP {

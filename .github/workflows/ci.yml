@@ -14,6 +14,58 @@ env:
   CMAKE_VERSION: '3.30.x'
 
 jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+    
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.30.x'
+    
+    - name: Setup Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+    
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitHash: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+        vcpkgJsonGlob: 'vcpkg.json'
+    
+    - name: Build
+      run: |
+        # Create build directory
+        mkdir build
+        cd build
+
+        # Configure with CMake using vcpkg toolchain
+        cmake .. -G "Ninja" `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "CMake configuration failed"
+          exit 1
+        }
+
+        # Build the project
+        ninja
+      shell: pwsh
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: SDEP-Windows
+        path: build/SDEP.exe
+        retention-days: 7
+        if-no-files-found: ignore
+
   build-linux:
     runs-on: ubuntu-latest
     

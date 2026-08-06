@@ -53,27 +53,19 @@ private:
     wxDatePickerCtrl* hire_date_ctrl_;
     wxComboBox* employment_type_combo_;
     wxTextCtrl* work_schedule_ctrl_;
-    wxDatePickerCtrl* contract_end_ctrl_;
     
     // Financial info
     wxTextCtrl* salary_ctrl_;
     wxComboBox* salary_type_combo_;
     wxTextCtrl* bank_name_ctrl_;
     wxTextCtrl* bank_account_ctrl_;
-    wxComboBox* bank_account_type_combo_;
     wxComboBox* payment_method_combo_;
-    wxTextCtrl* tax_id_ctrl_;
-    wxTextCtrl* social_security_ctrl_;
     
     // Additional info
     wxCheckBox* health_insurance_ctrl_;
     wxCheckBox* life_insurance_ctrl_;
     wxCheckBox* retirement_plan_ctrl_;
-    wxTextCtrl* other_benefits_ctrl_;
     wxCheckBox* contract_signed_ctrl_;
-    wxCheckBox* confidentiality_signed_ctrl_;
-    wxCheckBox* background_check_ctrl_;
-    wxCheckBox* drug_test_ctrl_;
     wxTextCtrl* notes_ctrl_;
     
     wxStaticText* status_text_;

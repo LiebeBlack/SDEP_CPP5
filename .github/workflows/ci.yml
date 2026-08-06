@@ -21,7 +21,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
+      uses: microsoft/setup-msbuild@v1.1
     
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
@@ -67,8 +67,17 @@ jobs:
         mkdir build
         cd build
 
-        # Try generators in order of preference
-        $exitCode = Try-CMake "Visual Studio 17 2022"
+        # Try generators in order of preference (VS 18 2025 is available on windows-2025 runners)
+        $exitCode = Try-CMake "Visual Studio 18 2025"
+        if ($exitCode -ne 0) {
+          Write-Host "VS 18 2025 failed, cleaning and trying VS 17 2022"
+          cd ..
+          Remove-Item -Recurse -Force build
+          mkdir build
+          cd build
+          $exitCode = Try-CMake "Visual Studio 17 2022"
+        }
+
         if ($exitCode -ne 0) {
           Write-Host "VS 17 2022 failed, cleaning and trying VS 16 2019"
           cd ..

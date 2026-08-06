@@ -183,7 +183,8 @@ void EmployeeDialog::CreateFinancialPanel() {
     // Salary
     grid_sizer->Add(new wxStaticText(financial_panel_, wxID_ANY, "Salary:"), 0, wxALIGN_RIGHT | wxALL, 5);
     salary_ctrl_ = new wxTextCtrl(financial_panel_, wxID_ANY);
-    salary_ctrl_->SetValidator(wxFloatingPointValidator<double>(2));
+    // Note: wxFloatingPointValidator is not available in all wxWidgets versions
+    // Validation will be done in ValidateInputs() method
     grid_sizer->Add(salary_ctrl_, 1, wxEXPAND | wxALL, 5);
     
     // Salary Type

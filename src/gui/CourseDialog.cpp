@@ -62,7 +62,8 @@ CourseDialog::CourseDialog(wxWindow* parent, Services::CourseService* course_ser
     // Credits
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Credits:"), 0, wxALIGN_RIGHT | wxALL, 5);
     credits_ctrl_ = new wxTextCtrl(panel, wxID_ANY);
-    credits_ctrl_->SetValidator(wxIntegerValidator<int>(0, 10));
+    // Note: wxIntegerValidator is not available in all wxWidgets versions
+    // Validation will be done in ValidateInputs() method
     grid_sizer->Add(credits_ctrl_, 1, wxEXPAND | wxALL, 5);
     
     // Schedule

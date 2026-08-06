@@ -29,13 +29,10 @@ jobs:
       with:
         cmake-version: '3.30.x'
     
-    - name: Setup Ninja
-      uses: seanmiddleditch/gha-setup-ninja@master
-    
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+        vcpkgGitCommitId: 'cd61e1e'
         vcpkgJsonGlob: 'vcpkg.json'
     
     - name: Build

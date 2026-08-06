@@ -21,12 +21,15 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Setup MSVC
-      uses: microsoft/setup-msbuild@v1.1
+      uses: ilammy/msvc-dev-cmd@v1
     
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: '3.30.x'
+    
+    - name: Setup Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
     
     - name: Setup wxWidgets
       run: |
@@ -57,8 +60,8 @@ jobs:
         mkdir build
         cd build
 
-        # Configure with CMake using NMake generator (works with MSVC)
-        cmake .. -G "NMake Makefiles" `
+        # Configure with CMake using Ninja generator (works with MSVC)
+        cmake .. -G "Ninja" `
           -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
           -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw `
           -DCMAKE_BUILD_TYPE=Release
@@ -69,7 +72,7 @@ jobs:
         }
 
         # Build the project
-        nmake
+        ninja
       shell: pwsh
     
     - name: List Build Output

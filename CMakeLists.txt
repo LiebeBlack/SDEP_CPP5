@@ -76,7 +76,7 @@ endif()
 # Link libraries
 target_link_libraries(${PROJECT_NAME}
     ${wxWidgets_LIBRARIES}
-    ${SQLITE3_LIBRARIES}
+    sqlite3
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

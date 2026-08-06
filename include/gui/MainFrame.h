@@ -100,7 +100,7 @@ private:
     
     // UI creation methods
     void CreateMenuBar();
-    void CreateStatusBar();
+    void SetupStatusBar();
     void CreateMainPanel();
     void CreateDashboardPanel();
     void CreateStudentsPanel();

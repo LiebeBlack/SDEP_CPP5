@@ -76,7 +76,7 @@ LoginDialog::LoginDialog(wxWindow* parent, Services::SecurityManager* security_m
     Centre();
 }
 
-void LoginDialog::OnLogin(wxCommandEvent& event) {
+void LoginDialog::OnLogin(wxCommandEvent& /* event */) {
     wxString username = username_ctrl_->GetValue();
     wxString password = password_ctrl_->GetValue();
     
@@ -109,17 +109,13 @@ void LoginDialog::OnLogin(wxCommandEvent& event) {
     }
 }
 
-void LoginDialog::OnCancel(wxCommandEvent& event) {
+void LoginDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 
-void LoginDialog::OnKeyPress(wxKeyEvent& event) {
-    if (event.GetKeyCode() == WXK_RETURN) {
-        wxCommandEvent login_event(wxEVT_BUTTON, ID_LOGIN_BUTTON);
-        OnLogin(login_event);
-    } else {
-        event.Skip();
-    }
+void LoginDialog::OnKeyPress(wxKeyEvent& /* event */) {
+    // This event handler is currently not used
+    // Text enter events are handled via EVT_TEXT_ENTER in the event table
 }
 
 } // namespace GUI

@@ -29,9 +29,9 @@ private:
     std::string session_token_;
     bool authenticated_ = false;
     
-    void OnLogin(wxCommandEvent& event);
-    void OnCancel(wxCommandEvent& event);
-    void OnKeyPress(wxKeyEvent& event);
+    void OnLogin(wxCommandEvent& /* event */);
+    void OnCancel(wxCommandEvent& /* event */);
+    void OnKeyPress(wxKeyEvent& /* event */);
     
     wxDECLARE_EVENT_TABLE();
 };

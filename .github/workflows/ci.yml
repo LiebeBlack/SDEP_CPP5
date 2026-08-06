@@ -53,29 +53,36 @@ jobs:
     
     - name: Build
       run: |
+        # Function to try CMake with a specific generator
+        function Try-CMake {
+          param($Generator)
+          Write-Host "Trying CMake with generator: $Generator"
+          cmake .. -G "$Generator" -A x64 `
+            -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
+            -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw
+          return $LASTEXITCODE
+        }
+
+        # Create build directory
         mkdir build
         cd build
-        # Configure CMake with wxWidgets - try VS 18 2025 first (newest on runner)
-        cmake .. -G "Visual Studio 18 2025" -A x64 `
-          -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
-          -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw
-        
-        # If VS 18 2025 fails, try VS 17 2022
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "VS 18 2025 failed, trying VS 17 2022"
-          cmake .. -G "Visual Studio 17 2022" -A x64 `
-            -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
-            -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw
+
+        # Try generators in order of preference
+        $exitCode = Try-CMake "Visual Studio 17 2022"
+        if ($exitCode -ne 0) {
+          Write-Host "VS 17 2022 failed, cleaning and trying VS 16 2019"
+          cd ..
+          Remove-Item -Recurse -Force build
+          mkdir build
+          cd build
+          $exitCode = Try-CMake "Visual Studio 16 2019"
         }
-        
-        # If VS 17 2022 fails, try VS 16 2019
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "VS 17 2022 failed, trying VS 16 2019"
-          cmake .. -G "Visual Studio 16 2019" -A x64 `
-            -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
-            -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw
+
+        if ($exitCode -ne 0) {
+          Write-Host "All generators failed"
+          exit 1
         }
-        
+
         # Build the project
         cmake --build . --config Release --verbose
       shell: pwsh
@@ -107,15 +114,6 @@ jobs:
           build/Release/*.exe
           build/Debug/*.exe
           build/*.exe
-        retention-days: 7
-        if-no-files-found: error
-    
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: SDEP-Windows
-        path: build/Release/SDEP.exe
         retention-days: 7
         if-no-files-found: ignore
 

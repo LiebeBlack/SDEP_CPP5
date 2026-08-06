@@ -25,17 +25,17 @@ wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title, Services::SecurityManager* security_manager)
     : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(1200, 800)),
-      security_manager_(security_manager),
       student_service_(nullptr),
       teacher_service_(nullptr),
       course_service_(nullptr),
       enrollment_service_(nullptr),
       attendance_service_(nullptr),
-      employee_service_(nullptr) {
+      employee_service_(nullptr),
+      security_manager_(security_manager) {
     
     // Create UI
     CreateMenuBar();
-    CreateStatusBar();
+    SetupStatusBar();
     CreateMainPanel();
     
     // Center the frame
@@ -83,7 +83,7 @@ void MainFrame::CreateMenuBar() {
     SetMenuBar(menu_bar);
 }
 
-void MainFrame::CreateStatusBar() {
+void MainFrame::SetupStatusBar() {
     wxFrame::CreateStatusBar(2);
     SetStatusText("Welcome to SDEP Educational Management System", 0);
     SetStatusText(wxDateTime::Now().Format(wxT("%H:%M:%S")), 1);

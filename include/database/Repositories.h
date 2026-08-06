@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <sstream>
 
 namespace SDEP {
 namespace Database {
@@ -31,8 +32,38 @@ protected:
     DatabaseManager& db_;
     std::string table_name_;
     
-    std::string buildInsertQuery(const std::vector<std::string>& columns) const;
-    std::string buildUpdateQuery(const std::vector<std::string>& columns) const;
+public:
+    std::string buildInsertQuery(const std::vector<std::string>& columns) const {
+        std::ostringstream oss;
+        oss << "INSERT INTO " << table_name_ << " (";
+        
+        for (size_t i = 0; i < columns.size(); ++i) {
+            if (i > 0) oss << ", ";
+            oss << columns[i];
+        }
+        
+        oss << ") VALUES (";
+        for (size_t i = 0; i < columns.size(); ++i) {
+            if (i > 0) oss << ", ";
+            oss << "?";
+        }
+        oss << ")";
+        
+        return oss.str();
+    }
+    
+    std::string buildUpdateQuery(const std::vector<std::string>& columns) const {
+        std::ostringstream oss;
+        oss << "UPDATE " << table_name_ << " SET ";
+        
+        for (size_t i = 0; i < columns.size(); ++i) {
+            if (i > 0) oss << ", ";
+            oss << columns[i] << " = ?";
+        }
+        
+        oss << " WHERE id = ?";
+        return oss.str();
+    }
 };
 
 // Student repository

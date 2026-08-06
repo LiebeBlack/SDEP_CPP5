@@ -20,7 +20,6 @@ public:
     virtual bool validate() const = 0;
     virtual std::string toString() const = 0;
     
-protected:
     static std::string getCurrentTimestamp();
 };
 

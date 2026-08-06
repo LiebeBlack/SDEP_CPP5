@@ -5,41 +5,6 @@
 namespace SDEP {
 namespace Database {
 
-// Base repository implementation
-template<typename T>
-std::string BaseRepository<T>::buildInsertQuery(const std::vector<std::string>& columns) const {
-    std::ostringstream oss;
-    oss << "INSERT INTO " << table_name_ << " (";
-    
-    for (size_t i = 0; i < columns.size(); ++i) {
-        if (i > 0) oss << ", ";
-        oss << columns[i];
-    }
-    
-    oss << ") VALUES (";
-    for (size_t i = 0; i < columns.size(); ++i) {
-        if (i > 0) oss << ", ";
-        oss << "?";
-    }
-    oss << ")";
-    
-    return oss.str();
-}
-
-template<typename T>
-std::string BaseRepository<T>::buildUpdateQuery(const std::vector<std::string>& columns) const {
-    std::ostringstream oss;
-    oss << "UPDATE " << table_name_ << " SET ";
-    
-    for (size_t i = 0; i < columns.size(); ++i) {
-        if (i > 0) oss << ", ";
-        oss << columns[i] << " = ?";
-    }
-    
-    oss << " WHERE id = ?";
-    return oss.str();
-}
-
 // Student repository implementation
 StudentRepository::StudentRepository(DatabaseManager& db)
     : BaseRepository(db, "students") {}
@@ -77,7 +42,7 @@ int StudentRepository::create(const Models::Student& student) {
         }
     }
     
-    std::string query = buildInsertQuery<Models::Student>(columns);
+    std::string query = buildInsertQuery(columns);
     return db_.executeInsert(query, values);
 }
 
@@ -95,7 +60,7 @@ bool StudentRepository::update(const Models::Student& student) {
     
     values.push_back(std::to_string(student.id)); // Add ID for WHERE clause
     
-    std::string query = buildUpdateQuery<Models::Student>(columns);
+    std::string query = buildUpdateQuery(columns);
     return db_.executeUpdate(query, values) > 0;
 }
 
@@ -178,7 +143,7 @@ int TeacherRepository::create(const Models::Teacher& teacher) {
         }
     }
     
-    std::string query = buildInsertQuery<Models::Teacher>(columns);
+    std::string query = buildInsertQuery(columns);
     return db_.executeInsert(query, values);
 }
 
@@ -196,7 +161,7 @@ bool TeacherRepository::update(const Models::Teacher& teacher) {
     
     values.push_back(std::to_string(teacher.id));
     
-    std::string query = buildUpdateQuery<Models::Teacher>(columns);
+    std::string query = buildUpdateQuery(columns);
     return db_.executeUpdate(query, values) > 0;
 }
 
@@ -279,7 +244,7 @@ int CourseRepository::create(const Models::Course& course) {
         }
     }
     
-    std::string query = buildInsertQuery<Models::Course>(columns);
+    std::string query = buildInsertQuery(columns);
     return db_.executeInsert(query, values);
 }
 
@@ -297,7 +262,7 @@ bool CourseRepository::update(const Models::Course& course) {
     
     values.push_back(std::to_string(course.id));
     
-    std::string query = buildUpdateQuery<Models::Course>(columns);
+    std::string query = buildUpdateQuery(columns);
     return db_.executeUpdate(query, values) > 0;
 }
 
@@ -382,7 +347,7 @@ int EnrollmentRepository::create(const Models::Enrollment& enrollment) {
             values.push_back(pair.second);
         }
     }
-    return db_.executeInsert(buildInsertQuery<Models::Enrollment>(columns), values);
+    return db_.executeInsert(buildInsertQuery(columns), values);
 }
 
 bool EnrollmentRepository::update(const Models::Enrollment& enrollment) {
@@ -395,7 +360,7 @@ bool EnrollmentRepository::update(const Models::Enrollment& enrollment) {
         }
     }
     values.push_back(std::to_string(enrollment.id));
-    return db_.executeUpdate(buildUpdateQuery<Models::Enrollment>(columns), values) > 0;
+    return db_.executeUpdate(buildUpdateQuery(columns), values) > 0;
 }
 
 bool EnrollmentRepository::deleteById(int id) {
@@ -448,7 +413,7 @@ int AttendanceRepository::create(const Models::Attendance& attendance) {
             values.push_back(pair.second);
         }
     }
-    return db_.executeInsert(buildInsertQuery<Models::Attendance>(columns), values);
+    return db_.executeInsert(buildInsertQuery(columns), values);
 }
 
 bool AttendanceRepository::update(const Models::Attendance& attendance) {
@@ -461,7 +426,7 @@ bool AttendanceRepository::update(const Models::Attendance& attendance) {
         }
     }
     values.push_back(std::to_string(attendance.id));
-    return db_.executeUpdate(buildUpdateQuery<Models::Attendance>(columns), values) > 0;
+    return db_.executeUpdate(buildUpdateQuery(columns), values) > 0;
 }
 
 bool AttendanceRepository::deleteById(int id) {
@@ -521,7 +486,7 @@ int EmployeeRepository::create(const Models::Employee& employee) {
             values.push_back(pair.second);
         }
     }
-    return db_.executeInsert(buildInsertQuery<Models::Employee>(columns), values);
+    return db_.executeInsert(buildInsertQuery(columns), values);
 }
 
 bool EmployeeRepository::update(const Models::Employee& employee) {
@@ -534,7 +499,7 @@ bool EmployeeRepository::update(const Models::Employee& employee) {
         }
     }
     values.push_back(std::to_string(employee.id));
-    return db_.executeUpdate(buildUpdateQuery<Models::Employee>(columns), values) > 0;
+    return db_.executeUpdate(buildUpdateQuery(columns), values) > 0;
 }
 
 bool EmployeeRepository::deleteById(int id) {

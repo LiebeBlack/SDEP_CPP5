@@ -32,7 +32,8 @@ jobs:
         choco install wxwidgets -y
         $wxPath = "C:\wxWidgets-3.3.1"
         if (Test-Path $wxPath) {
-          echo "$wxPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "wxWidgets_ROOT=$wxPath" >> $env:GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$wxPath" >> $env:GITHUB_ENV
           echo "wxWidgets found at: $wxPath"
         } else {
           echo "wxWidgets not found at expected location"
@@ -44,8 +45,8 @@ jobs:
       run: |
         $wxPath = "C:\wxWidgets-3.3.1"
         if (Test-Path $wxPath) {
-          echo "wxWidgets_ROOT=$wxPath" >> $env:GITHUB_ENV
-          echo "CMAKE_PREFIX_PATH=$wxPath" >> $env:GITHUB_ENV
+          echo "wxWidgets_DIR=$wxPath\build\msw" >> $env:GITHUB_ENV
+          echo "wxWidgets_ROOT_DIR=$wxPath" >> $env:GITHUB_ENV
         }
       shell: pwsh
     
@@ -53,28 +54,44 @@ jobs:
       run: |
         mkdir build
         cd build
-        # Try multiple Visual Studio generators
-        $generators = @("Visual Studio 17 2022", "Visual Studio 16 2019", "Visual Studio 15 2017")
-        $success = $false
+        # Configure CMake with wxWidgets
+        cmake .. -G "Visual Studio 17 2022" -A x64 `
+          -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
+          -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw
         
-        foreach ($gen in $generators) {
-          Write-Host "Trying generator: $gen"
-          cmake .. -G "$gen" -A x64
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Generator $gen works!"
-            $success = $true
-            break
-          }
-        }
-        
-        if (-not $success) {
-          Write-Host "No Visual Studio generator worked, trying default"
-          cmake ..
-        }
-        
-        cmake --build . --config Release
+        # Build the project
+        cmake --build . --config Release --verbose
       shell: pwsh
-      continue-on-error: true
+    
+    - name: List Build Output
+      run: |
+        Write-Host "Build directory contents:"
+        Get-ChildItem -Recurse build -ErrorAction SilentlyContinue
+        Write-Host "Release directory contents:"
+        if (Test-Path build/Release) {
+          Get-ChildItem build/Release -ErrorAction SilentlyContinue
+        } else {
+          Write-Host "Release directory not found"
+        }
+        Write-Host "Debug directory contents:"
+        if (Test-Path build/Debug) {
+          Get-ChildItem build/Debug -ErrorAction SilentlyContinue
+        } else {
+          Write-Host "Debug directory not found"
+        }
+      shell: pwsh
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: SDEP-Windows
+        path: |
+          build/Release/*.exe
+          build/Debug/*.exe
+          build/*.exe
+        retention-days: 7
+        if-no-files-found: error
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

@@ -56,7 +56,11 @@ set(SOURCES
 )
 
 # Create executable
-add_executable(${PROJECT_NAME} WIN32 ${SOURCES})
+if(WIN32)
+    add_executable(${PROJECT_NAME} WIN32 ${SOURCES})
+else()
+    add_executable(${PROJECT_NAME} ${SOURCES})
+endif()
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME}

@@ -53,47 +53,23 @@ jobs:
     
     - name: Build
       run: |
-        # Function to try CMake with a specific generator
-        function Try-CMake {
-          param($Generator)
-          Write-Host "Trying CMake with generator: $Generator"
-          cmake .. -G "$Generator" -A x64 `
-            -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
-            -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw
-          return $LASTEXITCODE
-        }
-
         # Create build directory
         mkdir build
         cd build
 
-        # Try generators in order of preference (VS 18 2025 is available on windows-2025 runners)
-        $exitCode = Try-CMake "Visual Studio 18 2025"
-        if ($exitCode -ne 0) {
-          Write-Host "VS 18 2025 failed, cleaning and trying VS 17 2022"
-          cd ..
-          Remove-Item -Recurse -Force build
-          mkdir build
-          cd build
-          $exitCode = Try-CMake "Visual Studio 17 2022"
-        }
+        # Configure with CMake using NMake generator (works with MSVC)
+        cmake .. -G "NMake Makefiles" `
+          -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
+          -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw `
+          -DCMAKE_BUILD_TYPE=Release
 
-        if ($exitCode -ne 0) {
-          Write-Host "VS 17 2022 failed, cleaning and trying VS 16 2019"
-          cd ..
-          Remove-Item -Recurse -Force build
-          mkdir build
-          cd build
-          $exitCode = Try-CMake "Visual Studio 16 2019"
-        }
-
-        if ($exitCode -ne 0) {
-          Write-Host "All generators failed"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "CMake configuration failed"
           exit 1
         }
 
         # Build the project
-        cmake --build . --config Release --verbose
+        nmake
       shell: pwsh
     
     - name: List Build Output

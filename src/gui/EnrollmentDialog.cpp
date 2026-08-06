@@ -59,7 +59,8 @@ EnrollmentDialog::EnrollmentDialog(wxWindow* parent, Services::EnrollmentService
     // Grade
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Grade:"), 0, wxALIGN_RIGHT | wxALL, 5);
     grade_ctrl_ = new wxTextCtrl(panel, wxID_ANY);
-    grade_ctrl_->SetValidator(wxFloatingPointValidator<double>(2, 0.0, 100.0));
+    // Note: wxFloatingPointValidator is not available in all wxWidgets versions
+    // Validation will be done in ValidateInputs() method
     grid_sizer->Add(grade_ctrl_, 1, wxEXPAND | wxALL, 5);
     
     // Status
@@ -119,7 +120,7 @@ void EnrollmentDialog::LoadStudents() {
             student_combo_->Append(student_name, wxVariant(student.id));
         }
         
-        if (!student_combo_->IsEmpty()) {
+        if (student_combo_->GetCount() > 0) {
             student_combo_->SetSelection(0);
         }
         
@@ -142,7 +143,7 @@ void EnrollmentDialog::LoadCourses() {
             course_combo_->Append(course_name, wxVariant(course.id));
         }
         
-        if (!course_combo_->IsEmpty()) {
+        if (course_combo_->GetCount() > 0) {
             course_combo_->SetSelection(0);
         }
         

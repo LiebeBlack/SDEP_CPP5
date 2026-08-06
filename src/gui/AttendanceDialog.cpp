@@ -118,7 +118,7 @@ void AttendanceDialog::LoadStudents() {
             student_combo_->Append(student_name, wxVariant(student.id));
         }
         
-        if (!student_combo_->IsEmpty()) {
+        if (student_combo_->GetCount() > 0) {
             student_combo_->SetSelection(0);
         }
         
@@ -141,7 +141,7 @@ void AttendanceDialog::LoadCourses() {
             course_combo_->Append(course_name, wxVariant(course.id));
         }
         
-        if (!course_combo_->IsEmpty()) {
+        if (course_combo_->GetCount() > 0) {
             course_combo_->SetSelection(0);
         }
         

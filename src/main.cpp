@@ -44,9 +44,11 @@ private:
     bool ShowMainFrame();
 };
 
-wxIMPLEMENT_APP(SDEPApp);
+} // namespace SDEP
 
-bool SDEPApp::OnInit() {
+wxIMPLEMENT_APP(SDEP::SDEPApp);
+
+bool SDEP::SDEPApp::OnInit() {
     if (!wxApp::OnInit()) {
         return false;
     }
@@ -81,14 +83,14 @@ bool SDEPApp::OnInit() {
     return true;
 }
 
-int SDEPApp::OnExit() {
+int SDEP::SDEPApp::OnExit() {
     std::cout << "Shutting down SDEP System..." << std::endl;
     
     // Cleanup is handled by smart pointers
     return wxApp::OnExit();
 }
 
-bool SDEPApp::InitializeDatabase() {
+bool SDEP::SDEPApp::InitializeDatabase() {
     try {
         std::cout << "Initializing database..." << std::endl;
         
@@ -116,7 +118,7 @@ bool SDEPApp::InitializeDatabase() {
     }
 }
 
-bool SDEPApp::InitializeServices() {
+bool SDEP::SDEPApp::InitializeServices() {
     try {
         std::cout << "Initializing services..." << std::endl;
         
@@ -150,7 +152,7 @@ bool SDEPApp::InitializeServices() {
     }
 }
 
-bool SDEPApp::ShowLoginDialog() {
+bool SDEP::SDEPApp::ShowLoginDialog() {
     std::cout << "Showing login dialog..." << std::endl;
     
     GUI::LoginDialog login_dialog(nullptr, security_manager_.get());
@@ -164,7 +166,7 @@ bool SDEPApp::ShowLoginDialog() {
     }
 }
 
-bool SDEPApp::ShowMainFrame() {
+bool SDEP::SDEPApp::ShowMainFrame() {
     std::cout << "Creating main application window..." << std::endl;
     
     main_frame_ = new GUI::MainFrame("SDEP Educational Management System v1.0", 
@@ -182,5 +184,3 @@ bool SDEPApp::ShowMainFrame() {
     
     return true;
 }
-
-} // namespace SDEP

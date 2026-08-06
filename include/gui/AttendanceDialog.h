@@ -38,8 +38,8 @@ private:
     wxTextCtrl* notes_ctrl_;
     wxStaticText* status_text_;
     
-    void OnSave(wxCommandEvent& event);
-    void OnCancel(wxCommandEvent& event);
+    void OnSave(wxCommandEvent& /* event */);
+    void OnCancel(wxCommandEvent& /* event */);
     void OnStudentChanged(wxCommandEvent& event);
     void OnCourseChanged(wxCommandEvent& event);
     

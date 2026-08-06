@@ -70,7 +70,8 @@ TeacherDialog::TeacherDialog(wxWindow* parent, Services::TeacherService* teacher
     // Salary
     grid_sizer->Add(new wxStaticText(panel, wxID_ANY, "Salary:"), 0, wxALIGN_RIGHT | wxALL, 5);
     salary_ctrl_ = new wxTextCtrl(panel, wxID_ANY);
-    salary_ctrl_->SetValidator(wxFloatingPointValidator<double>(2));
+    // Note: wxFloatingPointValidator is not available in all wxWidgets versions
+    // Validation will be done in ValidateInputs() method
     grid_sizer->Add(salary_ctrl_, 1, wxEXPAND | wxALL, 5);
     
     // Qualification
@@ -220,7 +221,7 @@ bool TeacherDialog::SaveTeacher() {
     }
 }
 
-void TeacherDialog::OnSave(wxCommandEvent& event) {
+void TeacherDialog::OnSave(wxCommandEvent& /* event */) {
     if (!ValidateInputs()) {
         return;
     }
@@ -230,7 +231,7 @@ void TeacherDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void TeacherDialog::OnCancel(wxCommandEvent& event) {
+void TeacherDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 

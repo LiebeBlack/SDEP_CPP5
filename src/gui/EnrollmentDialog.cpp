@@ -282,7 +282,7 @@ bool EnrollmentDialog::SaveEnrollment() {
     }
 }
 
-void EnrollmentDialog::OnSave(wxCommandEvent& event) {
+void EnrollmentDialog::OnSave(wxCommandEvent& /* event */) {
     if (!ValidateInputs()) {
         return;
     }
@@ -292,7 +292,7 @@ void EnrollmentDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void EnrollmentDialog::OnCancel(wxCommandEvent& event) {
+void EnrollmentDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 

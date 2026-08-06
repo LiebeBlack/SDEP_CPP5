@@ -97,8 +97,8 @@ private:
     
     wxStaticText* status_text_;
     
-    void OnSave(wxCommandEvent& event);
-    void OnCancel(wxCommandEvent& event);
+    void OnSave(wxCommandEvent& /* event */);
+    void OnCancel(wxCommandEvent& /* event */);
     
     bool ValidateInputs();
     void PopulateFields();

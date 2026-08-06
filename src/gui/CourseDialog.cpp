@@ -252,7 +252,7 @@ bool CourseDialog::SaveCourse() {
     }
 }
 
-void CourseDialog::OnSave(wxCommandEvent& event) {
+void CourseDialog::OnSave(wxCommandEvent& /* event */) {
     if (!ValidateInputs()) {
         return;
     }
@@ -262,7 +262,7 @@ void CourseDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void CourseDialog::OnCancel(wxCommandEvent& event) {
+void CourseDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 

@@ -236,7 +236,7 @@ bool StudentDialog::SaveStudent() {
     }
 }
 
-void StudentDialog::OnSave(wxCommandEvent& event) {
+void StudentDialog::OnSave(wxCommandEvent& /* event */) {
     if (!ValidateInputs()) {
         return;
     }
@@ -246,7 +246,7 @@ void StudentDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void StudentDialog::OnCancel(wxCommandEvent& event) {
+void StudentDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 

@@ -39,8 +39,8 @@ private:
     wxCheckBox* active_ctrl_;
     wxStaticText* status_text_;
     
-    void OnSave(wxCommandEvent& event);
-    void OnCancel(wxCommandEvent& event);
+    void OnSave(wxCommandEvent& /* event */);
+    void OnCancel(wxCommandEvent& /* event */);
     void OnTeacherChanged(wxCommandEvent& event);
     
     bool ValidateInputs();

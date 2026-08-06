@@ -380,7 +380,7 @@ bool EmployeeDialog::SaveEmployee() {
     }
 }
 
-void EmployeeDialog::OnSave(wxCommandEvent& event) {
+void EmployeeDialog::OnSave(wxCommandEvent& /* event */) {
     if (!ValidateInputs()) {
         return;
     }
@@ -390,7 +390,7 @@ void EmployeeDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void EmployeeDialog::OnCancel(wxCommandEvent& event) {
+void EmployeeDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 

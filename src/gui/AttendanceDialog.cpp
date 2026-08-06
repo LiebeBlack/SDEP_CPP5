@@ -266,7 +266,7 @@ bool AttendanceDialog::SaveAttendance() {
     }
 }
 
-void AttendanceDialog::OnSave(wxCommandEvent& event) {
+void AttendanceDialog::OnSave(wxCommandEvent& /* event */) {
     if (!ValidateInputs()) {
         return;
     }
@@ -276,7 +276,7 @@ void AttendanceDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void AttendanceDialog::OnCancel(wxCommandEvent& event) {
+void AttendanceDialog::OnCancel(wxCommandEvent& /* event */) {
     EndModal(wxID_CANCEL);
 }
 

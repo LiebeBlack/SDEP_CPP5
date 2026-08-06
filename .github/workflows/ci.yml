@@ -45,19 +45,12 @@ jobs:
         }
       shell: pwsh
     
-    - name: Build wxWidgets
-      run: |
-        $wxPath = "C:\wxWidgets-3.3.1"
-        cd "$wxPath\build\msw"
-        cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
-        ninja
-      shell: pwsh
+
     
     - name: Setup wxWidgets Environment
       run: |
         $wxPath = "C:\wxWidgets-3.3.1"
         if (Test-Path $wxPath) {
-          echo "wxWidgets_DIR=$wxPath\build\msw" >> $env:GITHUB_ENV
           echo "wxWidgets_ROOT_DIR=$wxPath" >> $env:GITHUB_ENV
         }
       shell: pwsh
@@ -70,10 +63,7 @@ jobs:
 
         # Configure with CMake using Ninja generator (works with MSVC)
         cmake .. -G "Ninja" `
-          -DwxWidgets_ROOT_DIR=C:\wxWidgets-3.3.1 `
-          -DwxWidgets_DIR=C:\wxWidgets-3.3.1\build\msw `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH=C:\wxWidgets-3.3.1
+          -DCMAKE_BUILD_TYPE=Release
 
         if ($LASTEXITCODE -ne 0) {
           Write-Host "CMake configuration failed"
@@ -129,8 +119,9 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake ..
+        cmake -DCMAKE_BUILD_TYPE=Release ..
         make -j$(nproc)
+        make VERBOSE=1
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

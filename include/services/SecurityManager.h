@@ -80,9 +80,6 @@ private:
     bool password_require_numbers_ = true;
     bool password_require_special_ = true;
     int password_history_count_ = 5;
-    int max_failed_attempts_ = 5;
-    int lockout_duration_minutes_ = 30;
-    int session_timeout_minutes_ = 30;
     
     std::vector<std::string> password_blacklist_ = {
         "password", "123456", "qwerty", "admin", "welcome",

@@ -1,0 +1,8 @@
+{
+  "name": "sdep",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "wxwidgets",
+    "sqlite3"
+  ]
+}

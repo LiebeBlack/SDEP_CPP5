@@ -28,7 +28,6 @@ private:
     // UI components
     wxPanel* main_panel_;
     wxNotebook* notebook_;
-    wxStatusBar* status_bar_;
     
     // Service pointers
     Services::StudentService* student_service_;

@@ -645,39 +645,39 @@ void MainFrame::CreateReportsPanel() {
     reports_panel_->SetSizer(sizer);
     
     // Connect button events
-    student_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    student_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Student report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    teacher_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    teacher_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Teacher report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    course_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    course_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Course report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    attendance_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    attendance_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Attendance report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    employee_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    employee_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Employee report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    payroll_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    payroll_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Payroll report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    leave_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    leave_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Leave report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    disciplinary_report_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    disciplinary_report_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Disciplinary report generation will be implemented with PDF export", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    generate_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    generate_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Report generation will be implemented with PDF and CSV export functionality", "Info", wxOK | wxICON_INFORMATION);
     });
 }
@@ -796,15 +796,15 @@ void MainFrame::CreateSettingsPanel() {
     settings_panel_->SetSizer(sizer);
     
     // Connect events
-    save_settings_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    save_settings_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Settings saved successfully", "Success", wxOK | wxICON_INFORMATION);
     });
     
-    backup_now_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    backup_now_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Database backup functionality will be implemented", "Info", wxOK | wxICON_INFORMATION);
     });
     
-    restore_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    restore_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
         wxMessageBox("Database restore functionality will be implemented", "Info", wxOK | wxICON_INFORMATION);
     });
 }

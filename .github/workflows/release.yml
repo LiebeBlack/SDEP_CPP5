@@ -101,6 +101,5 @@ jobs:
         draft: false
         prerelease: true
         generate_release_notes: true
-        fail_on_missing: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

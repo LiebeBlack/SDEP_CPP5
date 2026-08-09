@@ -14,7 +14,7 @@ else()
 endif()
 
 # Find packages
-find_package(wxWidgets REQUIRED COMPONENTS core base net)
+find_package(wxWidgets CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
 # Try vcpkg SQLite3 first (for Windows), fall back to system package (Linux/macOS)
@@ -28,15 +28,9 @@ if(NOT unofficial-sqlite3_FOUND)
 endif()
 
 # Check if packages are found
-if(NOT wxWidgets_FOUND)
-    message(FATAL_ERROR "wxWidgets not found")
-endif()
 if(NOT Threads_FOUND)
     message(FATAL_ERROR "Threads not found")
 endif()
-
-# Include wxWidgets
-include(${wxWidgets_USE_FILE})
 
 # Include directories
 include_directories(
@@ -83,15 +77,21 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # Link libraries
 if(unofficial-sqlite3_FOUND)
     target_link_libraries(${PROJECT_NAME}
-        ${wxWidgets_LIBRARIES}
+        PRIVATE
+        wx::core
+        wx::base
+        wx::net
         unofficial::sqlite3::sqlite3
-        ${CMAKE_THREAD_LIBS_INIT}
+        Threads::Threads
     )
 else()
     target_link_libraries(${PROJECT_NAME}
-        ${wxWidgets_LIBRARIES}
+        PRIVATE
+        wx::core
+        wx::base
+        wx::net
         ${SQLite3_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT}
+        Threads::Threads
     )
 endif()
 
@@ -100,6 +100,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
+    WIN32_EXECUTABLE TRUE
 )
 
 # Installation

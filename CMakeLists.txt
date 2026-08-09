@@ -103,6 +103,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+# For Windows, explicitly set subsystem to WINDOWS
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS"
+    )
+endif()
+
 # Installation
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

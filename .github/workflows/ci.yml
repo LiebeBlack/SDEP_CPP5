@@ -37,6 +37,11 @@ jobs:
     
     - name: Build
       run: |
+        # Clean build directory if it exists
+        if (Test-Path build) {
+          Remove-Item -Recurse -Force build
+        }
+
         # Create build directory
         mkdir build
         cd build

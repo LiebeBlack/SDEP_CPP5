@@ -15,15 +15,12 @@ endif()
 
 # Find packages
 find_package(wxWidgets REQUIRED COMPONENTS core base net)
-find_package(SQLite3 REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
 # Check if packages are found
 if(NOT wxWidgets_FOUND)
     message(FATAL_ERROR "wxWidgets not found")
-endif()
-if(NOT SQLite3_FOUND)
-    message(FATAL_ERROR "SQLite3 not found")
 endif()
 if(NOT Threads_FOUND)
     message(FATAL_ERROR "Threads not found")
@@ -72,7 +69,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # Link libraries
 target_link_libraries(${PROJECT_NAME}
     ${wxWidgets_LIBRARIES}
-    sqlite3
+    unofficial::sqlite3::sqlite3
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

@@ -816,6 +816,7 @@ void MainFrame::UpdateDashboardStats() {
             int student_count = student_service_->getStudentCount();
             student_count_label_->SetLabel(wxString::Format("%d", student_count));
         } catch (const std::exception& e) {
+            (void)e; // Suppress unused variable warning
             student_count_label_->SetLabel("Error");
         }
     }
@@ -825,6 +826,7 @@ void MainFrame::UpdateDashboardStats() {
             int teacher_count = teacher_service_->getTeacherCount();
             teacher_count_label_->SetLabel(wxString::Format("%d", teacher_count));
         } catch (const std::exception& e) {
+            (void)e; // Suppress unused variable warning
             teacher_count_label_->SetLabel("Error");
         }
     }
@@ -834,6 +836,7 @@ void MainFrame::UpdateDashboardStats() {
             int course_count = course_service_->getCourseCount();
             course_count_label_->SetLabel(wxString::Format("%d", course_count));
         } catch (const std::exception& e) {
+            (void)e; // Suppress unused variable warning
             course_count_label_->SetLabel("Error");
         }
     }
@@ -843,6 +846,7 @@ void MainFrame::UpdateDashboardStats() {
             int employee_count = employee_service_->getEmployeeCount();
             employee_count_label_->SetLabel(wxString::Format("%d", employee_count));
         } catch (const std::exception& e) {
+            (void)e; // Suppress unused variable warning
             employee_count_label_->SetLabel("Error");
         }
     }

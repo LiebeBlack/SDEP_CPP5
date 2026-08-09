@@ -319,6 +319,7 @@ bool DatabaseManager::executeTransaction(const std::function<bool()>& operation)
         
         return success;
     } catch (const DatabaseException& e) {
+        (void)e; // Suppress unused variable warning
         try {
             executeUpdate("ROLLBACK", {});
         } catch (...) {

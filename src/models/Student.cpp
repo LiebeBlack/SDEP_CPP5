@@ -5,15 +5,21 @@
 #include <regex>
 #include <chrono>
 #include <format>
+#include <ctime>
 
 namespace SDEP {
 namespace Models {
 
 std::string BaseModel::getCurrentTimestamp() {
     auto now = std::time(nullptr);
-    auto tm = *std::localtime(&now);
+    struct tm tm_struct;
+#ifdef _WIN32
+    localtime_s(&tm_struct, &now);
+#else
+    localtime_r(&now, &tm_struct);
+#endif
     std::ostringstream oss;
-    oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    oss << std::put_time(&tm_struct, "%Y-%m-%d %H:%M:%S");
     return oss.str();
 }
 

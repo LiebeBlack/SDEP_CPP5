@@ -313,7 +313,7 @@ std::string SecurityManager::generateSessionToken() const {
     const std::string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, chars.size() - 1);
+    std::uniform_int_distribution<> dis(0, static_cast<int>(chars.size() - 1));
     
     std::string token;
     for (int i = 0; i < 32; ++i) {

@@ -15,8 +15,17 @@ endif()
 
 # Find packages
 find_package(wxWidgets REQUIRED COMPONENTS core base net)
-find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+
+# Try vcpkg SQLite3 first (for Windows), fall back to system package (Linux/macOS)
+find_package(unofficial-sqlite3 CONFIG QUIET)
+if(NOT unofficial-sqlite3_FOUND)
+    find_package(SQLite3 QUIET)
+    if(NOT SQLite3_FOUND)
+        # Fallback to direct library linking for systems without SQLite3 package
+        set(SQLite3_LIBRARIES sqlite3)
+    endif()
+endif()
 
 # Check if packages are found
 if(NOT wxWidgets_FOUND)
@@ -34,6 +43,11 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
 )
+
+# Add SQLite3 include directories if using system package
+if(NOT unofficial-sqlite3_FOUND AND SQLite3_INCLUDE_DIRS)
+    include_directories(${SQLite3_INCLUDE_DIRS})
+endif()
 
 # Source files
 set(SOURCES
@@ -67,11 +81,19 @@ set(SOURCES
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME}
-    ${wxWidgets_LIBRARIES}
-    unofficial::sqlite3::sqlite3
-    ${CMAKE_THREAD_LIBS_INIT}
-)
+if(unofficial-sqlite3_FOUND)
+    target_link_libraries(${PROJECT_NAME}
+        ${wxWidgets_LIBRARIES}
+        unofficial::sqlite3::sqlite3
+        ${CMAKE_THREAD_LIBS_INIT}
+    )
+else()
+    target_link_libraries(${PROJECT_NAME}
+        ${wxWidgets_LIBRARIES}
+        ${SQLite3_LIBRARIES}
+        ${CMAKE_THREAD_LIBS_INIT}
+    )
+endif()
 
 # Set target properties
 set_target_properties(${PROJECT_NAME} PROPERTIES

@@ -2,9 +2,13 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión del release (ej: 1.0.0)'
+        required: true
+        default: '1.0.0'
 
 permissions:
   contents: write
@@ -33,12 +37,39 @@ jobs:
     - name: Create package
       run: Compress-Archive -Path dist\SistemaGestionPersonal.exe -DestinationPath SistemaGestionPersonal-Windows.zip
     
+    - name: Create version
+      id: version
+      run: |
+        if ("${{ github.event.inputs.version }}" -ne "") {
+          $version = "${{ github.event.inputs.version }}"
+        } else {
+          $version = "1.0.0-${{ github.run_number }}"
+        }
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        Write-Host "Version: $version"
+    
     - name: Create release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Release v${{ steps.version.outputs.version }}
         files: SistemaGestionPersonal-Windows.zip
         draft: false
-        prerelease: false
-        generate_release_notes: true
+        prerelease: true
+        body: |
+          Release v${{ steps.version.outputs.version }} del Sistema de Gestión de Personal.
+          
+          Este es un release automático generado por push a main.
+          
+          ## 📦 Installation
+          Download the Windows executable from the assets below.
+          
+          ## 🔧 System Requirements
+          - Windows 10/11
+          - 4GB RAM minimum
+          - 500MB disk space
+          
+          ---
+          *Auto-generated release*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

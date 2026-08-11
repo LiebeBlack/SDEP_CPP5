@@ -48,24 +48,21 @@ Sistema completo para la gestión de personal y nómina de instituciones educati
 
 ## 🔄 CI/CD Pipeline
 
-Este proyecto cuenta con un sistema CI/CD simplificado mediante GitHub Actions:
+Este proyecto cuenta con un sistema CI/CD automatizado mediante GitHub Actions:
 
 ### Características del CI/CD
-- ✅ **Integración Continua**: Tests básicos automáticos
+- ✅ **Pre-releases Automáticas**: Cada push a develop crea un release pre-release
 - ✅ **Construcción Automatizada**: Generación de ejecutables Windows
-- ✅ **Lanzamientos Automatizados**: Releases con tags
-- ✅ **Despliegues Canary**: Pre-releases de prueba
+- ✅ **Releases Controlados**: Releases oficiales con tags manuales
+- ✅ **Ejecutables Automáticos**: Cada release incluye el ejecutable
 
 ### Workflows Disponibles
-- **CI Workflow**: Tests básicos en push a main/develop
-- **Build Workflow**: Construcción de ejecutables Windows
-- **Release Workflow**: Creación de releases con ejecutables (tags)
-- **Canary Deployment**: Pre-releases automáticas (branch canary)
+- **Build Workflow**: Construcción + Pre-releases automáticas (push a develop)
+- **Release Workflow**: Releases oficiales con ejecutables (tags manuales)
 
 ### Documentación del CI/CD
 - 📖 [Guía Rápida de Configuración](QUICKSTART_CICD.md)
 - 🔧 [Workflows GitHub Actions](.github/workflows/README.md)
-- 🤝 [Guía de Contribución](CONTRIBUTING.md)
 - **Notifications**: Alertas y monitoreo en tiempo real
 
 ### Documentación del CI/CD

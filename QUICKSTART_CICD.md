@@ -1,6 +1,6 @@
-# ⚡ Quick Start Guide - CI/CD Simplificado
+# ⚡ Quick Start Guide - CI/CD con Pre-releases Automáticos
 
-Guía rápida para el sistema CI/CD simplificado del proyecto.
+Guía rápida para el sistema CI/CD con pre-releases automáticos.
 
 ## 🚀 Configuración en 2 minutos
 
@@ -20,72 +20,74 @@ Ve a `Settings > Branches`:
 
 **Main Branch:**
 - ✅ Require pull request reviews
-- ✅ Require status checks: "CI"
+- ✅ Require status checks: "Build"
 - ✅ Require branches to be up to date
 
-## 📋 Workflows Simplificados
-
-### CI Workflow (`ci.yml`)
-- **Trigger**: Push a main/develop, Pull Requests
-- **Función**: Ejecuta tests básicos (si existen)
-- **Duración**: ~2-3 minutos
+## 📋 Workflows
 
 ### Build Workflow (`build.yml`)
 - **Trigger**: Push a main/develop, Manual
-- **Función**: Construye ejecutable Windows
-- **Output**: Archivo ZIP con ejecutable
+- **Función**: Construye ejecutable Windows + Pre-releases automáticos (develop)
+- **Output**: Archivo ZIP + Pre-release en GitHub
 - **Duración**: ~5-7 minutos
 
 ### Release Workflow (`release.yml`)
-- **Trigger**: Push de tag (v*), Manual
-- **Función**: Crea release con ejecutable
-- **Output**: GitHub Release con ZIP
+- **Trigger**: Push a main, Manual
+- **Función**: Crea release pre-release con ejecutable
+- **Output**: GitHub Release (pre-release) con ZIP
 - **Duración**: ~5-7 minutos
 
 ## 🎯 Flujo de Trabajo
 
-### Desarrollo Normal
+### Desarrollo - Pre-releases Automáticas
 ```bash
-# 1. Trabajar en feature branch
-git checkout -b feature/nueva-funcionalidad
-
-# 2. Push y crear PR
-git push origin feature/nueva-funcionalidad
-# Crear PR en GitHub → CI se ejecuta automáticamente
-
-# 3. Después de aprobación, merge a develop
-git checkout develop
-git merge feature/nueva-funcionalidad
-git push origin develop → CI se ejecuta
+# Push a develop - crea pre-release automáticamente
+git push origin develop
 ```
 
-### Crear Release
-```bash
-# 1. Merge develop a main
-git checkout main
-git merge develop
-git push origin main → Build se ejecuta
+**Resultado:**
+- ✅ Pre-release: `dev-1`, `dev-2`, `dev-3`...
+- ✅ Incluye ejecutable Windows
+- ✅ Totalmente automático
 
-# 2. Crear tag de versión
-git tag v1.0.0
-git push origin v1.0.0 → Release se crea automáticamente
+### Main Branch - Releases Automáticos
+```bash
+# Push a main - crea release automáticamente
+git push origin main
 ```
+
+**Resultado:**
+- ✅ Release: `1.0.0-1`, `1.0.0-2`, `1.0.0-3`...
+- ✅ Incluye ejecutable Windows
+- ✅ Todos son pre-releases
+
+### Release Oficial (Manual)
+```bash
+# Manual trigger desde GitHub Actions UI
+# Ingresar versión: ej: 1.0.0
+```
+
+**Resultado:**
+- ✅ Release oficial con versión específica
+- ✅ Incluye ejecutable Windows
+- ✅ Control manual de versiones
 
 ## 🔧 Solución de Problemas
 
-### Workflow falla
-1. Revisa los logs en GitHub Actions
-2. Verifica que las dependencias estén correctas
-3. Si no hay tests, el workflow continuará normalmente
-
-### No se crea release
-1. Verifica que el tag tenga formato `v*` (ej: v1.0.0)
-2. Verifica que el tag se haya pusheado: `git push origin v1.0.0`
+### No se crea pre-release
+1. Verifica que el push sea a la rama `develop`
+2. Revisa los logs en GitHub Actions
+3. Verifica permisos del GITHUB_TOKEN
 
 ### Build falla
 1. Verifica que `src/main.py` exista
 2. Verifica que las dependencias estén en `requirements.txt`
 3. Prueba PyInstaller localmente
+
+### Release falla
+1. Verifica que el GITHUB_TOKEN tenga permisos de `contents: write`
+2. Revisa los logs del workflow
+3. Verifica que el ZIP se haya creado correctamente
 
 ## 📚 Documentación Adicional
 
@@ -94,4 +96,4 @@ git push origin v1.0.0 → Release se crea automáticamente
 
 ---
 
-**¡Listo!** El sistema CI/CD simplificado está configurado y listo para usar.
+**¡Listo!** El sistema CI/CD está configurado para crear pre-releases automáticas con ejecutables.

@@ -27,7 +27,7 @@ Ve a `Settings > Branches`:
 
 ### CI Workflow (`ci.yml`)
 - **Trigger**: Push a main/develop, Pull Requests
-- **Función**: Ejecuta tests básicos
+- **Función**: Ejecuta tests básicos (si existen)
 - **Duración**: ~2-3 minutos
 
 ### Build Workflow (`build.yml`)
@@ -40,12 +40,6 @@ Ve a `Settings > Branches`:
 - **Trigger**: Push de tag (v*), Manual
 - **Función**: Crea release con ejecutable
 - **Output**: GitHub Release con ZIP
-- **Duración**: ~5-7 minutos
-
-### Canary Workflow (`canary-deployment.yml`)
-- **Trigger**: Push a canary, Manual
-- **Función**: Crea canary release
-- **Output**: Pre-release con ZIP
 - **Duración**: ~5-7 minutos
 
 ## 🎯 Flujo de Trabajo
@@ -77,20 +71,12 @@ git tag v1.0.0
 git push origin v1.0.0 → Release se crea automáticamente
 ```
 
-### Canary Deployment
-```bash
-# 1. Merge feature a canary
-git checkout canary
-git merge feature/nueva-funcionalidad
-git push origin canary → Canary release se crea
-```
-
 ## 🔧 Solución de Problemas
 
 ### Workflow falla
 1. Revisa los logs en GitHub Actions
 2. Verifica que las dependencias estén correctas
-3. Prueba localmente: `python build.py`
+3. Si no hay tests, el workflow continuará normalmente
 
 ### No se crea release
 1. Verifica que el tag tenga formato `v*` (ej: v1.0.0)

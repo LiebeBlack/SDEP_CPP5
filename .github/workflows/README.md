@@ -9,7 +9,6 @@ Sistema simplificado de CI/CD para el Sistema de Gestión de Personal.
 | [ci.yml](ci.yml) | Tests básicos | Push a main/develop, PR |
 | [build.yml](build.yml) | Construir ejecutable Windows | Push a main/develop, manual |
 | [release.yml](release.yml) | Crear release con ejecutable | Push de tag (v*), manual |
-| [canary-deployment.yml](canary-deployment.yml) | Canary deployment | Push a canary, manual |
 
 ## 🎯 Uso Simple
 
@@ -28,13 +27,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-### 3. Canary Deployment
-```bash
-# Push a canary - crea canary release
-git push origin canary
-```
-
-### 4. Manual Trigger
+### 3. Manual Trigger
 ```bash
 # Trigger manual desde GitHub Actions UI
 # o usando GitHub CLI
@@ -48,9 +41,9 @@ gh workflow run <workflow-name>
 - **Confiables**: Menos puntos de fallo
 - **Rápidos**: Ejecución mínima
 
-## � Notas
+## 📝 Notas
 
 - Los releases solo se crean cuando hay tags (v1.0.0, v1.0.1, etc.)
 - Los builds se ejecutan en cada push a main/develop
-- Los canary releases son pre-releases automáticas
+- Los tests son opcionales - no fallan si no existen
 - Sin notificaciones complejas, solo lo básico

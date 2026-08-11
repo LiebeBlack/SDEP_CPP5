@@ -247,5 +247,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 1.0.0  
+**Versión**: 1.0.1  
 **Última actualización**: 2026

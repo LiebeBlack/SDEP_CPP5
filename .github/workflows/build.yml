@@ -35,3 +35,30 @@ jobs:
         name: windows-executable
         path: SistemaGestionPersonal-Windows.zip
         retention-days: 30
+    
+    - name: Create pre-release (develop only)
+      if: github.ref == 'refs/heads/develop'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: dev-${{ github.run_number }}
+        name: Dev Build ${{ github.run_number }}
+        files: SistemaGestionPersonal-Windows.zip
+        draft: false
+        prerelease: true
+        body: |
+          Development build ${{ github.run_number }}
+          
+          Este es un release automático generado por cada push a develop.
+          
+          ## 📦 Installation
+          Download the Windows executable from the assets below.
+          
+          ## 🔧 System Requirements
+          - Windows 10/11
+          - 4GB RAM minimum
+          - 500MB disk space
+          
+          ---
+          *Auto-generated from develop branch*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

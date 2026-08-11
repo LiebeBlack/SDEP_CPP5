@@ -6,44 +6,45 @@ Sistema simplificado de CI/CD para el Sistema de Gestión de Personal.
 
 | Workflow | Propósito | Trigger |
 |----------|-----------|---------|
-| [ci.yml](ci.yml) | Tests básicos | Push a main/develop, PR |
-| [build.yml](build.yml) | Construir ejecutable Windows | Push a main/develop, manual |
-| [release.yml](release.yml) | Crear release con ejecutable | Push de tag (v*), manual |
+| [build.yml](build.yml) | Construir ejecutable y crear pre-releases | Push a main/develop, manual |
+| [release.yml](release.yml) | Crear releases oficiales con ejecutable | Push de tag (v*), manual |
 
 ## 🎯 Uso Simple
 
-### 1. Desarrollo Normal
+### 1. Desarrollo (Automatic Pre-releases)
 ```bash
-# Push a develop - ejecuta tests
+# Push a develop - crea pre-release automáticamente
 git push origin develop
-
-# Create PR - ejecuta tests
+# → Crea pre-release: dev-1, dev-2, dev-3...
+# → Incluye ejecutable Windows
 ```
 
-### 2. Crear Release
+### 2. Release Oficial
 ```bash
-# Crear tag - ejecuta build y crea release
+# Crear tag de versión oficial
 git tag v1.0.0
 git push origin v1.0.0
+# → Crea release oficial v1.0.0
+# → Incluye ejecutable Windows
 ```
 
 ### 3. Manual Trigger
 ```bash
 # Trigger manual desde GitHub Actions UI
-# o usando GitHub CLI
 gh workflow run <workflow-name>
 ```
 
 ## ✅ Características
 
-- **Simples**: Sin análisis complejos de código
-- **Robustos**: Solo lo esencial para funcionar
-- **Confiables**: Menos puntos de fallo
-- **Rápidos**: Ejecución mínima
+- **Automático**: Cada push a develop crea pre-release
+- **Pre-releases**: Todos los releases de develop son pre-releases
+- **Ejecutables**: Cada release incluye el ejecutable Windows
+- **Simples**: Sin tests automáticos que pueden fallar
+- **Robustos**: Solo construcción y releases
 
 ## 📝 Notas
 
-- Los releases solo se crean cuando hay tags (v1.0.0, v1.0.1, etc.)
-- Los builds se ejecutan en cada push a main/develop
-- Los tests son opcionales - no fallan si no existen
-- Sin notificaciones complejas, solo lo básico
+- **Develop branch**: Crea pre-releases automáticas (dev-1, dev-2, etc.)
+- **Main branch**: Solo construye ejecutables (sin releases automáticos)
+- **Releases oficiales**: Solo con tags (v1.0.0, v1.0.1, etc.)
+- **Todos los releases incluyen**: Ejecutable Windows comprimido en ZIP

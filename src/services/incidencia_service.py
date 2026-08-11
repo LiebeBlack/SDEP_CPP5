@@ -1,0 +1,212 @@
+"""
+Incidencia Service
+Servicio de lógica de negocio para incidencias
+"""
+
+from typing import List, Optional, Dict
+from datetime import date, timedelta
+from sqlalchemy.orm import Session
+import uuid
+import os
+
+from src.models import Incidencia, TipoIncidencia, EstadoIncidencia
+from src.repositories import IncidenciaRepository
+from src.config import settings
+
+
+class IncidenciaService:
+    """Servicio de gestión de incidencias"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+        self.repository = IncidenciaRepository(session)
+    
+    def crear_incidencia(self, datos: Dict, archivo_soporte: bytes = None) -> Incidencia:
+        """Crea una nueva incidencia"""
+        # Calcular días solicitados
+        fecha_inicio = datos["fecha_inicio"]
+        fecha_fin = datos["fecha_fin"]
+        dias_solicitados = (fecha_fin - fecha_inicio).days + 1
+        datos["dias_solicitados"] = dias_solicitados
+        
+        # Procesar archivo de soporte
+        if archivo_soporte:
+            extension = self._obtener_extension(datos.get("documento_soporte_nombre", "soporte.pdf"))
+            nombre_unico = f"soporte_{uuid.uuid4().hex}{extension}"
+            ruta_completa = settings.get_document_path(nombre_unico)
+            
+            with open(ruta_completa, 'wb') as f:
+                f.write(archivo_soporte)
+            
+            datos["documento_soporte_nombre"] = nombre_unico
+            datos["documento_soporte_ruta"] = ruta_completa
+            datos["documento_soporte_binario"] = archivo_soporte
+        
+        incidencia = Incidencia(
+            empleado_id=datos["empleado_id"],
+            tipo_incidencia=datos["tipo_incidencia"],
+            estado=datos.get("estado", EstadoIncidencia.PENDIENTE.value),
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            fecha_solicitud=datos.get("fecha_solicitud", date.today()),
+            motivo=datos["motivo"],
+            descripcion=datos.get("descripcion"),
+            dias_solicitados=dias_solicitados,
+            documento_soporte_nombre=datos.get("documento_soporte_nombre"),
+            documento_soporte_ruta=datos.get("documento_soporte_ruta"),
+            documento_soporte_binario=datos.get("documento_soporte_binario"),
+            afecta_nominas=datos.get("afecta_nominas", 1),
+            observaciones=datos.get("observaciones")
+        )
+        
+        return self.repository.create(incidencia)
+    
+    def actualizar_incidencia(self, incidencia_id: int, datos: Dict, archivo_soporte: bytes = None) -> Incidencia:
+        """Actualiza una incidencia existente"""
+        incidencia = self.repository.get_by_id(incidencia_id)
+        if not incidencia:
+            raise ValueError("Incidencia no encontrada")
+        
+        # Si se actualizan las fechas, recalcular días
+        if "fecha_inicio" in datos or "fecha_fin" in datos:
+            fecha_inicio = datos.get("fecha_inicio", incidencia.fecha_inicio)
+            fecha_fin = datos.get("fecha_fin", incidencia.fecha_fin)
+            datos["dias_solicitados"] = (fecha_fin - fecha_inicio).days + 1
+        
+        # Procesar nuevo archivo de soporte
+        if archivo_soporte:
+            # Eliminar archivo anterior
+            if incidencia.documento_soporte_ruta and os.path.exists(incidencia.documento_soporte_ruta):
+                os.remove(incidencia.documento_soporte_ruta)
+            
+            extension = self._obtener_extension(datos.get("documento_soporte_nombre", "soporte.pdf"))
+            nombre_unico = f"soporte_{uuid.uuid4().hex}{extension}"
+            ruta_completa = settings.get_document_path(nombre_unico)
+            
+            with open(ruta_completa, 'wb') as f:
+                f.write(archivo_soporte)
+            
+            datos["documento_soporte_nombre"] = nombre_unico
+            datos["documento_soporte_ruta"] = ruta_completa
+            datos["documento_soporte_binario"] = archivo_soporte
+        
+        # Actualizar campos
+        for campo, valor in datos.items():
+            if hasattr(incidencia, campo) and campo not in ["empleado_id", "fecha_aprobacion", "aprobado_por"]:
+                setattr(incidencia, campo, valor)
+        
+        return self.repository.update(incidencia)
+    
+    def eliminar_incidencia(self, incidencia_id: int) -> bool:
+        """Elimina una incidencia"""
+        incidencia = self.repository.get_by_id(incidencia_id)
+        if incidencia:
+            # Eliminar archivo de soporte
+            if incidencia.documento_soporte_ruta and os.path.exists(incidencia.documento_soporte_ruta):
+                try:
+                    os.remove(incidencia.documento_soporte_ruta)
+                except Exception:
+                    pass
+            return self.repository.delete(incidencia_id)
+        return False
+    
+    def obtener_incidencia(self, incidencia_id: int) -> Optional[Incidencia]:
+        """Obtiene una incidencia por ID"""
+        return self.repository.get_by_id(incidencia_id)
+    
+    def listar_incidencias_empleado(self, empleado_id: int) -> List[Incidencia]:
+        """Lista incidencias de un empleado"""
+        return self.repository.get_by_empleado(empleado_id)
+    
+    def listar_por_tipo(self, tipo: str) -> List[Incidencia]:
+        """Lista incidencias por tipo"""
+        return self.repository.get_by_tipo(tipo)
+    
+    def listar_por_estado(self, estado: str) -> List[Incidencia]:
+        """Lista incidencias por estado"""
+        return self.repository.get_by_estado(estado)
+    
+    def listar_pendientes(self) -> List[Incidencia]:
+        """Lista incidencias pendientes de aprobación"""
+        return self.repository.get_pendientes()
+    
+    def listar_vigentes(self) -> List[Incidencia]:
+        """Lista incidencias vigentes actualmente"""
+        return self.repository.get_vigentes()
+    
+    def listar_por_periodo(self, fecha_inicio: date, fecha_fin: date) -> List[Incidencia]:
+        """Lista incidencias en un periodo"""
+        return self.repository.get_by_periodo(fecha_inicio, fecha_fin)
+    
+    def aprobar_incidencia(self, incidencia_id: int, aprobado_por: str, comentarios: str = None, dias_aprobados: int = None) -> bool:
+        """Aprueba una incidencia"""
+        return self.repository.aprobar(incidencia_id, aprobado_por, comentarios, dias_aprobados)
+    
+    def rechazar_incidencia(self, incidencia_id: int, rechazado_por: str, comentarios: str = None) -> bool:
+        """Rechaza una incidencia"""
+        return self.repository.rechazar(incidencia_id, rechazado_por, comentarios)
+    
+    def completar_incidencia(self, incidencia_id: int) -> bool:
+        """Marca una incidencia como completada"""
+        return self.repository.completar(incidencia_id)
+    
+    def obtener_soporte(self, incidencia_id: int) -> Optional[bytes]:
+        """Obtiene el archivo de soporte de una incidencia"""
+        incidencia = self.repository.get_by_id(incidencia_id)
+        if incidencia:
+            if incidencia.documento_soporte_binario:
+                return incidencia.documento_soporte_binario
+            elif incidencia.documento_soporte_ruta and os.path.exists(incidencia.documento_soporte_ruta):
+                with open(incidencia.documento_soporte_ruta, 'rb') as f:
+                    return f.read()
+        return None
+    
+    def obtener_estadisticas(self) -> Dict:
+        """Obtiene estadísticas de incidencias"""
+        return {
+            "total": self.repository.count(),
+            "pendientes": len(self.repository.get_pendientes()),
+            "vigentes": len(self.repository.get_vigentes()),
+            "por_tipo": self.repository.get_estadisticas_por_tipo(),
+            "por_estado": self.repository.get_estadisticas_por_estado()
+        }
+    
+    def calcular_dias_incidencias_periodo(self, empleado_id: int, fecha_inicio: date, fecha_fin: date) -> int:
+        """Calcula los días de incidencias de un empleado en un periodo"""
+        incidencias = self.repository.get_by_empleado_periodo(empleado_id, fecha_inicio, fecha_fin)
+        dias_totales = 0
+        for incidencia in incidencias:
+            if incidencia.estado == EstadoIncidencia.APROBADO.value:
+                dias_totales += incidencia.dias_aprobados or incidencia.dias_solicitados
+        return dias_totales
+    
+    def _obtener_extension(self, nombre_archivo: str) -> str:
+        """Obtiene la extensión de un archivo"""
+        if "." in nombre_archivo:
+            return nombre_archivo[nombre_archivo.rfind("."):]
+        return ""
+    
+    def validar_datos_incidencia(self, datos: Dict) -> List[str]:
+        """Valida los datos de una incidencia"""
+        errores = []
+        
+        # Validaciones requeridas
+        campos_requeridos = ["empleado_id", "tipo_incidencia", "fecha_inicio", "fecha_fin", "motivo"]
+        for campo in campos_requeridos:
+            if campo not in datos or not datos[campo]:
+                errores.append(f"El campo {campo} es requerido")
+        
+        # Validaciones específicas
+        if "fecha_inicio" in datos and "fecha_fin" in datos:
+            if datos["fecha_fin"] < datos["fecha_inicio"]:
+                errores.append("La fecha fin debe ser posterior a la fecha inicio")
+        
+        if "empleado_id" in datos:
+            try:
+                empleado_id = int(datos["empleado_id"])
+                if empleado_id <= 0:
+                    errores.append("El ID de empleado debe ser positivo")
+            except (ValueError, TypeError):
+                errores.append("El ID de empleado debe ser un número válido")
+        
+        return errores

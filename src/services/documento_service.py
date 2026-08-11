@@ -1,0 +1,176 @@
+"""
+Documento Service
+Servicio de lógica de negocio para documentos
+"""
+
+from typing import List, Optional, Dict
+from datetime import date
+from sqlalchemy.orm import Session
+import os
+import uuid
+
+from src.models import Documento, TipoDocumento
+from src.repositories import DocumentoRepository
+from src.config import settings
+
+
+class DocumentoService:
+    """Servicio de gestión de documentos"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+        self.repository = DocumentoRepository(session)
+    
+    def crear_documento(self, datos: Dict, archivo_binario: bytes = None) -> Documento:
+        """Crea un nuevo documento"""
+        # Generar nombre único para el archivo
+        if archivo_binario:
+            extension = self._obtener_extension(datos["nombre_archivo"])
+            nombre_unico = f"{uuid.uuid4().hex}{extension}"
+            ruta_completa = settings.get_document_path(nombre_unico)
+            
+            # Guardar archivo en disco
+            with open(ruta_completa, 'wb') as f:
+                f.write(archivo_binario)
+            
+            datos["nombre_archivo"] = nombre_unico
+            datos["ruta_archivo"] = ruta_completa
+            datos["tamano_bytes"] = len(archivo_binario)
+            datos["contenido_binario"] = archivo_binario
+        else:
+            datos["ruta_archivo"] = datos.get("ruta_archivo", "")
+        
+        documento = Documento(
+            empleado_id=datos["empleado_id"],
+            tipo_documento=datos["tipo_documento"],
+            titulo=datos["titulo"],
+            descripcion=datos.get("descripcion"),
+            numero_documento=datos.get("numero_documento"),
+            fecha_emision=datos.get("fecha_emision"),
+            fecha_vencimiento=datos.get("fecha_vencimiento"),
+            nombre_archivo=datos["nombre_archivo"],
+            ruta_archivo=datos["ruta_archivo"],
+            tamano_bytes=datos.get("tamano_bytes"),
+            tipo_mime=datos.get("tipo_mime"),
+            contenido_binario=datos.get("contenido_binario"),
+            observaciones=datos.get("observaciones")
+        )
+        
+        return self.repository.create(documento)
+    
+    def actualizar_documento(self, documento_id: int, datos: Dict, archivo_binario: bytes = None) -> Documento:
+        """Actualiza un documento existente"""
+        documento = self.repository.get_by_id(documento_id)
+        if not documento:
+            raise ValueError("Documento no encontrado")
+        
+        # Si se proporciona un nuevo archivo
+        if archivo_binario:
+            # Eliminar archivo anterior
+            if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+                os.remove(documento.ruta_archivo)
+            
+            # Guardar nuevo archivo
+            extension = self._obtener_extension(datos["nombre_archivo"])
+            nombre_unico = f"{uuid.uuid4().hex}{extension}"
+            ruta_completa = settings.get_document_path(nombre_unico)
+            
+            with open(ruta_completa, 'wb') as f:
+                f.write(archivo_binario)
+            
+            datos["nombre_archivo"] = nombre_unico
+            datos["ruta_archivo"] = ruta_completa
+            datos["tamano_bytes"] = len(archivo_binario)
+            datos["contenido_binario"] = archivo_binario
+        
+        # Actualizar campos
+        for campo, valor in datos.items():
+            if hasattr(documento, campo) and campo != "empleado_id":
+                setattr(documento, campo, valor)
+        
+        return self.repository.update(documento)
+    
+    def eliminar_documento(self, documento_id: int) -> bool:
+        """Elimina un documento (desactivación lógica)"""
+        documento = self.repository.get_by_id(documento_id)
+        if documento:
+            # Eliminar archivo físico
+            if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+                try:
+                    os.remove(documento.ruta_archivo)
+                except Exception:
+                    pass  # Continuar aunque falle la eliminación del archivo
+            return self.repository.desactivar(documento_id)
+        return False
+    
+    def obtener_documento(self, documento_id: int) -> Optional[Documento]:
+        """Obtiene un documento por ID"""
+        return self.repository.get_by_id(documento_id)
+    
+    def listar_documentos_empleado(self, empleado_id: int) -> List[Documento]:
+        """Lista documentos de un empleado"""
+        return self.repository.get_by_empleado(empleado_id)
+    
+    def listar_por_tipo(self, tipo: str) -> List[Documento]:
+        """Lista documentos por tipo"""
+        return self.repository.get_by_tipo(tipo)
+    
+    def listar_documentos_empleado_tipo(self, empleado_id: int, tipo: str) -> List[Documento]:
+        """Lista documentos de un empleado por tipo"""
+        return self.repository.get_by_empleado_y_tipo(empleado_id, tipo)
+    
+    def listar_vencidos(self) -> List[Documento]:
+        """Lista documentos vencidos"""
+        return self.repository.get_vencidos()
+    
+    def listar_por_vencer(self, dias: int = 30) -> List[Documento]:
+        """Lista documentos por vencer"""
+        return self.repository.get_por_vencer(dias)
+    
+    def obtener_archivo(self, documento_id: int) -> Optional[bytes]:
+        """Obtiene el contenido binario de un documento"""
+        documento = self.repository.get_by_id(documento_id)
+        if documento:
+            if documento.contenido_binario:
+                return documento.contenido_binario
+            elif documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+                with open(documento.ruta_archivo, 'rb') as f:
+                    return f.read()
+        return None
+    
+    def obtener_estadisticas(self) -> Dict:
+        """Obtiene estadísticas de documentos"""
+        return {
+            "total": self.repository.count(),
+            "activos": len(self.repository.get_activos()),
+            "vencidos": len(self.repository.get_vencidos()),
+            "por_vencer": len(self.repository.get_por_vencer(30)),
+            "por_tipo": self.repository.get_estadisticas_por_tipo()
+        }
+    
+    def _obtener_extension(self, nombre_archivo: str) -> str:
+        """Obtiene la extensión de un archivo"""
+        if "." in nombre_archivo:
+            return nombre_archivo[nombre_archivo.rfind("."):]
+        return ""
+    
+    def validar_datos_documento(self, datos: Dict) -> List[str]:
+        """Valida los datos de un documento"""
+        errores = []
+        
+        # Validaciones requeridas
+        campos_requeridos = ["empleado_id", "tipo_documento", "titulo", "nombre_archivo"]
+        for campo in campos_requeridos:
+            if campo not in datos or not datos[campo]:
+                errores.append(f"El campo {campo} es requerido")
+        
+        # Validaciones específicas
+        if "empleado_id" in datos:
+            try:
+                empleado_id = int(datos["empleado_id"])
+                if empleado_id <= 0:
+                    errores.append("El ID de empleado debe ser positivo")
+            except (ValueError, TypeError):
+                errores.append("El ID de empleado debe ser un número válido")
+        
+        return errores

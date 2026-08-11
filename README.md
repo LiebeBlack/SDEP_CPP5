@@ -1,287 +1,227 @@
-# SDEP Educational Management System - C++ Version v1.0
+# Sistema de Gestión de Personal y Nómina
 
-Sistema integral de gestión para instituciones educativas desarrollado en C++ moderno con wxWidgets, SQLite y arquitectura MVC limpia.
+Sistema completo para la gestión de personal y nómina de instituciones educativas, desarrollado en Python con interfaz gráfica CustomTkinter.
 
-## 🎯 Características
+## 🚀 Características
 
-### Módulo Académico
-- **Gestión de Estudiantes**: Registro, edición, búsqueda y validación completa
-- **Gestión de Profesores**: Administración del personal docente con departamentos
-- **Gestión de Cursos**: Creación, asignación con profesores, control de créditos
-- **Matrículas**: Inscripción de estudiantes en cursos con validación
-- **Asistencia**: Control de asistencia con cálculo de porcentajes
+### Gestión de Personal
+- Registro completo de empleados (Docentes, Administrativos, Mantenimiento)
+- Ficha de datos personales, físicos y de contacto
+- Gestión de fotos de perfil
+- Clasificación por tipo, cargo y departamento
+- Búsqueda y filtrado avanzado
 
-### Módulo de Recursos Humanos
-- **Gestión de Empleados**: Sistema completo con 50+ campos organizados en tabs
-- **Datos Personales**: Cédula, pasaporte, contacto de emergencia
-- **Información Profesional**: Departamentos, cargos, contratos, horarios
-- **Información Financiera**: Salarios, deducciones, cuentas bancarias
-- **Control de Asistencia**: Registro de entrada/salida
+### Gestión Documental
+- Carga y almacenamiento de documentos digitalizados
+- Soporte para PDFs e imágenes
+- Clasificación por tipo de documento
+- Control de vencimientos
+- Gestión de documentos por empleado
 
-### Sistema de Seguridad
-- **Autenticación Robusta**: Validación de usuarios con políticas de contraseñas
-- **Gestión de Sesiones**: Tokens de sesión con control de expiración
-- **Auditoría Completa**: Registro de todas las acciones del sistema
+### Incidencias y Permisos
+- Registro de reposos médicos, ausencias y permisos
+- Sistema de aprobación/rechazo
+- Gestión de documentos de soporte
+- Cálculo automático de días
+- Control de incidencias vigentes
 
-### Interfaz Gráfica
-- **wxWidgets Moderno**: Interfaz nativa multiplataforma
-- **Diálogos Interactivos**: Formularios completos para todas las entidades
-- **Dashboard en Tiempo Real**: Estadísticas actualizadas automáticamente
-- **Sistema de Reportes**: Generación de reportes académicos y de RRHH
-- **Panel de Configuración**: Gestión completa de parámetros del sistema
+### Nómina y Pagos
+- Generación automática de nóminas por periodo
+- Cálculo de deducciones (seguro, pensión, impuesto)
+- Gestión de bonificaciones y horas extra
+- Generación de recibos de pago en PDF
+- Control de pagos pendientes y realizados
 
-## 🏗️ Arquitectura
-
-```
-SDEP_CPP/
-├── CMakeLists.txt              # Sistema de build
-├── build.bat                   # Script de compilación Windows
-├── build.sh                    # Script de compilación Linux/macOS
-├── .gitignore                  # Archivos ignorados por Git
-├── include/                    # Archivos de cabecera
-│   ├── models/                # Modelos de datos
-│   ├── database/              # Capa de base de datos
-│   ├── services/              # Lógica de negocio
-│   └── gui/                   # Interfaz gráfica
-├── src/                       # Implementaciones
-│   ├── models/                # Implementación de modelos
-│   ├── database/              # Implementación de base de datos
-│   ├── services/              # Implementación de servicios
-│   ├── gui/                   # Implementación de GUI
-│   └── main.cpp               # Punto de entrada
-└── build/                     # Directorio de build
-```
-
-## 🛠️ Tecnologías
-
-- **C++17**: Lenguaje principal con características modernas
-- **wxWidgets 3.0+**: Framework de interfaz gráfica multiplataforma
-- **SQLite 3.x**: Base de datos ligera y portable
-- **CMake 3.15+**: Sistema de build estándar
-- **STL**: Biblioteca estándar de C++
+### Generación de Documentos
+- Constancias de trabajo
+- Constancias de estudios
+- Recibos de pago
+- Reportes de empleados
+- Exportación a PDF
 
 ## 📋 Requisitos del Sistema
 
-### Windows
-- Windows 10 o superior
-- Visual Studio 2017 o superior (con C++ support)
-- CMake 3.15 o superior
-- wxWidgets 3.0 o superior
+- Python 3.10 o superior
+- Windows 10/11
+- 4GB RAM mínimo
+- 500MB espacio en disco
 
-### Linux (Ubuntu/Debian)
-- Ubuntu 18.04+ o Debian 11+
-- GCC 7+ o Clang 5+
-- CMake 3.15+
-- libwxgtk3.0-gtk3-dev
-- libsqlite3-dev
+## 🔧 Instalación
 
-### macOS
-- macOS 10.14+
-- Xcode Command Line Tools
-- CMake 3.15+
-- wxmac (via Homebrew)
-- sqlite3 (via Homebrew)
+### Entorno de Desarrollo
 
-## 🚀 Instalación y Build
-
-### Windows
-
-#### Instalación de Dependencias
-1. Instalar Visual Studio 2017 o superior
-2. Instalar CMake desde https://cmake.org/download/
-3. Instalar wxWidgets desde https://www.wxwidgets.org/downloads/
-
-#### Compilación
+1. Clonar el repositorio:
 ```bash
-# Usar el script automatizado
-build.bat
-
-# O manualmente
-mkdir build
-cd build
-cmake .. -G "Visual Studio 16 2019" -A x64
-cmake --build . --config Release
+git clone <repository-url>
+cd NEW TesisFinal
 ```
 
-#### Ejecución
+2. Crear entorno virtual:
 ```bash
-cd build\Release
-SDEP.exe
+python -m venv venv
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
 ```
 
-### Linux
-
-#### Instalación de Dependencias
+3. Instalar dependencias:
 ```bash
-sudo apt-get update
-sudo apt-get install build-essential cmake git
-sudo apt-get install libwxgtk3.0-gtk3-dev libsqlite3-dev
+pip install -r requirements.txt
 ```
 
-#### Compilación
+4. Ejecutar la aplicación:
 ```bash
-# Usar el script automatizado
-chmod +x build.sh
-./build.sh
-
-# O manualmente
-mkdir build
-cd build
-cmake ..
-make -j$(nproc)
+python src/main.py
 ```
 
-#### Ejecución
+### Construcción de Ejecutable
+
+1. Instalar dependencias de desarrollo:
 ```bash
-cd build
-./SDEP
+pip install -r requirements-dev.txt
 ```
 
-### macOS
-
-#### Instalación de Dependencias
+2. Ejecutar script de construcción:
 ```bash
-# Instalar Xcode Command Line Tools
-xcode-select --install
-
-# Instalar Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Instalar dependencias
-brew install cmake wxmac sqlite3 git
+python build.py
 ```
 
-#### Compilación
-```bash
-# Usar el script automatizado
-chmod +x build.sh
-./build.sh
+3. El ejecutable se generará en `dist/SistemaGestionPersonal/`
 
-# O manualmente
-mkdir build
-cd build
-cmake ..
-make -j$(sysctl -n hw.ncpu)
+## 📁 Estructura del Proyecto
+
+```
+project/
+├── src/                  # Código fuente
+│   ├── gui/              # Componentes GUI
+│   ├── models/           # Modelos de datos
+│   ├── services/         # Lógica de negocio
+│   ├── repositories/     # Data access layer
+│   ├── utils/            # Utilidades
+│   └── config/           # Configuración
+├── tests/                # Tests
+├── assets/               # Assets externos
+├── docs/                 # Documentación
+├── spec/                 # PyInstaller specs
+├── requirements.txt      # Dependencias
+├── pyproject.toml       # Configuración Python
+└── build.py             # Script de build
 ```
 
-#### Ejecución
-```bash
-cd build
-./SDEP
-```
+## 🗄️ Base de Datos
 
-## 🔐 Credenciales por Defecto
+El sistema utiliza SQLite como base de datos local. La base de datos se crea automáticamente al iniciar la aplicación y se encuentra en el archivo `personal_management.db`.
 
-- **Usuario**: admin
-- **Contraseña**: Admin123!
-
-⚠️ **IMPORTANTE**: Cambiar la contraseña por defecto en primer uso
-
-## 📝 Uso
+## 📖 Uso
 
 ### Primeros Pasos
 
-1. **Iniciar Sesión**: Use las credenciales por defecto
-2. **Explorar Dashboard**: Revise las estadísticas del sistema
-3. **Cambiar Contraseña**: Acceda a Configuración → Seguridad
-4. **Crear Usuarios**: Agregue usuarios con roles apropiados
-5. **Configurar Sistema**: Configure parámetros institucionales
+1. **Configuración Inicial**: 
+   - Configure los datos de la institución en la sección "Configuración"
+   - Establezca los porcentajes de deducciones para nómina
 
-### Gestión de Estudiantes
+2. **Registro de Empleados**:
+   - Vaya a la sección "Empleados"
+   - Haga clic en "Nuevo Empleado"
+   - Complete los datos personales, laborales y de contacto
 
-1. Navegue a la pestaña "Students"
-2. Click en "Add Student" para registrar nuevo estudiante
-3. Complete el formulario con información personal y académica
-4. Use "Edit Student" para modificar registros existentes
-5. Use "Delete Student" para eliminar registros
+3. **Gestión Documental**:
+   - Seleccione un empleado
+   - Vaya a "Documentos"
+   - Cargue documentos digitalizados (cedulas, títulos, etc.)
 
-### Gestión de Profesores
+4. **Incidencias**:
+   - Seleccione un empleado
+   - Vaya a "Incidencias"
+   - Registre permisos, reposos o ausencias
+   - Apruebe o rechace solicitudes
 
-1. Navegue a la pestaña "Teachers"
-2. Click en "Add Teacher" para registrar nuevo profesor
-3. Seleccione departamento, especialización y salarios
-4. Configure fechas de contratación y calificaciones
+5. **Nómina**:
+   - Vaya a "Nómina"
+   - Seleccione el periodo
+   - Genere la nómina automáticamente
+   - Genere recibos de pago en PDF
 
-### Gestión de Cursos
+## 🔐 Seguridad
 
-1. Navegue a la pestaña "Courses"
-2. Click en "Add Course" para crear nuevo curso
-3. Asigne un profesor responsable del curso
-4. Configure créditos, horario y aula
+- Los datos se almacenan localmente en SQLite
+- No se requiere conexión a internet
+- Los documentos se almacenan en el sistema de archivos local
+- Se recomienda realizar copias de seguridad periódicas
 
-### Matrículas
+## 🛠️ Desarrollo
 
-1. Navegue a la pestaña "Enrollments"
-2. Click en "New Enrollment"
-3. Seleccione estudiante y curso de los dropdowns
-4. Sistema valida automáticamente la matrícula
+### Ejecutar Tests
 
-### Control de Asistencia
+```bash
+pytest tests/
+```
 
-1. Navegue a la pestaña "Attendance"
-2. Seleccione la fecha
-3. Click en "Mark Attendance"
-4. Seleccione estudiante, curso y estado de asistencia
+### Formateo de Código
 
-### Gestión de Empleados (RRHH)
+```bash
+black src/
+isort src/
+```
 
-1. Navegue a la pestaña "Employees"
-2. Click en "Add Employee" para abrir el formulario completo
-3. Complete información en 4 tabs organizados
+### Linting
 
-## 🎨 Características de la Implementación
+```bash
+flake8 src/
+pylint src/
+```
 
-### Código Limpio y Profesional
-- **Validación Completa**: Todos los modelos tienen validación robusta
-- **Manejo de Errores**: Excepciones personalizadas y manejo graceful
-- **Memory Management**: Uso de smart pointers y RAII
-- **Type Safety**: Aprovechamiento de tipos fuertes de C++
+## 📝 Configuración
 
-### Interfaz de Usuario Moderna
-- **Diálogos Modales**: Formularios completos con validación en tiempo real
-- **Validación Visual**: Feedback inmediato de errores de entrada
-- **Responsive Layout**: Interfaz adaptable a diferentes tamaños
-- **Navegación Intuitiva**: Organización clara por funcionalidad
+### Variables de Entorno
 
-### Seguridad Robusta
-- **Políticas de Contraseñas**: Configurables y robustas
-- **Sesiones Seguras**: Tokens con expiración
-- **Auditoría**: Registro completo de acciones
-- **Protección contra Ataques**: Validación de entrada y sanitización
+Copie `.env.example` a `.env` y configure las variables:
 
-## 🐛 Solución de Problemas
+```env
+DATABASE_URL=sqlite:///personal_management.db
+APP_NAME=Sistema de Gestión de Personal
+DEBUG=False
+```
 
-### Errores Comunes
+### Configuración de la Aplicación
 
-**Error: wxWidgets not found**
-- Windows: Configurar `wxWidgets_ROOT_DIR` en CMake
-- Linux: `sudo apt-get install libwxgtk3.0-gtk3-dev`
-- macOS: `brew install wxmac`
+La configuración se puede modificar desde la sección "Configuración" de la aplicación:
 
-**Error: SQLite not found**
-- Windows: Descargar SQLite y configurar `SQLite3_DIR`
-- Linux: `sudo apt-get install libsqlite3-dev`
-- macOS: `brew install sqlite3`
+- **General**: Nombre de la institución, dirección, contacto
+- **Nómina**: Porcentajes de deducciones, salario mínimo
+- **Recursos Humanos**: Días de vacaciones, horas laborales
 
-**Error: C++17 features not supported**
-- Actualizar el compilador a una versión que soporte C++17
-- Para VS: Actualizar a Visual Studio 2017 o superior
-- Para GCC: Usar GCC 7 o superior
+## 🐛 Troubleshooting
+
+### Error al iniciar la aplicación
+
+- Verifique que Python 3.10+ esté instalado
+- Instale las dependencias: `pip install -r requirements.txt`
+- Verifique que los directorios `documents`, `photos`, `exports` existan
+
+### Error de base de datos
+
+- Elimine el archivo `personal_management.db`
+- Reinicie la aplicación para recrear la base de datos
+
+### Problemas con PyInstaller
+
+- Asegúrese de tener PyInstaller instalado: `pip install pyinstaller`
+- Verifique que el archivo `spec/app.spec` exista
+- Ejecute el script `build.py`
 
 ## 📄 Licencia
 
-Este software es propietario. Todos los derechos reservados.
+Este proyecto está bajo licencia MIT.
 
-## 👥 Soporte
+## 👥 Autores
 
-Para reportar problemas o solicitar soporte, contacte al equipo de desarrollo.
+Desarrollado para gestión de personal en instituciones educativas.
+
+## 📞 Soporte
+
+Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
 **Versión**: 1.0.0  
-**Fecha**: 2026-08-05  
-**Estado**: Production Ready ✅  
-**Lenguaje**: C++17  
-**Framework GUI**: wxWidgets  
-**Base de Datos**: SQLite  
-**Arquitectura**: MVC con Repository Pattern
+**Última actualización**: 2026

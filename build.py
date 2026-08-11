@@ -26,34 +26,26 @@ def build_exe():
     """Construye el ejecutable con PyInstaller"""
     print("Construyendo ejecutable...")
     try:
-        # Check if spec file exists, otherwise use direct PyInstaller command
-        spec_file = Path("spec/app.spec")
-        if spec_file.exists():
-            print(f"Usando archivo spec: {spec_file}")
-            subprocess.run(
-                [sys.executable, "-m", "PyInstaller", "spec/app.spec", "--clean"],
-                check=True
-            )
-        else:
-            print("Archivo spec no encontrado, usando comando directo de PyInstaller")
-            pyinstaller_args = [
-                sys.executable, "-m", "PyInstaller",
-                "--name=SistemaGestionPersonal",
-                "--onefile",
-                "--windowed",
-                "--add-data=src;src",
-                "--hidden-import=customtkinter",
-                "--hidden-import=PIL",
-                "--hidden-import=reportlab",
-                "--hidden-import=SQLAlchemy",
-                "--hidden-import=pydantic",
-                "--hidden-import=pydantic_core",
-                "--hidden-import=typing_extensions",
-                "--hidden-import=python_dotenv",
-                "--clean",
-                "src/main.py"
-            ]
-            subprocess.run(pyinstaller_args, check=True)
+        # Always use direct PyInstaller command for reliability
+        print("Usando comando directo de PyInstaller")
+        pyinstaller_args = [
+            sys.executable, "-m", "PyInstaller",
+            "--name=SistemaGestionPersonal",
+            "--onefile",
+            "--windowed",
+            "--add-data=src;src",
+            "--hidden-import=customtkinter",
+            "--hidden-import=PIL",
+            "--hidden-import=reportlab",
+            "--hidden-import=SQLAlchemy",
+            "--hidden-import=pydantic",
+            "--hidden-import=pydantic_core",
+            "--hidden-import=typing_extensions",
+            "--hidden-import=python_dotenv",
+            "--clean",
+            "src/main.py"
+        ]
+        subprocess.run(pyinstaller_args, check=True)
         
         print("Ejecutable construido correctamente")
         return True

@@ -3,14 +3,22 @@
 PyInstaller spec file for Sistema de Gestión de Personal
 """
 
+import os
+import sys
+
+# Get the directory containing this spec file
+spec_root = os.path.dirname(SPEC)
+# Get the project root (parent of spec directory)
+project_root = os.path.dirname(spec_root)
+
 block_cipher = None
 
 a = Analysis(
-    ['src/main.py'],
-    pathex=[],
+    [os.path.join(project_root, 'src', 'main.py')],
+    pathex=[project_root],
     binaries=[],
     datas=[
-        ('src', 'src'),
+        (os.path.join(project_root, 'src'), 'src'),
     ],
     hiddenimports=[
         'customtkinter',

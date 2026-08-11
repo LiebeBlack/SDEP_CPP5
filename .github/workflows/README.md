@@ -6,7 +6,7 @@ This directory contains the GitHub Actions workflows for automated CI/CD of the 
 
 | Workflow | Purpose | Triggers |
 |----------|---------|----------|
-| [ci.yml](ci.yml) | Continuous Integration - Testing and Quality Checks | Push to main/develop/canary, Pull Requests |
+| [ci.yml](ci.yml) | Continuous Integration - Testing | Push to main/develop/canary, Pull Requests |
 | [build.yml](build.yml) | Build Executables - Windows and Cross-platform | Push, Tags, Manual Dispatch |
 | [release.yml](release.yml) | Automated Releases - Semantic Versioning | Push to main, Manual Dispatch |
 | [canary-deployment.yml](canary-deployment.yml) | Canary Deployments - Gradual Rollout | Push to canary, Manual Dispatch |
@@ -19,8 +19,6 @@ This directory contains the GitHub Actions workflows for automated CI/CD of the 
 Configure the required secrets and variables in your GitHub repository:
 
 **Required Secrets:**
-- `SONAR_TOKEN` - SonarQube authentication token
-- `SONAR_HOST_URL` - SonarQube server URL
 - `SLACK_WEBHOOK_URL` - Slack incoming webhook (optional)
 - `TEAMS_WEBHOOK_URL` - Microsoft Teams webhook (optional)
 - `SMTP_SERVER` - SMTP server for email notifications (optional)

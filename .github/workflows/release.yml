@@ -82,16 +82,12 @@ jobs:
         $commitCount = "${{ steps.commit_analysis.outputs.commit_count }}"
         $versionType = "${{ steps.commit_analysis.outputs.version_type }}"
         
-        $shouldRelease = "false"
+        $shouldRelease = "true"  # Always release on push to main
         $isPreRelease = "false"
         
-        if ($commitCount -gt 0) {
-          $shouldRelease = "true"
-          
-          # Check if branch is canary or if manually triggered as pre-release
-          if ("${{ github.ref_name }}" -eq "canary" -or "${{ github.event.inputs.pre_release }}" -eq "true") {
-            $isPreRelease = "true"
-          }
+        # Check if branch is canary or if manually triggered as pre-release
+        if ("${{ github.ref_name }}" -eq "canary" -or "${{ github.event.inputs.pre_release }}" -eq "true") {
+          $isPreRelease = "true"
         }
         
         # Override with manual input if provided

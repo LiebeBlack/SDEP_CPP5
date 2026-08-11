@@ -1,0 +1,614 @@
+name: Notifications and Monitoring
+
+on:
+  workflow_run:
+    workflows: ['Continuous Integration', 'Build Executable', 'Automated Release', 'Canary Deployment']
+    types: [completed]
+  push:
+    branches: [ main, develop, canary ]
+  pull_request:
+    types: [opened, closed, merged]
+  release:
+    types: [created, published, edited, deleted]
+  issues:
+    types: [opened, closed, labeled, unlabeled]
+  schedule:
+    - cron: '0 9 * * 1' # Weekly health check on Mondays at 9 AM
+  workflow_dispatch:
+
+jobs:
+  workflow-status-notification:
+    name: Workflow Status Notifications
+    runs-on: windows-latest
+    if: github.event.workflow_run.event == 'completed'
+    
+    steps:
+    - name: Download workflow artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: workflow-run-logs
+        continue-on-error: true
+    
+    - name: Analyze workflow status
+      id: status_analysis
+      run: |
+        $status = "${{ github.event.workflow_run.conclusion }}"
+        $workflow = "${{ github.event.workflow_run.name }}"
+        $runNumber = "${{ github.event.workflow_run.run_number }}"
+        $runId = "${{ github.event.workflow_run.id }}"
+        
+        Write-Host "Workflow: $workflow"
+        Write-Host "Status: $status"
+        Write-Host "Run Number: $runNumber"
+        Write-Host "Run ID: $runId"
+        
+        if ($status -eq "failure") {
+          echo "severity=critical" >> $env:GITHUB_OUTPUT
+          echo "emoji=🚨" >> $env:GITHUB_OUTPUT
+          echo "message=Workflow failed critically" >> $env:GITHUB_OUTPUT
+        } elseif ($status -eq "cancelled") {
+          echo "severity=warning" >> $env:GITHUB_OUTPUT
+          echo "emoji=⚠️" >> $env:GITHUB_OUTPUT
+          echo "message=Workflow was cancelled" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "severity=info" >> $env:GITHUB_OUTPUT
+          echo "emoji=✅" >> $env:GITHUB_OUTPUT
+          echo "message=Workflow completed successfully" >> $env:GITHUB_OUTPUT
+        }
+        
+        echo "workflow_name=$workflow" >> $env:GITHUB_OUTPUT
+        echo "run_number=$runNumber" >> $env:GITHUB_OUTPUT
+        echo "run_id=$runId" >> $env:GITHUB_OUTPUT
+    
+    - name: Generate notification message
+      id: notification
+      run: |
+        $emoji = "${{ steps.status_analysis.outputs.emoji }}"
+        $message = "${{ steps.status_analysis.outputs.message }}"
+        $workflow = "${{ steps.status_analysis.outputs.workflow_name }}"
+        $runNumber = "${{ steps.status_analysis.outputs.run_number }}"
+        $severity = "${{ steps.status_analysis.outputs.severity }}"
+        
+        $notification = @"
+        $emoji **Workflow Notification**
+        
+        **Workflow**: $workflow
+        **Status**: $message
+        **Run**: #$runNumber
+        **Severity**: $severity
+        **Repository**: ${{ github.repository }}
+        **Branch**: ${{ github.ref_name }}
+        **Triggered by**: ${{ github.actor }}
+        **Timestamp**: ${{ github.event.workflow_run.updated_at }}
+        
+        [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ steps.status_analysis.outputs.run_id }})
+        "@
+        
+        $notification | Out-File -FilePath "notification.txt" -Encoding utf8
+        echo "notification_created=true" >> $env:GITHUB_OUTPUT
+    
+    - name: Send Slack notification
+      if: vars.SLACK_WEBHOOK_URL != ''
+      uses: slackapi/slack-github-action@v1.25.0
+      with:
+        payload: |
+          {
+            "text": "${{ steps.status_analysis.outputs.emoji }} Workflow ${{ steps.status_analysis.outputs.workflow_name }}: ${{ steps.status_analysis.outputs.message }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "${{ steps.status_analysis.outputs.emoji }} *Workflow Notification*\n\n*Workflow*: ${{ steps.status_analysis.outputs.workflow_name }}\n*Status*: ${{ steps.status_analysis.outputs.message }}\n*Run*: #${{ steps.status_analysis.outputs.run_number }}\n*Severity*: ${{ steps.status_analysis.outputs.severity }}\n*Repository*: ${{ github.repository }}\n*Branch*: ${{ github.ref_name }}\n*Triggered by*: ${{ github.actor }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Workflow Run"
+                    },
+                    "url": "https://github.com/${{ github.repository }}/actions/runs/${{ steps.status_analysis.outputs.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    
+    - name: Send Microsoft Teams notification
+      if: vars.TEAMS_WEBHOOK_URL != ''
+      run: |
+        $webhookUrl = "${{ vars.TEAMS_WEBHOOK_URL }}"
+        $emoji = "${{ steps.status_analysis.outputs.emoji }}"
+        $workflow = "${{ steps.status_analysis.outputs.workflow_name }}"
+        $message = "${{ steps.status_analysis.outputs.message }}"
+        $runNumber = "${{ steps.status_analysis.outputs.run_number }}"
+        $severity = "${{ steps.status_analysis.outputs.severity }}"
+        
+        $color = if ($severity -eq "critical") { "FF0000" } elseif ($severity -eq "warning") { "FFA500" } else { "00FF00" }
+        
+        $teamsPayload = @{
+          "@type" = "MessageCard"
+          "@context" = "https://schema.org/extensions"
+          summary = "Workflow Notification"
+          themeColor = $color
+          title = "$emoji Workflow Notification"
+          sections = @(
+            @{
+              activityTitle = "$message"
+              activitySubtitle = "Workflow: $workflow"
+              activityImage = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+              facts = @(
+                @{
+                  name = "Repository"
+                  value = "${{ github.repository }}"
+                },
+                @{
+                  name = "Branch"
+                  value = "${{ github.ref_name }}"
+                },
+                @{
+                  name = "Run Number"
+                  value = "#$runNumber"
+                },
+                @{
+                  name = "Severity"
+                  value = $severity
+                },
+                @{
+                  name = "Triggered by"
+                  value = "${{ github.actor }}"
+                }
+              )
+            }
+          )
+          potentialAction = @(
+            @{
+              "@type" = "OpenUri"
+              name = "View Workflow Run"
+              targets = @(
+                @{
+                  os = "default"
+                  uri = "https://github.com/${{ github.repository }}/actions/runs/${{ steps.status_analysis.outputs.run_id }}"
+                }
+              )
+            }
+          )
+        } | ConvertTo-Json -Depth 10
+        
+        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body $teamsPayload -ContentType "application/json"
+    
+    - name: Send email notification
+      if: vars.NOTIFICATION_EMAIL != ''
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ vars.SMTP_SERVER }}
+        server_port: ${{ vars.SMTP_PORT || 587 }}
+        username: ${{ vars.SMTP_USERNAME }}
+        password: ${{ secrets.SMTP_PASSWORD }}
+        subject: "${{ steps.status_analysis.outputs.emoji }} Workflow ${{ steps.status_analysis.outputs.workflow_name }}: ${{ steps.status_analysis.outputs.message }}"
+        to: ${{ vars.NOTIFICATION_EMAIL }}
+        from: GitHub Actions <${{ vars.SMTP_FROM }}>
+        body: |
+          Workflow Notification
+          
+          Workflow: ${{ steps.status_analysis.outputs.workflow_name }}
+          Status: ${{ steps.status_analysis.outputs.message }}
+          Run: #${{ steps.status_analysis.outputs.run_number }}
+          Severity: ${{ steps.status_analysis.outputs.severity }}
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Triggered by: ${{ github.actor }}
+          
+          View Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ steps.status_analysis.outputs.run_id }}
+        priority: ${{ steps.status_analysis.outputs.severity == 'critical' && 'high' || 'normal' }}
+    
+    - name: Create GitHub issue for critical failures
+      if: steps.status_analysis.outputs.severity == 'critical'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🚨 Workflow Failure: ${{ steps.status_analysis.outputs.workflow_name }}`,
+            body: `## Workflow Failure Alert
+            
+            **Workflow**: ${{ steps.status_analysis.outputs.workflow_name }}
+            **Status**: ${{ steps.status_analysis.outputs.message }}
+            **Run**: #${{ steps.status_analysis.outputs.run_number }}
+            **Triggered by**: ${{ github.actor }}
+            **Branch**: ${{ github.ref_name }}
+            
+            [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ steps.status_analysis.outputs.run_id }})
+            
+            Please investigate this failure immediately.`,
+            labels: ['bug', 'critical', 'workflow-failure'],
+            assignees: ['${{ github.actor }}']
+          });
+          console.log(`Created issue #${issue.data.number}`);
+
+  pull-request-notifications:
+    name: Pull Request Notifications
+    runs-on: windows-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Analyze PR event
+      id: pr_analysis
+      run: |
+        $action = "${{ github.event.action }}"
+        $prNumber = "${{ github.event.pull_request.number }}"
+        $prTitle = "${{ github.event.pull_request.title }}"
+        $prAuthor = "${{ github.event.pull_request.user.login }}"
+        
+        Write-Host "PR Action: $action"
+        Write-Host "PR Number: $prNumber"
+        Write-Host "PR Title: $prTitle"
+        Write-Host "PR Author: $prAuthor"
+        
+        echo "pr_action=$action" >> $env:GITHUB_OUTPUT
+        echo "pr_number=$prNumber" >> $env:GITHUB_OUTPUT
+        echo "pr_title=$prTitle" >> $env:GITHUB_OUTPUT
+        echo "pr_author=$prAuthor" >> $env:GITHUB_OUTPUT
+    
+    - name: Send PR notification
+      if: vars.SLACK_WEBHOOK_URL != ''
+      uses: slackapi/slack-github-action@v1.25.0
+      with:
+        payload: |
+          {
+            "text": "PR #${{ steps.pr_analysis.outputs.pr_number }} ${{ steps.pr_analysis.outputs.pr_action }} by ${{ steps.pr_analysis.outputs.pr_author }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Pull Request #${{ steps.pr_analysis.outputs.pr_number }}*\n*Action*: ${{ steps.pr_analysis.outputs.pr_action }}\n*Title*: ${{ steps.pr_analysis.outputs.pr_title }}\n*Author*: ${{ steps.pr_analysis.outputs.pr_author }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Pull Request"
+                    },
+                    "url": "${{ github.event.pull_request.html_url }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  release-notifications:
+    name: Release Notifications
+    runs-on: windows-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Analyze release
+      id: release_analysis
+      run: |
+        $releaseAction = "${{ github.event.action }}"
+        $releaseName = "${{ github.event.release.name }}"
+        $releaseTag = "${{ github.event.release.tag_name }}"
+        $isPrerelease = "${{ github.event.release.prerelease }}"
+        $releaseAuthor = "${{ github.event.release.author.login }}"
+        
+        Write-Host "Release Action: $releaseAction"
+        Write-Host "Release Name: $releaseName"
+        Write-Host "Release Tag: $releaseTag"
+        Write-Host "Is Prerelease: $isPrerelease"
+        Write-Host "Release Author: $releaseAuthor"
+        
+        echo "release_action=$releaseAction" >> $env:GITHUB_OUTPUT
+        echo "release_name=$releaseName" >> $env:GITHUB_OUTPUT
+        echo "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
+        echo "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+        echo "release_author=$releaseAuthor" >> $env:GITHUB_OUTPUT
+    
+    - name: Send release notification
+      if: vars.SLACK_WEBHOOK_URL != ''
+      uses: slackapi/slack-github-action@v1.25.0
+      with:
+        payload: |
+          {
+            "text": "🚀 Release ${{ steps.release_analysis.outputs.release_tag }} ${{ steps.release_analysis.outputs.release_action }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "🚀 *Release Notification*\n\n*Release*: ${{ steps.release_analysis.outputs.release_name }}\n*Tag*: ${{ steps.release_analysis.outputs.release_tag }}\n*Action*: ${{ steps.release_analysis.outputs.release_action }}\n*Prerelease*: ${{ steps.release_analysis.outputs.is_prerelease }}\n*Author*: ${{ steps.release_analysis.outputs.release_author }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Release"
+                    },
+                    "url": "${{ github.event.release.html_url }}"
+                  },
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Download Assets"
+                    },
+                    "url": "${{ github.event.release.html_url }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  health-check:
+    name: Weekly Health Check
+    runs-on: windows-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run health check tests
+      run: |
+        pytest tests/ -v -m "health" --tb=short || true
+    
+    - name: Check recent workflow failures
+      id: workflow_health
+      run: |
+        $recentWorkflows = gh run list --limit 20 --json conclusion,name,displayTitle,databaseId | ConvertFrom-Json
+        $failedWorkflows = $recentWorkflows | Where-Object { $_.conclusion -ne "success" }
+        
+        Write-Host "Total workflows checked: $($recentWorkflows.Count)"
+        Write-Host "Failed workflows: $($failedWorkflows.Count)"
+        
+        if ($failedWorkflows.Count -gt 5) {
+          echo "health_status=degraded" >> $env:GITHUB_OUTPUT
+          echo "health_message=Multiple workflow failures detected" >> $env:GITHUB_OUTPUT
+        } elseif ($failedWorkflows.Count -gt 0) {
+          echo "health_status=warning" >> $env:GITHUB_OUTPUT
+          echo "health_message=Some workflow failures detected" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "health_status=healthy" >> $env:GITHUB_OUTPUT
+          echo "health_message=All workflows healthy" >> $env:GITHUB_OUTPUT
+        }
+        
+        echo "failed_count=$($failedWorkflows.Count)" >> $env:GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Check dependency updates
+      id: dependency_health
+      run: |
+        pip install pip-audit
+        $auditResults = pip-audit --format json | ConvertFrom-Json
+        
+        $vulnerabilities = $auditResults.Count
+        Write-Host "Vulnerabilities found: $vulnerabilities"
+        
+        if ($vulnerabilities -gt 0) {
+          echo "dependency_status=vulnerable" >> $env:GITHUB_OUTPUT
+          echo "dependency_message=$vulnerabilities vulnerabilities found in dependencies" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "dependency_status=secure" >> $env:GITHUB_OUTPUT
+          echo "dependency_message=No vulnerabilities found" >> $env:GITHUB_OUTPUT
+        }
+        
+        echo "vulnerability_count=$vulnerabilities" >> $env:GITHUB_OUTPUT
+    
+    - name: Generate health report
+      run: |
+        $report = @"
+        # Weekly Health Check Report
+        
+        **Date**: $(Get-Date -Format "yyyy-MM-dd")
+        **Repository**: ${{ github.repository }}
+        
+        ## Workflow Health
+        **Status**: ${{ steps.workflow_health.outputs.health_status }}
+        **Message**: ${{ steps.workflow_health.outputs.health_message }}
+        **Failed Workflows**: ${{ steps.workflow_health.outputs.failed_count }}
+        
+        ## Dependency Health
+        **Status**: ${{ steps.dependency_health.outputs.dependency_status }}
+        **Message**: ${{ steps.dependency_health.outputs.dependency_message }}
+        **Vulnerabilities**: ${{ steps.dependency_health.outputs.vulnerability_count }}
+        
+        ## Recommendations
+        $(
+          if ("${{ steps.workflow_health.outputs.health_status }}" -ne "healthy") {
+            "- Investigate workflow failures immediately"
+            "- Review recent changes"
+            "- Check for configuration issues"
+          }
+          if ("${{ steps.dependency_health.outputs.dependency_status }}" -ne "secure") {
+            "- Update vulnerable dependencies"
+            "- Review security advisories"
+            "- Test compatibility of updates"
+          }
+        )
+        
+        ---
+        *Generated by GitHub Actions*
+        "@
+        
+        $report | Out-File -FilePath "health-report.md" -Encoding utf8
+        Write-Host $report
+    
+    - name: Upload health report
+      uses: actions/upload-artifact@v4
+      with:
+        name: health-report-${{ github.run_number }}
+        path: health-report.md
+        retention-days: 30
+    
+    - name: Send health check notification
+      if: vars.SLACK_WEBHOOK_URL != ''
+      uses: slackapi/slack-github-action@v1.25.0
+      with:
+        payload: |
+          {
+            "text": "🏥 Weekly Health Check: ${{ steps.workflow_health.outputs.health_status }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "🏥 *Weekly Health Check*\n\n*Workflow Status*: ${{ steps.workflow_health.outputs.health_status }}\n*Failed Workflows*: ${{ steps.workflow_health.outputs.failed_count }}\n*Dependency Status*: ${{ steps.dependency_health.outputs.dependency_status }}\n*Vulnerabilities*: ${{ steps.dependency_health.outputs.vulnerability_count }}"
+                }
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  metrics-collection:
+    name: Collect CI/CD Metrics
+    runs-on: windows-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    steps:
+    - name: Collect workflow metrics
+      id: metrics
+      run: |
+        $metrics = @{
+          event_type = "${{ github.event_name }}"
+          repository = "${{ github.repository }}"
+          branch = "${{ github.ref_name }}"
+          actor = "${{ github.actor }}"
+          timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          run_id = "${{ github.run_id }}"
+          run_number = "${{ github.run_number }}"
+          workflow = "${{ github.workflow }}"
+        } | ConvertTo-Json
+        
+        $metrics | Out-File -FilePath "metrics.json" -Encoding utf8
+        echo "metrics_collected=true" >> $env:GITHUB_OUTPUT
+    
+    - name: Upload metrics
+      uses: actions/upload-artifact@v4
+      with:
+        name: metrics-${{ github.run_number }}
+        path: metrics.json
+        retention-days: 90
+
+  security-alerts:
+    name: Security Alerts Monitoring
+    runs-on: windows-latest
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run security scan
+      run: |
+        pip install bandit safety
+        bandit -r src/ -f json -o bandit-report.json || true
+        safety check --json --output safety-report.json || true
+    
+    - name: Analyze security results
+      id: security_analysis
+      run: |
+        $banditResults = Get-Content bandit-report.json -Raw | ConvertFrom-Json
+        $safetyResults = Get-Content safety-report.json -Raw | ConvertFrom-Json
+        
+        $banditIssues = if ($banditResults) { $banditResults.results.Count } else { 0 }
+        $safetyIssues = if ($safetyResults) { $safetyResults.Count } else { 0 }
+        
+        $totalIssues = $banditIssues + $safetyIssues
+        
+        Write-Host "Bandit issues: $banditIssues"
+        Write-Host "Safety issues: $safetyIssues"
+        Write-Host "Total security issues: $totalIssues"
+        
+        if ($totalIssues -gt 10) {
+          echo "security_status=critical" >> $env:GITHUB_OUTPUT
+        } elseif ($totalIssues -gt 0) {
+          echo "security_status=warning" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "security_status=secure" >> $env:GITHUB_OUTPUT
+        }
+        
+        echo "total_issues=$totalIssues" >> $env:GITHUB_OUTPUT
+        echo "bandit_issues=$banditIssues" >> $env:GITHUB_OUTPUT
+        echo "safety_issues=$safetyIssues" >> $env:GITHUB_OUTPUT
+    
+    - name: Send security alert
+      if: steps.security_analysis.outputs.security_status != 'secure' && vars.SLACK_WEBHOOK_URL != ''
+      uses: slackapi/slack-github-action@v1.25.0
+      with:
+        payload: |
+          {
+            "text": "🔒 Security Alert: ${{ steps.security_analysis.outputs.security_status }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "🔒 *Security Alert*\n\n*Status*: ${{ steps.security_analysis.outputs.security_status }}\n*Total Issues*: ${{ steps.security_analysis.outputs.total_issues }}\n*Bandit Issues*: ${{ steps.security_analysis.outputs.bandit_issues }}\n*Safety Issues*: ${{ steps.security_analysis.outputs.safety_issues }}\n*Branch*: ${{ github.ref_name }}\n*Commit*: ${{ github.sha }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Commit"
+                    },
+                    "url": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports-${{ github.run_number }}
+        path: |
+          bandit-report.json
+          safety-report.json
+        retention-days: 30

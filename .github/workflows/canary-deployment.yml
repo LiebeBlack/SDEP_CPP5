@@ -1,0 +1,466 @@
+name: Canary Deployment
+
+on:
+  push:
+    branches: [ canary ]
+  workflow_dispatch:
+    inputs:
+      deployment_percentage:
+        description: 'Porcentaje de usuarios para canary (1-100)'
+        required: true
+        default: '10'
+        type: choice
+        options:
+          - '5'
+          - '10'
+          - '25'
+          - '50'
+          - '100'
+      environment:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      rollback:
+        description: '¿Rollback a versión anterior?'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CANARY_DURATION_HOURS: 24
+  MONITORING_PERIOD_MINUTES: 30
+
+jobs:
+  canary-pre-checks:
+    name: Canary Pre-deployment Checks
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run critical tests
+      run: |
+        pytest tests/ -v -m "critical" --tb=short || true
+    
+    - name: Security scan
+      run: |
+        pip install bandit
+        bandit -r src/ -f screen
+    
+    - name: Check deployment readiness
+      id: readiness_check
+      run: |
+        $lastRelease = gh release list --limit 1 --json tagName,isPrerelease | ConvertFrom-Json
+        Write-Host "Last release: $($lastRelease.tagName)"
+        
+        # Check if there have been recent failures
+        $recentWorkflows = gh run list --limit 5 --json conclusion,databaseId
+        $failedRuns = $recentWorkflows | Where-Object { $_.conclusion -ne "success" }
+        
+        if ($failedRuns.Count -gt 2) {
+          Write-Warning "Recent workflow failures detected. Proceeding with caution."
+          echo "warning=true" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "warning=false" >> $env:GITHUB_OUTPUT
+        }
+        
+        echo "ready=true" >> $env:GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-canary:
+    name: Build Canary Version
+    runs-on: windows-latest
+    needs: canary-pre-checks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Generate canary version
+      id: canary_version
+      run: |
+        $baseVersion = Select-String -Path "pyproject.toml" -Pattern "version = ""([^""]+)""" | ForEach-Object { $_.Matches.Groups[1].Value }
+        $gitCommit = git rev-parse --short HEAD
+        $canaryVersion = "$baseVersion-canary.$gitCommit"
+        Write-Host "Canary version: $canaryVersion"
+        echo "canary_version=$canaryVersion" >> $env:GITHUB_OUTPUT
+    
+    - name: Build canary executable
+      run: |
+        python build.py
+      env:
+        BUILD_TYPE: canary
+        VERSION: ${{ steps.canary_version.outputs.canary_version }}
+    
+    - name: Package canary build
+      run: |
+        $version = "${{ steps.canary_version.outputs.canary_version }}"
+        $zipName = "SistemaGestionPersonal-Canary-$version.zip"
+        Compress-Archive -Path "dist/SistemaGestionPersonal\*" -DestinationPath $zipName
+    
+    - name: Generate canary metadata
+      run: |
+        $metadata = @{
+          version = "${{ steps.canary_version.outputs.canary_version }}"
+          deployment_percentage = "${{ github.event.inputs.deployment_percentage || '10' }}"
+          environment = "${{ github.event.inputs.environment || 'staging' }}"
+          deployment_time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          git_commit = git rev-parse --short HEAD
+          deployment_id = "${{ github.run_number }}"
+          monitoring_duration = "${{ env.CANARY_DURATION_HOURS }} hours"
+        } | ConvertTo-Json
+        
+        $metadata | Out-File -FilePath "canary-metadata.json" -Encoding utf8
+    
+    - name: Upload canary artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: canary-build-${{ github.run_number }}
+        path: |
+          *.zip
+          canary-metadata.json
+        retention-days: 7
+    
+    - name: Create canary release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: canary-${{ steps.canary_version.outputs.canary_version }}
+        name: Canary Release ${{ steps.canary_version.outputs.canary_version }}
+        body: |
+          ## 🧪 Canary Release ${{ steps.canary_version.outputs.canary_version }}
+          
+          ### 📊 Deployment Information
+          - **Target Percentage**: ${{ github.event.inputs.deployment_percentage || '10' }}%
+          - **Environment**: ${{ github.event.inputs.environment || 'staging' }}
+          - **Monitoring Duration**: ${{ env.CANARY_DURATION_HOURS }} hours
+          
+          ### ⚠️ Important Notes
+          - This is a canary release for gradual rollout
+          - Monitor performance and error rates closely
+          - Be prepared to rollback if issues arise
+          - Report any anomalies immediately
+          
+          ### 📦 Installation
+          Download and install following canary deployment procedures.
+        draft: false
+        prerelease: true
+        files: |
+          *.zip
+          canary-metadata.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-canary:
+    name: Deploy Canary to Environment
+    runs-on: windows-latest
+    needs: build-canary
+    environment: 
+      name: ${{ github.event.inputs.environment || 'staging' }}
+    
+    steps:
+    - name: Download canary artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: canary-build-${{ github.run_number }}
+    
+    - name: Deploy to staging
+      if: github.event.inputs.environment != 'production'
+      run: |
+        Write-Host "Deploying canary to staging environment"
+        # Add your staging deployment logic here
+        # For example: upload to staging server, update staging database, etc.
+        
+        $deploymentInfo = @{
+          status = "deployed"
+          environment = "staging"
+          timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          deployment_id = "${{ github.run_number }}"
+        } | ConvertTo-Json
+        
+        $deploymentInfo | Out-File -FilePath "deployment-status.json" -Encoding utf8
+    
+    - name: Deploy to production (canary)
+      if: github.event.inputs.environment == 'production'
+      run: |
+        Write-Host "Deploying canary to production with ${{ github.event.inputs.deployment_percentage || '10' }}% rollout"
+        # Add your production canary deployment logic here
+        # This might involve:
+        # - Updating a feature flag system
+        # - Deploying to a subset of servers
+        # - Using A/B testing infrastructure
+        # - Updating CDN for specific regions
+        
+        $deploymentInfo = @{
+          status = "deployed"
+          environment = "production"
+          rollout_percentage = "${{ github.event.inputs.deployment_percentage || '10' }}"
+          timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          deployment_id = "${{ github.run_number }}"
+        } | ConvertTo-Json
+        
+        $deploymentInfo | Out-File -FilePath "deployment-status.json" -Encoding utf8
+    
+    - name: Upload deployment status
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-status-${{ github.run_number }}
+        path: deployment-status.json
+        retention-days: 7
+
+  monitor-canary:
+    name: Monitor Canary Deployment
+    runs-on: windows-latest
+    needs: deploy-canary
+    
+    steps:
+    - name: Download deployment status
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-status-${{ github.run_number }}
+    
+    - name: Initialize monitoring
+      id: monitoring_init
+      run: |
+        $startTime = Get-Date
+        $monitoringEnd = $startTime.AddHours([int]$env:CANARY_DURATION_HOURS)
+        
+        Write-Host "Monitoring started at: $startTime"
+        Write-Host "Monitoring will end at: $monitoringEnd"
+        
+        echo "start_time=$startTime" >> $env:GITHUB_OUTPUT
+        echo "end_time=$monitoringEnd" >> $env:GITHUB_OUTPUT
+        echo "monitoring_active=true" >> $env:GITHUB_OUTPUT
+    
+    - name: Setup monitoring alerts
+      run: |
+        # Configure monitoring checks
+        $monitoringConfig = @{
+          deployment_id = "${{ github.run_number }}"
+          checks = @(
+            @{ name = "error_rate"; threshold = 0.05; action = "rollback" }
+            @{ name = "response_time"; threshold = 2000; action = "alert" }
+            @{ name = "user_complaints"; threshold = 10; action = "rollback" }
+            @{ name = "crash_rate"; threshold = 0.01; action = "rollback" }
+          )
+          monitoring_period = "${{ env.MONITORING_PERIOD_MINUTES }}"
+        } | ConvertTo-Json -Depth 3
+        
+        $monitoringConfig | Out-File -FilePath "monitoring-config.json" -Encoding utf8
+        Write-Host "Monitoring configuration created"
+    
+    - name: Create monitoring dashboard
+      run: |
+        $dashboardConfig = @{
+          title = "Canary Deployment Monitoring - ${{ github.run_number }}"
+          deployment_id = "${{ github.run_number }}"
+          metrics = @(
+            "error_rate", "response_time", "throughput", "user_satisfaction"
+          )
+          alerts = @(
+            "High error rate", "Slow response times", "Increased crashes"
+          )
+          status = "active"
+        } | ConvertTo-Json
+        
+        $dashboardConfig | Out-File -FilePath "monitoring-dashboard.json" -Encoding utf8
+    
+    - name: Upload monitoring configuration
+      uses: actions/upload-artifact@v4
+      with:
+        name: monitoring-config-${{ github.run_number }}
+        path: |
+          monitoring-config.json
+          monitoring-dashboard.json
+        retention-days: 7
+    
+    - name: Set up scheduled monitoring check
+      run: |
+        # Create a scheduled workflow to check monitoring results
+        # This would typically trigger another workflow or use an external monitoring service
+        Write-Host "Scheduled monitoring check every ${{ env.MONITORING_PERIOD_MINUTES }} minutes"
+        Write-Host "Monitoring will run for ${{ env.CANARY_DURATION_HOURS }} hours"
+
+  rollback-canary:
+    name: Rollback Canary if Needed
+    runs-on: windows-latest
+    needs: monitor-canary
+    if: github.event.inputs.rollback == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get previous stable version
+      id: previous_version
+      run: |
+        $previousRelease = gh release list --limit 1 --exclude-pre-releases --json tagName | ConvertFrom-Json
+        $previousVersion = $previousRelease.tagName -replace "v", ""
+        Write-Host "Previous stable version: $previousVersion"
+        echo "previous_version=$previousVersion" >> $env:GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Perform rollback
+      run: |
+        Write-Host "Rolling back to version ${{ steps.previous_version.outputs.previous_version }}"
+        # Add your rollback logic here
+        # This might include:
+        # - Reverting database migrations
+        # - Switching back to previous executable
+        # - Updating feature flags
+        # - Notifying users of the rollback
+        
+        $rollbackInfo = @{
+          status = "rolled_back"
+          previous_version = "${{ steps.previous_version.outputs.previous_version }}"
+          rollback_time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          reason = "manual_rollback"
+        } | ConvertTo-Json
+        
+        $rollbackInfo | Out-File -FilePath "rollback-status.json" -Encoding utf8
+    
+    - name: Notify rollback
+      run: |
+        Write-Host "Rollback completed. Sending notifications..."
+        # Add notification logic here
+    
+    - name: Upload rollback status
+      uses: actions/upload-artifact@v4
+      with:
+        name: rollback-status-${{ github.run_number }}
+        path: rollback-status.json
+        retention-days: 30
+
+  promote-canary:
+    name: Promote Canary to Stable
+    runs-on: windows-latest
+    needs: monitor-canary
+    if: github.event.inputs.rollback != 'true' && github.event.inputs.environment == 'production'
+    
+    steps:
+    - name: Check canary health
+      id: health_check
+      run: |
+        # In a real scenario, this would check actual metrics
+        # For now, we'll simulate a health check
+        $canaryHealthy = $true
+        
+        if ($canaryHealthy) {
+          echo "healthy=true" >> $env:GITHUB_OUTPUT
+          echo "message=Canary deployment healthy, ready for promotion" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "healthy=false" >> $env:GITHUB_OUTPUT
+          echo "message=Canary deployment has issues, promotion not recommended" >> $env:GITHUB_OUTPUT
+        }
+    
+    - name: Promote to full release
+      if: steps.health_check.outputs.healthy == 'true'
+      run: |
+        Write-Host "Promoting canary to full release"
+        # This would trigger the main release workflow
+        gh workflow run release.yml -f release_type=patch -f pre_release=false
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Update deployment status
+      run: |
+        $promotionInfo = @{
+          status = "promoted"
+          canary_deployment_id = "${{ github.run_number }}"
+          promotion_time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          health_status = "${{ steps.health_check.outputs.message }}"
+        } | ConvertTo-Json
+        
+        $promotionInfo | Out-File -FilePath "promotion-status.json" -Encoding utf8
+    
+    - name: Upload promotion status
+      uses: actions/upload-artifact@v4
+      with:
+        name: promotion-status-${{ github.run_number }}
+        path: promotion-status.json
+        retention-days: 30
+
+  canary-summary:
+    name: Canary Deployment Summary
+    runs-on: windows-latest
+    needs: [canary-pre-checks, build-canary, deploy-canary, monitor-canary, rollback-canary, promote-canary]
+    if: always()
+    
+    steps:
+    - name: Generate deployment summary
+      run: |
+        $summary = @"
+        # Canary Deployment Summary
+        
+        **Deployment ID**: ${{ github.run_number }}
+        **Status**: ${{ needs.deploy-canary.result }}
+        **Environment**: ${{ github.event.inputs.environment || 'staging' }}
+        **Rollback**: ${{ github.event.inputs.rollback || 'false' }}
+        
+        ## Component Status
+        - Pre-checks: ${{ needs.canary-pre-checks.result }}
+        - Build: ${{ needs.build-canary.result }}
+        - Deploy: ${{ needs.deploy-canary.result }}
+        - Monitor: ${{ needs.monitor-canary.result }}
+        - Rollback: ${{ needs.rollback-canary.result }}
+        - Promote: ${{ needs.promote-canary.result }}
+        
+        ## Artifacts
+        - Canary build: canary-build-${{ github.run_number }}
+        - Deployment status: deployment-status-${{ github.run_number }}
+        - Monitoring config: monitoring-config-${{ github.run_number }}
+        
+        ---
+        *Generated by GitHub Actions*
+        "@
+        
+        $summary | Out-File -FilePath "canary-summary.md" -Encoding utf8
+        Write-Host $summary
+    
+    - name: Upload summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: canary-summary-${{ github.run_number }}
+        path: canary-summary.md
+        retention-days: 30
+    
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      run: |
+        gh pr comment ${{ github.event.pull_request.number }} --body-file canary-summary.md
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

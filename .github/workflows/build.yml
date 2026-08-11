@@ -1,0 +1,254 @@
+name: Build Executable
+
+on:
+  push:
+    branches: [ main, develop, canary ]
+    tags: ['v*']
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Tipo de build'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
+          - canary
+
+jobs:
+  build-windows:
+    name: Build Windows Executable
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Create build directories
+      run: |
+        mkdir documents
+        mkdir photos
+        mkdir exports
+        mkdir dist
+        mkdir build
+    
+    - name: Generate version info
+      shell: pwsh
+      run: |
+        $version = if ("${{ github.ref }}" -like "refs/tags/*") {
+          "${{ github.ref }}" -replace "refs/tags/", ""
+        } else {
+          "1.0.0-${{ github.run_number }}"
+        }
+        
+        $gitCommit = git rev-parse --short HEAD
+        $gitBranch = "${{ github.ref_name }}"
+        $buildDate = Get-Date -Format "yyyy-MM-dd"
+        
+        @"
+        VERSION=$version
+        GIT_COMMIT=$gitCommit
+        GIT_BRANCH=$gitBranch
+        BUILD_DATE=$buildDate
+        BUILD_NUMBER=${{ github.run_number }}
+        "@ | Out-File -FilePath .env.build -Encoding utf8
+        
+        Write-Host "Build version: $version"
+        Write-Host "Git commit: $gitCommit"
+        Write-Host "Git branch: $gitBranch"
+    
+    - name: Build with PyInstaller
+      run: |
+        python build.py
+      env:
+        BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
+    
+    - name: Verify build
+      run: |
+        if (Test-Path "dist/SistemaGestionPersonal/SistemaGestionPersonal.exe") {
+          Write-Host "Build successful: Executable found"
+          Get-Item dist/SistemaGestionPersonal/SistemaGestionPersonal.exe | Select-Object Name, Length, LastWriteTime
+        } else {
+          Write-Error "Build failed: Executable not found"
+          exit 1
+        }
+    
+    - name: Package application
+      run: |
+        $version = if ("${{ github.ref }}" -like "refs/tags/*") {
+          "${{ github.ref }}" -replace "refs/tags/", ""
+        } else {
+          "1.0.0-canary-${{ github.run_number }}"
+        }
+        
+        $zipName = "SistemaGestionPersonal-Windows-$version.zip"
+        Compress-Archive -Path "dist/SistemaGestionPersonal\*" -DestinationPath $zipName
+        Write-Host "Package created: $zipName"
+    
+    - name: Generate build metadata
+      shell: pwsh
+      run: |
+        $version = if ("${{ github.ref }}" -like "refs/tags/*") {
+          "${{ github.ref }}" -replace "refs/tags/", ""
+        } else {
+          "1.0.0-canary-${{ github.run_number }}"
+        }
+        
+        $metadata = @{
+          version = $version
+          build_number = "${{ github.run_number }}"
+          git_commit = git rev-parse --short HEAD
+          git_branch = "${{ github.ref_name }}"
+          build_date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          build_type = "${{ github.event.inputs.build_type || 'release' }}"
+          python_version = python --version
+          platform = "Windows"
+          runner = "${{ runner.os }}"
+        } | ConvertTo-Json
+        
+        $metadata | Out-File -FilePath "build-metadata.json" -Encoding utf8
+        Write-Host "Build metadata generated"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-executable-${{ github.run_number }}
+        path: |
+          *.zip
+          build-metadata.json
+        retention-days: 30
+    
+    - name: Upload build logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ github.run_number }}
+        path: |
+          build/
+          *.log
+        retention-days: 7
+    
+    - name: Create GitHub Release (for tags)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          *.zip
+          build-metadata.json
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## 🚀 Release ${{ github.ref_name }}
+          
+          ### 📦 Installation
+          Download the Windows executable and extract to your desired location.
+          
+          ### ✨ Changes
+          See the release notes below for detailed changes.
+          
+          ### 🔧 System Requirements
+          - Windows 10/11
+          - 4GB RAM minimum
+          - 500MB disk space
+          
+          ### 📝 Build Information
+          - Version: ${{ github.ref_name }}
+          - Build: ${{ github.run_number }}
+          - Commit: ${{ github.sha }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-cross-platform:
+    name: Build Cross-Platform Packages
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.11']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install pyinstaller
+    
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --onefile --name "SistemaGestionPersonal" --add-data "src:src" src/main.py
+    
+    - name: Package application
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          tar -czf SistemaGestionPersonal-Linux-${{ github.run_number }}.tar.gz dist/
+        else
+          zip -r SistemaGestionPersonal-macOS-${{ github.run_number }}.zip dist/
+        fi
+    
+    - name: Upload cross-platform artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.os }}-executable-${{ github.run_number }}
+        path: |
+          *.tar.gz
+          *.zip
+        retention-days: 30
+
+  build-verification:
+    name: Verify Build
+    runs-on: windows-latest
+    needs: [build-windows]
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-executable-${{ github.run_number }}
+    
+    - name: Extract and test executable
+      run: |
+        Expand-Archive -Path "*.zip" -DestinationPath test-build
+        cd test-build
+        if (Test-Path "SistemaGestionPersonal.exe") {
+          Write-Host "Executable verified successfully"
+          # Add basic smoke test here if needed
+        } else {
+          Write-Error "Executable verification failed"
+          exit 1
+        }
+    
+    - name: Check file integrity
+      run: |
+        $files = Get-ChildItem -Recurse -File
+        foreach ($file in $files) {
+          $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256
+          Write-Host "$($file.Name): $($hash.Hash)"
+        }

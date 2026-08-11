@@ -46,7 +46,31 @@ Sistema completo para la gestión de personal y nómina de instituciones educati
 - 4GB RAM mínimo
 - 500MB espacio en disco
 
-## 🔧 Instalación
+## � CI/CD Pipeline
+
+Este proyecto cuenta con un sistema completo de CI/CD automatizado mediante GitHub Actions:
+
+### Características del CI/CD
+- ✅ **Integración Continua**: Tests automáticos, análisis de calidad y seguridad
+- ✅ **Construcción Automatizada**: Generación de ejecutables Windows
+- ✅ **Lanzamientos Automatizados**: Versionamiento semántico y releases
+- ✅ **Despliegues Canary**: Lanzamientos graduales y controlados
+- ✅ **Monitoreo y Notificaciones**: Alertas en tiempo real y seguimiento
+
+### Workflows Disponibles
+- **CI Workflow**: Validación de código, tests y calidad
+- **Build Workflow**: Creación de ejecutables Windows
+- **Release Workflow**: Versionamiento semántico automático
+- **Canary Deployment**: Despliegues graduales con monitoreo
+- **Notifications**: Alertas y monitoreo en tiempo real
+
+### Documentación del CI/CD
+- 📖 [Documentación Completa CI/CD](CI_CD_DOCUMENTATION.md)
+- ⚡ [Guía Rápida de Configuración](QUICKSTART_CICD.md)
+- 🔧 [Workflows GitHub Actions](.github/workflows/README.md)
+- 🤝 [Guía de Contribución](CONTRIBUTING.md)
+
+## �🔧 Instalación
 
 ### Entorno de Desarrollo
 

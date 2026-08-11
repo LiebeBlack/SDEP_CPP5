@@ -1,0 +1,191 @@
+# GitHub Repository Settings Configuration
+# This file documents the recommended settings for the repository
+
+# Repository Settings
+repository:
+  name: "SDEP_CPP5"
+  description: "Sistema de Gestión de Personal y Nómina para Instituciones Educativas"
+  visibility: "private"  # Change to "public" if needed
+  has_issues: true
+  has_projects: true
+  has_wiki: false
+  has_downloads: true
+
+# Branch Protection Rules
+branch_protection:
+  main:
+    required_status_checks:
+      strict: true
+      contexts:
+        - "Continuous Integration / Quality Checks"
+        - "Continuous Integration / Test Suite"
+        - "Continuous Integration / Quality Gate"
+        - "Build Executable / Build Windows"
+    enforce_admins: true
+    required_pull_request_reviews:
+      required_approving_review_count: 1
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: true
+    restrictions:
+      users: []
+      teams: ["admins"]
+    allow_force_pushes: false
+    allow_deletions: false
+
+  develop:
+    required_status_checks:
+      strict: false
+      contexts:
+        - "Continuous Integration / Quality Checks"
+        - "Continuous Integration / Test Suite"
+    enforce_admins: false
+    required_pull_request_reviews:
+      required_approving_review_count: 1
+      dismiss_stale_reviews: false
+      require_code_owner_reviews: false
+    restrictions:
+      users: []
+      teams: ["developers"]
+    allow_force_pushes: false
+    allow_deletions: false
+
+  canary:
+    required_status_checks:
+      strict: false
+      contexts:
+        - "Continuous Integration / Quality Checks"
+        - "Canary Deployment / Canary Pre-deployment Checks"
+    enforce_admins: false
+    required_pull_request_reviews:
+      required_approving_review_count: 0
+    restrictions:
+      users: []
+      teams: ["developers", "devops"]
+    allow_force_pushes: true
+    allow_deletions: false
+
+# Environment Configuration
+environments:
+  staging:
+    protected: true
+    wait_timer: 0
+    reviewers:
+      users: ["devops-lead"]
+      teams: ["devops"]
+    deployment_branches:
+      - "canary"
+
+  production:
+    protected: true
+    wait_timer: 30  # 30 minutes wait timer
+    reviewers:
+      users: ["tech-lead", "devops-lead"]
+      teams: ["devops", "admins"]
+    deployment_branches:
+      - "main"
+
+# Required Secrets (configure in GitHub repository settings)
+secrets:
+  # Authentication
+  GITHUB_TOKEN: "automatically_provided_by_github_actions"
+  SONAR_TOKEN: "your_sonarqube_token_here"
+  SONAR_HOST_URL: "https://sonarqube.example.com"
+  
+  # Notifications - Slack
+  SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+  
+  # Notifications - Microsoft Teams
+  TEAMS_WEBHOOK_URL: "https://outlook.office.com/webhook/YOUR-WEBHOOK-URL"
+  
+  # Notifications - Email
+  SMTP_SERVER: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USERNAME: "your_email@gmail.com"
+  SMTP_PASSWORD: "your_app_password"
+  SMTP_FROM: "noreply@yourdomain.com"
+
+# Required Variables (configure in GitHub repository settings)
+variables:
+  NOTIFICATION_EMAIL: "team@yourdomain.com"
+  CANARY_DURATION_HOURS: "24"
+  MONITORING_PERIOD_MINUTES: "30"
+
+# Repository Topics
+topics:
+  - "python"
+  - "desktop-application"
+  - "customtkinter"
+  - "sqlalchemy"
+  - "ci-cd"
+  - "github-actions"
+  - "windows"
+  - "payroll"
+  - "hr-management"
+
+# Repository Labels
+labels:
+  - name: "bug"
+    color: "d73a4a"
+    description: "Something isn't working"
+  - name: "critical"
+    color: "b60205"
+    description: "Critical issue requiring immediate attention"
+  - name: "enhancement"
+    color: "a2eeef"
+    description: "New feature or request"
+  - name: "documentation"
+    color: "0075ca"
+    description: "Improvements or additions to documentation"
+  - name: "workflow-failure"
+    color: "e11d21"
+    description: "CI/CD workflow failure"
+  - name: "security"
+    color: "d93f0b"
+    description: "Security vulnerability or concern"
+  - name: "canary"
+    color: "fbca04"
+    description: "Related to canary deployment"
+  - name: "release"
+    color: "1e76e5"
+    description: "Release related issue or PR"
+  - name: "performance"
+    color: "5319e7"
+    description: "Performance improvement or issue"
+  - name: "good first issue"
+    color: "7057ff"
+    description: "Good for newcomers"
+  - name: "help wanted"
+    color: "008672"
+    description: "Help requested"
+
+# Webhooks (optional - configure if needed)
+webhooks:
+  - url: "https://your-monitoring-service.com/webhook"
+    content_type: "json"
+    insecure_ssl: false
+    events:
+      - "push"
+      - "pull_request"
+      - "release"
+      - "workflow_run"
+
+# Repository Rules (GitHub Rulesets)
+rulesets:
+  - name: "Branch Rules"
+    target: "branch"
+    enforcement: "active"
+    rules:
+      - type: "deletion"
+        disable: true
+      - type: "non_fast_forward"
+        disable: true
+      - type: "pull_request"
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_review: true
+      - type: "status_check"
+        context: "Continuous Integration / Quality Gate"
+        required: true
+      - type: "status_check"
+        context: "Build Executable / Build Windows"
+        required: true

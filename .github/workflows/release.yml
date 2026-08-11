@@ -227,18 +227,9 @@ jobs:
         draft: false
         prerelease: ${{ needs.version-analysis.outputs.is_pre_release == 'true' }}
         generate_release_notes: true
-        files: |
-          *.zip
-          *.tar.gz
-          build-metadata.json
+        # Files will be added by build workflow after this release is created
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Trigger build workflow
-      run: |
-        gh workflow run build.yml -f build_type=release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create-canary-release:
     name: Create Canary Release

@@ -1,50 +1,74 @@
 # 🚀 GitHub Actions Workflows
 
-Sistema simplificado de CI/CD para el Sistema de Gestión de Personal.
+Sistema de CI/CD corregido y mejorado para el Sistema de Gestión de Personal.
 
 ## 📁 Workflows
 
-| Workflow | Propósito | Trigger |
-|----------|-----------|---------|
-| [build.yml](build.yml) | Construir ejecutable y crear pre-releases | Push a main/develop, manual |
-| [release.yml](release.yml) | Crear releases oficiales con ejecutable | Push de tag (v*), manual |
+| Workflow | Propósito | Trigger | Ejecutable en Release |
+|----------|-----------|---------|----------------------|
+| [build.yml](build.yml) | Construir ejecutable + Pre-releases | Push a main/develop, manual | ✅ Sí (develop) |
+| [release.yml](release.yml) | Crear releases oficiales | Push a main, manual | ✅ Sí |
+
+## ✅ Correcciones Realizadas
+
+### Build Workflow
+- ✅ **Permisos correctos**: `contents: write` para crear releases
+- ✅ **Validación de archivos**: Verifica que `src/main.py` existe
+- ✅ **Hidden imports**: Agregados todos los imports necesarios
+- ✅ **Validación de ejecutable**: Verifica que se creó correctamente
+- ✅ **Validación de ZIP**: Verifica que el ZIP se creó correctamente
+- ✅ **Logs detallados**: Muestra tamaños de archivos para debugging
+- ✅ **Bandera --clean**: Limpia builds anteriores
+
+### Release Workflow
+- ✅ **Permisos correctos**: `contents: write` para crear releases
+- ✅ **Validación de archivos**: Verifica que `src/main.py` existe
+- ✅ **Hidden imports**: Agregados todos los imports necesarios
+- ✅ **Validación de ejecutable**: Verifica que se creó correctamente
+- ✅ **Validación de ZIP**: Verifica que el ZIP se creó correctamente
+- ✅ **Logs detallados**: Muestra tamaños de archivos para debugging
+- ✅ **Versionado automático**: Usa run_number para versiones automáticas
 
 ## 🎯 Uso Simple
 
-### 1. Desarrollo (Automatic Pre-releases)
+### 1. Desarrollo - Pre-releases Automáticas
 ```bash
-# Push a develop - crea pre-release automáticamente
+# Push a develop - crea pre-release automáticamente con ejecutable
 git push origin develop
-# → Crea pre-release: dev-1, dev-2, dev-3...
-# → Incluye ejecutable Windows
+# → Pre-release: dev-1, dev-2, dev-3...
+# → Incluye ejecutable Windows en ZIP
 ```
 
-### 2. Release Oficial
+### 2. Main Branch - Releases Automáticos
 ```bash
-# Crear tag de versión oficial
-git tag v1.0.0
-git push origin v1.0.0
-# → Crea release oficial v1.0.0
-# → Incluye ejecutable Windows
+# Push a main - crea release automáticamente con ejecutable
+git push origin main
+# → Release: 1.0.0-1, 1.0.0-2, 1.0.0-3...
+# → Incluye ejecutable Windows en ZIP
 ```
 
-### 3. Manual Trigger
+### 3. Release Oficial (Manual)
 ```bash
-# Trigger manual desde GitHub Actions UI
-gh workflow run <workflow-name>
+# Manual trigger desde GitHub Actions UI
+# Ingresar versión: ej: 1.0.0
+# → Release oficial con versión específica
+# → Incluye ejecutable Windows en ZIP
 ```
 
-## ✅ Características
+## ✅ Características Mejoradas
 
-- **Automático**: Cada push a develop crea pre-release
-- **Pre-releases**: Todos los releases de develop son pre-releases
-- **Ejecutables**: Cada release incluye el ejecutable Windows
-- **Simples**: Sin tests automáticos que pueden fallar
-- **Robustos**: Solo construcción y releases
+- **Ejecutables garantizados**: Validación en cada paso
+- **Hidden imports completos**: customtkinter, PIL, reportlab, SQLAlchemy, pydantic, etc.
+- **Debugging mejorado**: Logs detallados con tamaños de archivos
+- **Pre-releases automáticos**: Cada push a develop crea release
+- **Releases automáticos**: Cada push a main crea release
+- **Permisos correctos**: `contents: write` para crear releases
+- **Limpieza de builds**: Bandera `--clean` en PyInstaller
 
 ## 📝 Notas
 
-- **Develop branch**: Crea pre-releases automáticas (dev-1, dev-2, etc.)
-- **Main branch**: Solo construye ejecutables (sin releases automáticos)
-- **Releases oficiales**: Solo con tags (v1.0.0, v1.0.1, etc.)
+- **Develop branch**: Crea pre-releases automáticas (dev-X) con ejecutable
+- **Main branch**: Crea releases automáticos (1.0.0-X) con ejecutable
 - **Todos los releases incluyen**: Ejecutable Windows comprimido en ZIP
+- **Validación completa**: Cada paso verifica que el archivo se creó correctamente
+- **Logs detallados**: Muestra tamaños de archivos para facilitar debugging

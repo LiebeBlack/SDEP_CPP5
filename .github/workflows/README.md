@@ -1,161 +1,56 @@
 # 🚀 GitHub Actions Workflows
 
-This directory contains the GitHub Actions workflows for automated CI/CD of the Sistema de Gestión de Personal.
+Sistema simplificado de CI/CD para el Sistema de Gestión de Personal.
 
-## 📁 Workflow Files
+## 📁 Workflows
 
-| Workflow | Purpose | Triggers |
-|----------|---------|----------|
-| [ci.yml](ci.yml) | Continuous Integration - Testing | Push to main/develop/canary, Pull Requests |
-| [build.yml](build.yml) | Build Executables - Windows and Cross-platform | Push, Tags, Manual Dispatch |
-| [release.yml](release.yml) | Automated Releases - Semantic Versioning | Push to main, Manual Dispatch |
-| [canary-deployment.yml](canary-deployment.yml) | Canary Deployments - Gradual Rollout | Push to canary, Manual Dispatch |
-| [notifications.yml](notifications.yml) | Notifications and Monitoring | All workflow events, Schedule |
+| Workflow | Propósito | Trigger |
+|----------|-----------|---------|
+| [ci.yml](ci.yml) | Tests básicos | Push a main/develop, PR |
+| [build.yml](build.yml) | Construir ejecutable Windows | Push a main/develop, manual |
+| [release.yml](release.yml) | Crear release con ejecutable | Push de tag (v*), manual |
+| [canary-deployment.yml](canary-deployment.yml) | Canary deployment | Push a canary, manual |
 
-## 🎯 Quick Start
+## 🎯 Uso Simple
 
-### 1. Initial Setup
-
-Configure the required secrets and variables in your GitHub repository:
-
-**Required Secrets:**
-- `SLACK_WEBHOOK_URL` - Slack incoming webhook (optional)
-- `TEAMS_WEBHOOK_URL` - Microsoft Teams webhook (optional)
-- `SMTP_SERVER` - SMTP server for email notifications (optional)
-- `SMTP_PORT` - SMTP port (default: 587)
-- `SMTP_USERNAME` - SMTP authentication username (optional)
-- `SMTP_PASSWORD` - SMTP authentication password (optional)
-- `SMTP_FROM` - Sender email address (optional)
-
-**Required Variables:**
-- `NOTIFICATION_EMAIL` - Default email for notifications (optional)
-
-### 2. Branch Protection
-
-Configure branch protection rules:
-- **main**: Require PR reviews, status checks (CI, Build, Quality Gate)
-- **develop**: Require PR reviews, status checks (CI)
-- **canary**: Require status checks (CI, Canary Pre-checks)
-
-### 3. Environment Setup
-
-Create environments in GitHub repository settings:
-- **staging**: For canary deployments
-- **production**: For production deployments
-
-## 🔄 Workflow Usage
-
-### Automatic Triggers
-
-Most workflows run automatically based on Git events:
-
+### 1. Desarrollo Normal
 ```bash
-# Push to main - triggers CI, Build, Release
-git push origin main
-
-# Push to develop - triggers CI, Build
+# Push a develop - ejecuta tests
 git push origin develop
 
-# Push to canary - triggers CI, Build, Canary Deployment
+# Create PR - ejecuta tests
+```
+
+### 2. Crear Release
+```bash
+# Crear tag - ejecuta build y crea release
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### 3. Canary Deployment
+```bash
+# Push a canary - crea canary release
 git push origin canary
-
-# Create PR - triggers CI, Notifications
-gh pr create --title "New feature" --body "Description"
 ```
 
-### Manual Triggers
-
-Use GitHub CLI to manually trigger workflows:
-
+### 4. Manual Trigger
 ```bash
-# Trigger build with specific type
-gh workflow run build.yml -f build_type=release
-
-# Trigger release with version type
-gh workflow run release.yml -f release_type=minor -f pre_release=false
-
-# Trigger canary deployment
-gh workflow run canary-deployment.yml -f deployment_percentage=10 -f environment=staging
-
-# Trigger with rollback
-gh workflow run canary-deployment.yml -f rollback=true
+# Trigger manual desde GitHub Actions UI
+# o usando GitHub CLI
+gh workflow run <workflow-name>
 ```
 
-## 📊 Workflow Status
+## ✅ Características
 
-View workflow status and logs:
+- **Simples**: Sin análisis complejos de código
+- **Robustos**: Solo lo esencial para funcionar
+- **Confiables**: Menos puntos de fallo
+- **Rápidos**: Ejecución mínima
 
-```bash
-# List recent workflow runs
-gh run list
+## � Notas
 
-# View specific run
-gh run view <run-id>
-
-# View logs
-gh run view <run-id> --log
-
-# Download artifacts
-gh run download <run-id>
-```
-
-## 🧪 Testing Locally
-
-Before pushing, test workflows locally:
-
-```bash
-# Run tests
-pytest tests/ -v
-
-# Run quality checks
-black --check src/
-isort --check-only src/
-flake8 src/
-pylint src/
-
-# Build executable
-python build.py
-```
-
-## 🚨 Troubleshooting
-
-### Workflow Failures
-
-1. Check the specific job that failed
-2. Review error logs: `gh run view <run-id> --log`
-3. Fix the issue locally
-4. Commit and push the fix
-
-### Common Issues
-
-- **CI fails**: Check code quality and test failures
-- **Build fails**: Verify dependencies and build script
-- **Release fails**: Check git tags and permissions
-- **Canary fails**: Verify environment configuration
-
-## 📚 Documentation
-
-For detailed documentation, see:
-- [CI_CD_DOCUMENTATION.md](../../CI_CD_DOCUMENTATION.md) - Complete CI/CD documentation
-- [README.md](../../README.md) - Project documentation
-- [ESTRUCTURA_PROYECTO_COMPLETO.md](../../ESTRUCTURA_PROYECTO_COMPLETO.md) - Project structure
-
-## 🔐 Security Notes
-
-- Never commit secrets to the repository
-- Use GitHub Secrets for sensitive data
-- Rotate tokens regularly
-- Review workflow permissions
-- Monitor security reports
-
-## 📞 Support
-
-For issues or questions:
-- Create a GitHub Issue
-- Contact the DevOps team
-- Check workflow logs for errors
-
----
-
-**Last Updated**: 2026-08-11  
-**Workflow Version**: 1.0.0
+- Los releases solo se crean cuando hay tags (v1.0.0, v1.0.1, etc.)
+- Los builds se ejecutan en cada push a main/develop
+- Los canary releases son pre-releases automáticas
+- Sin notificaciones complejas, solo lo básico

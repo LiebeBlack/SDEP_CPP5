@@ -1,346 +1,44 @@
-name: Automated Release
+name: Release
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Tipo de release'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
-      pre_release:
-        description: '¿Es pre-release?'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  version-analysis:
-    name: Analyze Commits & Determine Version
+  release:
     runs-on: windows-latest
-    outputs:
-      version_type: ${{ steps.version_check.outputs.version_type }}
-      new_version: ${{ steps.version_bump.outputs.new_version }}
-      is_pre_release: ${{ steps.version_check.outputs.is_pre_release }}
-      should_release: ${{ steps.version_check.outputs.should_release }}
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
+        python-version: '3.11'
     
-    - name: Configure Git
+    - name: Install dependencies
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        pip install -r requirements.txt
+        pip install pyinstaller
     
-    - name: Get current version
-      id: current_version
+    - name: Build executable
       run: |
-        $version = Select-String -Path "pyproject.toml" -Pattern '^version = "([^"]+)"' | ForEach-Object { $_.Matches.Groups[1].Value }
-        Write-Host "Current version: $version"
-        echo "version=$version" >> $env:GITHUB_OUTPUT
+        pyinstaller --onefile --windowed --name=SistemaGestionPersonal --add-data="src;src" src/main.py
     
-    - name: Analyze commits since last release
-      id: commit_analysis
-      run: |
-        $lastTag = git describe --tags --abbrev=0 2>$null || echo "v0.0.0"
-        Write-Host "Last tag: $lastTag"
-        
-        $commits = git log $lastTag..HEAD --pretty=format:"%s" --no-merges
-        $commitCount = ($commits | Measure-Object).Count
-        Write-Host "Commits since last release: $commitCount"
-        
-        $hasBreaking = $commits | Select-String -Pattern "BREAKING CHANGE|breaking change" -Quiet
-        $hasFeatures = $commits | Select-String -Pattern "^(feat|feature)" -Quiet
-        $hasFixes = $commits | Select-String -Pattern "^(fix|bugfix)" -Quiet
-        
-        $versionType = "patch"
-        if ($hasBreaking) { $versionType = "major" }
-        elseif ($hasFeatures) { $versionType = "minor" }
-        
-        Write-Host "Detected version type: $versionType"
-        echo "version_type=$versionType" >> $env:GITHUB_OUTPUT
-        echo "commit_count=$commitCount" >> $env:GITHUB_OUTPUT
-        echo "commits=$commits" >> $env:GITHUB_OUTPUT
+    - name: Create package
+      run: Compress-Archive -Path dist\SistemaGestionPersonal.exe -DestinationPath SistemaGestionPersonal-Windows.zip
     
-    - name: Determine if release should happen
-      id: version_check
-      run: |
-        $commitCount = "${{ steps.commit_analysis.outputs.commit_count }}"
-        $versionType = "${{ steps.commit_analysis.outputs.version_type }}"
-        
-        $shouldRelease = "true"  # Always release on push to main
-        $isPreRelease = "false"
-        
-        # Check if branch is canary or if manually triggered as pre-release
-        if ("${{ github.ref_name }}" -eq "canary" -or "${{ github.event.inputs.pre_release }}" -eq "true") {
-          $isPreRelease = "true"
-        }
-        
-        # Override with manual input if provided
-        if ("${{ github.event.inputs.release_type }}") {
-          $versionType = "${{ github.event.inputs.release_type }}"
-          $shouldRelease = "true"
-        }
-        
-        Write-Host "Should release: $shouldRelease"
-        Write-Host "Version type: $versionType"
-        Write-Host "Is pre-release: $isPreRelease"
-        
-        echo "version_type=$versionType" >> $env:GITHUB_OUTPUT
-        echo "is_pre_release=$isPreRelease" >> $env:GITHUB_OUTPUT
-        echo "should_release=$shouldRelease" >> $env:GITHUB_OUTPUT
-    
-    - name: Bump version
-      id: version_bump
-      if: steps.version_check.outputs.should_release == 'true'
-      run: |
-        $currentVersion = "${{ steps.current_version.outputs.version }}"
-        $versionType = "${{ steps.version_check.outputs.version_type }}"
-        $isPreRelease = "${{ steps.version_check.outputs.is_pre_release }}"
-        
-        $versionParts = $currentVersion -split '\.'
-        $major = [int]$versionParts[0]
-        $minor = [int]$versionParts[1]
-        $patch = [int]$versionParts[2]
-        
-        switch ($versionType) {
-          "major" { $major++; $minor = 0; $patch = 0 }
-          "minor" { $minor++; $patch = 0 }
-          "patch" { $patch++ }
-        }
-        
-        $newVersion = "$major.$minor.$patch"
-        
-        if ($isPreRelease -eq "true") {
-          $newVersion = "$newVersion-rc.${{ github.run_number }}"
-        }
-        
-        Write-Host "New version: $newVersion"
-        echo "new_version=$newVersion" >> $env:GITHUB_OUTPUT
-
-  update-version:
-    name: Update Version in Files
-    runs-on: windows-latest
-    needs: version-analysis
-    if: needs.version-analysis.outputs.should_release == 'true'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Configure Git
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    
-    - name: Update version in pyproject.toml
-      run: |
-        $newVersion = "${{ needs.version-analysis.outputs.new_version }}"
-        (Get-Content pyproject.toml) -replace 'version = "[^"]+"', "version = `"$newVersion`"" | Set-Content pyproject.toml
-        Write-Host "Updated version to $newVersion in pyproject.toml"
-    
-    - name: Update version in README.md
-      run: |
-        $newVersion = "${{ needs.version-analysis.outputs.new_version }}"
-        (Get-Content README.md) -replace '\*\*Versión\*\*: [0-9]+\.[0-9]+\.[0-9]+', "**Versión**: $newVersion" | Set-Content README.md
-        Write-Host "Updated version to $newVersion in README.md"
-    
-    - name: Commit version changes
-      run: |
-        git add pyproject.toml README.md
-        git commit -m "chore(release): bump version to ${{ needs.version-analysis.outputs.new_version }}"
-        git push origin ${{ github.ref_name }}
-    
-    - name: Create version tag
-      run: |
-        $newVersion = "${{ needs.version-analysis.outputs.new_version }}"
-        $tagName = "v$newVersion"
-        git tag -a $tagName -m "Release $tagName"
-        git push origin $tagName
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  create-release:
-    name: Create GitHub Release
-    runs-on: windows-latest
-    needs: [version-analysis, update-version]
-    if: needs.version-analysis.outputs.should_release == 'true'
-    permissions:
-      contents: write
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Generate changelog
-      id: changelog
-      run: |
-        $lastTag = git describe --tags --abbrev=0 2>$null || echo "v0.0.0"
-        $commits = git log $lastTag..HEAD --pretty=format:"%h - %s (%an)" --no-merges
-        
-        $changelog = @"
-        ## 🎉 Release ${{ needs.version-analysis.outputs.new_version }}
-        
-        ### 📝 Changes
-        $commits
-        
-        ### 🚀 Installation
-        Download the latest executable from the assets below.
-        
-        ### 🔧 System Requirements
-        - Windows 10/11
-        - 4GB RAM minimum
-        - 500MB disk space
-        
-        ---
-        
-        **Full Changelog**: https://github.com/${{ github.repository }}/compare/$lastTag...v${{ needs.version-analysis.outputs.new_version }}
-        "@
-        
-        $changelog | Out-File -FilePath "CHANGELOG.md" -Encoding utf8
-        echo "changelog_path=CHANGELOG.md" >> $env:GITHUB_OUTPUT
-    
-    - name: Create GitHub Release
+    - name: Create release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ needs.version-analysis.outputs.new_version }}
-        name: Release v${{ needs.version-analysis.outputs.new_version }}
-        body_path: ${{ steps.changelog.outputs.changelog_path }}
+        files: SistemaGestionPersonal-Windows.zip
         draft: false
-        prerelease: ${{ needs.version-analysis.outputs.is_pre_release == 'true' }}
+        prerelease: false
         generate_release_notes: true
-        # Files will be added by build workflow after this release is created
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  create-canary-release:
-    name: Create Canary Release
-    runs-on: windows-latest
-    if: github.ref == 'refs/heads/canary'
-    permissions:
-      contents: write
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Generate canary version
-      id: canary_version
-      run: |
-        $baseVersion = Select-String -Path "pyproject.toml" -Pattern "version = ""([^""]+)""" | ForEach-Object { $_.Matches.Groups[1].Value }
-        $canaryVersion = "$baseVersion-canary.${{ github.run_number }}"
-        Write-Host "Canary version: $canaryVersion"
-        echo "canary_version=$canaryVersion" >> $env:GITHUB_OUTPUT
-    
-    - name: Create canary tag
-      run: |
-        $tagName = "canary-${{ steps.canary_version.outputs.canary_version }}"
-        git tag -a $tagName -m "Canary release $tagName"
-        git push origin $tagName
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Create Canary Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: canary-${{ steps.canary_version.outputs.canary_version }}
-        name: Canary Release ${{ steps.canary_version.outputs.canary_version }}
-        body: |
-          ## 🧪 Canary Release ${{ steps.canary_version.outputs.canary_version }}
-          
-          This is a canary release for testing purposes. Use with caution.
-          
-          ### ⚠️ Warning
-          - This release may contain unstable features
-          - Not recommended for production use
-          - Report any issues found
-          
-          ### 📦 Installation
-          Download and test at your own risk.
-        draft: false
-        prerelease: true
-        generate_release_notes: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Trigger canary build
-      run: |
-        gh workflow run build.yml -f build_type=canary
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  post-release:
-    name: Post Release Tasks
-    runs-on: windows-latest
-    needs: [create-release]
-    if: needs.version-analysis.outputs.should_release == 'true' && needs.version-analysis.outputs.is_pre_release == 'false'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Update CHANGELOG.md
-      run: |
-        $newVersion = "${{ needs.version-analysis.outputs.new_version }}"
-        $releaseDate = Get-Date -Format "yyyy-MM-dd"
-        
-        $changelogEntry = @"
-        ## [$newVersion] - $releaseDate
-        
-        ### Added
-        - Feature additions from this release
-        
-        ### Changed
-        - Changes from this release
-        
-        ### Fixed
-        - Bug fixes from this release
-        
-        "@
-        
-        if (Test-Path "CHANGELOG.md") {
-          $existingContent = Get-Content CHANGELOG.md -Raw
-          $changelogEntry + $existingContent | Set-Content CHANGELOG.md
-        } else {
-          $changelogEntry | Set-Content CHANGELOG.md
-        }
-    
-    - name: Commit CHANGELOG
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add CHANGELOG.md
-        git commit -m "docs(changelog): update CHANGELOG for v${{ needs.version-analysis.outputs.new_version }}"
-        git push origin ${{ github.ref_name }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Create merge to develop
-      if: github.ref == 'refs/heads/main'
-      run: |
-        gh api --method POST repos/${{ github.repository }}/merges \
-          -f base=develop \
-          -f head=main \
-          -f commit_message="Merge release ${{ needs.version-analysis.outputs.new_version }} into develop"
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,124 +1,111 @@
-# ⚡ Quick Start Guide - CI/CD Setup
+# ⚡ Quick Start Guide - CI/CD Simplificado
 
-This guide will help you quickly set up and configure the CI/CD workflows for your repository.
+Guía rápida para el sistema CI/CD simplificado del proyecto.
 
-## 🚀 Setup in 5 Minutes
+## 🚀 Configuración en 2 minutos
 
-### Step 1: Configure GitHub Secrets (2 minutes)
+### 1. Configurar GitHub Secrets (Opcional)
 
-Go to your repository settings: `Settings > Secrets and variables > Actions`
+Ve a `Settings > Secrets and variables > Actions`:
 
-#### Required Secrets
-```yaml
-# SonarQube (if using)
-SONAR_TOKEN: your_sonarqube_token
-SONAR_HOST_URL: https://sonarqube.example.com
+**Solo si quieres notificaciones:**
+- `SLACK_WEBHOOK_URL` - Slack webhook (opcional)
+- `SMTP_SERVER` - Servidor SMTP (opcional)
+- `SMTP_USERNAME` - Usuario SMTP (opcional)
+- `SMTP_PASSWORD` - Contraseña SMTP (opcional)
 
-# Slack Notifications (optional but recommended)
-SLACK_WEBHOOK_URL: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+### 2. Configurar Branch Protection (Recomendado)
 
-# Email Notifications (optional)
-SMTP_SERVER: smtp.gmail.com
-SMTP_PORT: 587
-SMTP_USERNAME: your_email@gmail.com
-SMTP_PASSWORD: your_app_password
-SMTP_FROM: noreply@yourdomain.com
-```
+Ve a `Settings > Branches`:
 
-#### How to get Slack Webhook URL
-1. Go to https://api.slack.com/apps
-2. Create a new app → "Incoming Webhooks"
-3. Activate incoming webhooks
-4. Add new webhook to your workspace
-5. Copy the webhook URL
+**Main Branch:**
+- ✅ Require pull request reviews
+- ✅ Require status checks: "CI"
+- ✅ Require branches to be up to date
 
-### Step 2: Configure Branch Protection (1 minute)
+## 📋 Workflows Simplificados
 
-Go to: `Settings > Branches`
+### CI Workflow (`ci.yml`)
+- **Trigger**: Push a main/develop, Pull Requests
+- **Función**: Ejecuta tests básicos
+- **Duración**: ~2-3 minutos
 
-#### Main Branch Protection
-- ✅ Require pull request reviews before merging
-- ✅ Require status checks to pass before merging
-- ✅ Require branches to be up to date before merging
-- 🔒 Require: `Continuous Integration / Quality Gate`
-- 🔒 Require: `Build Executable / Build Windows`
+### Build Workflow (`build.yml`)
+- **Trigger**: Push a main/develop, Manual
+- **Función**: Construye ejecutable Windows
+- **Output**: Archivo ZIP con ejecutable
+- **Duración**: ~5-7 minutos
 
-#### Develop Branch Protection
-- ✅ Require pull request reviews before merging
-- ✅ Require status checks to pass before merging
-- 🔒 Require: `Continuous Integration / Test Suite`
+### Release Workflow (`release.yml`)
+- **Trigger**: Push de tag (v*), Manual
+- **Función**: Crea release con ejecutable
+- **Output**: GitHub Release con ZIP
+- **Duración**: ~5-7 minutos
 
-### Step 3: Create Environments (1 minute)
+### Canary Workflow (`canary-deployment.yml`)
+- **Trigger**: Push a canary, Manual
+- **Función**: Crea canary release
+- **Output**: Pre-release con ZIP
+- **Duración**: ~5-7 minutos
 
-Go to: `Settings > Environments`
+## 🎯 Flujo de Trabajo
 
-#### Create "staging" Environment
-- No protection rules needed
-- Add deployment branch: `canary`
-
-#### Create "production" Environment
-- Required reviewers: Add your team
-- Wait timer: 30 minutes (recommended)
-- Add deployment branch: `main`
-
-### Step 4: Test Workflows (1 minute)
-
+### Desarrollo Normal
 ```bash
-# Push a test commit to trigger CI
-git commit --allow-empty -m "test: trigger CI workflow"
-git push origin main
+# 1. Trabajar en feature branch
+git checkout -b feature/nueva-funcionalidad
 
-# Or manually trigger a workflow
-gh workflow run ci.yml
+# 2. Push y crear PR
+git push origin feature/nueva-funcionalidad
+# Crear PR en GitHub → CI se ejecuta automáticamente
+
+# 3. Después de aprobación, merge a develop
+git checkout develop
+git merge feature/nueva-funcionalidad
+git push origin develop → CI se ejecuta
 ```
 
-## 📋 Verification Checklist
+### Crear Release
+```bash
+# 1. Merge develop a main
+git checkout main
+git merge develop
+git push origin main → Build se ejecuta
 
-After setup, verify:
+# 2. Crear tag de versión
+git tag v1.0.0
+git push origin v1.0.0 → Release se crea automáticamente
+```
 
-- [ ] Secrets are configured correctly
-- [ ] Branch protection rules are active
-- [ ] Environments are created
-- [ ] CI workflow runs successfully
-- [ ] Build workflow creates executables
-- [ ] Notifications are received (if configured)
+### Canary Deployment
+```bash
+# 1. Merge feature a canary
+git checkout canary
+git merge feature/nueva-funcionalidad
+git push origin canary → Canary release se crea
+```
 
-## 🎯 Common First-Time Issues
+## 🔧 Solución de Problemas
 
-### Issue: "Secret not found"
-**Solution**: Ensure secrets are configured in repository settings, not organization settings.
+### Workflow falla
+1. Revisa los logs en GitHub Actions
+2. Verifica que las dependencias estén correctas
+3. Prueba localmente: `python build.py`
 
-### Issue: "Workflow disabled"
-**Solution**: Go to Actions tab and enable workflows in repository settings.
+### No se crea release
+1. Verifica que el tag tenga formato `v*` (ej: v1.0.0)
+2. Verifica que el tag se haya pusheado: `git push origin v1.0.0`
 
-### Issue: "Permission denied"
-**Solution**: Check that GitHub Actions has write permissions in repository settings.
+### Build falla
+1. Verifica que `src/main.py` exista
+2. Verifica que las dependencias estén en `requirements.txt`
+3. Prueba PyInstaller localmente
 
-### Issue: "Branch protection error"
-**Solution**: Temporarily disable branch protection, push, then re-enable.
+## 📚 Documentación Adicional
 
-## 🔄 Next Steps
-
-1. **Configure notification channels** for your team
-2. **Set up SonarQube** for code quality analysis (optional)
-3. **Customize workflow thresholds** in workflow files
-4. **Set up scheduled health checks** (already configured)
-5. **Configure team-specific rules** in `.github/settings.yml`
-
-## 📚 Detailed Documentation
-
-For comprehensive documentation, see:
-- [CI_CD_DOCUMENTATION.md](CI_CD_DOCUMENTATION.md) - Complete CI/CD guide
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow
-- [.github/workflows/README.md](.github/workflows/README.md) - Workflow details
-
-## 🆘 Need Help?
-
-- Check workflow logs: `gh run list` and `gh run view <run-id> --log`
-- Review CI/CD documentation
-- Create a GitHub Issue
-- Contact your DevOps team
+- [README.md](README.md) - Documentación del proyecto
+- [.github/workflows/README.md](.github/workflows/README.md) - Documentación de workflows
 
 ---
 
-**Setup Complete! 🎉** Your CI/CD pipeline is now ready to automate your development workflow.
+**¡Listo!** El sistema CI/CD simplificado está configurado y listo para usar.

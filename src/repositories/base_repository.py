@@ -3,7 +3,7 @@ Base Repository
 Repositorio base con operaciones CRUD comunes
 """
 
-from typing import TypeVar, Type, List, Optional, Generic
+from typing import TypeVar, Type, List, Optional, Generic, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
 
@@ -55,13 +55,13 @@ class BaseRepository(Generic[T]):
         """Verifica si existe un registro por ID"""
         return self.session.query(self.model).filter(self.model.id == id).first() is not None
     
-    def get_by_field(self, field_name: str, value: any) -> Optional[T]:
+    def get_by_field(self, field_name: str, value: Any) -> Optional[T]:
         """Obtiene un registro por un campo específico"""
         return self.session.query(self.model).filter(
             getattr(self.model, field_name) == value
         ).first()
     
-    def get_all_by_field(self, field_name: str, value: any) -> List[T]:
+    def get_all_by_field(self, field_name: str, value: Any) -> List[T]:
         """Obtiene todos los registros por un campo específico"""
         return self.session.query(self.model).filter(
             getattr(self.model, field_name) == value

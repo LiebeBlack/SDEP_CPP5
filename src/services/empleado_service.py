@@ -3,7 +3,7 @@ Empleado Service
 Servicio de lógica de negocio para empleados
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from datetime import date
 from sqlalchemy.orm import Session
 
@@ -98,7 +98,7 @@ class EmpleadoService:
         """Lista solo empleados activos"""
         return self.repository.get_activos()
     
-    def listar_por_tipo(self, tipo: TipoEmpleado) -> List[Empleado]:
+    def listar_por_tipo(self, tipo: Union[str, TipoEmpleado]) -> List[Empleado]:
         """Lista empleados por tipo"""
         return self.repository.get_by_tipo(tipo)
     

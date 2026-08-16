@@ -30,12 +30,13 @@ class DashboardFrame(ctk.CTkFrame):
         title = ctk.CTkLabel(
             self,
             text="Panel de Control",
-            font=ctk.CTkFont(size=24, weight="bold")
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color="white"
         )
         title.pack(pady=20)
         
         # Contenedor de tarjetas
-        cards_container = ctk.CTkFrame(self)
+        cards_container = ctk.CTkFrame(self, fg_color="#2b2b2b")
         cards_container.pack(fill="x", padx=20, pady=10)
         
         # Tarjetas de estadísticas
@@ -55,7 +56,7 @@ class DashboardFrame(ctk.CTkFrame):
             cards_container.grid_columnconfigure(i, weight=1)
         
         # Sección de acciones rápidas
-        actions_frame = ctk.CTkFrame(self)
+        actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         actions_frame.pack(fill="x", padx=20, pady=20)
         
         actions_title = ctk.CTkLabel(
@@ -87,7 +88,7 @@ class DashboardFrame(ctk.CTkFrame):
     
     def _create_stat_card(self, parent, title: str, icon: str, key: str) -> ctk.CTkFrame:
         """Crea una tarjeta de estadística"""
-        card = ctk.CTkFrame(parent, height=150)
+        card = ctk.CTkFrame(parent, height=150, fg_color="#3c3c3c", corner_radius=8)
         card.pack_propagate(False)
         
         icon_label = ctk.CTkLabel(
@@ -100,14 +101,16 @@ class DashboardFrame(ctk.CTkFrame):
         value_label = ctk.CTkLabel(
             card,
             text="0",
-            font=ctk.CTkFont(size=28, weight="bold")
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color="white"
         )
         value_label.pack(pady=5)
         
         title_label = ctk.CTkLabel(
             card,
             text=title,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            text_color="#cccccc"
         )
         title_label.pack(pady=(5, 15))
         
@@ -118,24 +121,39 @@ class DashboardFrame(ctk.CTkFrame):
         """Carga los datos del dashboard"""
         try:
             # Estadísticas de empleados
-            stats = self.main_window.empleado_service.obtener_estadisticas()
-            self.stats_cards["empleados"].configure(text=str(stats["total"]))
-            self.stats_cards["activos"].configure(text=str(stats["activos"]))
+            try:
+                stats = self.main_window.empleado_service.obtener_estadisticas()
+                self.stats_cards["empleados"].configure(text=str(stats.get("total", 0)))
+                self.stats_cards["activos"].configure(text=str(stats.get("activos", 0)))
+            except Exception as e:
+                self.stats_cards["empleados"].configure(text="0")
+                self.stats_cards["activos"].configure(text="0")
             
             # Estadísticas de documentos
-            doc_stats = self.main_window.documento_service.obtener_estadisticas()
-            self.stats_cards["documentos"].configure(text=str(doc_stats["total"]))
+            try:
+                doc_stats = self.main_window.documento_service.obtener_estadisticas()
+                self.stats_cards["documentos"].configure(text=str(doc_stats.get("total", 0)))
+            except Exception as e:
+                self.stats_cards["documentos"].configure(text="0")
             
             # Estadísticas de incidencias
-            incidencia_stats = self.main_window.incidencia_service.obtener_estadisticas()
-            self.stats_cards["incidencias"].configure(text=str(incidencia_stats["pendientes"]))
+            try:
+                incidencia_stats = self.main_window.incidencia_service.obtener_estadisticas()
+                self.stats_cards["incidencias"].configure(text=str(incidencia_stats.get("pendientes", 0)))
+            except Exception as e:
+                self.stats_cards["incidencias"].configure(text="0")
             
             # Estadísticas de pagos
-            pago_stats = self.main_window.pago_service.obtener_estadisticas()
-            self.stats_cards["pagos"].configure(text=str(pago_stats["pendientes"]))
+            try:
+                pago_stats = self.main_window.pago_service.obtener_estadisticas()
+                self.stats_cards["pagos"].configure(text=str(pago_stats.get("pendientes", 0)))
+            except Exception as e:
+                self.stats_cards["pagos"].configure(text="0")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Error al cargar datos: {str(e)}")
+            # Error general, establecer todos en 0
+            for key in self.stats_cards:
+                self.stats_cards[key].configure(text="0")
 
 
 class EmpleadosFrame(ctk.CTkFrame):
@@ -151,7 +169,7 @@ class EmpleadosFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de empleados"""
         # Panel de búsqueda y filtros
-        search_frame = ctk.CTkFrame(self)
+        search_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         search_frame.pack(fill="x", padx=10, pady=10)
         
         # Campo de búsqueda
@@ -187,7 +205,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=5)
         
         # Tabla de empleados
-        table_frame = ctk.CTkFrame(self)
+        table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Scrollbar
@@ -243,17 +261,22 @@ class EmpleadosFrame(ctk.CTkFrame):
             empleados = self.main_window.empleado_service.listar_empleados_activos()
             
             for emp in empleados:
-                self.tree.insert("", "end", values=(
-                    emp.cedula,
-                    emp.nombre_completo,
-                    emp.cargo,
-                    emp.departamento,
-                    emp.tipo_empleado,
-                    format_currency(emp.salario_base)
-                ), tags=(str(emp.id),))
+                try:
+                    self.tree.insert("", "end", values=(
+                        emp.cedula,
+                        emp.nombre_completo,
+                        emp.cargo,
+                        emp.departamento,
+                        emp.tipo_empleado,
+                        format_currency(emp.salario_base)
+                    ), tags=(str(emp.id),))
+                except Exception as e:
+                    # Continuar con el siguiente empleado si hay error
+                    continue
                 
         except Exception as e:
-            messagebox.showerror("Error", f"Error al cargar empleados: {str(e)}")
+            # Mostrar error pero no bloquear la UI
+            self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
     
     def _on_search(self, event=None):
         """Maneja el evento de búsqueda"""
@@ -377,7 +400,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
         # Notebook para pestañas
-        notebook = ctk.CTkTabview(self)
+        notebook = ctk.CTkTabview(self, fg_color="#2b2b2b")
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Pestaña de datos personales
@@ -404,7 +427,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_personal_tab(self, parent):
         """Crea la pestaña de datos personales"""
-        form_frame = ctk.CTkFrame(parent)
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Campos de datos personales
@@ -425,7 +448,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_laboral_tab(self, parent):
         """Crea la pestaña de datos laborales"""
-        form_frame = ctk.CTkFrame(parent)
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tipo_empleado_combo = self._create_combo_field(form_frame, "Tipo Empleado:", 0, 0,
@@ -441,7 +464,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_contacto_tab(self, parent):
         """Crea la pestaña de contacto"""
-        form_frame = ctk.CTkFrame(parent)
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.telefono_entry = self._create_form_field(form_frame, "Teléfono:", 0, 0)
@@ -454,16 +477,16 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.codigo_postal_entry = self._create_form_field(form_frame, "Código Postal:", 3, 0)
         
         # Contacto de emergencia
-        emergency_frame = ctk.CTkFrame(form_frame)
+        emergency_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
         emergency_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=10)
         
         emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
                                      font=ctk.CTkFont(weight="bold"))
-        emergency_label.pack(pady=5)
+        emergency_label.grid(row=0, column=0, columnspan=2, pady=5)
         
-        self.contacto_emergencia_nombre_entry = self._create_form_field(emergency_frame, "Nombre:", 0, 0)
-        self.contacto_emergencia_telefono_entry = self._create_form_field(emergency_frame, "Teléfono:", 0, 1)
-        self.contacto_emergencia_relacion_entry = self._create_form_field(emergency_frame, "Relación:", 1, 0)
+        self.contacto_emergencia_nombre_entry = self._create_form_field(emergency_frame, "Nombre:", 1, 0)
+        self.contacto_emergencia_telefono_entry = self._create_form_field(emergency_frame, "Teléfono:", 1, 1)
+        self.contacto_emergencia_relacion_entry = self._create_form_field(emergency_frame, "Relación:", 2, 0)
     
     def _create_form_field(self, parent, label: str, row: int, col: int) -> ctk.CTkEntry:
         """Crea un campo de formulario"""
@@ -631,7 +654,7 @@ class DocumentosFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de documentos"""
         # Panel de selección de empleado
-        selection_frame = ctk.CTkFrame(self)
+        selection_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         selection_frame.pack(fill="x", padx=10, pady=10)
         
         ctk.CTkLabel(selection_frame, text="Empleado:").pack(side="left", padx=5)
@@ -644,7 +667,7 @@ class DocumentosFrame(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=5)
         
         # Panel de acciones
-        actions_frame = ctk.CTkFrame(self)
+        actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         actions_frame.pack(fill="x", padx=10, pady=5)
         
         new_doc_btn = ctk.CTkButton(actions_frame, text="Nuevo Documento", command=self._on_new_documento)
@@ -720,7 +743,7 @@ class DocumentosFrame(ctk.CTkFrame):
             for doc in documentos:
                 try:
                     estado = "Vigente" if doc.es_valido else "Vencido"
-                except:
+                except AttributeError:
                     estado = "N/A"
                 fecha_str = format_date(doc.fecha_emision) if doc.fecha_emision else "N/A"
                 
@@ -936,8 +959,7 @@ class IncidenciasFrame(ctk.CTkFrame):
         self.main_window = main_window
         self.current_empleado_id = None
         self._create_widgets()
-        self._load_empleados()
-        self._load_incidencias()
+        self._load_data()
     
     def _create_widgets(self):
         """Crea los widgets del frame de incidencias"""
@@ -998,6 +1020,11 @@ class IncidenciasFrame(ctk.CTkFrame):
         self.context_menu.add_command(label="Eliminar", command=self._on_delete_incidencia)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
+    
+    def _load_data(self):
+        """Carga los datos iniciales"""
+        self._load_empleados()
+        self._load_incidencias()
     
     def _load_empleados(self):
         """Carga la lista de empleados en el combo"""
@@ -1383,7 +1410,7 @@ class NominaFrame(ctk.CTkFrame):
         filter_frame.pack(fill="x", padx=10, pady=5)
         
         ctk.CTkLabel(filter_frame, text="Estado:").pack(side="left", padx=5)
-        self.estado_combo = ttk.Combobox(filter_frame, values=["Todos", "Pendientes", "Pagados"], width=15, state="readonly")
+        self.estado_combo = ttk.Combobox(filter_frame, values=["Todos", "Pendientes", "Pagados"], width=18, state="readonly")
         self.estado_combo.pack(side="left", padx=5)
         self.estado_combo.set("Todos")
         self.estado_combo.bind("<<ComboboxSelected>>", self._on_filter)

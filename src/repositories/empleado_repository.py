@@ -3,7 +3,7 @@ Empleado Repository
 Repositorio para operaciones de datos de empleados
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
@@ -21,7 +21,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         """Obtiene un empleado por cédula"""
         return self.session.query(Empleado).filter(Empleado.cedula == cedula).first()
     
-    def get_by_tipo(self, tipo) -> List[Empleado]:
+    def get_by_tipo(self, tipo: Union[str, TipoEmpleado]) -> List[Empleado]:
         """Obtiene empleados por tipo"""
         if isinstance(tipo, str):
             return self.session.query(Empleado).filter(

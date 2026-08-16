@@ -1,9 +1,9 @@
 """
-Configuracion Service
+Configuración Service
 Servicio de lógica de negocio para configuración
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion
@@ -72,7 +72,7 @@ class ConfiguracionService:
         """Obtiene el valor de una configuración"""
         return self.repository.get_valor(clave, default)
     
-    def establecer_valor(self, clave: str, valor: any) -> bool:
+    def establecer_valor(self, clave: str, valor: Any) -> bool:
         """Establece el valor de una configuración"""
         return self.repository.set_valor(clave, valor)
     

@@ -9,19 +9,29 @@ import customtkinter as ctk
 from typing import Optional
 
 # Configurar estilo para Treeview en modo oscuro
-style = ttk.Style()
-style.theme_use('clam')
-style.configure("Treeview",
-                background="#2b2b2b",
-                foreground="white",
-                fieldbackground="#2b2b2b",
-                rowheight=25)
-style.configure("Treeview.Heading",
-                background="#3c3c3c",
-                foreground="white",
-                relief="flat")
-style.map("Treeview",
-          background=[('selected', '#1f538d')])
+def configure_treeview_style():
+    """Configura el estilo de Treeview para modo oscuro"""
+    try:
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("Treeview",
+                        background="#2b2b2b",
+                        foreground="white",
+                        fieldbackground="#2b2b2b",
+                        rowheight=25,
+                        borderwidth=0)
+        style.configure("Treeview.Heading",
+                        background="#3c3c3c",
+                        foreground="white",
+                        relief="flat",
+                        borderwidth=0)
+        style.map("Treeview",
+                  background=[('selected', '#1f538d')],
+                  foreground=[('selected', 'white')])
+        style.map("Treeview.Heading",
+                  background=[('active', '#4c4c4c')])
+    except Exception:
+        pass  # Continuar si falla la configuración de estilo
 
 from src.config import settings, db_config
 from src.services import EmpleadoService, DocumentoService, IncidenciaService, PagoService, ConfiguracionService
@@ -31,16 +41,22 @@ class MainWindow(ctk.CTk):
     """Ventana principal del sistema"""
     
     def __init__(self):
+        # Configurar tema primero
+        ctk.set_appearance_mode("Dark")
+        ctk.set_default_color_theme("blue")
+        
         super().__init__()
+        
+        # Configurar estilos después de inicializar la ventana
+        configure_treeview_style()
         
         # Configuración de la ventana
         self.title(settings.app_name)
         self.geometry("1200x800")
         self.minsize(1000, 700)
         
-        # Configurar tema
-        ctk.set_appearance_mode("Dark")
-        ctk.set_default_color_theme("blue")
+        # Configurar colores de fondo
+        self.configure(fg_color="#1a1a1a")
         
         # Inicializar base de datos
         self._init_database()
@@ -60,7 +76,8 @@ class MainWindow(ctk.CTk):
         # Crear interfaz
         self._create_ui()
         
-        # Cargar frame inicial
+        # Cargar frame inicial después de actualizar la ventana
+        self.update()
         self._show_frame("dashboard")
     
     def _init_database(self):
@@ -70,6 +87,8 @@ class MainWindow(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error de Base de Datos", 
                                f"No se pudo inicializar la base de datos: {str(e)}")
+            self.destroy()
+            raise
     
     def _create_ui(self):
         """Crea la interfaz de usuario"""
@@ -84,7 +103,7 @@ class MainWindow(ctk.CTk):
     
     def _create_sidebar(self):
         """Crea la barra lateral de navegación"""
-        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0)
+        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color="#2b2b2b")
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
         
@@ -145,11 +164,11 @@ class MainWindow(ctk.CTk):
     
     def _create_main_area(self):
         """Crea el área principal de contenido"""
-        self.main_container = ctk.CTkFrame(self, corner_radius=0)
+        self.main_container = ctk.CTkFrame(self, corner_radius=0, fg_color="#1a1a1a")
         self.main_container.pack(side="right", fill="both", expand=True)
         
         # Header
-        self.header = ctk.CTkFrame(self.main_container, height=60)
+        self.header = ctk.CTkFrame(self.main_container, height=60, fg_color="#2b2b2b")
         self.header.pack(side="top", fill="x")
         self.header.pack_propagate(False)
         
@@ -172,12 +191,12 @@ class MainWindow(ctk.CTk):
         exit_btn.pack(side="right", padx=20, pady=12)
         
         # Contenedor de frames
-        self.content_frame = ctk.CTkFrame(self.main_container)
+        self.content_frame = ctk.CTkFrame(self.main_container, fg_color="#1a1a1a")
         self.content_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)
     
     def _create_status_bar(self):
         """Crea la barra de estado"""
-        self.status_bar = ctk.CTkFrame(self.main_container, height=30)
+        self.status_bar = ctk.CTkFrame(self.main_container, height=30, fg_color="#2b2b2b")
         self.status_bar.pack(side="bottom", fill="x")
         self.status_bar.pack_propagate(False)
         
@@ -201,50 +220,68 @@ class MainWindow(ctk.CTk):
     
     def _show_frame(self, frame_name: str):
         """Muestra un frame específico"""
-        # Eliminar frame actual si existe
-        if self.current_frame:
-            self.current_frame.destroy()
-        
-        # Actualizar título
-        titles = {
-            "dashboard": "Dashboard",
-            "empleados": "Gestión de Empleados",
-            "documentos": "Gestión Documental",
-            "incidencias": "Incidencias y Permisos",
-            "nomina": "Nómina y Pagos",
-            "configuracion": "Configuración"
-        }
-        self.frame_title.configure(text=titles.get(frame_name, frame_name))
-        
-        # Crear nuevo frame
-        frame_mapping = {
-            "dashboard": frames.Dashboard,
-            "empleados": frames.Empleados,
-            "documentos": frames.Documentos,
-            "incidencias": frames.Incidencias,
-            "nomina": frames.Nomina,
-            "configuracion": frames.Configuracion
-        }
-        
-        frame_class = frame_mapping.get(frame_name)
-        
-        if frame_class:
-            self.current_frame = frame_class(self.content_frame, self)
-            self.current_frame.pack(fill="both", expand=True)
-        else:
-            # Frame por defecto si no existe
+        try:
+            # Eliminar frame actual si existe
+            if self.current_frame:
+                try:
+                    self.current_frame.destroy()
+                except Exception:
+                    pass
+            
+            # Actualizar título
+            titles = {
+                "dashboard": "Dashboard",
+                "empleados": "Gestión de Empleados",
+                "documentos": "Gestión Documental",
+                "incidencias": "Incidencias y Permisos",
+                "nomina": "Nómina y Pagos",
+                "configuracion": "Configuración"
+            }
+            self.frame_title.configure(text=titles.get(frame_name, frame_name))
+            
+            # Crear nuevo frame
+            frame_mapping = {
+                "dashboard": frames.Dashboard,
+                "empleados": frames.Empleados,
+                "documentos": frames.Documentos,
+                "incidencias": frames.Incidencias,
+                "nomina": frames.Nomina,
+                "configuracion": frames.Configuracion
+            }
+            
+            frame_class = frame_mapping.get(frame_name)
+            
+            if frame_class:
+                self.current_frame = frame_class(self.content_frame, self)
+                self.current_frame.pack(fill="both", expand=True)
+            else:
+                # Frame por defecto si no existe
+                self.current_frame = ctk.CTkFrame(self.content_frame)
+                self.current_frame.pack(fill="both", expand=True)
+                
+                label = ctk.CTkLabel(
+                    self.current_frame,
+                    text=f"Módulo {frame_name} en desarrollo",
+                    font=ctk.CTkFont(size=16)
+                )
+                label.pack(expand=True)
+            
+            # Actualizar estado
+            self.status_label.configure(text=f"Mostrando: {titles.get(frame_name, frame_name)}")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al cargar el módulo {frame_name}: {str(e)}")
+            # Crear frame de error
             self.current_frame = ctk.CTkFrame(self.content_frame)
             self.current_frame.pack(fill="both", expand=True)
             
-            label = ctk.CTkLabel(
+            error_label = ctk.CTkLabel(
                 self.current_frame,
-                text=f"Módulo {frame_name} en desarrollo",
-                font=ctk.CTkFont(size=16)
+                text=f"Error al cargar: {str(e)}",
+                font=ctk.CTkFont(size=14),
+                text_color="red"
             )
-            label.pack(expand=True)
-        
-        # Actualizar estado
-        self.status_label.configure(text=f"Mostrando: {titles.get(frame_name, frame_name)}")
+            error_label.pack(expand=True)
     
     def _on_exit(self):
         """Maneja el cierre de la aplicación"""

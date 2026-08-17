@@ -111,7 +111,8 @@ class MainWindow(ctk.CTk):
         title_label = ctk.CTkLabel(
             self.sidebar,
             text="SISTEMA DE GESTIÓN\nDE PERSONAL",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="white"
         )
         title_label.pack(pady=(20, 30), padx=20)
         
@@ -149,7 +150,8 @@ class MainWindow(ctk.CTk):
             self.sidebar,
             text=institution_name,
             font=ctk.CTkFont(size=11),
-            wraplength=230
+            wraplength=230,
+            text_color="#cccccc"
         )
         institution_label.pack(pady=10, padx=10)
         
@@ -158,7 +160,7 @@ class MainWindow(ctk.CTk):
             self.sidebar,
             text=f"v{settings.app_version}",
             font=ctk.CTkFont(size=10),
-            text_color="gray"
+            text_color="#888888"
         )
         version_label.pack(side="bottom", pady=10)
     
@@ -176,7 +178,8 @@ class MainWindow(ctk.CTk):
         self.frame_title = ctk.CTkLabel(
             self.header,
             text="Dashboard",
-            font=ctk.CTkFont(size=20, weight="bold")
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white"
         )
         self.frame_title.pack(side="left", padx=20, pady=15)
         
@@ -205,7 +208,8 @@ class MainWindow(ctk.CTk):
             self.status_bar,
             text="Sistema listo",
             font=ctk.CTkFont(size=10),
-            anchor="w"
+            anchor="w",
+            text_color="#cccccc"
         )
         self.status_label.pack(side="left", padx=10, pady=5)
         
@@ -214,7 +218,8 @@ class MainWindow(ctk.CTk):
         datetime_label = ctk.CTkLabel(
             self.status_bar,
             text=datetime.now().strftime("%Y-%m-%d %H:%M"),
-            font=ctk.CTkFont(size=10)
+            font=ctk.CTkFont(size=10),
+            text_color="#cccccc"
         )
         datetime_label.pack(side="right", padx=10, pady=5)
     

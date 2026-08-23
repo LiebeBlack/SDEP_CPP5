@@ -27,25 +27,37 @@ class BaseRepository(Generic[T]):
     
     def create(self, obj: T) -> T:
         """Crea un nuevo registro"""
-        self.session.add(obj)
-        self.session.commit()
-        self.session.refresh(obj)
-        return obj
+        try:
+            self.session.add(obj)
+            self.session.commit()
+            self.session.refresh(obj)
+            return obj
+        except Exception:
+            self.session.rollback()
+            raise
     
     def update(self, obj: T) -> T:
         """Actualiza un registro existente"""
-        self.session.commit()
-        self.session.refresh(obj)
-        return obj
+        try:
+            self.session.commit()
+            self.session.refresh(obj)
+            return obj
+        except Exception:
+            self.session.rollback()
+            raise
     
     def delete(self, id: int) -> bool:
         """Elimina un registro por ID"""
-        obj = self.get_by_id(id)
-        if obj:
-            self.session.delete(obj)
-            self.session.commit()
-            return True
-        return False
+        try:
+            obj = self.get_by_id(id)
+            if obj:
+                self.session.delete(obj)
+                self.session.commit()
+                return True
+            return False
+        except Exception:
+            self.session.rollback()
+            raise
     
     def count(self) -> int:
         """Cuenta el total de registros"""

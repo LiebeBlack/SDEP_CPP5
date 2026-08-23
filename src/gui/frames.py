@@ -703,10 +703,14 @@ class EmpleadoDialog(ctk.CTkToplevel):
             return
         
         # Datos personales
+        self.nombres_entry.delete(0, tk.END)
         self.nombres_entry.insert(0, self.empleado.nombres)
+        self.apellidos_entry.delete(0, tk.END)
         self.apellidos_entry.insert(0, self.empleado.apellidos)
+        self.cedula_entry.delete(0, tk.END)
         self.cedula_entry.insert(0, self.empleado.cedula)
         if self.empleado.fecha_nacimiento:
+            self.fecha_nacimiento_entry.delete(0, tk.END)
             self.fecha_nacimiento_entry.insert(0, format_date(self.empleado.fecha_nacimiento))
         
         if self.empleado.genero:
@@ -715,51 +719,72 @@ class EmpleadoDialog(ctk.CTkToplevel):
             self.estado_civil_combo.set(self.empleado.estado_civil)
         
         if self.empleado.peso:
+            self.peso_entry.delete(0, tk.END)
             self.peso_entry.insert(0, str(self.empleado.peso))
         if self.empleado.altura:
+            self.altura_entry.delete(0, tk.END)
             self.altura_entry.insert(0, str(self.empleado.altura))
         if self.empleado.tipo_sangre:
+            self.tipo_sangre_entry.delete(0, tk.END)
             self.tipo_sangre_entry.insert(0, self.empleado.tipo_sangre)
         if self.empleado.nacionalidad:
+            self.nacionalidad_entry.delete(0, tk.END)
             self.nacionalidad_entry.insert(0, self.empleado.nacionalidad)
         
         # Datos laborales
         self.tipo_empleado_combo.set(self.empleado.tipo_empleado)
+        self.cargo_entry.delete(0, tk.END)
         self.cargo_entry.insert(0, self.empleado.cargo)
+        self.departamento_entry.delete(0, tk.END)
         self.departamento_entry.insert(0, self.empleado.departamento)
         if self.empleado.fecha_contratacion:
+            self.fecha_contratacion_entry.delete(0, tk.END)
             self.fecha_contratacion_entry.insert(0, format_date(self.empleado.fecha_contratacion))
         
+        self.salario_base_entry.delete(0, tk.END)
         self.salario_base_entry.insert(0, str(self.empleado.salario_base))
         if self.empleado.nivel_educativo:
+            self.nivel_educativo_entry.delete(0, tk.END)
             self.nivel_educativo_entry.insert(0, self.empleado.nivel_educativo)
         if self.empleado.especialidad:
+            self.especialidad_entry.delete(0, tk.END)
             self.especialidad_entry.insert(0, self.empleado.especialidad)
         if self.empleado.titulo_obtenido:
+            self.titulo_obtenido_entry.delete(0, tk.END)
             self.titulo_obtenido_entry.insert(0, self.empleado.titulo_obtenido)
         
         # Contacto
         if self.empleado.telefono:
+            self.telefono_entry.delete(0, tk.END)
             self.telefono_entry.insert(0, self.empleado.telefono)
         if self.empleado.celular:
+            self.celular_entry.delete(0, tk.END)
             self.celular_entry.insert(0, self.empleado.celular)
         if self.empleado.email:
+            self.email_entry.delete(0, tk.END)
             self.email_entry.insert(0, self.empleado.email)
         if self.empleado.direccion:
+            self.direccion_entry.delete(0, tk.END)
             self.direccion_entry.insert(0, self.empleado.direccion)
         if self.empleado.ciudad:
+            self.ciudad_entry.delete(0, tk.END)
             self.ciudad_entry.insert(0, self.empleado.ciudad)
         if self.empleado.estado:
+            self.estado_entry.delete(0, tk.END)
             self.estado_entry.insert(0, self.empleado.estado)
         if self.empleado.codigo_postal:
+            self.codigo_postal_entry.delete(0, tk.END)
             self.codigo_postal_entry.insert(0, self.empleado.codigo_postal)
         
         # Contacto de emergencia
         if self.empleado.contacto_emergencia_nombre:
+            self.contacto_emergencia_nombre_entry.delete(0, tk.END)
             self.contacto_emergencia_nombre_entry.insert(0, self.empleado.contacto_emergencia_nombre)
         if self.empleado.contacto_emergencia_telefono:
+            self.contacto_emergencia_telefono_entry.delete(0, tk.END)
             self.contacto_emergencia_telefono_entry.insert(0, self.empleado.contacto_emergencia_telefono)
         if self.empleado.contacto_emergencia_relacion:
+            self.contacto_emergencia_relacion_entry.delete(0, tk.END)
             self.contacto_emergencia_relacion_entry.insert(0, self.empleado.contacto_emergencia_relacion)
     
     def _get_form_data(self) -> dict:
@@ -1568,6 +1593,8 @@ class ApprovalDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form_frame, text=f"{action} por:", text_color="white").pack(anchor="w", padx=5)
         self.approved_by_entry = ctk.CTkEntry(form_frame, width=300, fg_color="#3c3c3c", text_color="white", placeholder_text="Nombre del aprobador")
         self.approved_by_entry.pack(padx=5, pady=5)
+        if hasattr(self, 'approved_by') and self.approved_by:
+            self.approved_by_entry.insert(0, self.approved_by)
         
         # Días aprobados (solo para aprobación)
         if action == "Aprobar":
@@ -1965,22 +1992,33 @@ class ConfiguracionFrame(ctk.CTkFrame):
         try:
             # Configuración general
             general_config = self.main_window.config_service.obtener_configuracion_general()
+            self.nombre_institucion_entry.delete(0, tk.END)
             self.nombre_institucion_entry.insert(0, general_config.get("nombre_institucion", ""))
+            self.ruc_entry.delete(0, tk.END)
             self.ruc_entry.insert(0, general_config.get("ruc", ""))
+            self.direccion_entry.delete(0, tk.END)
             self.direccion_entry.insert(0, general_config.get("direccion", ""))
+            self.telefono_entry.delete(0, tk.END)
             self.telefono_entry.insert(0, general_config.get("telefono", ""))
+            self.email_entry.delete(0, tk.END)
             self.email_entry.insert(0, general_config.get("email", ""))
             
             # Configuración de nómina
             nomina_config = self.main_window.config_service.obtener_configuracion_nomina()
+            self.porcentaje_seguro_entry.delete(0, tk.END)
             self.porcentaje_seguro_entry.insert(0, str(nomina_config.get("porcentaje_seguro", "")))
+            self.porcentaje_pension_entry.delete(0, tk.END)
             self.porcentaje_pension_entry.insert(0, str(nomina_config.get("porcentaje_pension", "")))
+            self.porcentaje_impuesto_entry.delete(0, tk.END)
             self.porcentaje_impuesto_entry.insert(0, str(nomina_config.get("porcentaje_impuesto", "")))
+            self.salario_minimo_entry.delete(0, tk.END)
             self.salario_minimo_entry.insert(0, str(nomina_config.get("salario_minimo", "")))
             
             # Configuración de RRHH
             rrhh_config = self.main_window.config_service.obtener_configuracion_recursos_humanos()
+            self.dias_vacaciones_entry.delete(0, tk.END)
             self.dias_vacaciones_entry.insert(0, str(rrhh_config.get("dias_vacaciones_anual", "")))
+            self.horas_laborales_entry.delete(0, tk.END)
             self.horas_laborales_entry.insert(0, str(rrhh_config.get("horas_laborales_semana", "")))
             
         except Exception as e:

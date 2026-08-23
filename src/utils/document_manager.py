@@ -346,6 +346,12 @@ class DocumentManager:
                         total_size += os.path.getsize(file_path)
             return total_size
         
+        def count_files(directory):
+            count = 0
+            for dirpath, dirnames, filenames in os.walk(directory):
+                count += len(filenames)
+            return count
+        
         documents_size = get_dir_size(self.documents_dir)
         photos_size = get_dir_size(self.photos_dir)
         exports_size = get_dir_size(self.exports_dir)
@@ -360,8 +366,8 @@ class DocumentManager:
             "exports_size_formatted": format_file_size(exports_size),
             "total_size": total_size,
             "total_size_formatted": format_file_size(total_size),
-            "documents_count": len(self.list_documents()),
-            "photos_count": sum(len(self.list_employee_photos(i)) for i in range(1, 1000))
+            "documents_count": count_files(self.documents_dir),
+            "photos_count": count_files(self.photos_dir)
         }
 
 

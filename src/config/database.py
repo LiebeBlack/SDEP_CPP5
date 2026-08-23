@@ -74,7 +74,12 @@ class DatabaseConfig:
     
     def close_session(self, session):
         """Cierra una sesión de base de datos"""
-        session.close()
+        try:
+            session.close()
+        except Exception:
+            pass
+        finally:
+            self.SessionLocal.remove()
     
     def init_db(self):
         """Inicializa la base de datos con tablas y datos básicos"""

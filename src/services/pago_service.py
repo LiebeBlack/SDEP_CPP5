@@ -6,7 +6,6 @@ Servicio de lógica de negocio para pagos y nómina
 from typing import List, Optional, Dict
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
-from decimal import Decimal
 import os
 
 from src.models import Pago, TipoPago, MetodoPago, Empleado

@@ -307,17 +307,25 @@ class MainWindow(ctk.CTk):
         self.mainloop()
 
 
-# Import de frames
-from src.gui.frames import (
-    DashboardFrame, EmpleadosFrame, DocumentosFrame, 
-    IncidenciasFrame, NominaFrame, ConfiguracionFrame
-)
+# Import de frames al final para evitar dependencias circulares
+def _get_frames():
+    """Retorna las clases de frames de forma diferida"""
+    from src.gui.frames import (
+        DashboardFrame, EmpleadosFrame, DocumentosFrame, 
+        IncidenciasFrame, NominaFrame, ConfiguracionFrame
+    )
+    
+    class FramesContainer:
+        """Contenedor de frames de la aplicación"""
+        Dashboard = DashboardFrame
+        Empleados = EmpleadosFrame
+        Documentos = DocumentosFrame
+        Incidencias = IncidenciasFrame
+        Nomina = NominaFrame
+        Configuracion = ConfiguracionFrame
+    
+    return FramesContainer
 
-class frames:
-    """Contenedor de frames de la aplicación"""
-    Dashboard = DashboardFrame
-    Empleados = EmpleadosFrame
-    Documentos = DocumentosFrame
-    Incidencias = IncidenciasFrame
-    Nomina = NominaFrame
-    Configuracion = ConfiguracionFrame
+
+# Instancia diferida de frames
+frames = _get_frames()

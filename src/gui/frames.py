@@ -10,7 +10,7 @@ import os
 from typing import Optional, List
 from datetime import date, datetime
 
-from src.models import Empleado, TipoEmpleado, TipoDocumento, TipoIncidencia, EstadoIncidencia
+from src.models import Empleado, TipoEmpleado, TipoDocumento, TipoIncidencia, EstadoIncidencia, TipoPago, MetodoPago
 from src.utils.helpers import format_date, format_currency, calculate_age
 from src.utils.pdf_generator import PDFGenerator
 

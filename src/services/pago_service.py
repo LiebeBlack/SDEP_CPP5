@@ -1,9 +1,13 @@
 """
 Pago Service
 Servicio de lógica de negocio para pagos y nómina
+
+Este servicio maneja el procesamiento de nóminas, cálculo de deducciones,
+generación de pagos y emisión de recibos, integrándose con incidencias
+para el cálculo de días trabajados.
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 import os
@@ -14,9 +18,21 @@ from src.config import settings
 
 
 class PagoService:
-    """Servicio de gestión de pagos y nómina"""
+    """
+    Servicio de gestión de pagos y nómina
+    
+    Procesa nóminas automáticas, calcula deducciones según configuración,
+    genera recibos de pago y mantiene el control de pagos pendientes
+    y realizados.
+    """
     
     def __init__(self, session: Session):
+        """
+        Inicializa el servicio de pagos
+        
+        Args:
+            session: Sesión de base de datos SQLAlchemy
+        """
         self.session = session
         self.pago_repository = PagoRepository(session)
         self.empleado_repository = EmpleadoRepository(session)
@@ -174,10 +190,10 @@ class PagoService:
         )
         
         dias_periodo = (periodo_fin - periodo_inicio).days + 1
-        dias_trabajados = dias_periodo - dias_incidencias
+        dias_trabajados = max(0, dias_periodo - dias_incidencias)
         
         # Calcular salario proporcional
-        salario_diario = empleado.salario_base / 30
+        salario_diario = float(empleado.salario_base) / 30.0
         salario_base_periodo = salario_diario * dias_trabajados
         
         # Crear pago
@@ -238,17 +254,17 @@ class PagoService:
     def _calcular_deduccion_seguro(self, salario_base: float) -> float:
         """Calcula la deducción de seguro social"""
         porcentaje = self.config_repository.get_valor("porcentaje_seguro", 4.5)
-        return salario_base * (porcentaje / 100)
+        return salario_base * (float(porcentaje) / 100.0)
     
     def _calcular_deduccion_pension(self, salario_base: float) -> float:
         """Calcula la deducción de pensión"""
         porcentaje = self.config_repository.get_valor("porcentaje_pension", 5.0)
-        return salario_base * (porcentaje / 100)
+        return salario_base * (float(porcentaje) / 100.0)
     
     def _calcular_deduccion_impuesto(self, salario_base: float) -> float:
         """Calcula la deducción de impuesto"""
         porcentaje = self.config_repository.get_valor("porcentaje_impuesto", 0.0)
-        return salario_base * (porcentaje / 100)
+        return salario_base * (float(porcentaje) / 100.0)
     
     def validar_datos_pago(self, datos: Dict) -> List[str]:
         """Valida los datos de un pago"""

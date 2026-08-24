@@ -3,7 +3,7 @@ Documento Model
 Modelo de datos para documentos de empleados
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 from .base import Base, BaseModel
@@ -44,14 +44,14 @@ class Documento(Base, BaseModel):
     def es_valido(self):
         """Verifica si el documento está vigente"""
         if self.fecha_vencimiento:
-            return datetime.now().date() <= self.fecha_vencimiento
+            return date.today() <= self.fecha_vencimiento
         return True
     
     @property
     def dias_vencimiento(self):
         """Días restantes para vencimiento"""
         if self.fecha_vencimiento:
-            delta = self.fecha_vencimiento - datetime.now().date()
+            delta = self.fecha_vencimiento - date.today()
             return delta.days
         return None
     

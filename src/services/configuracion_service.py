@@ -1,9 +1,12 @@
 """
 Configuración Service
 Servicio de lógica de negocio para configuración
+
+Este servicio gestiona la configuración del sistema, permitiendo
+almacenar y recuperar parámetros configurables por categoría.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion
@@ -11,9 +14,21 @@ from src.repositories import ConfiguracionRepository
 
 
 class ConfiguracionService:
-    """Servicio de gestión de configuración"""
+    """
+    Servicio de gestión de configuración
+    
+    Administra los parámetros configurables del sistema organizados
+    por categorías (general, nómina, recursos_humanos), permitiendo
+    su recuperación y actualización de forma tipada.
+    """
     
     def __init__(self, session: Session):
+        """
+        Inicializa el servicio de configuración
+        
+        Args:
+            session: Sesión de base de datos SQLAlchemy
+        """
         self.session = session
         self.repository = ConfiguracionRepository(session)
     
@@ -32,7 +47,9 @@ class ConfiguracionService:
             editable=datos.get("editable", 1)
         )
         
-        configuracion.set_valor(datos.get("valor"))
+        valor_to_set = datos.get("valor")
+        if valor_to_set is not None:
+            configuracion.set_valor(valor_to_set)
         return self.repository.create(configuracion)
     
     def actualizar_configuracion(self, configuracion_id: int, datos: Dict) -> Configuracion:
@@ -50,7 +67,8 @@ class ConfiguracionService:
         for campo, valor in datos.items():
             if hasattr(configuracion, campo):
                 if campo == "valor":
-                    configuracion.set_valor(valor)
+                    if valor is not None:
+                        configuracion.set_valor(valor)
                 else:
                     setattr(configuracion, campo, valor)
         
@@ -72,7 +90,7 @@ class ConfiguracionService:
         """Obtiene el valor de una configuración"""
         return self.repository.get_valor(clave, default)
     
-    def establecer_valor(self, clave: str, valor: Any) -> bool:
+    def establecer_valor(self, clave: str, valor: Union[str, int, float, bool]) -> bool:
         """Establece el valor de una configuración"""
         return self.repository.set_valor(clave, valor)
     

@@ -2,6 +2,10 @@
 
 Sistema completo para la gestión de personal y nómina de instituciones educativas, desarrollado en Python con interfaz gráfica CustomTkinter.
 
+## 🎯 Objetivo del Proyecto
+
+Este sistema proporciona una solución integral para la administración de recursos humanos en instituciones educativas, permitiendo gestionar empleados, documentos, incidencias, permisos y nóminas de manera eficiente y organizada.
+
 ## 🚀 Características
 
 ### Gestión de Personal
@@ -45,6 +49,16 @@ Sistema completo para la gestión de personal y nómina de instituciones educati
 - Windows 10/11
 - 4GB RAM mínimo
 - 500MB espacio en disco
+
+## 🏗️ Arquitectura del Sistema
+
+El sistema sigue una arquitectura en capas separando la lógica de negocio, acceso a datos e interfaz de usuario:
+
+- **Capa de Modelos**: Define la estructura de datos usando SQLAlchemy ORM
+- **Capa de Repositorios**: Maneja el acceso a la base de datos
+- **Capa de Servicios**: Contiene la lógica de negocio
+- **Capa de GUI**: Interfaz gráfica con CustomTkinter
+- **Capa de Utilidades**: Funciones auxiliares y helpers
 
 ## 🔄 CI/CD Pipeline
 
@@ -115,26 +129,59 @@ python build.py
 ## 📁 Estructura del Proyecto
 
 ```
-project/
-├── src/                  # Código fuente
-│   ├── gui/              # Componentes GUI
-│   ├── models/           # Modelos de datos
-│   ├── services/         # Lógica de negocio
-│   ├── repositories/     # Data access layer
-│   ├── utils/            # Utilidades
-│   └── config/           # Configuración
-├── tests/                # Tests
-├── assets/               # Assets externos
-├── docs/                 # Documentación
-├── spec/                 # PyInstaller specs
-├── requirements.txt      # Dependencias
-├── pyproject.toml       # Configuración Python
-└── build.py             # Script de build
+SDEP_CPP5/
+├── src/                        # Código fuente principal
+│   ├── gui/                    # Interfaz gráfica de usuario
+│   │   ├── main_window.py      # Ventana principal
+│   │   └── frames.py           # Frames de cada módulo
+│   ├── models/                 # Modelos de datos (ORM)
+│   │   ├── base.py             # Modelo base
+│   │   ├── enums.py            # Enumeraciones
+│   │   ├── empleado.py        # Modelo de empleado
+│   │   ├── documento.py       # Modelo de documento
+│   │   ├── incidencia.py       # Modelo de incidencia
+│   │   ├── pago.py            # Modelo de pago
+│   │   └── configuracion.py    # Modelo de configuración
+│   ├── repositories/           # Acceso a datos
+│   │   ├── base_repository.py  # Repositorio base
+│   │   ├── empleado_repository.py
+│   │   ├── documento_repository.py
+│   │   ├── incidencia_repository.py
+│   │   ├── pago_repository.py
+│   │   └── configuracion_repository.py
+│   ├── services/               # Lógica de negocio
+│   │   ├── empleado_service.py
+│   │   ├── documento_service.py
+│   │   ├── incidencia_service.py
+│   │   ├── pago_service.py
+│   │   └── configuracion_service.py
+│   ├── utils/                  # Utilidades y helpers
+│   │   ├── helpers.py          # Funciones auxiliares
+│   │   ├── validators.py      # Validadores
+│   │   ├── document_manager.py # Gestión de documentos
+│   │   └── pdf_generator.py    # Generación de PDFs
+│   ├── config/                 # Configuración
+│   │   ├── settings.py         # Configuración general
+│   │   └── database.py         # Configuración de base de datos
+│   └── main.py                 # Punto de entrada
+├── tests/                      # Pruebas unitarias
+├── requirements.txt            # Dependencias del proyecto
+├── requirements-dev.txt        # Dependencias de desarrollo
+├── pyproject.toml             # Configuración del proyecto
+├── build.py                   # Script de construcción
+└── .env.example               # Ejemplo de variables de entorno
 ```
 
 ## 🗄️ Base de Datos
 
 El sistema utiliza SQLite como base de datos local. La base de datos se crea automáticamente al iniciar la aplicación y se encuentra en el archivo `personal_management.db`.
+
+### Tablas Principales:
+- **empleados**: Información completa de empleados
+- **documentos**: Documentos digitalizados de empleados
+- **incidencias**: Permisos, reposos y ausencias
+- **pagos**: Registro de nóminas y pagos
+- **configuraciones**: Configuración del sistema
 
 ## 📖 Uso
 
@@ -195,7 +242,15 @@ flake8 src/
 pylint src/
 ```
 
-## 📝 Configuración
+## � Flujo de Trabajo
+
+1. **Configuración Inicial**: Al iniciar el sistema por primera vez, configure los datos de la institución
+2. **Registro de Empleados**: Agregue los empleados con sus datos personales y laborales
+3. **Gestión Documental**: Cargue los documentos requeridos para cada empleado
+4. **Control de Incidencias**: Registre permisos, reposos y ausencias
+5. **Procesamiento de Nómina**: Genere nóminas periódicas y emita recibos de pago
+
+## �📝 Configuración
 
 ### Variables de Entorno
 

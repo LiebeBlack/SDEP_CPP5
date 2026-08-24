@@ -1,6 +1,9 @@
 """
 Empleado Model
 Modelo de datos para empleados
+
+Este modelo representa la información completa de un empleado en el sistema,
+incluyendo datos personales, laborales, académicos y de contacto.
 """
 
 from datetime import datetime, date
@@ -11,7 +14,57 @@ from .enums import TipoEmpleado, Genero, EstadoCivil
 
 
 class Empleado(Base, BaseModel):
-    """Modelo de empleado"""
+    """
+    Modelo de empleado
+    
+    Representa un empleado del sistema con toda su información relevante.
+    Incluye datos personales, físicos, de contacto, laborales y académicos.
+    
+    Atributos:
+        Datos Personales:
+            nombres: Nombres del empleado
+            apellidos: Apellidos del empleado
+            cedula: Cédula de identidad (única)
+            fecha_nacimiento: Fecha de nacimiento
+            genero: Género del empleado
+            estado_civil: Estado civil
+            nacionalidad: Nacionalidad
+        
+        Datos Físicos:
+            peso: Peso en kilogramos
+            altura: Altura en centímetros
+            tipo_sangre: Tipo de sangre
+            foto_ruta: Ruta de la foto de perfil
+        
+        Datos de Contacto:
+            telefono: Teléfono fijo
+            celular: Teléfono móvil
+            email: Correo electrónico
+            direccion: Dirección completa
+            ciudad: Ciudad de residencia
+            estado: Estado/provincia
+            codigo_postal: Código postal
+        
+        Datos Laborales:
+            tipo_empleado: Tipo (docente, administrativo, mantenimiento)
+            cargo: Cargo que desempeña
+            departamento: Departamento de trabajo
+            fecha_contratacion: Fecha de inicio laboral
+            fecha_terminacion: Fecha de fin laboral (si aplica)
+            salario_base: Salario mensual base
+            activo: Estado del empleado (1=activo, 0=inactivo)
+        
+        Datos Académicos:
+            nivel_educativo: Nivel educativo alcanzado
+            especialidad: Especialidad profesional
+            titulo_obtenido: Título obtenido
+        
+        Datos Adicionales:
+            observaciones: Notas adicionales
+            contacto_emergencia_nombre: Nombre de contacto de emergencia
+            contacto_emergencia_telefono: Teléfono de emergencia
+            contacto_emergencia_relacion: Relación con el contacto
+    """
     
     __tablename__ = "empleados"
     

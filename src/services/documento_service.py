@@ -1,9 +1,13 @@
 """
 Documento Service
 Servicio de lógica de negocio para documentos
+
+Este servicio gestiona toda la operativa relacionada con documentos
+de empleados, incluyendo carga, almacenamiento, validación y control
+de vencimientos.
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import date
 from sqlalchemy.orm import Session
 import os
@@ -15,9 +19,21 @@ from src.config import settings
 
 
 class DocumentoService:
-    """Servicio de gestión de documentos"""
+    """
+    Servicio de gestión de documentos
+    
+    Maneja la carga, almacenamiento y gestión de documentos digitales
+    de empleados, incluyendo control de vencimientos y validación
+    de archivos.
+    """
     
     def __init__(self, session: Session):
+        """
+        Inicializa el servicio de documentos
+        
+        Args:
+            session: Sesión de base de datos SQLAlchemy
+        """
         self.session = session
         self.repository = DocumentoRepository(session)
     

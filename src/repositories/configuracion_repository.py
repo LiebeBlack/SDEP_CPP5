@@ -3,7 +3,7 @@ Configuracion Repository
 Repositorio para operaciones de datos de configuración
 """
 
-from typing import List, Optional
+from typing import List, Optional, Any
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion
@@ -34,13 +34,17 @@ class ConfiguracionRepository(BaseRepository[Configuracion]):
             Configuracion.editable == 1
         ).all()
     
-    def set_valor(self, clave: str, valor: any) -> bool:
+    def set_valor(self, clave: str, valor: Any) -> bool:
         """Establece el valor de una configuración"""
         config = self.get_by_clave(clave)
         if config:
-            config.set_valor(valor)
-            self.session.commit()
-            return True
+            try:
+                config.set_valor(valor)
+                self.session.commit()
+                return True
+            except Exception:
+                self.session.rollback()
+                return False
         return False
     
     def get_valor(self, clave: str, default=None):

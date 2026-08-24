@@ -63,19 +63,19 @@ class Pago(Base, BaseModel):
     def salario_diario(self):
         """Calcula el salario diario"""
         if self.dias_trabajados > 0:
-            return float(self.salario_base) / 30  # Asumiendo mes de 30 días
+            return float(self.salario_base) / 30.0  # Asumiendo mes de 30 días
         return 0.0
     
     @property
     def total_deducciones(self):
         """Calcula el total de deducciones"""
-        return float(self.deduccion_seguro + self.deduccion_pension + 
-                    self.deduccion_impuesto + self.otras_deducciones)
+        return float(self.deduccion_seguro) + float(self.deduccion_pension) + \
+               float(self.deduccion_impuesto) + float(self.otras_deducciones)
     
     @property
     def total_ingresos(self):
         """Calcula el total de ingresos"""
-        return float(self.salario_base + self.bonificaciones + self.horas_extra)
+        return float(self.salario_base) + float(self.bonificaciones) + float(self.horas_extra)
     
     def to_dict(self):
         """Convierte el modelo a diccionario"""

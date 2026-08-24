@@ -97,7 +97,7 @@ class PagoRepository(BaseRepository[Pago]):
         result = self.session.query(func.sum(Pago.monto_neto)).filter(
             Pago.empleado_id == empleado_id
         ).first()
-        return float(result[0] or 0)
+        return float(result[0] or 0.0)
     
     def get_total_by_periodo(self, fecha_inicio: date, fecha_fin: date) -> float:
         """Obtiene el total de pagos en un periodo"""
@@ -107,7 +107,7 @@ class PagoRepository(BaseRepository[Pago]):
                 Pago.periodo_fin <= fecha_fin
             )
         ).first()
-        return float(result[0] or 0)
+        return float(result[0] or 0.0)
     
     def get_estadisticas_por_tipo(self) -> dict:
         """Obtiene estadísticas de pagos por tipo"""

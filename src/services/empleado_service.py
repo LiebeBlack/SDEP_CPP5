@@ -1,9 +1,13 @@
 """
 Empleado Service
 Servicio de lógica de negocio para empleados
+
+Este servicio proporciona toda la lógica de negocio relacionada con la gestión
+de empleados, incluyendo creación, actualización, eliminación, búsqueda y
+estadísticas.
 """
 
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 from datetime import date
 from sqlalchemy.orm import Session
 
@@ -13,14 +17,40 @@ from src.config import settings
 
 
 class EmpleadoService:
-    """Servicio de gestión de empleados"""
+    """
+    Servicio de gestión de empleados
+    
+    Este servicio maneja todas las operaciones relacionadas con empleados,
+    actuando como intermediario entre la interfaz de usuario y el repositorio
+    de datos. Implementa validaciones de negocio y reglas de negocio.
+    """
     
     def __init__(self, session: Session):
+        """
+        Inicializa el servicio de empleados
+        
+        Args:
+            session: Sesión de base de datos SQLAlchemy
+        """
         self.session = session
         self.repository = EmpleadoRepository(session)
     
     def crear_empleado(self, datos: Dict) -> Empleado:
-        """Crea un nuevo empleado con validaciones"""
+        """
+        Crea un nuevo empleado con validaciones
+        
+        Este método valida que la cédula no exista en el sistema y crea
+        un nuevo registro de empleado con todos los datos proporcionados.
+        
+        Args:
+            datos: Diccionario con los datos del empleado
+            
+        Returns:
+            Empleado: Objeto empleado creado
+            
+        Raises:
+            ValueError: Si la cédula ya existe o faltan datos requeridos
+        """
         # Validar que la cédula no exista
         if self.repository.get_by_cedula(datos.get("cedula")):
             raise ValueError("Ya existe un empleado con esta cédula")
@@ -61,7 +91,22 @@ class EmpleadoService:
         return self.repository.create(empleado)
     
     def actualizar_empleado(self, empleado_id: int, datos: Dict) -> Empleado:
-        """Actualiza un empleado existente"""
+        """
+        Actualiza un empleado existente
+        
+        Actualiza la información de un empleado existente, validando que
+        no exista conflicto con la cédula si esta se modifica.
+        
+        Args:
+            empleado_id: ID del empleado a actualizar
+            datos: Diccionario con los datos a actualizar
+            
+        Returns:
+            Empleado: Objeto empleado actualizado
+            
+        Raises:
+            ValueError: Si el empleado no existe o hay conflicto de cédula
+        """
         empleado = self.repository.get_by_id(empleado_id)
         if not empleado:
             raise ValueError("Empleado no encontrado")
@@ -79,7 +124,18 @@ class EmpleadoService:
         return self.repository.update(empleado)
     
     def eliminar_empleado(self, empleado_id: int) -> bool:
-        """Elimina un empleado (desactivación lógica)"""
+        """
+        Elimina un empleado (desactivación lógica)
+        
+        En lugar de eliminar físicamente el registro, este método
+        marca el empleado como inactivo, manteniendo el historial.
+        
+        Args:
+            empleado_id: ID del empleado a desactivar
+            
+        Returns:
+            bool: True si se desactivó correctamente, False en caso contrario
+        """
         return self.repository.desactivar(empleado_id)
     
     def obtener_empleado(self, empleado_id: int) -> Optional[Empleado]:
@@ -124,7 +180,15 @@ class EmpleadoService:
         return False
     
     def obtener_estadisticas(self) -> Dict:
-        """Obtiene estadísticas generales de empleados"""
+        """
+        Obtiene estadísticas generales de empleados
+        
+        Genera un resumen estadístico incluyendo total de empleados,
+        empleados activos, distribución por tipo y por departamento.
+        
+        Returns:
+            Dict: Diccionario con estadísticas de empleados
+        """
         return {
             "total": self.repository.count(),
             "activos": len(self.repository.get_activos()),

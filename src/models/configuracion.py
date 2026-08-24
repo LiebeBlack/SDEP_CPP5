@@ -4,6 +4,7 @@ Modelo de datos para configuración del sistema
 """
 
 from datetime import datetime
+from typing import Any
 from sqlalchemy import Column, Integer, String, Text, Float
 from .base import Base, BaseModel
 
@@ -38,7 +39,7 @@ class Configuracion(Base, BaseModel):
         else:
             return self.valor
     
-    def set_valor(self, valor):
+    def set_valor(self, valor: Any) -> None:
         """Establece el valor convirtiéndolo al tipo correcto"""
         if valor is None:
             self.valor = None

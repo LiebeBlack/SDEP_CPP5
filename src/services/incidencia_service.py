@@ -1,9 +1,12 @@
 """
 Incidencia Service
 Servicio de lógica de negocio para incidencias
+
+Este servicio gestiona el ciclo de vida completo de incidencias,
+incluyendo registro, aprobación, rechazo y control de vigencia.
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 import uuid
@@ -15,9 +18,21 @@ from src.config import settings
 
 
 class IncidenciaService:
-    """Servicio de gestión de incidencias"""
+    """
+    Servicio de gestión de incidencias
+    
+    Administra el flujo completo de incidencias desde su registro
+    hasta su aprobación o rechazo, incluyendo cálculo automático
+    de días y gestión de documentos de soporte.
+    """
     
     def __init__(self, session: Session):
+        """
+        Inicializa el servicio de incidencias
+        
+        Args:
+            session: Sesión de base de datos SQLAlchemy
+        """
         self.session = session
         self.repository = IncidenciaRepository(session)
     

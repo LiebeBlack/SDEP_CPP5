@@ -92,7 +92,7 @@ Este proyecto cuenta con un sistema CI/CD automatizado mediante GitHub Actions:
 1. Clonar el repositorio:
 ```bash
 git clone <repository-url>
-cd NEW TesisFinal
+cd SDEP_CPP5
 ```
 
 2. Crear entorno virtual:

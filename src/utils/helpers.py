@@ -26,37 +26,66 @@ def get_resource_path(relative_path: str) -> str:
     return os.path.join(base_path, relative_path)
 
 
-def format_date(fecha: date, formato: str = "%d/%m/%Y") -> str:
+def format_date(fecha: Union[date, datetime, str, None], formato: str = "%d/%m/%Y") -> str:
     """
     Formatea una fecha a string
     
     Args:
-        fecha: Objeto date a formatear
+        fecha: Objeto date/datetime a formatear o string de fecha
         formato: Formato de salida (default: DD/MM/YYYY)
         
     Returns:
         str: Fecha formateada o string vacío si fecha es None
     """
-    if fecha:
+    if fecha is None:
+        return ""
+    if isinstance(fecha, (datetime, date)):
         return fecha.strftime(formato)
-    return ""
+    if isinstance(fecha, str):
+        if not fecha.strip():
+            return ""
+        parsed = parse_date(fecha)
+        if parsed:
+            return parsed.strftime(formato)
+        return fecha
+    return str(fecha)
 
 
-def parse_date(fecha_str: str, formato: str = "%d/%m/%Y") -> Optional[date]:
+def parse_date(fecha_str: Union[str, date, datetime, None], formato: str = "%d/%m/%Y") -> Optional[date]:
     """
-    Parsea un string a fecha
+    Parsea un string a fecha soportando múltiples formatos comunes
     
     Args:
-        fecha_str: String con la fecha
-        formato: Formato de entrada (default: DD/MM/YYYY)
+        fecha_str: String con la fecha o instancia date/datetime
+        formato: Formato de entrada preferido (default: DD/MM/YYYY)
         
     Returns:
         date: Objeto date o None si hay error
     """
-    try:
-        return datetime.strptime(fecha_str, formato).date()
-    except (ValueError, TypeError):
+    if fecha_str is None:
         return None
+    if isinstance(fecha_str, datetime):
+        return fecha_str.date()
+    if isinstance(fecha_str, date):
+        return fecha_str
+    
+    fecha_str = str(fecha_str).strip()
+    if not fecha_str:
+        return None
+    
+    formatos = [formato, "%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d.%m.%Y", "%Y.%m.%d"]
+    # Eliminar duplicados manteniendo orden
+    formatos_unicos = []
+    for f in formatos:
+        if f not in formatos_unicos:
+            formatos_unicos.append(f)
+            
+    for fmt in formatos_unicos:
+        try:
+            return datetime.strptime(fecha_str, fmt).date()
+        except (ValueError, TypeError):
+            continue
+    return None
 
 
 def format_currency(monto: float, simbolo: str = "$") -> str:

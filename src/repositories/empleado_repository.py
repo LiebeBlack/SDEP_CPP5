@@ -23,12 +23,12 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     
     def get_by_tipo(self, tipo: Union[str, TipoEmpleado]) -> List[Empleado]:
         """Obtiene empleados por tipo"""
-        if isinstance(tipo, str):
-            return self.session.query(Empleado).filter(
-                Empleado.tipo_empleado == tipo
-            ).all()
+        tipo_val = tipo.value if hasattr(tipo, 'value') else str(tipo)
         return self.session.query(Empleado).filter(
-            Empleado.tipo_empleado == tipo.value
+            or_(
+                Empleado.tipo_empleado == tipo_val,
+                Empleado.tipo_empleado == tipo
+            )
         ).all()
     
     def get_activos(self) -> List[Empleado]:
@@ -43,11 +43,12 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     
     def search_empleados(self, search_term: str) -> List[Empleado]:
         """Busca empleados por nombre, apellido o cédula"""
+        term = search_term.strip()
         return self.session.query(Empleado).filter(
             or_(
-                Empleado.nombres.like(f"%{search_term}%"),
-                Empleado.apellidos.like(f"%{search_term}%"),
-                Empleado.cedula.like(f"%{search_term}%")
+                Empleado.nombres.like(f"%{term}%"),
+                Empleado.apellidos.like(f"%{term}%"),
+                Empleado.cedula.like(f"%{term}%")
             )
         ).all()
     
@@ -59,20 +60,26 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         """Obtiene empleados con filtros múltiples"""
         query = self.session.query(Empleado)
         
-        if "tipo" in filtros:
-            query = query.filter(Empleado.tipo_empleado == filtros["tipo"])
+        if "tipo" in filtros and filtros["tipo"] and filtros["tipo"] != "Todos":
+            tipo_val = filtros["tipo"].value if hasattr(filtros["tipo"], 'value') else str(filtros["tipo"])
+            query = query.filter(
+                or_(
+                    Empleado.tipo_empleado == tipo_val,
+                    Empleado.tipo_empleado == filtros["tipo"]
+                )
+            )
         
-        if "departamento" in filtros:
+        if "departamento" in filtros and filtros["departamento"]:
             query = query.filter(Empleado.departamento == filtros["departamento"])
         
-        if "activo" in filtros:
-            query = query.filter(Empleado.activo == filtros["activo"])
+        if "activo" in filtros and filtros["activo"] is not None:
+            query = query.filter(Empleado.activo == int(filtros["activo"]))
         
-        if "cargo" in filtros:
+        if "cargo" in filtros and filtros["cargo"]:
             query = query.filter(Empleado.cargo == filtros["cargo"])
         
-        if "busqueda" in filtros:
-            search = filtros["busqueda"]
+        if "busqueda" in filtros and filtros["busqueda"]:
+            search = filtros["busqueda"].strip()
             query = query.filter(
                 or_(
                     Empleado.nombres.like(f"%{search}%"),
@@ -103,13 +110,11 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     
     def get_estadisticas_por_tipo(self) -> dict:
         """Obtiene estadísticas de empleados por tipo"""
-        stats = {}
-        for tipo in TipoEmpleado:
-            count = self.session.query(Empleado).filter(
-                Empleado.tipo_empleado == tipo.value,
-                Empleado.activo == 1
-            ).count()
-            stats[tipo.value] = count
+        stats = {t.value: 0 for t in TipoEmpleado}
+        empleados = self.get_activos()
+        for empleado in empleados:
+            t = empleado.tipo_empleado.value if hasattr(empleado.tipo_empleado, 'value') else str(empleado.tipo_empleado)
+            stats[t] = stats.get(t, 0) + 1
         return stats
     
     def get_estadisticas_por_departamento(self) -> dict:
@@ -118,5 +123,6 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         empleados = self.get_activos()
         for empleado in empleados:
             dept = empleado.departamento
-            stats[dept] = stats.get(dept, 0) + 1
+            if dept:
+                stats[dept] = stats.get(dept, 0) + 1
         return stats

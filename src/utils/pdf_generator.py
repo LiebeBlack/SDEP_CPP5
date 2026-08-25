@@ -180,9 +180,10 @@ class PDFGenerator:
         story.append(Spacer(1, 0.2*inch))
         
         # Datos del cargo
+        tipo_str = empleado.tipo_empleado.value.upper() if hasattr(empleado.tipo_empleado, 'value') else str(empleado.tipo_empleado).upper()
         datos_cargo = f"""
         Actualmente desempeña el cargo de <b>{empleado.cargo}</b> en el departamento de 
-        <b>{empleado.departamento}</b>, con una categoría de <b>{empleado.tipo_empleado.upper()}</b>.
+        <b>{empleado.departamento}</b>, con una categoría de <b>{tipo_str}</b>.
         """
         
         story.append(Paragraph(datos_cargo, self.styles['CustomBody']))
@@ -380,23 +381,32 @@ class PDFGenerator:
         story.append(Spacer(1, 0.3*inch))
         
         # Desglose de pagos
-        story.append(Paragraph("DESGLUCE DE PAGOS", self.styles['CustomSubtitle']))
+        story.append(Paragraph("DESGLOSE DE PAGOS", self.styles['CustomSubtitle']))
+        
+        total_deducc = round(
+            float(pago_data.get('deduccion_seguro', 0) or 0) +
+            float(pago_data.get('deduccion_pension', 0) or 0) +
+            float(pago_data.get('deduccion_impuesto', 0) or 0) +
+            float(pago_data.get('otras_deducciones', 0) or 0) +
+            float(pago_data.get('descuentos', 0) or 0),
+            2
+        )
         
         desglose_table = Table([
             ["Concepto", "Monto"],
-            ["Salario Base", format_currency(pago_data['salario_base'])],
-            ["Bonificaciones", format_currency(pago_data.get('bonificaciones', 0))],
-            ["Horas Extra", format_currency(pago_data.get('horas_extra', 0))],
-            ["TOTAL INGRESOS", format_currency(pago_data['monto_bruto'])],
+            ["Salario Base", format_currency(float(pago_data['salario_base']))],
+            ["Bonificaciones", format_currency(float(pago_data.get('bonificaciones', 0) or 0))],
+            ["Horas Extra", format_currency(float(pago_data.get('horas_extra', 0) or 0))],
+            ["TOTAL INGRESOS", format_currency(float(pago_data['monto_bruto']))],
             ["", ""],
-            ["Deducción Seguro Social", format_currency(pago_data.get('deduccion_seguro', 0))],
-            ["Deducción Pensión", format_currency(pago_data.get('deduccion_pension', 0))],
-            ["Deducción Impuesto", format_currency(pago_data.get('deduccion_impuesto', 0))],
-            ["Otras Deducciones", format_currency(pago_data.get('otras_deducciones', 0))],
-            ["Descuentos", format_currency(pago_data.get('descuentos', 0))],
-            ["TOTAL DEDUCCIONES", format_currency(pago_data['monto_bruto'] - pago_data['monto_neto'])],
+            ["Deducción Seguro Social", format_currency(float(pago_data.get('deduccion_seguro', 0) or 0))],
+            ["Deducción Pensión", format_currency(float(pago_data.get('deduccion_pension', 0) or 0))],
+            ["Deducción Impuesto", format_currency(float(pago_data.get('deduccion_impuesto', 0) or 0))],
+            ["Otras Deducciones", format_currency(float(pago_data.get('otras_deducciones', 0) or 0))],
+            ["Descuentos", format_currency(float(pago_data.get('descuentos', 0) or 0))],
+            ["TOTAL DEDUCCIONES", format_currency(total_deducc)],
             ["", ""],
-            ["NETO A PAGAR", format_currency(pago_data['monto_neto'])]
+            ["NETO A PAGAR", format_currency(float(pago_data['monto_neto']))]
         ], colWidths=[3*inch, 2.5*inch])
         
         desglose_table.setStyle(TableStyle([
@@ -407,10 +417,14 @@ class PDFGenerator:
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LINEABOVE', (0, 4), (-1, 4), 1, colors.black),
             ('LINEBELOW', (0, 4), (-1, 4), 1, colors.black),
+            ('FONTNAME', (0, 4), (1, 4), 'Helvetica-Bold'),
             ('LINEABOVE', (0, 11), (-1, 11), 1, colors.black),
             ('LINEBELOW', (0, 11), (-1, 11), 1, colors.black),
             ('FONTNAME', (0, 11), (1, 11), 'Helvetica-Bold'),
-            ('FONTNAME', (0, 4), (1, 4), 'Helvetica-Bold'),
+            ('LINEABOVE', (0, 13), (-1, 13), 1.5, colors.darkblue),
+            ('LINEBELOW', (0, 13), (-1, 13), 1.5, colors.darkblue),
+            ('FONTNAME', (0, 13), (1, 13), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 13), (1, 13), 11),
         ]))
         
         story.append(desglose_table)
@@ -488,12 +502,13 @@ class PDFGenerator:
         data = [["Cédula", "Nombre", "Cargo", "Departamento", "Tipo", "Salario"]]
         
         for emp in empleados:
+            tipo_display = emp.tipo_empleado.value.capitalize() if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado).capitalize()
             data.append([
-                emp.cedula,
+                str(emp.cedula),
                 emp.nombre_completo,
-                emp.cargo,
-                emp.departamento,
-                emp.tipo_empleado,
+                str(emp.cargo or ""),
+                str(emp.departamento or ""),
+                tipo_display,
                 format_currency(emp.salario_base)
             ])
         

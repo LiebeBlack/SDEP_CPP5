@@ -56,26 +56,47 @@ class Pago(Base, BaseModel):
     @property
     def dias_trabajados(self):
         """Calcula los días trabajados en el periodo"""
-        delta = self.periodo_fin - self.periodo_inicio
-        return delta.days + 1
+        if self.periodo_inicio and self.periodo_fin:
+            try:
+                ini = self.periodo_inicio if isinstance(self.periodo_inicio, date) else self.periodo_inicio.date()
+                fin = self.periodo_fin if isinstance(self.periodo_fin, date) else self.periodo_fin.date()
+                delta = fin - ini
+                return max(0, delta.days + 1)
+            except Exception:
+                return 0
+        return 0
     
     @property
     def salario_diario(self):
         """Calcula el salario diario"""
-        if self.dias_trabajados > 0:
-            return float(self.salario_base) / 30.0  # Asumiendo mes de 30 días
+        if self.dias_trabajados > 0 and self.salario_base:
+            try:
+                return round(float(self.salario_base) / 30.0, 2)
+            except Exception:
+                return 0.0
         return 0.0
     
     @property
     def total_deducciones(self):
         """Calcula el total de deducciones"""
-        return float(self.deduccion_seguro) + float(self.deduccion_pension) + \
-               float(self.deduccion_impuesto) + float(self.otras_deducciones)
+        return round(
+            float(self.deduccion_seguro or 0) +
+            float(self.deduccion_pension or 0) +
+            float(self.deduccion_impuesto or 0) +
+            float(self.otras_deducciones or 0) +
+            float(self.descuentos or 0),
+            2
+        )
     
     @property
     def total_ingresos(self):
         """Calcula el total de ingresos"""
-        return float(self.salario_base) + float(self.bonificaciones) + float(self.horas_extra)
+        return round(
+            float(self.salario_base or 0) +
+            float(self.bonificaciones or 0) +
+            float(self.horas_extra or 0),
+            2
+        )
     
     def to_dict(self):
         """Convierte el modelo a diccionario"""

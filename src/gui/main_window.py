@@ -143,12 +143,18 @@ class MainWindow(ctk.CTk):
         separator.pack(pady=20, padx=10, fill="x")
         
         # Información de la institución
-        config = self.config_service.obtener_configuracion_general()
-        institution_name = config.get("nombre_institucion", "Institución Educativa")
+        try:
+            config = self.config_service.obtener_configuracion_general()
+            institution_name = config.get("nombre_institucion") if config else None
+        except Exception:
+            institution_name = None
+            
+        if not institution_name:
+            institution_name = "Institución Educativa"
         
         institution_label = ctk.CTkLabel(
             self.sidebar,
-            text=institution_name,
+            text=str(institution_name),
             font=ctk.CTkFont(size=11),
             wraplength=230,
             text_color="#cccccc"
@@ -222,6 +228,17 @@ class MainWindow(ctk.CTk):
             text_color="#cccccc"
         )
         datetime_label.pack(side="right", padx=10, pady=5)
+    
+    def show_frame(self, frame_name: str, **kwargs):
+        """Muestra un frame específico y opcionalmente pasa parámetros"""
+        self._show_frame(frame_name)
+        if kwargs and self.current_frame:
+            for k, v in kwargs.items():
+                if hasattr(self.current_frame, k):
+                    try:
+                        getattr(self.current_frame, k)(v)
+                    except Exception:
+                        pass
     
     def _show_frame(self, frame_name: str):
         """Muestra un frame específico"""

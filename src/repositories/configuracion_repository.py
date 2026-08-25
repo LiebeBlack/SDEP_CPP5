@@ -50,16 +50,14 @@ class ConfiguracionRepository(BaseRepository[Configuracion]):
     def get_valor(self, clave: str, default=None):
         """Obtiene el valor de una configuración"""
         config = self.get_by_clave(clave)
-        if config:
-            return config.valor_typed
+        if config is not None:
+            val = config.valor_typed
+            return val if val is not None else default
         return default
     
     def get_valor_typed(self, clave: str, default=None):
         """Obtiene el valor tipado de una configuración"""
-        config = self.get_by_clave(clave)
-        if config:
-            return config.valor_typed
-        return default
+        return self.get_valor(clave, default)
     
     def get_configuraciones_dict(self) -> dict:
         """Obtiene todas las configuraciones como diccionario"""

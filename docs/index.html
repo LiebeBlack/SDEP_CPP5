@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Personal y Nómina</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">◆</span>
+                    <span class="logo-text">SDEP</span>
+                </div>
+                <nav class="nav">
+                    <a href="#inicio" class="nav-link">Inicio</a>
+                    <a href="#software" class="nav-link">Software</a>
+                    <a href="#tesis" class="nav-link">Tesis</a>
+                    <a href="#documentacion" class="nav-link">Documentación</a>
+                </nav>
+                <button class="theme-toggle" aria-label="Cambiar tema">
+                    <span class="theme-icon">◐</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section id="inicio" class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">Sistema de Gestión de Personal y Nómina</h1>
+                <p class="hero-subtitle">Solución integral para instituciones educativas</p>
+                <div class="hero-actions">
+                    <a href="#software" class="btn btn-primary">Ver Software</a>
+                    <a href="#tesis" class="btn btn-secondary">Leer Tesis</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="code-preview">
+                    <div class="code-header">
+                        <span class="code-dot"></span>
+                        <span class="code-dot"></span>
+                        <span class="code-dot"></span>
+                    </div>
+                    <div class="code-content">
+                        <code class="code-line">from services import EmpleadoService</code>
+                        <code class="code-line">service = EmpleadoService()</code>
+                        <code class="code-line">empleado = service.crear_empleado({</code>
+                        <code class="code-line">    "nombres": "Juan",</code>
+                        <code class="code-line">    "apellidos": "Pérez",</code>
+                        <code class="code-line">    "cedula": "12345678"</code>
+                        <code class="code-line">})</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Software Section -->
+        <section id="software" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Software</h2>
+                <p class="section-subtitle">Sistema completo desarrollado en Python</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3 class="feature-title">Gestión de Empleados</h3>
+                    <p class="feature-description">Registro completo con datos personales, laborales y académicos</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3 class="feature-title">Gestión Documental</h3>
+                    <p class="feature-description">Digitalización y control de documentos con alertas de vencimiento</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3 class="feature-title">Incidencias</h3>
+                    <p class="feature-description">Control de permisos, reposos y ausencias con flujo de aprobación</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3 class="feature-title">Nómina</h3>
+                    <p class="feature-description">Cálculo automático de pagos con deducciones y bonificaciones</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Reportes</h3>
+                    <p class="feature-description">Generación de estadísticas y documentos en PDF</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3 class="feature-title">Configuración</h3>
+                    <p class="feature-description">Personalización completa según necesidades institucionales</p>
+                </div>
+            </div>
+
+            <div class="tech-stack">
+                <h3 class="tech-title">Tecnologías</h3>
+                <div class="tech-tags">
+                    <span class="tech-tag">Python 3.10+</span>
+                    <span class="tech-tag">SQLAlchemy</span>
+                    <span class="tech-tag">CustomTkinter</span>
+                    <span class="tech-tag">SQLite</span>
+                    <span class="tech-tag">ReportLab</span>
+                    <span class="tech-tag">PyPDF2</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tesis Section -->
+        <section id="tesis" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Tesis Académica</h2>
+                <p class="section-subtitle">Investigación completa sobre el sistema</p>
+            </div>
+
+            <div class="thesis-grid">
+                <div class="thesis-card">
+                    <div class="thesis-number">01</div>
+                    <h3 class="thesis-title">Proyecto Social Tecnológico</h3>
+                    <p class="thesis-description">Descripción del proyecto social, justificación y metodología</p>
+                    <a href="../TESIS/PROYECTO_SOCIAL_TECNOLOGICO.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">02</div>
+                    <h3 class="thesis-title">Anteproyecto de Tesis</h3>
+                    <p class="thesis-description">Planteamiento inicial, objetivos y metodología propuesta</p>
+                    <a href="../TESIS/ANTEPROYECTO_TESIS.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">03</div>
+                    <h3 class="thesis-title">Capítulo I: Planteamiento del Problema</h3>
+                    <p class="thesis-description">Realidad problemática, formulación y justificación</p>
+                    <a href="../TESIS/CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">04</div>
+                    <h3 class="thesis-title">Capítulo II: Marco Teórico</h3>
+                    <p class="thesis-description">Antecedentes, bases teóricas y legales</p>
+                    <a href="../TESIS/CAPITULO_II_MARCO_TEORICO.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">05</div>
+                    <h3 class="thesis-title">Capítulo III: Metodología</h3>
+                    <p class="thesis-description">Diseño de investigación, técnicas e instrumentos</p>
+                    <a href="../TESIS/CAPITULO_III_METODOLOGIA.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">06</div>
+                    <h3 class="thesis-title">Capítulo IV: Resultados</h3>
+                    <p class="thesis-description">Descripción del sistema, pruebas y validación</p>
+                    <a href="../TESIS/CAPITULO_IV_RESULTADOS.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">07</div>
+                    <h3 class="thesis-title">Capítulo V: Conclusiones</h3>
+                    <p class="thesis-description">Conclusiones, recomendaciones y contribuciones</p>
+                    <a href="../TESIS/CAPITULO_V_CONCLUSIONES.md" class="thesis-link">Ver documento →</a>
+                </div>
+
+                <div class="thesis-card">
+                    <div class="thesis-number">08</div>
+                    <h3 class="thesis-title">Bibliografía y Anexos</h3>
+                    <p class="thesis-description">Referencias completas y 10 anexos detallados</p>
+                    <a href="../TESIS/BIBLIOGRAFIA_ANEXOS.md" class="thesis-link">Ver documento →</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Documentation Section -->
+        <section id="documentacion" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Documentación Técnica</h2>
+                <p class="section-subtitle">Guías completas para desarrollo y uso</p>
+            </div>
+
+            <div class="docs-list">
+                <a href="../README.md" class="doc-item">
+                    <div class="doc-icon">📖</div>
+                    <div class="doc-content">
+                        <h4 class="doc-title">README</h4>
+                        <p class="doc-description">Documentación general del proyecto</p>
+                    </div>
+                    <span class="doc-arrow">→</span>
+                </a>
+
+                <a href="../DOCUMENTACION_TECNICA.md" class="doc-item">
+                    <div class="doc-icon">🔧</div>
+                    <div class="doc-content">
+                        <h4 class="doc-title">Documentación Técnica</h4>
+                        <p class="doc-description">Arquitectura y detalles técnicos</p>
+                    </div>
+                    <span class="doc-arrow">→</span>
+                </a>
+
+                <a href="../GUIA_USUARIO.md" class="doc-item">
+                    <div class="doc-icon">👤</div>
+                    <div class="doc-content">
+                        <h4 class="doc-title">Guía de Usuario</h4>
+                        <p class="doc-description">Instrucciones de uso del sistema</p>
+                    </div>
+                    <span class="doc-arrow">→</span>
+                </a>
+
+                <a href="../NOTAS_DESARROLLO.md" class="doc-item">
+                    <div class="doc-icon">📝</div>
+                    <div class="doc-content">
+                        <h4 class="doc-title">Notas de Desarrollo</h4>
+                        <p class="doc-description">Notas y decisiones de desarrollo</p>
+                    </div>
+                    <span class="doc-arrow">→</span>
+                </a>
+
+                <a href="../CONTRIBUTING.md" class="doc-item">
+                    <div class="doc-icon">🤝</div>
+                    <div class="doc-content">
+                        <h4 class="doc-title">Guía de Contribución</h4>
+                        <p class="doc-description">Cómo contribuir al proyecto</p>
+                    </div>
+                    <span class="doc-arrow">→</span>
+                </a>
+
+                <a href="../QUICKSTART_CICD.md" class="doc-item">
+                    <div class="doc-icon">⚡</div>
+                    <div class="doc-content">
+                        <h4 class="doc-title">Quickstart CI/CD</h4>
+                        <p class="doc-description">Configuración rápida de CI/CD</p>
+                    </div>
+                    <span class="doc-arrow">→</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">32</div>
+                    <div class="stat-label">Archivos Python</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">9</div>
+                    <div class="stat-label">Documentos de Tesis</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">7</div>
+                    <div class="stat-label">Documentos Técnicos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">10</div>
+                    <div class="stat-label">Anexos</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p class="footer-text">Sistema de Gestión de Personal y Nómina</p>
+                <p class="footer-copyright">© 2026. Documentación ultra minimalista.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

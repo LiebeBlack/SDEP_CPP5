@@ -9,7 +9,20 @@ para mantener la consistencia y tipado de los datos.
 from enum import Enum
 
 
-class TipoEmpleado(str, Enum):
+class BaseEnum(str, Enum):
+    """Clase base para enums con métodos auxiliares"""
+    @classmethod
+    def values(cls):
+        """Retorna una lista con todos los valores del enum"""
+        return [item.value for item in cls]
+    
+    @classmethod
+    def has_value(cls, val):
+        """Verifica si un valor existe en el enum"""
+        return val in cls.values()
+
+
+class TipoEmpleado(BaseEnum):
     """
     Tipos de empleados en el sistema
     
@@ -20,7 +33,7 @@ class TipoEmpleado(str, Enum):
     MANTENIMIENTO = "mantenimiento"
 
 
-class Genero(str, Enum):
+class Genero(BaseEnum):
     """
     Género del empleado
     
@@ -31,7 +44,7 @@ class Genero(str, Enum):
     OTRO = "otro"
 
 
-class EstadoCivil(str, Enum):
+class EstadoCivil(BaseEnum):
     """
     Estado civil del empleado
     
@@ -44,7 +57,7 @@ class EstadoCivil(str, Enum):
     UNION_LIBRE = "union_libre"
 
 
-class TipoDocumento(str, Enum):
+class TipoDocumento(BaseEnum):
     """
     Tipos de documentos gestionados en el sistema
     
@@ -59,7 +72,7 @@ class TipoDocumento(str, Enum):
     OTRO = "otro"
 
 
-class TipoIncidencia(str, Enum):
+class TipoIncidencia(BaseEnum):
     """
     Tipos de incidencias que pueden registrarse
     
@@ -73,7 +86,7 @@ class TipoIncidencia(str, Enum):
     LICENCIA = "licencia"
 
 
-class EstadoIncidencia(str, Enum):
+class EstadoIncidencia(BaseEnum):
     """
     Estados por los que puede pasar una incidencia
     
@@ -86,7 +99,7 @@ class EstadoIncidencia(str, Enum):
     COMPLETADO = "completado"
 
 
-class TipoPago(str, Enum):
+class TipoPago(BaseEnum):
     """
     Tipos de pagos que se pueden procesar
     
@@ -100,7 +113,7 @@ class TipoPago(str, Enum):
     COMISION = "comision"
 
 
-class MetodoPago(str, Enum):
+class MetodoPago(BaseEnum):
     """
     Métodos de pago disponibles
     

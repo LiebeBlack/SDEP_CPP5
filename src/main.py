@@ -4,8 +4,14 @@ Punto de entrada principal de la aplicación
 """
 
 import sys
+import os
 import logging
 from pathlib import Path
+
+# Asegurar que el directorio raíz esté en sys.path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Configurar logging simple
 logging.basicConfig(

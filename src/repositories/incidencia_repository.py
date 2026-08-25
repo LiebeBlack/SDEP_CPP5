@@ -1,9 +1,4 @@
-"""
-Incidencia Repository
-Repositorio para operaciones de datos de incidencias
-"""
-
-from typing import List, Optional
+from typing import List, Optional, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from datetime import date, datetime
@@ -22,26 +17,38 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
         """Obtiene incidencias de un empleado"""
         return self.session.query(Incidencia).filter(
             Incidencia.empleado_id == empleado_id
-        ).all()
+        ).order_by(Incidencia.fecha_inicio.desc()).all()
     
-    def get_by_tipo(self, tipo: str) -> List[Incidencia]:
+    def get_by_tipo(self, tipo: Union[str, TipoIncidencia]) -> List[Incidencia]:
         """Obtiene incidencias por tipo"""
+        tipo_val = tipo.value if hasattr(tipo, 'value') else str(tipo)
         return self.session.query(Incidencia).filter(
-            Incidencia.tipo_incidencia == tipo
+            or_(
+                Incidencia.tipo_incidencia == tipo_val,
+                Incidencia.tipo_incidencia == tipo
+            )
         ).all()
     
-    def get_by_estado(self, estado: str) -> List[Incidencia]:
+    def get_by_estado(self, estado: Union[str, EstadoIncidencia]) -> List[Incidencia]:
         """Obtiene incidencias por estado"""
+        estado_val = estado.value if hasattr(estado, 'value') else str(estado)
         return self.session.query(Incidencia).filter(
-            Incidencia.estado == estado
+            or_(
+                Incidencia.estado == estado_val,
+                Incidencia.estado == estado
+            )
         ).all()
     
-    def get_by_empleado_y_tipo(self, empleado_id: int, tipo: str) -> List[Incidencia]:
+    def get_by_empleado_y_tipo(self, empleado_id: int, tipo: Union[str, TipoIncidencia]) -> List[Incidencia]:
         """Obtiene incidencias de un empleado por tipo"""
+        tipo_val = tipo.value if hasattr(tipo, 'value') else str(tipo)
         return self.session.query(Incidencia).filter(
             and_(
                 Incidencia.empleado_id == empleado_id,
-                Incidencia.tipo_incidencia == tipo
+                or_(
+                    Incidencia.tipo_incidencia == tipo_val,
+                    Incidencia.tipo_incidencia == tipo
+                )
             )
         ).all()
     
@@ -65,19 +72,9 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
     def get_by_periodo(self, fecha_inicio: date, fecha_fin: date) -> List[Incidencia]:
         """Obtiene incidencias en un periodo de tiempo"""
         return self.session.query(Incidencia).filter(
-            or_(
-                and_(
-                    Incidencia.fecha_inicio >= fecha_inicio,
-                    Incidencia.fecha_inicio <= fecha_fin
-                ),
-                and_(
-                    Incidencia.fecha_fin >= fecha_inicio,
-                    Incidencia.fecha_fin <= fecha_fin
-                ),
-                and_(
-                    Incidencia.fecha_inicio <= fecha_inicio,
-                    Incidencia.fecha_fin >= fecha_fin
-                )
+            and_(
+                Incidencia.fecha_inicio <= fecha_fin,
+                Incidencia.fecha_fin >= fecha_inicio
             )
         ).all()
     
@@ -86,20 +83,8 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
         return self.session.query(Incidencia).filter(
             and_(
                 Incidencia.empleado_id == empleado_id,
-                or_(
-                    and_(
-                        Incidencia.fecha_inicio >= fecha_inicio,
-                        Incidencia.fecha_inicio <= fecha_fin
-                    ),
-                    and_(
-                        Incidencia.fecha_fin >= fecha_inicio,
-                        Incidencia.fecha_fin <= fecha_fin
-                    ),
-                    and_(
-                        Incidencia.fecha_inicio <= fecha_inicio,
-                        Incidencia.fecha_fin >= fecha_fin
-                    )
-                )
+                Incidencia.fecha_inicio <= fecha_fin,
+                Incidencia.fecha_fin >= fecha_inicio
             )
         ).all()
     
@@ -111,7 +96,7 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
             incidencia.aprobado_por = aprobado_por
             incidencia.fecha_aprobacion = date.today()
             incidencia.comentarios_aprobacion = comentarios
-            if dias_aprobados:
+            if dias_aprobados is not None and dias_aprobados > 0:
                 incidencia.dias_aprobados = dias_aprobados
             else:
                 incidencia.dias_aprobados = incidencia.dias_solicitados
@@ -142,18 +127,18 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
     
     def get_estadisticas_por_tipo(self) -> dict:
         """Obtiene estadísticas de incidencias por tipo"""
-        stats = {}
+        stats = {t.value: 0 for t in TipoIncidencia}
         incidencias = self.get_all()
         for incidencia in incidencias:
-            tipo = incidencia.tipo_incidencia
+            tipo = incidencia.tipo_incidencia.value if hasattr(incidencia.tipo_incidencia, 'value') else str(incidencia.tipo_incidencia)
             stats[tipo] = stats.get(tipo, 0) + 1
         return stats
     
     def get_estadisticas_por_estado(self) -> dict:
         """Obtiene estadísticas de incidencias por estado"""
-        stats = {}
+        stats = {e.value: 0 for e in EstadoIncidencia}
         incidencias = self.get_all()
         for incidencia in incidencias:
-            estado = incidencia.estado
+            estado = incidencia.estado.value if hasattr(incidencia.estado, 'value') else str(incidencia.estado)
             stats[estado] = stats.get(estado, 0) + 1
         return stats

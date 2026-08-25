@@ -51,21 +51,53 @@ class EmpleadoService:
         Raises:
             ValueError: Si la cédula ya existe o faltan datos requeridos
         """
+        from src.utils.helpers import parse_date
+        
+        cedula = str(datos.get("cedula", "")).strip()
+        if not cedula:
+            raise ValueError("La cédula es requerida")
+        
         # Validar que la cédula no exista
-        if self.repository.get_by_cedula(datos.get("cedula")):
+        if self.repository.get_by_cedula(cedula):
             raise ValueError("Ya existe un empleado con esta cédula")
+        
+        # Normalizar fechas
+        fecha_nac = datos.get("fecha_nacimiento")
+        if isinstance(fecha_nac, str):
+            fecha_nac = parse_date(fecha_nac)
+        
+        fecha_cont = datos.get("fecha_contratacion")
+        if isinstance(fecha_cont, str):
+            fecha_cont = parse_date(fecha_cont) or date.today()
+        elif not fecha_cont:
+            fecha_cont = date.today()
+        
+        fecha_term = datos.get("fecha_terminacion")
+        if isinstance(fecha_term, str):
+            fecha_term = parse_date(fecha_term)
+        
+        # Normalizar números
+        def to_float(val):
+            try:
+                return float(val) if val is not None and str(val).strip() != "" else None
+            except (ValueError, TypeError):
+                return None
+        
+        salario = to_float(datos.get("salario_base"))
+        if salario is None:
+            raise ValueError("El salario base es requerido y debe ser numérico")
         
         # Crear empleado
         empleado = Empleado(
-            nombres=datos["nombres"],
-            apellidos=datos["apellidos"],
-            cedula=datos["cedula"],
-            fecha_nacimiento=datos.get("fecha_nacimiento"),
+            nombres=str(datos.get("nombres", "")).strip(),
+            apellidos=str(datos.get("apellidos", "")).strip(),
+            cedula=cedula,
+            fecha_nacimiento=fecha_nac,
             genero=datos.get("genero"),
             estado_civil=datos.get("estado_civil"),
             nacionalidad=datos.get("nacionalidad"),
-            peso=datos.get("peso"),
-            altura=datos.get("altura"),
+            peso=to_float(datos.get("peso")),
+            altura=to_float(datos.get("altura")),
             tipo_sangre=datos.get("tipo_sangre"),
             telefono=datos.get("telefono"),
             celular=datos.get("celular"),
@@ -75,10 +107,11 @@ class EmpleadoService:
             estado=datos.get("estado"),
             codigo_postal=datos.get("codigo_postal"),
             tipo_empleado=datos["tipo_empleado"],
-            cargo=datos["cargo"],
-            departamento=datos["departamento"],
-            fecha_contratacion=datos.get("fecha_contratacion", date.today()),
-            salario_base=datos["salario_base"],
+            cargo=str(datos.get("cargo", "")).strip(),
+            departamento=str(datos.get("departamento", "")).strip(),
+            fecha_contratacion=fecha_cont,
+            fecha_terminacion=fecha_term,
+            salario_base=salario,
             nivel_educativo=datos.get("nivel_educativo"),
             especialidad=datos.get("especialidad"),
             titulo_obtenido=datos.get("titulo_obtenido"),
@@ -107,14 +140,32 @@ class EmpleadoService:
         Raises:
             ValueError: Si el empleado no existe o hay conflicto de cédula
         """
+        from src.utils.helpers import parse_date
+        
         empleado = self.repository.get_by_id(empleado_id)
         if not empleado:
             raise ValueError("Empleado no encontrado")
         
         # Si se actualiza la cédula, verificar que no exista
-        if "cedula" in datos and datos["cedula"] != empleado.cedula:
-            if self.repository.get_by_cedula(datos["cedula"]):
-                raise ValueError("Ya existe un empleado con esta cédula")
+        if "cedula" in datos and datos["cedula"]:
+            nueva_cedula = str(datos["cedula"]).strip()
+            if nueva_cedula != empleado.cedula:
+                if self.repository.get_by_cedula(nueva_cedula):
+                    raise ValueError("Ya existe un empleado con esta cédula")
+                datos["cedula"] = nueva_cedula
+        
+        # Normalizar fechas si vienen en datos
+        for f_campo in ["fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"]:
+            if f_campo in datos and isinstance(datos[f_campo], str):
+                datos[f_campo] = parse_date(datos[f_campo])
+        
+        # Normalizar floats si vienen en datos
+        for num_campo in ["salario_base", "peso", "altura"]:
+            if num_campo in datos and datos[num_campo] is not None:
+                try:
+                    datos[num_campo] = float(datos[num_campo]) if str(datos[num_campo]).strip() != "" else None
+                except (ValueError, TypeError):
+                    pass
         
         # Actualizar campos
         for campo, valor in datos.items():

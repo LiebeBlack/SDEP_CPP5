@@ -44,15 +44,23 @@ class Documento(Base, BaseModel):
     def es_valido(self):
         """Verifica si el documento está vigente"""
         if self.fecha_vencimiento:
-            return date.today() <= self.fecha_vencimiento
+            try:
+                venc = self.fecha_vencimiento if isinstance(self.fecha_vencimiento, date) else self.fecha_vencimiento.date()
+                return date.today() <= venc
+            except Exception:
+                return True
         return True
     
     @property
     def dias_vencimiento(self):
         """Días restantes para vencimiento"""
         if self.fecha_vencimiento:
-            delta = self.fecha_vencimiento - date.today()
-            return delta.days
+            try:
+                venc = self.fecha_vencimiento if isinstance(self.fecha_vencimiento, date) else self.fecha_vencimiento.date()
+                delta = venc - date.today()
+                return delta.days
+            except Exception:
+                return None
         return None
     
     def to_dict(self):

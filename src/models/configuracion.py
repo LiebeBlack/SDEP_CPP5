@@ -30,13 +30,16 @@ class Configuracion(Base, BaseModel):
         if self.valor is None:
             return None
         
-        if self.tipo_dato == "int":
-            return int(self.valor)
-        elif self.tipo_dato == "float":
-            return float(self.valor)
-        elif self.tipo_dato == "bool":
-            return self.valor.lower() in ("true", "1", "yes", "on")
-        else:
+        try:
+            if self.tipo_dato == "int":
+                return int(self.valor)
+            elif self.tipo_dato == "float":
+                return float(self.valor)
+            elif self.tipo_dato == "bool":
+                return str(self.valor).strip().lower() in ("true", "1", "yes", "on", "si", "verdadero")
+            else:
+                return self.valor
+        except (ValueError, TypeError):
             return self.valor
     
     def set_valor(self, valor: Any) -> None:
@@ -44,7 +47,10 @@ class Configuracion(Base, BaseModel):
         if valor is None:
             self.valor = None
         elif self.tipo_dato == "bool":
-            self.valor = "true" if valor else "false"
+            if isinstance(valor, str):
+                self.valor = "true" if valor.strip().lower() in ("true", "1", "yes", "on", "si", "verdadero") else "false"
+            else:
+                self.valor = "true" if valor else "false"
         else:
             self.valor = str(valor)
     

@@ -38,10 +38,28 @@ class IncidenciaService:
     
     def crear_incidencia(self, datos: Dict, archivo_soporte: bytes = None) -> Incidencia:
         """Crea una nueva incidencia"""
-        # Calcular días solicitados
+        from src.utils.helpers import parse_date
+        
+        # Normalizar fechas
         fecha_inicio = datos["fecha_inicio"]
+        if isinstance(fecha_inicio, str):
+            fecha_inicio = parse_date(fecha_inicio)
+        
         fecha_fin = datos["fecha_fin"]
-        dias_solicitados = (fecha_fin - fecha_inicio).days + 1
+        if isinstance(fecha_fin, str):
+            fecha_fin = parse_date(fecha_fin)
+        
+        fecha_sol = datos.get("fecha_solicitud")
+        if isinstance(fecha_sol, str):
+            fecha_sol = parse_date(fecha_sol) or date.today()
+        elif not fecha_sol:
+            fecha_sol = date.today()
+        
+        if not fecha_inicio or not fecha_fin:
+            raise ValueError("Las fechas de inicio y fin son requeridas")
+        
+        # Calcular días solicitados
+        dias_solicitados = max(1, (fecha_fin - fecha_inicio).days + 1)
         datos["dias_solicitados"] = dias_solicitados
         
         # Procesar archivo de soporte
@@ -50,27 +68,38 @@ class IncidenciaService:
             nombre_unico = f"soporte_{uuid.uuid4().hex}{extension}"
             ruta_completa = settings.get_document_path(nombre_unico)
             
-            with open(ruta_completa, 'wb') as f:
-                f.write(archivo_soporte)
+            try:
+                with open(ruta_completa, 'wb') as f:
+                    f.write(archivo_soporte)
+            except Exception:
+                pass
             
             datos["documento_soporte_nombre"] = nombre_unico
             datos["documento_soporte_ruta"] = ruta_completa
             datos["documento_soporte_binario"] = archivo_soporte
         
+        tipo_inc = datos["tipo_incidencia"]
+        if hasattr(tipo_inc, 'value'):
+            tipo_inc = tipo_inc.value
+        
+        estado = datos.get("estado", EstadoIncidencia.PENDIENTE.value)
+        if hasattr(estado, 'value'):
+            estado = estado.value
+        
         incidencia = Incidencia(
-            empleado_id=datos["empleado_id"],
-            tipo_incidencia=datos["tipo_incidencia"],
-            estado=datos.get("estado", EstadoIncidencia.PENDIENTE.value),
+            empleado_id=int(datos["empleado_id"]),
+            tipo_incidencia=tipo_inc,
+            estado=estado,
             fecha_inicio=fecha_inicio,
             fecha_fin=fecha_fin,
-            fecha_solicitud=datos.get("fecha_solicitud", date.today()),
-            motivo=datos["motivo"],
+            fecha_solicitud=fecha_sol,
+            motivo=str(datos["motivo"]).strip(),
             descripcion=datos.get("descripcion"),
             dias_solicitados=dias_solicitados,
             documento_soporte_nombre=datos.get("documento_soporte_nombre"),
             documento_soporte_ruta=datos.get("documento_soporte_ruta"),
             documento_soporte_binario=datos.get("documento_soporte_binario"),
-            afecta_nominas=datos.get("afecta_nominas", 1),
+            afecta_nominas=int(datos.get("afecta_nominas", 1)),
             observaciones=datos.get("observaciones")
         )
         
@@ -78,32 +107,52 @@ class IncidenciaService:
     
     def actualizar_incidencia(self, incidencia_id: int, datos: Dict, archivo_soporte: bytes = None) -> Incidencia:
         """Actualiza una incidencia existente"""
+        from src.utils.helpers import parse_date
+        
         incidencia = self.repository.get_by_id(incidencia_id)
         if not incidencia:
             raise ValueError("Incidencia no encontrada")
+        
+        # Normalizar fechas si vienen
+        if "fecha_inicio" in datos and isinstance(datos["fecha_inicio"], str):
+            datos["fecha_inicio"] = parse_date(datos["fecha_inicio"])
+        if "fecha_fin" in datos and isinstance(datos["fecha_fin"], str):
+            datos["fecha_fin"] = parse_date(datos["fecha_fin"])
         
         # Si se actualizan las fechas, recalcular días
         if "fecha_inicio" in datos or "fecha_fin" in datos:
             fecha_inicio = datos.get("fecha_inicio", incidencia.fecha_inicio)
             fecha_fin = datos.get("fecha_fin", incidencia.fecha_fin)
-            datos["dias_solicitados"] = (fecha_fin - fecha_inicio).days + 1
+            if fecha_inicio and fecha_fin:
+                datos["dias_solicitados"] = max(1, (fecha_fin - fecha_inicio).days + 1)
         
         # Procesar nuevo archivo de soporte
         if archivo_soporte:
             # Eliminar archivo anterior
             if incidencia.documento_soporte_ruta and os.path.exists(incidencia.documento_soporte_ruta):
-                os.remove(incidencia.documento_soporte_ruta)
+                try:
+                    os.remove(incidencia.documento_soporte_ruta)
+                except Exception:
+                    pass
             
             extension = self._obtener_extension(datos.get("documento_soporte_nombre", "soporte.pdf"))
             nombre_unico = f"soporte_{uuid.uuid4().hex}{extension}"
             ruta_completa = settings.get_document_path(nombre_unico)
             
-            with open(ruta_completa, 'wb') as f:
-                f.write(archivo_soporte)
+            try:
+                with open(ruta_completa, 'wb') as f:
+                    f.write(archivo_soporte)
+            except Exception:
+                pass
             
             datos["documento_soporte_nombre"] = nombre_unico
             datos["documento_soporte_ruta"] = ruta_completa
             datos["documento_soporte_binario"] = archivo_soporte
+        
+        if "tipo_incidencia" in datos and hasattr(datos["tipo_incidencia"], 'value'):
+            datos["tipo_incidencia"] = datos["tipo_incidencia"].value
+        if "estado" in datos and hasattr(datos["estado"], 'value'):
+            datos["estado"] = datos["estado"].value
         
         # Actualizar campos
         for campo, valor in datos.items():

@@ -56,14 +56,28 @@ class Incidencia(Base, BaseModel):
     @property
     def duracion_dias(self):
         """Calcula la duración en días"""
-        delta = self.fecha_fin - self.fecha_inicio
-        return delta.days + 1  # Incluir ambos días
+        if self.fecha_inicio and self.fecha_fin:
+            try:
+                ini = self.fecha_inicio if isinstance(self.fecha_inicio, date) else self.fecha_inicio.date()
+                fin = self.fecha_fin if isinstance(self.fecha_fin, date) else self.fecha_fin.date()
+                delta = fin - ini
+                return max(0, delta.days + 1)
+            except Exception:
+                return self.dias_solicitados or 0
+        return self.dias_solicitados or 0
     
     @property
     def es_vigente(self):
         """Verifica si la incidencia está vigente actualmente"""
-        hoy = date.today()
-        return self.fecha_inicio <= hoy <= self.fecha_fin and self.estado == EstadoIncidencia.APROBADO.value
+        if self.fecha_inicio and self.fecha_fin:
+            try:
+                hoy = date.today()
+                ini = self.fecha_inicio if isinstance(self.fecha_inicio, date) else self.fecha_inicio.date()
+                fin = self.fecha_fin if isinstance(self.fecha_fin, date) else self.fecha_fin.date()
+                return ini <= hoy <= fin and self.estado == EstadoIncidencia.APROBADO.value
+            except Exception:
+                return False
+        return False
     
     @property
     def requiere_aprobacion(self):

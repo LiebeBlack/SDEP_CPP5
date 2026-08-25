@@ -39,15 +39,35 @@ class DocumentoService:
     
     def crear_documento(self, datos: Dict, archivo_binario: bytes = None) -> Documento:
         """Crea un nuevo documento"""
+        from src.utils.helpers import parse_date
+        
+        # Normalizar fechas
+        fecha_emision = datos.get("fecha_emision")
+        if isinstance(fecha_emision, str):
+            fecha_emision = parse_date(fecha_emision)
+        
+        fecha_vencimiento = datos.get("fecha_vencimiento")
+        if isinstance(fecha_vencimiento, str):
+            fecha_vencimiento = parse_date(fecha_vencimiento)
+        
+        tipo_doc = datos.get("tipo_documento")
+        if hasattr(tipo_doc, 'value'):
+            tipo_doc = tipo_doc.value
+        
+        nombre_archivo = datos.get("nombre_archivo", "documento.pdf")
+        
         # Generar nombre único para el archivo
         if archivo_binario:
-            extension = self._obtener_extension(datos["nombre_archivo"])
+            extension = self._obtener_extension(nombre_archivo)
             nombre_unico = f"{uuid.uuid4().hex}{extension}"
             ruta_completa = settings.get_document_path(nombre_unico)
             
             # Guardar archivo en disco
-            with open(ruta_completa, 'wb') as f:
-                f.write(archivo_binario)
+            try:
+                with open(ruta_completa, 'wb') as f:
+                    f.write(archivo_binario)
+            except Exception:
+                pass
             
             datos["nombre_archivo"] = nombre_unico
             datos["ruta_archivo"] = ruta_completa
@@ -57,15 +77,15 @@ class DocumentoService:
             datos["ruta_archivo"] = datos.get("ruta_archivo", "")
         
         documento = Documento(
-            empleado_id=datos["empleado_id"],
-            tipo_documento=datos["tipo_documento"],
-            titulo=datos["titulo"],
+            empleado_id=int(datos["empleado_id"]),
+            tipo_documento=tipo_doc,
+            titulo=str(datos["titulo"]).strip(),
             descripcion=datos.get("descripcion"),
             numero_documento=datos.get("numero_documento"),
-            fecha_emision=datos.get("fecha_emision"),
-            fecha_vencimiento=datos.get("fecha_vencimiento"),
-            nombre_archivo=datos["nombre_archivo"],
-            ruta_archivo=datos["ruta_archivo"],
+            fecha_emision=fecha_emision,
+            fecha_vencimiento=fecha_vencimiento,
+            nombre_archivo=datos.get("nombre_archivo", nombre_archivo),
+            ruta_archivo=datos.get("ruta_archivo", ""),
             tamano_bytes=datos.get("tamano_bytes"),
             tipo_mime=datos.get("tipo_mime"),
             contenido_binario=datos.get("contenido_binario"),
@@ -76,6 +96,8 @@ class DocumentoService:
     
     def actualizar_documento(self, documento_id: int, datos: Dict, archivo_binario: bytes = None) -> Documento:
         """Actualiza un documento existente"""
+        from src.utils.helpers import parse_date
+        
         documento = self.repository.get_by_id(documento_id)
         if not documento:
             raise ValueError("Documento no encontrado")
@@ -84,20 +106,33 @@ class DocumentoService:
         if archivo_binario:
             # Eliminar archivo anterior
             if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
-                os.remove(documento.ruta_archivo)
+                try:
+                    os.remove(documento.ruta_archivo)
+                except Exception:
+                    pass
             
-            # Guardar nuevo archivo
-            extension = self._obtener_extension(datos["nombre_archivo"])
+            extension = self._obtener_extension(datos.get("nombre_archivo", documento.nombre_archivo))
             nombre_unico = f"{uuid.uuid4().hex}{extension}"
             ruta_completa = settings.get_document_path(nombre_unico)
             
-            with open(ruta_completa, 'wb') as f:
-                f.write(archivo_binario)
+            try:
+                with open(ruta_completa, 'wb') as f:
+                    f.write(archivo_binario)
+            except Exception:
+                pass
             
             datos["nombre_archivo"] = nombre_unico
             datos["ruta_archivo"] = ruta_completa
             datos["tamano_bytes"] = len(archivo_binario)
             datos["contenido_binario"] = archivo_binario
+        
+        # Normalizar fechas si vienen en datos
+        for f_campo in ["fecha_emision", "fecha_vencimiento"]:
+            if f_campo in datos and isinstance(datos[f_campo], str):
+                datos[f_campo] = parse_date(datos[f_campo])
+        
+        if "tipo_documento" in datos and hasattr(datos["tipo_documento"], 'value'):
+            datos["tipo_documento"] = datos["tipo_documento"].value
         
         # Actualizar campos
         for campo, valor in datos.items():

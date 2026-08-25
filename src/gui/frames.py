@@ -202,6 +202,9 @@ class EmpleadosFrame(ctk.CTkFrame):
         new_btn = ctk.CTkButton(btn_frame, text="Nuevo Empleado", command=self._on_new_empleado)
         new_btn.pack(side="left", padx=5)
         
+        report_btn = ctk.CTkButton(btn_frame, text="Reporte PDF", command=self._on_reporte_empleados)
+        report_btn.pack(side="left", padx=5)
+        
         refresh_btn = ctk.CTkButton(btn_frame, text="Actualizar", command=self._load_empleados)
         refresh_btn.pack(side="left", padx=5)
         
@@ -246,7 +249,12 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_details)
         self.context_menu.add_command(label="Editar", command=self._on_edit)
-        self.context_menu.add_command(label="Documentos", command=self._on_documents)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="Constancia de Trabajo (PDF)", command=self._on_constancia_trabajo)
+        self.context_menu.add_command(label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="Ver Documentos", command=self._on_documents)
+        self.context_menu.add_command(label="Ver Incidencias", command=self._on_incidencias)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Eliminar", command=self._on_delete)
         
@@ -362,8 +370,73 @@ class EmpleadosFrame(ctk.CTkFrame):
         """Muestra documentos del empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if empleado:
-            self.main_window._show_frame("documentos")
-            # Aquí se podría pasar el ID del empleado al frame de documentos
+            self.main_window.show_frame("documentos", select_empleado=empleado.id)
+    
+    def _on_incidencias(self):
+        """Muestra incidencias del empleado seleccionado"""
+        empleado = self._get_selected_empleado()
+        if empleado:
+            self.main_window.show_frame("incidencias", select_empleado=empleado.id)
+    
+    def _on_constancia_trabajo(self):
+        """Genera constancia de trabajo en PDF para el empleado seleccionado"""
+        empleado = self._get_selected_empleado()
+        if not empleado:
+            messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"constancia_trabajo_{empleado.cedula}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if file_path:
+            try:
+                pdf_gen = PDFGenerator()
+                pdf_gen.generate_constancia_trabajo(empleado, file_path)
+                messagebox.showinfo("Éxito", f"Constancia de trabajo generada exitosamente:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al generar constancia: {str(e)}")
+    
+    def _on_constancia_estudios(self):
+        """Genera constancia de estudios en PDF para el empleado seleccionado"""
+        empleado = self._get_selected_empleado()
+        if not empleado:
+            messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"constancia_estudios_{empleado.cedula}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if file_path:
+            try:
+                pdf_gen = PDFGenerator()
+                pdf_gen.generate_constancia_estudios(empleado, file_path)
+                messagebox.showinfo("Éxito", f"Constancia de estudios generada exitosamente:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al generar constancia: {str(e)}")
+    
+    def _on_reporte_empleados(self):
+        """Genera un reporte general de empleados en PDF"""
+        empleados = self.main_window.empleado_service.listar_empleados_activos()
+        if not empleados:
+            messagebox.showwarning("Advertencia", "No hay empleados registrados para generar el reporte")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"reporte_empleados_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if file_path:
+            try:
+                pdf_gen = PDFGenerator()
+                pdf_gen.generate_reporte_empleados(empleados, file_path)
+                messagebox.showinfo("Éxito", f"Reporte de empleados generado exitosamente:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al generar reporte: {str(e)}")
     
     def _on_delete(self):
         """Elimina el empleado seleccionado"""
@@ -946,6 +1019,16 @@ class DocumentosFrame(ctk.CTkFrame):
         self.empleado_combo['values'] = [f"{emp.nombre_completo} ({emp.cedula})" for emp in empleados]
         self.empleado_data = {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
     
+    def select_empleado(self, empleado_id: int):
+        """Selecciona un empleado específico programáticamente"""
+        self._load_empleados()
+        for label, emp_id in self.empleado_data.items():
+            if emp_id == empleado_id:
+                self.empleado_combo.set(label)
+                self.current_empleado_id = empleado_id
+                self._load_documentos()
+                break
+    
     def _on_empleado_selected(self, event):
         """Maneja la selección de empleado"""
         selected = self.empleado_combo.get()
@@ -1014,15 +1097,33 @@ class DocumentosFrame(ctk.CTkFrame):
             self._load_documentos()
     
     def _on_view_documento(self):
-        """Muestra el documento seleccionado"""
+        """Muestra el documento seleccionado en el visor del sistema"""
+        import tempfile
         documento = self._get_selected_documento()
-        if documento:
-            contenido = self.main_window.documento_service.obtener_archivo(documento.id)
-            if contenido:
-                # Aquí se podría abrir el documento con el visor correspondiente
-                messagebox.showinfo("Documento", f"Documento: {documento.titulo}\nTamaño: {len(contenido)} bytes")
-            else:
-                messagebox.showerror("Error", "No se pudo cargar el documento")
+        if not documento:
+            return
+        
+        # 1. Si existe el archivo en disco, intentar abrirlo directamente
+        if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+            try:
+                os.startfile(documento.ruta_archivo)
+                return
+            except Exception:
+                pass
+        
+        # 2. Si hay contenido binario, guardar a archivo temporal y abrir
+        contenido = self.main_window.documento_service.obtener_archivo(documento.id)
+        if contenido:
+            try:
+                ext = os.path.splitext(documento.nombre_archivo)[1] or ".pdf"
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+                temp_file.write(contenido)
+                temp_file.close()
+                os.startfile(temp_file.name)
+            except Exception:
+                messagebox.showinfo("Documento", f"Documento: {documento.titulo}\nArchivo: {documento.nombre_archivo}\nTamaño: {len(contenido)} bytes")
+        else:
+            messagebox.showerror("Error", "No se pudo recuperar el archivo del documento")
     
     def _on_download_documento(self):
         """Descarga el documento seleccionado"""
@@ -1273,6 +1374,16 @@ class IncidenciasFrame(ctk.CTkFrame):
         empleados = self.main_window.empleado_service.listar_empleados_activos()
         self.empleado_combo['values'] = [f"{emp.nombre_completo} ({emp.cedula})" for emp in empleados]
         self.empleado_data = {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
+    
+    def select_empleado(self, empleado_id: int):
+        """Selecciona un empleado específico programáticamente"""
+        self._load_empleados()
+        for label, emp_id in self.empleado_data.items():
+            if emp_id == empleado_id:
+                self.empleado_combo.set(label)
+                self.current_empleado_id = empleado_id
+                self._load_incidencias()
+                break
     
     def _on_empleado_selected(self, event):
         """Maneja la selección de empleado"""
@@ -1824,25 +1935,37 @@ class NominaFrame(ctk.CTkFrame):
             empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
             nombre_empleado = empleado.nombre_completo if empleado else "Desconocido"
             
+            salario_base = float(pago.salario_base or 0)
+            bonif = float(pago.bonificaciones or 0)
+            hextra = float(pago.horas_extra or 0)
+            bruto = float(pago.monto_bruto or 0)
+            
+            d_seg = float(pago.deduccion_seguro or 0)
+            d_pen = float(pago.deduccion_pension or 0)
+            d_imp = float(pago.deduccion_impuesto or 0)
+            d_otr = float(pago.otras_deducciones or 0)
+            desc = float(pago.descuentos or 0)
+            neto = float(pago.monto_neto or 0)
+            
             details = f"""
 Empleado: {nombre_empleado}
 Periodo: {format_date(pago.periodo_inicio)} - {format_date(pago.periodo_fin)}
 Tipo: {pago.tipo_pago}
 Método: {pago.metodo_pago}
 
-Salario Base: {format_currency(float(pago.salario_base))}
-Bonificaciones: {format_currency(float(pago.bonificaciones))}
-Horas Extra: {format_currency(float(pago.horas_extra))}
-Total Bruto: {format_currency(float(pago.monto_bruto))}
+Salario Base: {format_currency(salario_base)}
+Bonificaciones: {format_currency(bonif)}
+Horas Extra: {format_currency(hextra)}
+Total Bruto: {format_currency(bruto)}
 
 Deducciones:
-- Seguro Social: {format_currency(float(pago.deduccion_seguro))}
-- Pensión: {format_currency(float(pago.deduccion_pension))}
-- Impuesto: {format_currency(float(pago.deduccion_impuesto))}
-- Otras: {format_currency(float(pago.otras_deducciones))}
-- Descuentos: {format_currency(float(pago.descuentos))}
+- Seguro Social: {format_currency(d_seg)}
+- Pensión: {format_currency(d_pen)}
+- Impuesto: {format_currency(d_imp)}
+- Otras: {format_currency(d_otr)}
+- Descuentos: {format_currency(desc)}
 
-Total Neto: {format_currency(float(pago.monto_neto))}
+Total Neto: {format_currency(neto)}
 Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 """
             messagebox.showinfo("Detalles del Pago", details)
@@ -1860,16 +1983,16 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         "periodo_inicio": pago.periodo_inicio,
                         "periodo_fin": pago.periodo_fin,
                         "referencia_pago": pago.referencia_pago,
-                        "salario_base": float(pago.salario_base),
-                        "bonificaciones": float(pago.bonificaciones),
-                        "horas_extra": float(pago.horas_extra),
-                        "monto_bruto": float(pago.monto_bruto),
-                        "deduccion_seguro": float(pago.deduccion_seguro),
-                        "deduccion_pension": float(pago.deduccion_pension),
-                        "deduccion_impuesto": float(pago.deduccion_impuesto),
-                        "otras_deducciones": float(pago.otras_deducciones),
-                        "descuentos": float(pago.descuentos),
-                        "monto_neto": float(pago.monto_neto)
+                        "salario_base": float(pago.salario_base or 0),
+                        "bonificaciones": float(pago.bonificaciones or 0),
+                        "horas_extra": float(pago.horas_extra or 0),
+                        "monto_bruto": float(pago.monto_bruto or 0),
+                        "deduccion_seguro": float(pago.deduccion_seguro or 0),
+                        "deduccion_pension": float(pago.deduccion_pension or 0),
+                        "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
+                        "otras_deducciones": float(pago.otras_deducciones or 0),
+                        "descuentos": float(pago.descuentos or 0),
+                        "monto_neto": float(pago.monto_neto or 0)
                     }
                     
                     file_path = filedialog.asksaveasfilename(
@@ -1990,36 +2113,39 @@ class ConfiguracionFrame(ctk.CTkFrame):
     def _load_configuracion(self):
         """Carga la configuración actual"""
         try:
+            def safe_str(val):
+                return "" if val is None else str(val)
+            
             # Configuración general
             general_config = self.main_window.config_service.obtener_configuracion_general()
             self.nombre_institucion_entry.delete(0, tk.END)
-            self.nombre_institucion_entry.insert(0, general_config.get("nombre_institucion", ""))
+            self.nombre_institucion_entry.insert(0, safe_str(general_config.get("nombre_institucion", "")))
             self.ruc_entry.delete(0, tk.END)
-            self.ruc_entry.insert(0, general_config.get("ruc", ""))
+            self.ruc_entry.insert(0, safe_str(general_config.get("ruc", "")))
             self.direccion_entry.delete(0, tk.END)
-            self.direccion_entry.insert(0, general_config.get("direccion", ""))
+            self.direccion_entry.insert(0, safe_str(general_config.get("direccion", "")))
             self.telefono_entry.delete(0, tk.END)
-            self.telefono_entry.insert(0, general_config.get("telefono", ""))
+            self.telefono_entry.insert(0, safe_str(general_config.get("telefono", "")))
             self.email_entry.delete(0, tk.END)
-            self.email_entry.insert(0, general_config.get("email", ""))
+            self.email_entry.insert(0, safe_str(general_config.get("email", "")))
             
             # Configuración de nómina
             nomina_config = self.main_window.config_service.obtener_configuracion_nomina()
             self.porcentaje_seguro_entry.delete(0, tk.END)
-            self.porcentaje_seguro_entry.insert(0, str(nomina_config.get("porcentaje_seguro", "")))
+            self.porcentaje_seguro_entry.insert(0, safe_str(nomina_config.get("porcentaje_seguro", "")))
             self.porcentaje_pension_entry.delete(0, tk.END)
-            self.porcentaje_pension_entry.insert(0, str(nomina_config.get("porcentaje_pension", "")))
+            self.porcentaje_pension_entry.insert(0, safe_str(nomina_config.get("porcentaje_pension", "")))
             self.porcentaje_impuesto_entry.delete(0, tk.END)
-            self.porcentaje_impuesto_entry.insert(0, str(nomina_config.get("porcentaje_impuesto", "")))
+            self.porcentaje_impuesto_entry.insert(0, safe_str(nomina_config.get("porcentaje_impuesto", "")))
             self.salario_minimo_entry.delete(0, tk.END)
-            self.salario_minimo_entry.insert(0, str(nomina_config.get("salario_minimo", "")))
+            self.salario_minimo_entry.insert(0, safe_str(nomina_config.get("salario_minimo", "")))
             
             # Configuración de RRHH
             rrhh_config = self.main_window.config_service.obtener_configuracion_recursos_humanos()
             self.dias_vacaciones_entry.delete(0, tk.END)
-            self.dias_vacaciones_entry.insert(0, str(rrhh_config.get("dias_vacaciones_anual", "")))
+            self.dias_vacaciones_entry.insert(0, safe_str(rrhh_config.get("dias_vacaciones_anual", "")))
             self.horas_laborales_entry.delete(0, tk.END)
-            self.horas_laborales_entry.insert(0, str(rrhh_config.get("horas_laborales_semana", "")))
+            self.horas_laborales_entry.insert(0, safe_str(rrhh_config.get("horas_laborales_semana", "")))
             
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar configuración: {str(e)}")

@@ -91,8 +91,26 @@ class ConfiguracionService:
         return self.repository.get_valor(clave, default)
     
     def establecer_valor(self, clave: str, valor: Union[str, int, float, bool]) -> bool:
-        """Establece el valor de una configuración"""
-        return self.repository.set_valor(clave, valor)
+        """Establece el valor de una configuración, creándola si no existe"""
+        config = self.repository.get_by_clave(clave)
+        if config:
+            return self.repository.set_valor(clave, valor)
+        else:
+            tipo = "string"
+            if isinstance(valor, bool):
+                tipo = "bool"
+            elif isinstance(valor, int):
+                tipo = "int"
+            elif isinstance(valor, float):
+                tipo = "float"
+            
+            nueva = Configuracion(
+                clave=clave,
+                tipo_dato=tipo
+            )
+            nueva.set_valor(valor)
+            self.repository.create(nueva)
+            return True
     
     def listar_por_categoria(self, categoria: str) -> List[Configuracion]:
         """Lista configuraciones por categoría"""

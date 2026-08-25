@@ -73,8 +73,8 @@ class Empleado(Base, BaseModel):
     apellidos = Column(String(100), nullable=False)
     cedula = Column(String(20), unique=True, nullable=False, index=True)
     fecha_nacimiento = Column(Date, nullable=True)
-    genero = Column(SQLEnum(Genero), nullable=True)
-    estado_civil = Column(SQLEnum(EstadoCivil), nullable=True)
+    genero = Column(SQLEnum(Genero, values_callable=lambda x: [e.value if hasattr(e, 'value') else str(e) for e in x]), nullable=True)
+    estado_civil = Column(SQLEnum(EstadoCivil, values_callable=lambda x: [e.value if hasattr(e, 'value') else str(e) for e in x]), nullable=True)
     nacionalidad = Column(String(50), nullable=True)
     
     # Datos físicos
@@ -93,7 +93,7 @@ class Empleado(Base, BaseModel):
     codigo_postal = Column(String(10), nullable=True)
     
     # Datos laborales
-    tipo_empleado = Column(SQLEnum(TipoEmpleado), nullable=False, index=True)
+    tipo_empleado = Column(SQLEnum(TipoEmpleado, values_callable=lambda x: [e.value if hasattr(e, 'value') else str(e) for e in x]), nullable=False, index=True)
     cargo = Column(String(100), nullable=False)
     departamento = Column(String(100), nullable=False)
     fecha_contratacion = Column(Date, nullable=False, default=date.today)
@@ -120,31 +120,40 @@ class Empleado(Base, BaseModel):
     @property
     def nombre_completo(self):
         """Retorna el nombre completo del empleado"""
-        return f"{self.nombres} {self.apellidos}"
+        return f"{self.nombres} {self.apellidos}".strip()
     
     @property
     def edad(self):
         """Calcula la edad del empleado"""
         if self.fecha_nacimiento:
-            today = date.today()
-            return today.year - self.fecha_nacimiento.year - (
-                (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
-            )
+            try:
+                today = date.today()
+                return today.year - self.fecha_nacimiento.year - (
+                    (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
+                )
+            except Exception:
+                return None
         return None
     
     @property
     def antiguedad_anos(self):
         """Calcula los años de antigüedad"""
         if self.fecha_contratacion:
-            end_date = self.fecha_terminacion or date.today()
-            return end_date.year - self.fecha_contratacion.year - (
-                (end_date.month, end_date.day) < (self.fecha_contratacion.month, self.fecha_contratacion.day)
-            )
+            try:
+                end_date = self.fecha_terminacion or date.today()
+                return max(0, end_date.year - self.fecha_contratacion.year - (
+                    (end_date.month, end_date.day) < (self.fecha_contratacion.month, self.fecha_contratacion.day)
+                ))
+            except Exception:
+                return 0
         return 0
     
     def to_dict(self):
         """Convierte el modelo a diccionario"""
         data = super().to_dict()
+        data['tipo_empleado'] = self.tipo_empleado.value if hasattr(self.tipo_empleado, 'value') else self.tipo_empleado
+        data['genero'] = self.genero.value if hasattr(self.genero, 'value') else self.genero
+        data['estado_civil'] = self.estado_civil.value if hasattr(self.estado_civil, 'value') else self.estado_civil
         data['nombre_completo'] = self.nombre_completo
         data['edad'] = self.edad
         data['antiguedad_anos'] = self.antiguedad_anos

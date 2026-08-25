@@ -1,11 +1,7 @@
-"""
-Validators
-Funciones de validación de datos
-"""
-
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import date, datetime
 import re
+from src.utils.helpers import parse_date
 
 
 class ValidationError(Exception):
@@ -23,17 +19,17 @@ class Validator:
             raise ValidationError(f"El campo '{field_name}' es requerido")
     
     @staticmethod
-    def validate_type(value: Any, expected_type: type, field_name: str) -> None:
+    def validate_type(value: Any, expected_type: Any, field_name: str) -> None:
         """Valida el tipo de un campo"""
         if not isinstance(value, expected_type):
-            raise ValidationError(f"El campo '{field_name}' debe ser de tipo {expected_type.__name__}")
+            raise ValidationError(f"El campo '{field_name}' debe ser de tipo {expected_type}")
     
     @staticmethod
     def validate_length(value: str, min_length: int, max_length: int, field_name: str) -> None:
         """Valida la longitud de un string"""
-        if len(value) < min_length:
+        if len(str(value)) < min_length:
             raise ValidationError(f"El campo '{field_name}' debe tener al menos {min_length} caracteres")
-        if len(value) > max_length:
+        if len(str(value)) > max_length:
             raise ValidationError(f"El campo '{field_name}' no puede exceder {max_length} caracteres")
     
     @staticmethod
@@ -58,47 +54,40 @@ class EmpleadoValidator(Validator):
         errores = []
         
         try:
-            # Campos requeridos
-            campos_requeridos = {
-                "nombres": (str, 2, 100),
-                "apellidos": (str, 2, 100),
-                "cedula": (str, 5, 20),
-                "tipo_empleado": (str, 1, 50),
-                "cargo": (str, 2, 100),
-                "departamento": (str, 2, 100),
-                "salario_base": (float, 0, 1000000)
-            }
-            
-            for campo, (tipo, min_len, max_len) in campos_requeridos.items():
-                if campo not in datos or not datos[campo]:
+            campos_requeridos = ["nombres", "apellidos", "cedula", "tipo_empleado", "cargo", "departamento", "salario_base"]
+            for campo in campos_requeridos:
+                if campo not in datos or datos[campo] is None or str(datos[campo]).strip() == "":
                     errores.append(f"El campo '{campo}' es requerido")
-                    continue
-                
-                try:
-                    if tipo == str:
-                        EmpleadoValidator.validate_type(datos[campo], str, campo)
-                        EmpleadoValidator.validate_length(datos[campo], min_len, max_len, campo)
-                    elif tipo == float:
-                        EmpleadoValidator.validate_type(datos[campo], (int, float), campo)
-                        EmpleadoValidator.validate_positive(float(datos[campo]), campo)
-                except ValidationError as e:
-                    errores.append(str(e))
             
             # Validaciones específicas
-            if "cedula" in datos:
-                if not datos["cedula"].replace("-", "").replace(" ", "").isdigit():
+            if "cedula" in datos and datos["cedula"]:
+                ced_clean = str(datos["cedula"]).replace("-", "").replace(" ", "").strip()
+                if not ced_clean.isdigit():
                     errores.append("La cédula debe contener solo números")
+                elif len(ced_clean) < 5 or len(ced_clean) > 20:
+                    errores.append("La cédula debe tener entre 5 y 20 dígitos")
+            
+            if "salario_base" in datos and datos["salario_base"] is not None and str(datos["salario_base"]).strip() != "":
+                try:
+                    sal = float(datos["salario_base"])
+                    if sal <= 0:
+                        errores.append("El salario base debe ser mayor a 0")
+                except (ValueError, TypeError):
+                    errores.append("El salario base debe ser un número válido")
             
             if "email" in datos and datos["email"]:
-                if not re.match(r'^[^@]+@[^@]+\.[^@]+$', datos["email"]):
+                email_val = str(datos["email"]).strip()
+                if email_val and not re.match(r'^[^@]+@[^@]+\.[^@]+$', email_val):
                     errores.append("El formato del email no es válido")
             
             if "fecha_nacimiento" in datos and datos["fecha_nacimiento"]:
-                if datos["fecha_nacimiento"] > date.today():
+                fnac = datos["fecha_nacimiento"] if isinstance(datos["fecha_nacimiento"], date) else parse_date(str(datos["fecha_nacimiento"]))
+                if fnac and fnac > date.today():
                     errores.append("La fecha de nacimiento no puede ser futura")
             
             if "fecha_contratacion" in datos and datos["fecha_contratacion"]:
-                if datos["fecha_contratacion"] > date.today():
+                fcont = datos["fecha_contratacion"] if isinstance(datos["fecha_contratacion"], date) else parse_date(str(datos["fecha_contratacion"]))
+                if fcont and fcont > date.today():
                     errores.append("La fecha de contratación no puede ser futura")
             
         except Exception as e:
@@ -116,36 +105,21 @@ class DocumentoValidator(Validator):
         errores = []
         
         try:
-            # Campos requeridos
-            campos_requeridos = {
-                "empleado_id": (int, 1, 1000000),
-                "tipo_documento": (str, 1, 50),
-                "titulo": (str, 2, 200),
-                "nombre_archivo": (str, 1, 255)
-            }
-            
-            for campo, (tipo, min_len, max_len) in campos_requeridos.items():
-                if campo not in datos or not datos[campo]:
+            campos_requeridos = ["empleado_id", "tipo_documento", "titulo"]
+            for campo in campos_requeridos:
+                if campo not in datos or datos[campo] is None or str(datos[campo]).strip() == "":
                     errores.append(f"El campo '{campo}' es requerido")
-                    continue
-                
-                try:
-                    if tipo == str:
-                        DocumentoValidator.validate_type(datos[campo], str, campo)
-                        DocumentoValidator.validate_length(datos[campo], min_len, max_len, campo)
-                    elif tipo == int:
-                        DocumentoValidator.validate_type(datos[campo], int, campo)
-                        DocumentoValidator.validate_positive(datos[campo], campo)
-                except ValidationError as e:
-                    errores.append(str(e))
             
-            # Validaciones específicas
-            if "fecha_vencimiento" in datos and datos["fecha_vencimiento"]:
-                if datos["fecha_vencimiento"] < date.today():
-                    errores.append("La fecha de vencimiento no puede ser pasada")
+            if "empleado_id" in datos and datos["empleado_id"] is not None:
+                try:
+                    emp_id = int(datos["empleado_id"])
+                    if emp_id <= 0:
+                        errores.append("El ID de empleado debe ser positivo")
+                except (ValueError, TypeError):
+                    errores.append("El ID de empleado debe ser un número entero válido")
             
             if "tamano_bytes" in datos and datos["tamano_bytes"]:
-                if datos["tamano_bytes"] > 50 * 1024 * 1024:  # 50MB
+                if int(datos["tamano_bytes"]) > 50 * 1024 * 1024:  # 50MB
                     errores.append("El archivo no puede exceder 50MB")
             
         except Exception as e:
@@ -163,45 +137,39 @@ class IncidenciaValidator(Validator):
         errores = []
         
         try:
-            # Campos requeridos
-            campos_requeridos = {
-                "empleado_id": (int, 1, 1000000),
-                "tipo_incidencia": (str, 1, 50),
-                "fecha_inicio": (date, 0, 0),
-                "fecha_fin": (date, 0, 0),
-                "motivo": (str, 5, 500)
-            }
-            
-            for campo, (tipo, min_len, max_len) in campos_requeridos.items():
-                if campo not in datos or not datos[campo]:
+            campos_requeridos = ["empleado_id", "tipo_incidencia", "fecha_inicio", "fecha_fin", "motivo"]
+            for campo in campos_requeridos:
+                if campo not in datos or datos[campo] is None or str(datos[campo]).strip() == "":
                     errores.append(f"El campo '{campo}' es requerido")
-                    continue
-                
+            
+            if "empleado_id" in datos and datos["empleado_id"] is not None:
                 try:
-                    if tipo == str:
-                        IncidenciaValidator.validate_type(datos[campo], str, campo)
-                        IncidenciaValidator.validate_length(datos[campo], min_len, max_len, campo)
-                    elif tipo == int:
-                        IncidenciaValidator.validate_type(datos[campo], int, campo)
-                        IncidenciaValidator.validate_positive(datos[campo], campo)
-                    elif tipo == date:
-                        IncidenciaValidator.validate_type(datos[campo], date, campo)
-                except ValidationError as e:
-                    errores.append(str(e))
+                    emp_id = int(datos["empleado_id"])
+                    if emp_id <= 0:
+                        errores.append("El ID de empleado debe ser positivo")
+                except (ValueError, TypeError):
+                    errores.append("El ID de empleado debe ser un número entero válido")
             
-            # Validaciones específicas
+            # Validar fechas
             if "fecha_inicio" in datos and "fecha_fin" in datos:
-                if datos["fecha_fin"] < datos["fecha_inicio"]:
-                    errores.append("La fecha fin debe ser posterior a la fecha inicio")
+                ini = datos["fecha_inicio"] if isinstance(datos["fecha_inicio"], date) else parse_date(str(datos["fecha_inicio"]))
+                fin = datos["fecha_fin"] if isinstance(datos["fecha_fin"], date) else parse_date(str(datos["fecha_fin"]))
                 
-                if datos["fecha_inicio"] < date.today():
-                    errores.append("La fecha inicio no puede ser pasada")
+                if ini and fin:
+                    if fin < ini:
+                        errores.append("La fecha fin no puede ser anterior a la fecha inicio")
+                elif not ini or not fin:
+                    errores.append("Las fechas de inicio y fin deben tener un formato válido (DD/MM/YYYY o YYYY-MM-DD)")
             
-            if "dias_solicitados" in datos and datos["dias_solicitados"]:
-                if datos["dias_solicitados"] <= 0:
-                    errores.append("Los días solicitados deben ser mayores a 0")
-                if datos["dias_solicitados"] > 365:
-                    errores.append("Los días solicitados no pueden exceder 365")
+            if "dias_solicitados" in datos and datos["dias_solicitados"] is not None:
+                try:
+                    dias = int(datos["dias_solicitados"])
+                    if dias <= 0:
+                        errores.append("Los días solicitados deben ser mayores a 0")
+                    elif dias > 365:
+                        errores.append("Los días solicitados no pueden exceder 365")
+                except (ValueError, TypeError):
+                    pass
             
         except Exception as e:
             errores.append(f"Error en validación: {str(e)}")
@@ -218,43 +186,41 @@ class PagoValidator(Validator):
         errores = []
         
         try:
-            # Campos requeridos
-            campos_requeridos = {
-                "empleado_id": (int, 1, 1000000),
-                "tipo_pago": (str, 1, 50),
-                "periodo_inicio": (date, 0, 0),
-                "periodo_fin": (date, 0, 0),
-                "salario_base": (float, 0, 1000000)
-            }
-            
-            for campo, (tipo, min_len, max_len) in campos_requeridos.items():
-                if campo not in datos or not datos[campo]:
+            campos_requeridos = ["empleado_id", "tipo_pago", "periodo_inicio", "periodo_fin", "salario_base"]
+            for campo in campos_requeridos:
+                if campo not in datos or datos[campo] is None or str(datos[campo]).strip() == "":
                     errores.append(f"El campo '{campo}' es requerido")
-                    continue
-                
+            
+            if "empleado_id" in datos and datos["empleado_id"] is not None:
                 try:
-                    if tipo == str:
-                        PagoValidator.validate_type(datos[campo], str, campo)
-                        PagoValidator.validate_length(datos[campo], min_len, max_len, campo)
-                    elif tipo == int:
-                        PagoValidator.validate_type(datos[campo], int, campo)
-                        PagoValidator.validate_positive(datos[campo], campo)
-                    elif tipo == float:
-                        PagoValidator.validate_type(datos[campo], (int, float), campo)
-                        PagoValidator.validate_positive(float(datos[campo]), campo)
-                    elif tipo == date:
-                        PagoValidator.validate_type(datos[campo], date, campo)
-                except ValidationError as e:
-                    errores.append(str(e))
+                    emp_id = int(datos["empleado_id"])
+                    if emp_id <= 0:
+                        errores.append("El ID de empleado debe ser positivo")
+                except (ValueError, TypeError):
+                    errores.append("El ID de empleado debe ser un número entero válido")
             
-            # Validaciones específicas
             if "periodo_inicio" in datos and "periodo_fin" in datos:
-                if datos["periodo_fin"] < datos["periodo_inicio"]:
-                    errores.append("La fecha fin del periodo debe ser posterior a la fecha inicio")
+                ini = datos["periodo_inicio"] if isinstance(datos["periodo_inicio"], date) else parse_date(str(datos["periodo_inicio"]))
+                fin = datos["periodo_fin"] if isinstance(datos["periodo_fin"], date) else parse_date(str(datos["periodo_fin"]))
+                if ini and fin and fin < ini:
+                    errores.append("La fecha fin del periodo no puede ser anterior a la fecha inicio")
             
-            if "monto_bruto" in datos and "monto_neto" in datos:
-                if datos["monto_neto"] > datos["monto_bruto"]:
-                    errores.append("El monto neto no puede ser mayor al monto bruto")
+            if "salario_base" in datos and datos["salario_base"] is not None and str(datos["salario_base"]).strip() != "":
+                try:
+                    sal = float(datos["salario_base"])
+                    if sal <= 0:
+                        errores.append("El salario base debe ser mayor a 0")
+                except (ValueError, TypeError):
+                    errores.append("El salario base debe ser un número válido")
+            
+            if "monto_bruto" in datos and "monto_neto" in datos and datos["monto_bruto"] is not None and datos["monto_neto"] is not None:
+                try:
+                    bruto = float(datos["monto_bruto"])
+                    neto = float(datos["monto_neto"])
+                    if neto > bruto:
+                        errores.append("El monto neto no puede ser mayor al monto bruto")
+                except (ValueError, TypeError):
+                    pass
             
         except Exception as e:
             errores.append(f"Error en validación: {str(e)}")

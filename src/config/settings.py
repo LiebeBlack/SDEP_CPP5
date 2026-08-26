@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 # Cargar variables de entorno
 load_dotenv()

@@ -34,7 +34,11 @@ def configure_treeview_style():
         pass  # Continuar si falla la configuración de estilo
 
 from src.config import settings, db_config
-from src.services import EmpleadoService, DocumentoService, IncidenciaService, PagoService, ConfiguracionService
+from src.services.empleado_service import EmpleadoService
+from src.services.documento_service import DocumentoService
+from src.services.incidencia_service import IncidenciaService
+from src.services.pago_service import PagoService
+from src.services.configuracion_service import ConfiguracionService
 
 
 class MainWindow(ctk.CTk):

@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, Union
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -352,7 +352,7 @@ def generate_unique_filename(original_filename: str) -> str:
 
 def ensure_directory_exists(directory_path: str) -> bool:
     """
-    Asegura que un directorio exista, lo crea si es necesario
+    Asegura que un directorio exista, lo crea si es necesario con manejo de errores
     
     Args:
         directory_path: Ruta del directorio a verificar/crear
@@ -363,7 +363,14 @@ def ensure_directory_exists(directory_path: str) -> bool:
     try:
         Path(directory_path).mkdir(parents=True, exist_ok=True)
         return True
-    except Exception:
+    except PermissionError as e:
+        print(f"Error de permisos creando directorio {directory_path}: {e}")
+        return False
+    except OSError as e:
+        print(f"Error del sistema creando directorio {directory_path}: {e}")
+        return False
+    except Exception as e:
+        print(f"Error inesperado creando directorio {directory_path}: {e}")
         return False
 
 

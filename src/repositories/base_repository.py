@@ -7,11 +7,17 @@ lectura, actualización y eliminación (CRUD) que pueden ser
 utilizadas por todos los repositorios específicos.
 """
 
-from typing import TypeVar, Type, List, Optional, Generic, Any
+from typing import TypeVar, Type, List, Optional, Generic, Any, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
+import logging
+
+from src.utils.audit_logger import get_audit_logger, AuditEventType
 
 T = TypeVar('T')
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRepository(Generic[T]):
@@ -20,6 +26,7 @@ class BaseRepository(Generic[T]):
     
     Proporciona métodos genéricos para operaciones comunes de base de datos
     que pueden ser heredados por repositorios específicos.
+    Incluye manejo robusto de errores y auditoría de operaciones.
     """
     
     def __init__(self, model: Type[T], session: Session):
@@ -32,10 +39,11 @@ class BaseRepository(Generic[T]):
         """
         self.model = model
         self.session = session
+        self._model_name = model.__name__ if hasattr(model, '__name__') else str(model)
     
     def get_by_id(self, id: int) -> Optional[T]:
         """
-        Obtiene un registro por ID
+        Obtiene un registro por ID con manejo de errores
         
         Args:
             id: Identificador del registro
@@ -43,11 +51,52 @@ class BaseRepository(Generic[T]):
         Returns:
             Objeto del modelo o None si no existe
         """
-        return self.session.query(self.model).filter(self.model.id == id).first()
+        try:
+            result = self.session.query(self.model).filter(self.model.id == id).first()
+            
+            # Registrar auditoría de lectura
+            try:
+                audit_log = get_audit_logger()
+                if result:
+                    audit_log.log_data_operation(
+                        operation="read",
+                        entity_type=self._model_name,
+                        entity_id=id,
+                        data={"result": "found"}
+                    )
+                else:
+                    audit_log.log_data_operation(
+                        operation="read",
+                        entity_type=self._model_name,
+                        entity_id=id,
+                        data={"result": "not_found"},
+                        success=False
+                    )
+            except Exception:
+                pass  # Continuar si audit_logger no está disponible
+            
+            return result
+            
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al obtener {self._model_name} ID {id}: {e}")
+            try:
+                audit_log = get_audit_logger()
+                audit_log.log_error(e, context={"operation": "get_by_id", "entity_id": id})
+            except Exception:
+                pass
+            return None
+        except Exception as e:
+            logger.error(f"Error inesperado al obtener {self._model_name} ID {id}: {e}")
+            try:
+                audit_log = get_audit_logger()
+                audit_log.log_error(e, context={"operation": "get_by_id", "entity_id": id})
+            except Exception:
+                pass
+            return None
     
     def get_all(self, skip: int = 0, limit: int = 100) -> List[T]:
         """
-        Obtiene todos los registros con paginación
+        Obtiene todos los registros con paginación y manejo de errores
         
         Args:
             skip: Cantidad de registros a saltar
@@ -56,11 +105,33 @@ class BaseRepository(Generic[T]):
         Returns:
             Lista de objetos del modelo
         """
-        return self.session.query(self.model).offset(skip).limit(limit).all()
+        try:
+            result = self.session.query(self.model).offset(skip).limit(limit).all()
+            
+            try:
+                audit_log = get_audit_logger()
+                audit_log.log_data_operation(
+                    operation="read",
+                    entity_type=self._model_name,
+                    data={"skip": skip, "limit": limit, "count": len(result)}
+                )
+            except Exception:
+                pass
+            
+            return result
+            
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al obtener {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "get_all", "skip": skip, "limit": limit})
+            return []
+        except Exception as e:
+            logger.error(f"Error inesperado al obtener {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "get_all", "skip": skip, "limit": limit})
+            return []
     
     def create(self, obj: T) -> T:
         """
-        Crea un nuevo registro
+        Crea un nuevo registro con manejo robusto de errores y auditoría
         
         Args:
             obj: Objeto del modelo a crear
@@ -69,20 +140,53 @@ class BaseRepository(Generic[T]):
             Objeto creado con ID asignado
             
         Raises:
-            Exception: Si ocurre error en la creación
+            IntegrityError: Si viola restricciones de integridad
+            SQLAlchemyError: Si ocurre error de base de datos
+            Exception: Si ocurre error general
         """
         try:
             self.session.add(obj)
             self.session.commit()
             self.session.refresh(obj)
+            
+            # Registrar auditoría de creación exitosa
+            audit_logger.log_data_operation(
+                operation="create",
+                entity_type=self._model_name,
+                entity_id=obj.id,
+                data=obj.to_dict() if hasattr(obj, 'to_dict') else str(obj)
+            )
+            
+            logger.info(f"{self._model_name} creado exitosamente con ID {obj.id}")
             return obj
-        except Exception:
+            
+        except IntegrityError as e:
             self.session.rollback()
+            logger.error(f"Error de integridad al crear {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "create", "entity": str(obj)})
+            raise ValueError("Error de integridad: el registro viola restricciones únicas") from e
+            
+        except OperationalError as e:
+            self.session.rollback()
+            logger.error(f"Error operacional al crear {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "create", "entity": str(obj)})
+            raise
+            
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Error de base de datos al crear {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "create", "entity": str(obj)})
+            raise
+            
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error inesperado al crear {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "create", "entity": str(obj)})
             raise
     
     def update(self, obj: T) -> T:
         """
-        Actualiza un registro existente
+        Actualiza un registro existente con manejo robusto de errores y auditoría
         
         Args:
             obj: Objeto del modelo con modificaciones
@@ -91,19 +195,62 @@ class BaseRepository(Generic[T]):
             Objeto actualizado
             
         Raises:
-            Exception: Si ocurre error en la actualización
+            IntegrityError: Si viola restricciones de integridad
+            SQLAlchemyError: Si ocurre error de base de datos
+            Exception: Si ocurre error general
         """
         try:
+            original_data = None
+            if hasattr(obj, 'id') and obj.id:
+                original = self.get_by_id(obj.id)
+                if original and hasattr(original, 'to_dict'):
+                    original_data = original.to_dict()
+            
             self.session.commit()
             self.session.refresh(obj)
+            
+            # Registrar auditoría de actualización con cambios
+            new_data = obj.to_dict() if hasattr(obj, 'to_dict') else str(obj)
+            changes = self._calculate_changes(original_data, new_data) if original_data else {}
+            
+            audit_logger.log_data_operation(
+                operation="update",
+                entity_type=self._model_name,
+                entity_id=obj.id,
+                data=new_data,
+                changes=changes
+            )
+            
+            logger.info(f"{self._model_name} actualizado exitosamente con ID {obj.id}")
             return obj
-        except Exception:
+            
+        except IntegrityError as e:
             self.session.rollback()
+            logger.error(f"Error de integridad al actualizar {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "update", "entity_id": getattr(obj, 'id', None)})
+            raise ValueError("Error de integridad: la actualización viola restricciones") from e
+            
+        except OperationalError as e:
+            self.session.rollback()
+            logger.error(f"Error operacional al actualizar {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "update", "entity_id": getattr(obj, 'id', None)})
+            raise
+            
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Error de base de datos al actualizar {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "update", "entity_id": getattr(obj, 'id', None)})
+            raise
+            
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error inesperado al actualizar {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "update", "entity_id": getattr(obj, 'id', None)})
             raise
     
     def delete(self, id: int) -> bool:
         """
-        Elimina un registro por ID
+        Elimina un registro por ID con manejo robusto de errores y auditoría
         
         Args:
             id: Identificador del registro a eliminar
@@ -112,31 +259,82 @@ class BaseRepository(Generic[T]):
             True si se eliminó, False si no existía
             
         Raises:
-            Exception: Si ocurre error en la eliminación
+            SQLAlchemyError: Si ocurre error de base de datos
+            Exception: Si ocurre error general
         """
         try:
             obj = self.get_by_id(id)
-            if obj:
-                self.session.delete(obj)
-                self.session.commit()
-                return True
-            return False
-        except Exception:
+            if not obj:
+                logger.warning(f"{self._model_name} con ID {id} no encontrado para eliminación")
+                return False
+            
+            # Guardar datos antes de eliminar para auditoría
+            deleted_data = obj.to_dict() if hasattr(obj, 'to_dict') else str(obj)
+            
+            self.session.delete(obj)
+            self.session.commit()
+            
+            # Registrar auditoría de eliminación
+            audit_logger.log_data_operation(
+                operation="delete",
+                entity_type=self._model_name,
+                entity_id=id,
+                data=deleted_data
+            )
+            
+            logger.info(f"{self._model_name} eliminado exitosamente con ID {id}")
+            return True
+            
+        except OperationalError as e:
             self.session.rollback()
+            logger.error(f"Error operacional al eliminar {self._model_name} ID {id}: {e}")
+            audit_logger.log_error(e, context={"operation": "delete", "entity_id": id})
             raise
+            
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Error de base de datos al eliminar {self._model_name} ID {id}: {e}")
+            audit_logger.log_error(e, context={"operation": "delete", "entity_id": id})
+            raise
+            
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error inesperado al eliminar {self._model_name} ID {id}: {e}")
+            audit_logger.log_error(e, context={"operation": "delete", "entity_id": id})
+            raise
+    
+    def _calculate_changes(self, original: Dict, new: Dict) -> Dict:
+        """Calcula los cambios entre dos diccionarios"""
+        changes = {}
+        for key, new_value in new.items():
+            if key not in original or original[key] != new_value:
+                changes[key] = {
+                    "old": original.get(key),
+                    "new": new_value
+                }
+        return changes
     
     def count(self) -> int:
         """
-        Cuenta el total de registros
+        Cuenta el total de registros con manejo de errores
         
         Returns:
             Cantidad total de registros en la tabla
         """
-        return self.session.query(self.model).count()
+        try:
+            return self.session.query(self.model).count()
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al contar {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "count"})
+            return 0
+        except Exception as e:
+            logger.error(f"Error inesperado al contar {self._model_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "count"})
+            return 0
     
     def exists(self, id: int) -> bool:
         """
-        Verifica si existe un registro por ID
+        Verifica si existe un registro por ID con manejo de errores
         
         Args:
             id: Identificador a verificar
@@ -144,30 +342,135 @@ class BaseRepository(Generic[T]):
         Returns:
             True si existe, False en caso contrario
         """
-        return self.session.query(self.model).filter(self.model.id == id).first() is not None
+        try:
+            return self.session.query(self.model).filter(self.model.id == id).first() is not None
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al verificar existencia de {self._model_name} ID {id}: {e}")
+            audit_logger.log_error(e, context={"operation": "exists", "entity_id": id})
+            return False
+        except Exception as e:
+            logger.error(f"Error inesperado al verificar existencia de {self._model_name} ID {id}: {e}")
+            audit_logger.log_error(e, context={"operation": "exists", "entity_id": id})
+            return False
     
     def get_by_field(self, field_name: str, value: Any) -> Optional[T]:
-        """Obtiene un registro por un campo específico"""
-        return self.session.query(self.model).filter(
-            getattr(self.model, field_name) == value
-        ).first()
+        """
+        Obtiene un registro por un campo específico con manejo de errores
+        
+        Args:
+            field_name: Nombre del campo a buscar
+            value: Valor a buscar
+            
+        Returns:
+            Objeto del modelo o None si no existe
+        """
+        try:
+            if not hasattr(self.model, field_name):
+                logger.warning(f"Campo {field_name} no existe en {self._model_name}")
+                return None
+                
+            result = self.session.query(self.model).filter(
+                getattr(self.model, field_name) == value
+            ).first()
+            
+            return result
+            
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al buscar {self._model_name} por {field_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "get_by_field", "field": field_name, "value": str(value)})
+            return None
+        except Exception as e:
+            logger.error(f"Error inesperado al buscar {self._model_name} por {field_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "get_by_field", "field": field_name, "value": str(value)})
+            return None
     
     def get_all_by_field(self, field_name: str, value: Any) -> List[T]:
-        """Obtiene todos los registros por un campo específico"""
-        return self.session.query(self.model).filter(
-            getattr(self.model, field_name) == value
-        ).all()
+        """
+        Obtiene todos los registros por un campo específico con manejo de errores
+        
+        Args:
+            field_name: Nombre del campo a buscar
+            value: Valor a buscar
+            
+        Returns:
+            Lista de objetos del modelo
+        """
+        try:
+            if not hasattr(self.model, field_name):
+                logger.warning(f"Campo {field_name} no existe en {self._model_name}")
+                return []
+                
+            result = self.session.query(self.model).filter(
+                getattr(self.model, field_name) == value
+            ).all()
+            
+            return result
+            
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al buscar {self._model_name} por {field_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "get_all_by_field", "field": field_name, "value": str(value)})
+            return []
+        except Exception as e:
+            logger.error(f"Error inesperado al buscar {self._model_name} por {field_name}: {e}")
+            audit_logger.log_error(e, context={"operation": "get_all_by_field", "field": field_name, "value": str(value)})
+            return []
     
     def search(self, filters: dict) -> List[T]:
-        """Busca registros con filtros múltiples"""
-        query = self.session.query(self.model)
-        for field, value in filters.items():
-            if hasattr(self.model, field):
-                query = query.filter(getattr(self.model, field) == value)
-        return query.all()
+        """
+        Busca registros con filtros múltiples y manejo de errores
+        
+        Args:
+            filters: Diccionario de campos y valores a filtrar
+            
+        Returns:
+            Lista de objetos del modelo
+        """
+        try:
+            query = self.session.query(self.model)
+            for field, value in filters.items():
+                if hasattr(self.model, field):
+                    query = query.filter(getattr(self.model, field) == value)
+                else:
+                    logger.warning(f"Campo {field} no existe en {self._model_name}")
+            
+            return query.all()
+            
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al buscar {self._model_name} con filtros: {e}")
+            audit_logger.log_error(e, context={"operation": "search", "filters": str(filters)})
+            return []
+        except Exception as e:
+            logger.error(f"Error inesperado al buscar {self._model_name} con filtros: {e}")
+            audit_logger.log_error(e, context={"operation": "search", "filters": str(filters)})
+            return []
     
     def search_like(self, field_name: str, value: str) -> List[T]:
-        """Busca registros con coincidencia parcial"""
-        return self.session.query(self.model).filter(
-            getattr(self.model, field_name).like(f"%{value}%")
-        ).all()
+        """
+        Busca registros con coincidencia parcial y manejo de errores
+        
+        Args:
+            field_name: Nombre del campo a buscar
+            value: Valor parcial a buscar
+            
+        Returns:
+            Lista de objetos del modelo
+        """
+        try:
+            if not hasattr(self.model, field_name):
+                logger.warning(f"Campo {field_name} no existe en {self._model_name}")
+                return []
+                
+            result = self.session.query(self.model).filter(
+                getattr(self.model, field_name).like(f"%{value}%")
+            ).all()
+            
+            return result
+            
+        except OperationalError as e:
+            logger.error(f"Error de base de datos al buscar {self._model_name} con LIKE: {e}")
+            audit_logger.log_error(e, context={"operation": "search_like", "field": field_name, "value": value})
+            return []
+        except Exception as e:
+            logger.error(f"Error inesperado al buscar {self._model_name} con LIKE: {e}")
+            audit_logger.log_error(e, context={"operation": "search_like", "field": field_name, "value": value})
+            return []

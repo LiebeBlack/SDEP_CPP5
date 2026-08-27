@@ -6,49 +6,39 @@ Configuración general de la aplicación
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from dataclasses import dataclass
-from typing import Optional, Union
 
 # Cargar variables de entorno
 load_dotenv()
 
 
-@dataclass
 class Settings:
     """Configuración de la aplicación"""
     
-    # Aplicación
-    app_name: str = os.getenv("APP_NAME", "Sistema de Gestión de Personal")
-    app_version: str = os.getenv("APP_VERSION", "1.0.0")
-    debug: bool = os.getenv("DEBUG", "False").lower() == "true"
-    
-    # Base de datos
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///personal_management.db")
-    database_path: str = os.getenv("DATABASE_PATH", "personal_management.db")
-    
-    # Rutas de archivos
-    documents_path: str = os.getenv("DOCUMENTS_PATH", "documents")
-    photos_path: str = os.getenv("PHOTOS_PATH", "photos")
-    exports_path: str = os.getenv("EXPORTS_PATH", "exports")
-    
-    # PDF
-    pdf_author: str = os.getenv("PDF_AUTHOR", "Sistema de Gestión de Personal")
-    pdf_title: str = os.getenv("PDF_TITLE", "Documentos Oficiales")
-    
-    # Logging
-    log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    log_file: str = os.getenv("LOG_FILE", "app.log")
-    
-    # Directorio base de la aplicación
-    base_dir: Path = Path(__file__).parent.parent.parent
-    
-    def __post_init__(self):
-        """Inicializa las rutas después de la creación"""
-        # Convertir rutas a absolutas
-        self.documents_path = str(self.base_dir / self.documents_path)
-        self.photos_path = str(self.base_dir / self.photos_path)
-        self.exports_path = str(self.base_dir / self.exports_path)
-        self.log_file = str(self.base_dir / self.log_file)
+    def __init__(self):
+        # Directorio base de la aplicación
+        self.base_dir = Path(__file__).parent.parent.parent
+        
+        # Aplicación
+        self.app_name = os.getenv("APP_NAME", "Sistema de Gestión de Personal")
+        self.app_version = os.getenv("APP_VERSION", "1.0.0")
+        self.debug = os.getenv("DEBUG", "False").lower() == "true"
+        
+        # Base de datos
+        self.database_url = os.getenv("DATABASE_URL", "sqlite:///personal_management.db")
+        self.database_path = os.getenv("DATABASE_PATH", "personal_management.db")
+        
+        # Rutas de archivos (inicializar como absolutas)
+        self.documents_path = str(self.base_dir / os.getenv("DOCUMENTS_PATH", "documents"))
+        self.photos_path = str(self.base_dir / os.getenv("PHOTOS_PATH", "photos"))
+        self.exports_path = str(self.base_dir / os.getenv("EXPORTS_PATH", "exports"))
+        
+        # PDF
+        self.pdf_author = os.getenv("PDF_AUTHOR", "Sistema de Gestión de Personal")
+        self.pdf_title = os.getenv("PDF_TITLE", "Documentos Oficiales")
+        
+        # Logging
+        self.log_level = os.getenv("LOG_LEVEL", "INFO")
+        self.log_file = str(self.base_dir / os.getenv("LOG_FILE", "app.log"))
         
         # Crear directorios necesarios
         self._ensure_directories()

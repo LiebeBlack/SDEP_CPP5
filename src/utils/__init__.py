@@ -16,6 +16,12 @@ from .validators import (
 )
 from .document_manager import DocumentManager, document_manager
 from .pdf_generator import PDFGenerator, pdf_generator
+from .backup_manager import BackupManager, backup_manager
+from .audit_logger import AuditLogger, audit_logger, AuditEventType
+from .security import (
+    SecurityValidator, PermissionChecker, SecurityLogger,
+    security_validator, permission_checker, security_logger
+)
 
 __all__ = [
     "get_resource_path", "format_date", "parse_date", "format_currency", "parse_currency",
@@ -25,5 +31,8 @@ __all__ = [
     "generate_unique_filename", "ensure_directory_exists", "get_timestamp", "log_message",
     "ValidationError", "Validator", "EmpleadoValidator",
     "DocumentoValidator", "IncidenciaValidator", "PagoValidator",
-    "DocumentManager", "document_manager", "PDFGenerator", "pdf_generator"
+    "DocumentManager", "document_manager", "PDFGenerator", "pdf_generator",
+    "BackupManager", "backup_manager", "AuditLogger", "audit_logger", "AuditEventType",
+    "SecurityValidator", "PermissionChecker", "SecurityLogger",
+    "security_validator", "permission_checker", "security_logger"
 ]

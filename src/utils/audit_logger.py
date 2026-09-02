@@ -391,11 +391,11 @@ class AuditLogger:
         }
 
 
-# Instancia global del logger de auditoría (inicialización diferida)
-audit_logger = None
+# Instancia global del logger de auditoría
+audit_logger = AuditLogger()
 
 def get_audit_logger():
-    """Retorna la instancia del logger de auditoría (lazy initialization)"""
+    """Retorna la instancia del logger de auditoría"""
     global audit_logger
     if audit_logger is None:
         audit_logger = AuditLogger()

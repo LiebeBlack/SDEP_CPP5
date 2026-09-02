@@ -49,6 +49,26 @@ class DatabaseConfig:
         ))
         
         logger.info("Configuración de base de datos inicializada")
+
+    def _safe_log_error(self, error: Exception, context: Dict = None):
+        """Helper para registrar errores en audit_logger sin lanzar excepciones"""
+        try:
+            from src.utils.audit_logger import get_audit_logger
+            audit = get_audit_logger()
+            if audit:
+                audit.log_error(error, context=context)
+        except Exception:
+            pass
+
+    def _safe_log_event(self, event_type, details: Dict = None):
+        """Helper para registrar eventos de sistema sin lanzar excepciones"""
+        try:
+            from src.utils.audit_logger import get_audit_logger
+            audit = get_audit_logger()
+            if audit:
+                audit.log_system_event(event_type, details=details)
+        except Exception:
+            pass
         
     def _ensure_data_directory(self):
         """Asegura que el directorio de datos exista"""
@@ -59,16 +79,15 @@ class DatabaseConfig:
                 logger.info(f"Directorio de datos creado/verificado: {db_path.parent}")
         except Exception as e:
             logger.error(f"Error creando directorio de datos: {e}")
-            audit_logger.log_error(e, context={"operation": "ensure_data_directory"})
+            self._safe_log_error(e, context={"operation": "ensure_data_directory"})
             raise
     
     def _create_engine(self):
         """Crea el engine de SQLAlchemy con configuración segura"""
         try:
-            # Configuración específica para SQLite con seguridad
             connect_args = {
                 "check_same_thread": False,
-                "timeout": 30  # Timeout de 30 segundos para evitar bloqueos
+                "timeout": 30
             }
             
             engine = create_engine(
@@ -76,8 +95,8 @@ class DatabaseConfig:
                 connect_args=connect_args,
                 poolclass=StaticPool,
                 echo=self.echo,
-                pool_pre_ping=True,  # Verificar conexiones antes de usar
-                pool_recycle=3600    # Reciclar conexiones cada hora
+                pool_pre_ping=True,
+                pool_recycle=3600
             )
             
             logger.info("Engine de base de datos creado exitosamente")
@@ -85,7 +104,7 @@ class DatabaseConfig:
             
         except Exception as e:
             logger.error(f"Error creando engine de base de datos: {e}")
-            audit_logger.log_error(e, context={"operation": "create_engine"})
+            self._safe_log_error(e, context={"operation": "create_engine"})
             raise
     
     def create_tables(self):
@@ -94,54 +113,50 @@ class DatabaseConfig:
             Base.metadata.create_all(bind=self.engine)
             logger.info("Tablas de base de datos creadas exitosamente")
             
-            # Importar audit_logger aquí para evitar dependencia circular
             try:
-                from src.utils.audit_logger import audit_logger, AuditEventType
-                audit_logger.log_system_event(AuditEventType.SYSTEM_START, 
-                                             details={"operation": "create_tables"})
+                from src.utils.audit_logger import AuditEventType
+                self._safe_log_event(AuditEventType.SYSTEM_START, details={"operation": "create_tables"})
             except Exception:
-                pass  # Continuar si audit_logger no está disponible
+                pass
                 
             return True
         except SQLAlchemyError as e:
             logger.error(f"Error creando tablas: {e}")
-            try:
-                from src.utils.audit_logger import audit_logger
-                audit_logger.log_error(e, context={"operation": "create_tables"})
-            except Exception:
-                pass
+            self._safe_log_error(e, context={"operation": "create_tables"})
             raise
         except Exception as e:
             logger.error(f"Error inesperado creando tablas: {e}")
-            try:
-                from src.utils.audit_logger import audit_logger
-                audit_logger.log_error(e, context={"operation": "create_tables"})
-            except Exception:
-                pass
+            self._safe_log_error(e, context={"operation": "create_tables"})
             raise
     
     def drop_tables(self):
         """Elimina todas las tablas de la base de datos con backup previo"""
         try:
-            # Crear backup antes de eliminar
             try:
-                backup_info = backup_manager.create_backup("pre_drop_tables", compress=True)
-                logger.info(f"Backup creado antes de eliminar tablas: {backup_info['name']}")
+                from src.utils.backup_manager import get_backup_manager
+                backup_mgr = get_backup_manager()
+                backup_info = backup_mgr.create_backup("pre_drop_tables", compress=True)
+                logger.info(f"Backup creado antes de eliminar tablas: {backup_info.get('name')}")
             except Exception as e:
                 logger.warning(f"No se pudo crear backup antes de eliminar tablas: {e}")
             
             Base.metadata.drop_all(bind=self.engine)
             logger.warning("Tablas de base de datos eliminadas")
-            audit_logger.log_system_event(AuditEventType.SYSTEM_RESTORE, 
-                                         details={"operation": "drop_tables"})
+            
+            try:
+                from src.utils.audit_logger import AuditEventType
+                self._safe_log_event(AuditEventType.SYSTEM_STOP, details={"operation": "drop_tables"})
+            except Exception:
+                pass
+                
             return True
         except SQLAlchemyError as e:
             logger.error(f"Error eliminando tablas: {e}")
-            audit_logger.log_error(e, context={"operation": "drop_tables"})
+            self._safe_log_error(e, context={"operation": "drop_tables"})
             raise
         except Exception as e:
             logger.error(f"Error inesperado eliminando tablas: {e}")
-            audit_logger.log_error(e, context={"operation": "drop_tables"})
+            self._safe_log_error(e, context={"operation": "drop_tables"})
             raise
     
     def get_session(self):
@@ -151,7 +166,7 @@ class DatabaseConfig:
             return session
         except Exception as e:
             logger.error(f"Error obteniendo sesión de base de datos: {e}")
-            audit_logger.log_error(e, context={"operation": "get_session"})
+            self._safe_log_error(e, context={"operation": "get_session"})
             raise
     
     def close_session(self, session):
@@ -172,12 +187,8 @@ class DatabaseConfig:
         try:
             logger.info("Inicializando base de datos...")
             
-            # Verificar integridad de la base de datos existente
-            if self._verify_database_integrity():
-                logger.info("Base de datos existente verificada exitosamente")
-            else:
-                logger.warning("Problemas de integridad detectados, recreando base de datos")
-                self.create_tables()
+            # Siempre llamar create_tables para asegurar que todas las tablas existan
+            self.create_tables()
             
             # Sembrar datos iniciales
             self._seed_initial_data()
@@ -194,21 +205,14 @@ class DatabaseConfig:
             logger.info("Base de datos inicializada exitosamente")
             
             try:
-                from src.utils.audit_logger import get_audit_logger, AuditEventType
-                audit_log = get_audit_logger()
-                audit_log.log_system_event(AuditEventType.SYSTEM_START, 
-                                             details={"operation": "init_db"})
+                from src.utils.audit_logger import AuditEventType
+                self._safe_log_event(AuditEventType.SYSTEM_START, details={"operation": "init_db"})
             except Exception:
                 pass
                 
         except Exception as e:
             logger.error(f"Error inicializando base de datos: {e}")
-            try:
-                from src.utils.audit_logger import get_audit_logger
-                audit_log = get_audit_logger()
-                audit_log.log_error(e, context={"operation": "init_db"})
-            except Exception:
-                pass
+            self._safe_log_error(e, context={"operation": "init_db"})
             raise
     
     def _verify_database_integrity(self) -> bool:
@@ -218,7 +222,6 @@ class DatabaseConfig:
             if not db_path.exists():
                 return False
             
-            # Intentar abrir la base de datos
             import sqlite3
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
@@ -226,12 +229,7 @@ class DatabaseConfig:
             tables = cursor.fetchall()
             conn.close()
             
-            # Verificar que haya tablas
-            if len(tables) == 0:
-                return False
-            
-            logger.info(f"Base de datos verificada: {len(tables)} tablas encontradas")
-            return True
+            return len(tables) > 0
             
         except Exception as e:
             logger.warning(f"Error verificando integridad de base de datos: {e}")
@@ -243,13 +241,11 @@ class DatabaseConfig:
         
         session = self.get_session()
         try:
-            # Verificar si ya existen configuraciones
             existing = session.query(Configuracion).first()
             if existing:
                 logger.info("Configuraciones iniciales ya existen")
                 return
             
-            # Configuraciones iniciales
             configuraciones = [
                 Configuracion(
                     clave="nombre_institucion",
@@ -328,7 +324,6 @@ class DatabaseConfig:
                     tipo_dato="int",
                     categoria="recursos_humanos"
                 ),
-                # Configuraciones de seguridad
                 Configuracion(
                     clave="backup_enabled",
                     valor="true",
@@ -360,23 +355,19 @@ class DatabaseConfig:
             try:
                 from src.utils.audit_logger import get_audit_logger
                 audit_log = get_audit_logger()
-                audit_log.log_data_operation(
-                    operation="create",
-                    entity_type="configuracion",
-                    data={"count": len(configuraciones)}
-                )
+                if audit_log:
+                    audit_log.log_data_operation(
+                        operation="create",
+                        entity_type="configuracion",
+                        data={"count": len(configuraciones)}
+                    )
             except Exception:
                 pass
             
         except Exception as e:
             session.rollback()
             logger.error(f"Error insertando configuraciones iniciales: {e}")
-            try:
-                from src.utils.audit_logger import get_audit_logger
-                audit_log = get_audit_logger()
-                audit_log.log_error(e, context={"operation": "seed_initial_data"})
-            except Exception:
-                pass
+            self._safe_log_error(e, context={"operation": "seed_initial_data"})
             raise
         finally:
             self.close_session(session)
@@ -397,12 +388,7 @@ class DatabaseConfig:
             return backup_mgr.create_backup(backup_name)
         except Exception as e:
             logger.error(f"Error creando backup: {e}")
-            try:
-                from src.utils.audit_logger import get_audit_logger
-                audit_log = get_audit_logger()
-                audit_log.log_error(e, context={"operation": "create_backup"})
-            except Exception:
-                pass
+            self._safe_log_error(e, context={"operation": "create_backup"})
             raise
     
     def restore_backup(self, backup_name: str) -> bool:
@@ -421,22 +407,15 @@ class DatabaseConfig:
             result = backup_mgr.restore_backup(backup_name)
             
             try:
-                from src.utils.audit_logger import get_audit_logger, AuditEventType
-                audit_log = get_audit_logger()
-                audit_log.log_system_event(AuditEventType.SYSTEM_RESTORE, 
-                                             details={"backup_name": backup_name})
+                from src.utils.audit_logger import AuditEventType
+                self._safe_log_event(AuditEventType.SYSTEM_RESTORE, details={"backup_name": backup_name})
             except Exception:
                 pass
                 
             return result
         except Exception as e:
             logger.error(f"Error restaurando backup: {e}")
-            try:
-                from src.utils.audit_logger import get_audit_logger
-                audit_log = get_audit_logger()
-                audit_log.log_error(e, context={"operation": "restore_backup", "backup_name": backup_name})
-            except Exception:
-                pass
+            self._safe_log_error(e, context={"operation": "restore_backup", "backup_name": backup_name})
             raise
     
     def get_backup_status(self) -> Dict:

@@ -80,22 +80,32 @@ class DocumentoRepository(BaseRepository[Documento]):
         ).all()
     
     def desactivar(self, id: int) -> bool:
-        """Desactiva un documento"""
-        documento = self.get_by_id(id)
-        if documento:
-            documento.activo = 0
-            self.session.commit()
-            return True
-        return False
+        """Desactiva un documento con manejo de errores"""
+        try:
+            documento = self.get_by_id(id)
+            if documento:
+                documento.activo = 0
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al desactivar documento {id}: {e}")
+            return False
     
     def activar(self, id: int) -> bool:
-        """Activa un documento"""
-        documento = self.get_by_id(id)
-        if documento:
-            documento.activo = 1
-            self.session.commit()
-            return True
-        return False
+        """Activa un documento con manejo de errores"""
+        try:
+            documento = self.get_by_id(id)
+            if documento:
+                documento.activo = 1
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al activar documento {id}: {e}")
+            return False
     
     def get_estadisticas_por_tipo(self) -> dict:
         """Obtiene estadísticas de documentos por tipo"""

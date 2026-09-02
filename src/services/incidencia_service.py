@@ -236,12 +236,33 @@ class IncidenciaService:
         }
     
     def calcular_dias_incidencias_periodo(self, empleado_id: int, fecha_inicio: date, fecha_fin: date) -> int:
-        """Calcula los días de incidencias de un empleado en un periodo"""
+        """Calcula los días de incidencias que afectan nómina de un empleado en un periodo"""
+        from src.utils.helpers import parse_date
+        if isinstance(fecha_inicio, str):
+            fecha_inicio = parse_date(fecha_inicio)
+        if isinstance(fecha_fin, str):
+            fecha_fin = parse_date(fecha_fin)
+            
+        if not fecha_inicio or not fecha_fin:
+            return 0
+            
         incidencias = self.repository.get_by_empleado_periodo(empleado_id, fecha_inicio, fecha_fin)
         dias_totales = 0
         for incidencia in incidencias:
-            if incidencia.estado == EstadoIncidencia.APROBADO.value:
-                dias_totales += incidencia.dias_aprobados or incidencia.dias_solicitados
+            # Solo contar incidencias aprobadas que afectan nómina
+            if incidencia.estado == EstadoIncidencia.APROBADO.value and getattr(incidencia, 'afecta_nominas', 1) == 1:
+                inc_ini = incidencia.fecha_inicio if isinstance(incidencia.fecha_inicio, date) else parse_date(str(incidencia.fecha_inicio))
+                inc_fin = incidencia.fecha_fin if isinstance(incidencia.fecha_fin, date) else parse_date(str(incidencia.fecha_fin))
+                
+                if inc_ini and inc_fin:
+                    # Delimitar al rango de la consulta
+                    rango_ini = max(inc_ini, fecha_inicio)
+                    rango_fin = min(inc_fin, fecha_fin)
+                    if rango_fin >= rango_ini:
+                        dias_inc = (rango_fin - rango_ini).days + 1
+                        dias_totales += dias_inc
+                else:
+                    dias_totales += incidencia.dias_aprobados or incidencia.dias_solicitados or 0
         return dias_totales
     
     def _obtener_extension(self, nombre_archivo: str) -> str:
@@ -252,6 +273,7 @@ class IncidenciaService:
     
     def validar_datos_incidencia(self, datos: Dict) -> List[str]:
         """Valida los datos de una incidencia"""
+        from src.utils.helpers import parse_date
         errores = []
         
         # Validaciones requeridas
@@ -262,8 +284,14 @@ class IncidenciaService:
         
         # Validaciones específicas
         if "fecha_inicio" in datos and "fecha_fin" in datos:
-            if datos["fecha_fin"] < datos["fecha_inicio"]:
-                errores.append("La fecha fin debe ser posterior a la fecha inicio")
+            f_ini = parse_date(datos["fecha_inicio"]) if isinstance(datos["fecha_inicio"], str) else datos["fecha_inicio"]
+            f_fin = parse_date(datos["fecha_fin"]) if isinstance(datos["fecha_fin"], str) else datos["fecha_fin"]
+            
+            if f_ini and f_fin:
+                if f_fin < f_ini:
+                    errores.append("La fecha fin debe ser posterior a la fecha inicio")
+            elif not f_ini or not f_fin:
+                errores.append("Formato de fecha inválido")
         
         if "empleado_id" in datos:
             try:

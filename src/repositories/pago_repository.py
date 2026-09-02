@@ -76,24 +76,34 @@ class PagoRepository(BaseRepository[Pago]):
         ).order_by(Pago.periodo_inicio.desc()).all()
     
     def marcar_pagado(self, id: int) -> bool:
-        """Marca un pago como realizado"""
-        pago = self.get_by_id(id)
-        if pago:
-            pago.pagado = 1
-            pago.fecha_registro_pago = date.today()
-            self.session.commit()
-            return True
-        return False
+        """Marca un pago como realizado con manejo de errores"""
+        try:
+            pago = self.get_by_id(id)
+            if pago:
+                pago.pagado = 1
+                pago.fecha_registro_pago = date.today()
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al marcar pago {id} como pagado: {e}")
+            return False
     
     def marcar_pendiente(self, id: int) -> bool:
-        """Marca un pago como pendiente"""
-        pago = self.get_by_id(id)
-        if pago:
-            pago.pagado = 0
-            pago.fecha_registro_pago = None
-            self.session.commit()
-            return True
-        return False
+        """Marca un pago como pendiente con manejo de errores"""
+        try:
+            pago = self.get_by_id(id)
+            if pago:
+                pago.pagado = 0
+                pago.fecha_registro_pago = None
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al marcar pago {id} como pendiente: {e}")
+            return False
     
     def get_total_by_empleado(self, empleado_id: int) -> float:
         """Obtiene el total de pagos de un empleado"""

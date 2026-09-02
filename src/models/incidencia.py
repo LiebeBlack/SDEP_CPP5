@@ -3,7 +3,7 @@ Incidencia Model
 Modelo de datos para incidencias y permisos
 """
 
-from datetime import datetime, date
+from datetime import date
 from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Float, LargeBinary
 from sqlalchemy.orm import relationship
 from .base import Base, BaseModel

@@ -3,8 +3,8 @@ Pago Model
 Modelo de datos para pagos y nómina
 """
 
-from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Float, Numeric
+from datetime import date
+from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from .base import Base, BaseModel
 from .enums import TipoPago, MetodoPago

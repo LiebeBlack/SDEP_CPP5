@@ -153,9 +153,11 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 return True
             return False
         except SQLAlchemyError as e:
+            self.session.rollback()
             logger.error(f"Error de base de datos al desactivar empleado {id}: {e}")
             return False
         except Exception as e:
+            self.session.rollback()
             logger.error(f"Error inesperado al desactivar empleado {id}: {e}")
             return False
     
@@ -169,9 +171,11 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 return True
             return False
         except SQLAlchemyError as e:
+            self.session.rollback()
             logger.error(f"Error de base de datos al activar empleado {id}: {e}")
             return False
         except Exception as e:
+            self.session.rollback()
             logger.error(f"Error inesperado al activar empleado {id}: {e}")
             return False
     

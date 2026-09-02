@@ -169,6 +169,8 @@ class EmpleadoService:
         
         # Actualizar campos
         for campo, valor in datos.items():
+            if campo == "id":
+                continue
             if hasattr(empleado, campo):
                 setattr(empleado, campo, valor)
         

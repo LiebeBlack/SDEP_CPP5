@@ -215,6 +215,15 @@ class PagoService:
     
     def generar_nominas_empleado(self, empleado_id: int, periodo_inicio: date, periodo_fin: date) -> Pago:
         """Genera automáticamente la nómina de un empleado para un periodo"""
+        from src.utils.helpers import parse_date
+        if isinstance(periodo_inicio, str):
+            periodo_inicio = parse_date(periodo_inicio)
+        if isinstance(periodo_fin, str):
+            periodo_fin = parse_date(periodo_fin)
+            
+        if not periodo_inicio or not periodo_fin:
+            raise ValueError("Fechas de período inválidas o requeridas")
+            
         empleado = self.empleado_repository.get_by_id(empleado_id)
         if not empleado:
             raise ValueError("Empleado no encontrado")
@@ -254,6 +263,15 @@ class PagoService:
     
     def generar_nominas_periodo(self, periodo_inicio: date, periodo_fin: date) -> List[Pago]:
         """Genera nóminas para todos los empleados activos en un periodo"""
+        from src.utils.helpers import parse_date
+        if isinstance(periodo_inicio, str):
+            periodo_inicio = parse_date(periodo_inicio)
+        if isinstance(periodo_fin, str):
+            periodo_fin = parse_date(periodo_fin)
+            
+        if not periodo_inicio or not periodo_fin:
+            return []
+            
         empleados_activos = self.empleado_repository.get_activos()
         pagos_generados = []
         

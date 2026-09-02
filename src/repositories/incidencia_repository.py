@@ -89,41 +89,56 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
         ).all()
     
     def aprobar(self, id: int, aprobado_por: str, comentarios: str = None, dias_aprobados: int = None) -> bool:
-        """Aprueba una incidencia"""
-        incidencia = self.get_by_id(id)
-        if incidencia:
-            incidencia.estado = EstadoIncidencia.APROBADO.value
-            incidencia.aprobado_por = aprobado_por
-            incidencia.fecha_aprobacion = date.today()
-            incidencia.comentarios_aprobacion = comentarios
-            if dias_aprobados is not None and dias_aprobados > 0:
-                incidencia.dias_aprobados = dias_aprobados
-            else:
-                incidencia.dias_aprobados = incidencia.dias_solicitados
-            self.session.commit()
-            return True
-        return False
+        """Aprueba una incidencia con manejo de errores"""
+        try:
+            incidencia = self.get_by_id(id)
+            if incidencia:
+                incidencia.estado = EstadoIncidencia.APROBADO.value
+                incidencia.aprobado_por = aprobado_por
+                incidencia.fecha_aprobacion = date.today()
+                incidencia.comentarios_aprobacion = comentarios
+                if dias_aprobados is not None and dias_aprobados > 0:
+                    incidencia.dias_aprobados = dias_aprobados
+                else:
+                    incidencia.dias_aprobados = incidencia.dias_solicitados
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al aprobar incidencia {id}: {e}")
+            return False
     
     def rechazar(self, id: int, rechazado_por: str, comentarios: str = None) -> bool:
-        """Rechaza una incidencia"""
-        incidencia = self.get_by_id(id)
-        if incidencia:
-            incidencia.estado = EstadoIncidencia.RECHAZADO.value
-            incidencia.aprobado_por = rechazado_por
-            incidencia.fecha_aprobacion = date.today()
-            incidencia.comentarios_aprobacion = comentarios
-            self.session.commit()
-            return True
-        return False
+        """Rechaza una incidencia con manejo de errores"""
+        try:
+            incidencia = self.get_by_id(id)
+            if incidencia:
+                incidencia.estado = EstadoIncidencia.RECHAZADO.value
+                incidencia.aprobado_por = rechazado_por
+                incidencia.fecha_aprobacion = date.today()
+                incidencia.comentarios_aprobacion = comentarios
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al rechazar incidencia {id}: {e}")
+            return False
     
     def completar(self, id: int) -> bool:
-        """Marca una incidencia como completada"""
-        incidencia = self.get_by_id(id)
-        if incidencia:
-            incidencia.estado = EstadoIncidencia.COMPLETADO.value
-            self.session.commit()
-            return True
-        return False
+        """Marca una incidencia como completada con manejo de errores"""
+        try:
+            incidencia = self.get_by_id(id)
+            if incidencia:
+                incidencia.estado = EstadoIncidencia.COMPLETADO.value
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error al completar incidencia {id}: {e}")
+            return False
     
     def get_estadisticas_por_tipo(self) -> dict:
         """Obtiene estadísticas de incidencias por tipo"""

@@ -225,13 +225,24 @@ class MainWindow(ctk.CTk):
         
         # Fecha y hora
         from datetime import datetime
-        datetime_label = ctk.CTkLabel(
+        self.datetime_label = ctk.CTkLabel(
             self.status_bar,
             text=datetime.now().strftime("%Y-%m-%d %H:%M"),
             font=ctk.CTkFont(size=10),
             text_color="#cccccc"
         )
-        datetime_label.pack(side="right", padx=10, pady=5)
+        self.datetime_label.pack(side="right", padx=10, pady=5)
+        self._update_clock()
+    
+    def _update_clock(self):
+        """Actualiza el reloj de la barra de estado periódicamente"""
+        try:
+            from datetime import datetime
+            if hasattr(self, 'datetime_label') and self.datetime_label.winfo_exists():
+                self.datetime_label.configure(text=datetime.now().strftime("%Y-%m-%d %H:%M"))
+                self.after(30000, self._update_clock)
+        except Exception:
+            pass
     
     def show_frame(self, frame_name: str, **kwargs):
         """Muestra un frame específico y opcionalmente pasa parámetros"""

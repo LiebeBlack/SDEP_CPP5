@@ -18,18 +18,26 @@ def configure_treeview_style():
                         background="#2b2b2b",
                         foreground="white",
                         fieldbackground="#2b2b2b",
-                        rowheight=25,
-                        borderwidth=0)
+                        rowheight=28,
+                        borderwidth=0,
+                        font=('Arial', 10))
         style.configure("Treeview.Heading",
                         background="#3c3c3c",
                         foreground="white",
                         relief="flat",
-                        borderwidth=0)
+                        borderwidth=0,
+                        font=('Arial', 10, 'bold'))
         style.map("Treeview",
                   background=[('selected', '#1f538d')],
                   foreground=[('selected', 'white')])
         style.map("Treeview.Heading",
                   background=[('active', '#4c4c4c')])
+        # Configurar scrollbar
+        style.configure("Vertical.TScrollbar",
+                        background="#3c3c3c",
+                        troughcolor="#2b2b2b",
+                        bordercolor="#2b2b2b",
+                        arrowcolor="white")
     except Exception:
         pass  # Continuar si falla la configuración de estilo
 
@@ -131,13 +139,17 @@ class MainWindow(ctk.CTk):
         ]
         
         for text, frame_name, icon in buttons:
+            # Usar función wrapper para evitar problema de lambda en loop
+            def make_command(fn):
+                return lambda: self._show_frame(fn)
+            
             btn = ctk.CTkButton(
                 self.sidebar,
                 text=f"{icon} {text}",
                 font=ctk.CTkFont(size=14),
                 height=50,
                 anchor="w",
-                command=lambda f=frame_name: self._show_frame(f)
+                command=make_command(frame_name)
             )
             btn.pack(pady=5, padx=10, fill="x")
             self.sidebar_buttons[frame_name] = btn
@@ -278,12 +290,12 @@ class MainWindow(ctk.CTk):
             
             # Crear nuevo frame
             frame_mapping = {
-                "dashboard": frames.Dashboard,
-                "empleados": frames.Empleados,
-                "documentos": frames.Documentos,
-                "incidencias": frames.Incidencias,
-                "nomina": frames.Nomina,
-                "configuracion": frames.Configuracion
+                "dashboard": frames.DashboardFrame,
+                "empleados": frames.EmpleadosFrame,
+                "documentos": frames.DocumentosFrame,
+                "incidencias": frames.IncidenciasFrame,
+                "nomina": frames.NominaFrame,
+                "configuracion": frames.ConfiguracionFrame
             }
             
             frame_class = frame_mapping.get(frame_name)

@@ -69,11 +69,24 @@ class DashboardFrame(ctk.CTkFrame):
         actions_container = ctk.CTkFrame(actions_frame)
         actions_container.pack(fill="x", padx=10, pady=10)
         
+        # Crear funciones separadas para evitar problemas de lambda
+        def go_to_empleados():
+            self.main_window._show_frame("empleados")
+        
+        def go_to_documentos():
+            self.main_window._show_frame("documentos")
+        
+        def go_to_incidencias():
+            self.main_window._show_frame("incidencias")
+        
+        def go_to_nomina():
+            self.main_window._show_frame("nomina")
+        
         actions = [
-            ("Nuevo Empleado", lambda: self.main_window._show_frame("empleados")),
-            ("Nuevo Documento", lambda: self.main_window._show_frame("documentos")),
-            ("Nueva Incidencia", lambda: self.main_window._show_frame("incidencias")),
-            ("Generar Nómina", lambda: self.main_window._show_frame("nomina")),
+            ("Nuevo Empleado", go_to_empleados),
+            ("Nuevo Documento", go_to_documentos),
+            ("Nueva Incidencia", go_to_incidencias),
+            ("Generar Nómina", go_to_nomina),
         ]
         
         for i, (text, command) in enumerate(actions):
@@ -231,12 +244,12 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("salario", text="Salario")
         
-        self.tree.column("cedula", width=120)
-        self.tree.column("nombre", width=200)
-        self.tree.column("cargo", width=150)
-        self.tree.column("departamento", width=150)
-        self.tree.column("tipo", width=100)
-        self.tree.column("salario", width=100)
+        self.tree.column("cedula", width=130, minwidth=100)
+        self.tree.column("nombre", width=250, minwidth=150)
+        self.tree.column("cargo", width=180, minwidth=120)
+        self.tree.column("departamento", width=180, minwidth=120)
+        self.tree.column("tipo", width=120, minwidth=80)
+        self.tree.column("salario", width=120, minwidth=100)
         
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
@@ -478,10 +491,17 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         
         # Hacer que la ventana esté siempre al frente
         self.attributes('-topmost', True)
-        self.after(100, lambda: self.attributes('-topmost', False))
+        self.after(100, self._remove_topmost)
         
         self._create_widgets()
         self._load_empleado_data()
+    
+    def _remove_topmost(self):
+        """Remueve el atributo topmost después de un delay"""
+        try:
+            self.attributes('-topmost', False)
+        except Exception:
+            pass
     
     def _create_widgets(self):
         """Crea los widgets del diálogo de detalles"""
@@ -658,9 +678,16 @@ class EmpleadoDialog(ctk.CTkToplevel):
         
         # Hacer que la ventana esté siempre al frente
         self.attributes('-topmost', True)
-        self.after(100, lambda: self.attributes('-topmost', False))
+        self.after(100, self._remove_topmost)
         
         self._create_widgets()
+    
+    def _remove_topmost(self):
+        """Remueve el atributo topmost después de un delay"""
+        try:
+            self.attributes('-topmost', False)
+        except Exception:
+            pass
         
         if empleado:
             self._load_empleado_data()
@@ -996,10 +1023,10 @@ class DocumentosFrame(ctk.CTkFrame):
         self.tree.heading("fecha", text="Fecha")
         self.tree.heading("estado", text="Estado")
         
-        self.tree.column("tipo", width=150)
-        self.tree.column("titulo", width=250)
-        self.tree.column("fecha", width=120)
-        self.tree.column("estado", width=100)
+        self.tree.column("tipo", width=180, minwidth=120)
+        self.tree.column("titulo", width=300, minwidth=200)
+        self.tree.column("fecha", width=130, minwidth=100)
+        self.tree.column("estado", width=120, minwidth=80)
         
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
@@ -1171,9 +1198,16 @@ class DocumentoDialog(ctk.CTkToplevel):
         
         # Hacer que la ventana esté siempre al frente
         self.attributes('-topmost', True)
-        self.after(100, lambda: self.attributes('-topmost', False))
+        self.after(100, self._remove_topmost)
         
         self._create_widgets()
+    
+    def _remove_topmost(self):
+        """Remueve el atributo topmost después de un delay"""
+        try:
+            self.attributes('-topmost', False)
+        except Exception:
+            pass
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
@@ -1348,11 +1382,11 @@ class IncidenciasFrame(ctk.CTkFrame):
         self.tree.heading("estado", text="Estado")
         self.tree.heading("motivo", text="Motivo")
         
-        self.tree.column("tipo", width=120)
-        self.tree.column("fechas", width=150)
-        self.tree.column("dias", width=60)
-        self.tree.column("estado", width=100)
-        self.tree.column("motivo", width=200)
+        self.tree.column("tipo", width=150, minwidth=100)
+        self.tree.column("fechas", width=200, minwidth=150)
+        self.tree.column("dias", width=80, minwidth=60)
+        self.tree.column("estado", width=120, minwidth=80)
+        self.tree.column("motivo", width=300, minwidth=200)
         
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
@@ -1549,9 +1583,16 @@ class IncidenciaDialog(ctk.CTkToplevel):
         
         # Hacer que la ventana esté siempre al frente
         self.attributes('-topmost', True)
-        self.after(100, lambda: self.attributes('-topmost', False))
+        self.after(100, self._remove_topmost)
         
         self._create_widgets()
+    
+    def _remove_topmost(self):
+        """Remueve el atributo topmost después de un delay"""
+        try:
+            self.attributes('-topmost', False)
+        except Exception:
+            pass
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
@@ -1689,9 +1730,16 @@ class ApprovalDialog(ctk.CTkToplevel):
         
         # Hacer que la ventana esté siempre al frente
         self.attributes('-topmost', True)
-        self.after(100, lambda: self.attributes('-topmost', False))
+        self.after(100, self._remove_topmost)
         
         self._create_widgets(title, action, incidencia)
+    
+    def _remove_topmost(self):
+        """Remueve el atributo topmost después de un delay"""
+        try:
+            self.attributes('-topmost', False)
+        except Exception:
+            pass
     
     def _create_widgets(self, title: str, action: str, incidencia):
         """Crea los widgets del diálogo"""
@@ -1824,12 +1872,12 @@ class NominaFrame(ctk.CTkFrame):
         self.tree.heading("neto", text="Neto")
         self.tree.heading("estado", text="Estado")
         
-        self.tree.column("empleado", width=200)
-        self.tree.column("periodo", width=150)
-        self.tree.column("tipo", width=120)
-        self.tree.column("bruto", width=100)
-        self.tree.column("neto", width=100)
-        self.tree.column("estado", width=80)
+        self.tree.column("empleado", width=250, minwidth=180)
+        self.tree.column("periodo", width=200, minwidth=150)
+        self.tree.column("tipo", width=150, minwidth=100)
+        self.tree.column("bruto", width=120, minwidth=100)
+        self.tree.column("neto", width=120, minwidth=100)
+        self.tree.column("estado", width=100, minwidth=80)
         
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)

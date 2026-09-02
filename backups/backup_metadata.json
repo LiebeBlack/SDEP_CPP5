@@ -2,11 +2,21 @@
   "initial_setup": {
     "name": "initial_setup",
     "filename": "initial_setup.db.gz",
-    "path": "C:\\Users\\Admin\\Documents\\GitHub\\SDEP_CPP5\\backups\\initial_setup.db.gz",
-    "timestamp": "20260826_031636",
-    "size_bytes": 3581,
-    "checksum": "8f921dc06da0cc957997af197c4b7d76659795ede3af14f1135ef6682ceb13e9",
+    "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\initial_setup.db.gz",
+    "timestamp": "20260902_061756",
+    "size_bytes": 4344,
+    "checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
     "compressed": true,
-    "original_db_checksum": "8f921dc06da0cc957997af197c4b7d76659795ede3af14f1135ef6682ceb13e9"
+    "original_db_checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1"
+  },
+  "auto_shutdown": {
+    "name": "auto_shutdown",
+    "filename": "auto_shutdown.db.gz",
+    "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\auto_shutdown.db.gz",
+    "timestamp": "20260902_061808",
+    "size_bytes": 4344,
+    "checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
+    "compressed": true,
+    "original_db_checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1"
   }
 }

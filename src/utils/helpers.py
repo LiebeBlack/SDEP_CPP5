@@ -99,7 +99,12 @@ def format_currency(monto: float, simbolo: str = "$") -> str:
     Returns:
         str: Monto formateado con separadores de miles y decimales
     """
-    return f"{simbolo}{monto:,.2f}"
+    if monto is None:
+        return f"{simbolo}0.00"
+    try:
+        return f"{simbolo}{float(monto):,.2f}"
+    except (ValueError, TypeError):
+        return f"{simbolo}0.00"
 
 
 def parse_currency(monto_str: str) -> Optional[float]:

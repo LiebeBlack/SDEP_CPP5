@@ -2,9 +2,12 @@ from typing import List, Optional, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from datetime import date, datetime
+import logging
 
 from src.models import Pago, TipoPago, MetodoPago
 from .base_repository import BaseRepository
+
+logger = logging.getLogger(__name__)
 
 
 class PagoRepository(BaseRepository[Pago]):

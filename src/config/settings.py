@@ -24,8 +24,19 @@ class Settings:
         self.debug = os.getenv("DEBUG", "False").lower() == "true"
         
         # Base de datos
-        self.database_url = os.getenv("DATABASE_URL", "sqlite:///personal_management.db")
-        self.database_path = os.getenv("DATABASE_PATH", "personal_management.db")
+        db_env_path = os.getenv("DATABASE_PATH", "personal_management.db")
+        if os.path.isabs(db_env_path):
+            self.database_path = db_env_path
+        else:
+            self.database_path = str(self.base_dir / db_env_path)
+        
+        db_env_url = os.getenv("DATABASE_URL")
+        if db_env_url:
+            self.database_url = db_env_url
+        else:
+            # Normalizar slashes para URL de SQLite en Windows
+            db_posix = Path(self.database_path).as_posix()
+            self.database_url = f"sqlite:///{db_posix}"
         
         # Rutas de archivos (inicializar como absolutas)
         self.documents_path = str(self.base_dir / os.getenv("DOCUMENTS_PATH", "documents"))

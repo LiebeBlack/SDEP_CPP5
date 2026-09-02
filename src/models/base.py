@@ -6,9 +6,9 @@ Este módulo define la clase base que todos los modelos del sistema
 heredan, proporcionando campos comunes y métodos utilitarios.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Column, Integer, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -27,8 +27,8 @@ class BaseModel:
     """
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     def to_dict(self):
         """

@@ -272,12 +272,13 @@ class EmpleadosFrame(ctk.CTkFrame):
             
             for emp in empleados:
                 try:
+                    tipo_emp_val = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or '')
                     self.tree.insert("", "end", values=(
                         emp.cedula,
                         emp.nombre_completo,
                         emp.cargo,
                         emp.departamento,
-                        emp.tipo_empleado,
+                        tipo_emp_val,
                         format_currency(emp.salario_base)
                     ), tags=(str(emp.id),))
                 except Exception as e:
@@ -317,12 +318,13 @@ class EmpleadosFrame(ctk.CTkFrame):
             self.tree.delete(item)
         
         for emp in empleados:
+            tipo_emp_val = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or '')
             self.tree.insert("", "end", values=(
                 emp.cedula,
                 emp.nombre_completo,
                 emp.cargo,
                 emp.departamento,
-                emp.tipo_empleado,
+                tipo_emp_val,
                 format_currency(emp.salario_base)
             ), tags=(str(emp.id),))
     
@@ -517,17 +519,17 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         
         # Campos de datos personales (solo lectura)
         self.nombres_label = self._create_detail_field(form_frame, "Nombres:", 0, 0)
-        self.apellidos_label = self._create_detail_field(form_frame, "Apellidos:", 0, 1)
+        self.apellidos_label = self._create_detail_field(form_frame, "Apellidos:", 0, 2)
         self.cedula_label = self._create_detail_field(form_frame, "Cédula:", 1, 0)
-        self.fecha_nacimiento_label = self._create_detail_field(form_frame, "Fecha Nacimiento:", 1, 1)
+        self.fecha_nacimiento_label = self._create_detail_field(form_frame, "Fecha Nacimiento:", 1, 2)
         
         self.genero_label = self._create_detail_field(form_frame, "Género:", 2, 0)
-        self.estado_civil_label = self._create_detail_field(form_frame, "Estado Civil:", 2, 1)
+        self.estado_civil_label = self._create_detail_field(form_frame, "Estado Civil:", 2, 2)
         
         self.peso_label = self._create_detail_field(form_frame, "Peso (kg):", 3, 0)
-        self.altura_label = self._create_detail_field(form_frame, "Altura (m):", 3, 1)
+        self.altura_label = self._create_detail_field(form_frame, "Altura (m):", 3, 2)
         self.tipo_sangre_label = self._create_detail_field(form_frame, "Tipo Sangre:", 4, 0)
-        self.nacionalidad_label = self._create_detail_field(form_frame, "Nacionalidad:", 4, 1)
+        self.nacionalidad_label = self._create_detail_field(form_frame, "Nacionalidad:", 4, 2)
     
     def _create_laboral_details_tab(self, parent):
         """Crea la pestaña de datos laborales (solo lectura)"""
@@ -535,18 +537,18 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tipo_empleado_label = self._create_detail_field(form_frame, "Tipo Empleado:", 0, 0)
-        self.cargo_label = self._create_detail_field(form_frame, "Cargo:", 0, 1)
+        self.cargo_label = self._create_detail_field(form_frame, "Cargo:", 0, 2)
         self.departamento_label = self._create_detail_field(form_frame, "Departamento:", 1, 0)
-        self.fecha_contratacion_label = self._create_detail_field(form_frame, "Fecha Contratación:", 1, 1)
+        self.fecha_contratacion_label = self._create_detail_field(form_frame, "Fecha Contratación:", 1, 2)
         
         self.salario_base_label = self._create_detail_field(form_frame, "Salario Base:", 2, 0)
-        self.nivel_educativo_label = self._create_detail_field(form_frame, "Nivel Educativo:", 2, 1)
+        self.nivel_educativo_label = self._create_detail_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_label = self._create_detail_field(form_frame, "Especialidad:", 3, 0)
-        self.titulo_obtenido_label = self._create_detail_field(form_frame, "Título Obtenido:", 3, 1)
+        self.titulo_obtenido_label = self._create_detail_field(form_frame, "Título Obtenido:", 3, 2)
         
         # Información adicional
         self.activo_label = self._create_detail_field(form_frame, "Estado:", 4, 0)
-        self.antiguedad_label = self._create_detail_field(form_frame, "Antigüedad:", 4, 1)
+        self.antiguedad_label = self._create_detail_field(form_frame, "Antigüedad:", 4, 2)
     
     def _create_contacto_details_tab(self, parent):
         """Crea la pestaña de contacto (solo lectura)"""
@@ -554,24 +556,24 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.telefono_label = self._create_detail_field(form_frame, "Teléfono:", 0, 0)
-        self.celular_label = self._create_detail_field(form_frame, "Celular:", 0, 1)
+        self.celular_label = self._create_detail_field(form_frame, "Celular:", 0, 2)
         self.email_label = self._create_detail_field(form_frame, "Email:", 1, 0)
-        self.direccion_label = self._create_detail_field(form_frame, "Dirección:", 1, 1)
+        self.direccion_label = self._create_detail_field(form_frame, "Dirección:", 1, 2)
         
         self.ciudad_label = self._create_detail_field(form_frame, "Ciudad:", 2, 0)
-        self.estado_label = self._create_detail_field(form_frame, "Estado:", 2, 1)
+        self.estado_label = self._create_detail_field(form_frame, "Estado:", 2, 2)
         self.codigo_postal_label = self._create_detail_field(form_frame, "Código Postal:", 3, 0)
         
         # Contacto de emergencia
         emergency_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
-        emergency_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=10)
+        emergency_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
         
         emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
                                      font=ctk.CTkFont(weight="bold"), text_color="white")
-        emergency_label.grid(row=0, column=0, columnspan=2, pady=5)
+        emergency_label.grid(row=0, column=0, columnspan=4, pady=5)
         
         self.contacto_emergencia_nombre_label = self._create_detail_field(emergency_frame, "Nombre:", 1, 0)
-        self.contacto_emergencia_telefono_label = self._create_detail_field(emergency_frame, "Teléfono:", 1, 1)
+        self.contacto_emergencia_telefono_label = self._create_detail_field(emergency_frame, "Teléfono:", 1, 2)
         self.contacto_emergencia_relacion_label = self._create_detail_field(emergency_frame, "Relación:", 2, 0)
     
     def _create_detail_field(self, parent, label: str, row: int, col: int) -> ctk.CTkLabel:
@@ -698,19 +700,19 @@ class EmpleadoDialog(ctk.CTkToplevel):
         
         # Campos de datos personales
         self.nombres_entry = self._create_form_field(form_frame, "Nombres:", 0, 0)
-        self.apellidos_entry = self._create_form_field(form_frame, "Apellidos:", 0, 1)
+        self.apellidos_entry = self._create_form_field(form_frame, "Apellidos:", 0, 2)
         self.cedula_entry = self._create_form_field(form_frame, "Cédula:", 1, 0)
-        self.fecha_nacimiento_entry = self._create_form_field(form_frame, "Fecha Nacimiento:", 1, 1)
+        self.fecha_nacimiento_entry = self._create_form_field(form_frame, "Fecha Nacimiento:", 1, 2)
         
         self.genero_combo = self._create_combo_field(form_frame, "Género:", 2, 0, 
                                                       ["masculino", "femenino", "otro"])
-        self.estado_civil_combo = self._create_combo_field(form_frame, "Estado Civil:", 2, 1,
+        self.estado_civil_combo = self._create_combo_field(form_frame, "Estado Civil:", 2, 2,
                                                            ["soltero", "casado", "divorciado", "viudo", "union_libre"])
         
         self.peso_entry = self._create_form_field(form_frame, "Peso (kg):", 3, 0)
-        self.altura_entry = self._create_form_field(form_frame, "Altura (m):", 3, 1)
+        self.altura_entry = self._create_form_field(form_frame, "Altura (m):", 3, 2)
         self.tipo_sangre_entry = self._create_form_field(form_frame, "Tipo Sangre:", 4, 0)
-        self.nacionalidad_entry = self._create_form_field(form_frame, "Nacionalidad:", 4, 1)
+        self.nacionalidad_entry = self._create_form_field(form_frame, "Nacionalidad:", 4, 2)
     
     def _create_laboral_tab(self, parent):
         """Crea la pestaña de datos laborales"""
@@ -719,14 +721,14 @@ class EmpleadoDialog(ctk.CTkToplevel):
         
         self.tipo_empleado_combo = self._create_combo_field(form_frame, "Tipo Empleado:", 0, 0,
                                                             ["docente", "administrativo", "mantenimiento"])
-        self.cargo_entry = self._create_form_field(form_frame, "Cargo:", 0, 1)
+        self.cargo_entry = self._create_form_field(form_frame, "Cargo:", 0, 2)
         self.departamento_entry = self._create_form_field(form_frame, "Departamento:", 1, 0)
-        self.fecha_contratacion_entry = self._create_form_field(form_frame, "Fecha Contratación:", 1, 1)
+        self.fecha_contratacion_entry = self._create_form_field(form_frame, "Fecha Contratación:", 1, 2)
         
         self.salario_base_entry = self._create_form_field(form_frame, "Salario Base:", 2, 0)
-        self.nivel_educativo_entry = self._create_form_field(form_frame, "Nivel Educativo:", 2, 1)
+        self.nivel_educativo_entry = self._create_form_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_entry = self._create_form_field(form_frame, "Especialidad:", 3, 0)
-        self.titulo_obtenido_entry = self._create_form_field(form_frame, "Título Obtenido:", 3, 1)
+        self.titulo_obtenido_entry = self._create_form_field(form_frame, "Título Obtenido:", 3, 2)
     
     def _create_contacto_tab(self, parent):
         """Crea la pestaña de contacto"""
@@ -734,24 +736,24 @@ class EmpleadoDialog(ctk.CTkToplevel):
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.telefono_entry = self._create_form_field(form_frame, "Teléfono:", 0, 0)
-        self.celular_entry = self._create_form_field(form_frame, "Celular:", 0, 1)
+        self.celular_entry = self._create_form_field(form_frame, "Celular:", 0, 2)
         self.email_entry = self._create_form_field(form_frame, "Email:", 1, 0)
-        self.direccion_entry = self._create_form_field(form_frame, "Dirección:", 1, 1)
+        self.direccion_entry = self._create_form_field(form_frame, "Dirección:", 1, 2)
         
         self.ciudad_entry = self._create_form_field(form_frame, "Ciudad:", 2, 0)
-        self.estado_entry = self._create_form_field(form_frame, "Estado:", 2, 1)
+        self.estado_entry = self._create_form_field(form_frame, "Estado:", 2, 2)
         self.codigo_postal_entry = self._create_form_field(form_frame, "Código Postal:", 3, 0)
         
         # Contacto de emergencia
         emergency_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
-        emergency_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=10)
+        emergency_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
         
         emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
                                      font=ctk.CTkFont(weight="bold"))
-        emergency_label.grid(row=0, column=0, columnspan=2, pady=5)
+        emergency_label.grid(row=0, column=0, columnspan=4, pady=5)
         
         self.contacto_emergencia_nombre_entry = self._create_form_field(emergency_frame, "Nombre:", 1, 0)
-        self.contacto_emergencia_telefono_entry = self._create_form_field(emergency_frame, "Teléfono:", 1, 1)
+        self.contacto_emergencia_telefono_entry = self._create_form_field(emergency_frame, "Teléfono:", 1, 2)
         self.contacto_emergencia_relacion_entry = self._create_form_field(emergency_frame, "Relación:", 2, 0)
     
     def _create_form_field(self, parent, label: str, row: int, col: int) -> ctk.CTkEntry:

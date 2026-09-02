@@ -6,8 +6,8 @@ Este modelo representa la información completa de un empleado en el sistema,
 incluyendo datos personales, laborales, académicos y de contacto.
 """
 
-from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Float, Date, Text, Enum as SQLEnum, ForeignKey
+from datetime import date
+from sqlalchemy import Column, Integer, String, Float, Numeric, Date, Text, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from .base import Base, BaseModel
 from .enums import TipoEmpleado, Genero, EstadoCivil

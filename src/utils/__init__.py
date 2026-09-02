@@ -16,8 +16,8 @@ from .validators import (
 )
 from .document_manager import DocumentManager, document_manager
 from .pdf_generator import PDFGenerator, pdf_generator
-from .backup_manager import BackupManager, backup_manager
-from .audit_logger import AuditLogger, audit_logger, AuditEventType
+from .backup_manager import BackupManager, backup_manager, get_backup_manager
+from .audit_logger import AuditLogger, audit_logger, get_audit_logger, AuditEventType
 from .security import (
     SecurityValidator, PermissionChecker, SecurityLogger,
     security_validator, permission_checker, security_logger
@@ -32,7 +32,8 @@ __all__ = [
     "ValidationError", "Validator", "EmpleadoValidator",
     "DocumentoValidator", "IncidenciaValidator", "PagoValidator",
     "DocumentManager", "document_manager", "PDFGenerator", "pdf_generator",
-    "BackupManager", "backup_manager", "AuditLogger", "audit_logger", "AuditEventType",
+    "BackupManager", "backup_manager", "get_backup_manager",
+    "AuditLogger", "audit_logger", "get_audit_logger", "AuditEventType",
     "SecurityValidator", "PermissionChecker", "SecurityLogger",
     "security_validator", "permission_checker", "security_logger"
 ]

@@ -10,9 +10,14 @@ from pathlib import Path
 import io
 import signal
 
-# Configurar UTF-8 para Windows
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+# Configurar UTF-8 para Windows de forma segura
+try:
+    if sys.stdout is not None and hasattr(sys.stdout, 'buffer') and sys.stdout.buffer is not None:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    if sys.stderr is not None and hasattr(sys.stderr, 'buffer') and sys.stderr.buffer is not None:
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 # Asegurar que el directorio raíz esté en sys.path
 project_root = Path(__file__).resolve().parent.parent
@@ -24,7 +29,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler(sys.stdout) if sys.stdout else logging.NullHandler()
     ]
 )
 
@@ -51,7 +56,6 @@ def setup_environment():
     try:
         from src.config import settings
         from src.utils.helpers import ensure_directory_exists
-        from src.utils.audit_logger import audit_logger, AuditEventType
         
         # Asegurar que los directorios necesarios existan
         directories = [
@@ -66,14 +70,25 @@ def setup_environment():
             ensure_directory_exists(directory)
         
         logger.info("Entorno configurado correctamente")
-        audit_logger.log_system_event(AuditEventType.SYSTEM_START, 
-                                     details={"operation": "setup_environment"})
+        try:
+            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            audit = get_audit_logger()
+            if audit:
+                audit.log_system_event(AuditEventType.SYSTEM_START, 
+                                       details={"operation": "setup_environment"})
+        except Exception:
+            pass
         return True
         
     except Exception as e:
         logger.error(f"Error al configurar el entorno: {str(e)}")
-        from src.utils.audit_logger import audit_logger
-        audit_logger.log_error(e, context={"operation": "setup_environment"})
+        try:
+            from src.utils.audit_logger import get_audit_logger
+            audit = get_audit_logger()
+            if audit:
+                audit.log_error(e, context={"operation": "setup_environment"})
+        except Exception:
+            pass
         return False
 
 
@@ -81,7 +96,6 @@ def initialize_database():
     """Inicializa la base de datos con seguridad mejorada"""
     try:
         from src.config import db_config
-        from src.utils.audit_logger import audit_logger, AuditEventType
         
         logger.info("Inicializando base de datos...")
         db_config.init_db()
@@ -91,14 +105,25 @@ def initialize_database():
         logger.info(f"Estado de backups: {backup_status.get('total_backups', 0)} backups disponibles")
         
         logger.info("Base de datos inicializada correctamente")
-        audit_logger.log_system_event(AuditEventType.SYSTEM_START, 
-                                     details={"operation": "initialize_database"})
+        try:
+            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            audit = get_audit_logger()
+            if audit:
+                audit.log_system_event(AuditEventType.SYSTEM_START, 
+                                       details={"operation": "initialize_database"})
+        except Exception:
+            pass
         return True
         
     except Exception as e:
         logger.error(f"Error al inicializar la base de datos: {str(e)}")
-        from src.utils.audit_logger import audit_logger
-        audit_logger.log_error(e, context={"operation": "initialize_database"})
+        try:
+            from src.utils.audit_logger import get_audit_logger
+            audit = get_audit_logger()
+            if audit:
+                audit.log_error(e, context={"operation": "initialize_database"})
+        except Exception:
+            pass
         return False
 
 
@@ -107,21 +132,31 @@ def run_application():
     global application_instance
     try:
         from src.gui.main_window import MainWindow
-        from src.utils.audit_logger import audit_logger, AuditEventType
         
         logger.info("Iniciando aplicación...")
         app = MainWindow()
         application_instance = app
         
-        audit_logger.log_system_event(AuditEventType.SYSTEM_START, 
-                                     details={"operation": "run_application"})
+        try:
+            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            audit = get_audit_logger()
+            if audit:
+                audit.log_system_event(AuditEventType.SYSTEM_START, 
+                                       details={"operation": "run_application"})
+        except Exception:
+            pass
         
         app.run()
         
     except Exception as e:
         logger.error(f"Error al ejecutar la aplicación: {str(e)}")
-        from src.utils.audit_logger import audit_logger
-        audit_logger.log_error(e, context={"operation": "run_application"})
+        try:
+            from src.utils.audit_logger import get_audit_logger
+            audit = get_audit_logger()
+            if audit:
+                audit.log_error(e, context={"operation": "run_application"})
+        except Exception:
+            pass
         raise
 
 
@@ -130,8 +165,6 @@ def cleanup_application():
     global application_instance
     try:
         from src.config import db_config
-        from src.utils.audit_logger import audit_logger, AuditEventType
-        from src.utils.backup_manager import backup_manager
         
         logger.info("Iniciando limpieza de recursos...")
         
@@ -145,26 +178,44 @@ def cleanup_application():
         
         # Crear backup al cerrar (si está habilitado)
         try:
-            backup_info = backup_manager.create_backup("auto_shutdown", compress=True)
-            logger.info(f"Backup automático creado: {backup_info['name']}")
+            from src.utils.backup_manager import get_backup_manager
+            backup_mgr = get_backup_manager()
+            if backup_mgr:
+                backup_info = backup_mgr.create_backup("auto_shutdown", compress=True)
+                logger.info(f"Backup automático creado: {backup_info.get('name')}")
         except Exception as e:
             logger.warning(f"No se pudo crear backup al cerrar: {e}")
         
-        audit_logger.log_system_event(AuditEventType.SYSTEM_STOP, 
-                                     details={"operation": "cleanup_application"})
+        try:
+            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            audit = get_audit_logger()
+            if audit:
+                audit.log_system_event(AuditEventType.SYSTEM_STOP, 
+                                       details={"operation": "cleanup_application"})
+        except Exception:
+            pass
         logger.info("Limpieza de recursos completada")
         
     except Exception as e:
         logger.error(f"Error durante limpieza: {e}")
-        from src.utils.audit_logger import audit_logger
-        audit_logger.log_error(e, context={"operation": "cleanup_application"})
+        try:
+            from src.utils.audit_logger import get_audit_logger
+            audit = get_audit_logger()
+            if audit:
+                audit.log_error(e, context={"operation": "cleanup_application"})
+        except Exception:
+            pass
 
 
 def main():
     """Función principal con mejoras de seguridad"""
     # Configurar manejadores de señales
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    try:
+        signal.signal(signal.SIGINT, signal_handler)
+        if hasattr(signal, "SIGTERM"):
+            signal.signal(signal.SIGTERM, signal_handler)
+    except Exception:
+        pass
     
     logger.info("=" * 50)
     logger.info("SISTEMA DE GESTIÓN DE PERSONAL Y NÓMINA")

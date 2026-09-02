@@ -374,11 +374,11 @@ class BackupManager:
             raise
 
 
-# Instancia global del gestor de backups (inicialización diferida)
-backup_manager = None
+# Instancia global del gestor de backups
+backup_manager = BackupManager()
 
 def get_backup_manager():
-    """Retorna la instancia del gestor de backups (lazy initialization)"""
+    """Retorna la instancia del gestor de backups"""
     global backup_manager
     if backup_manager is None:
         backup_manager = BackupManager()

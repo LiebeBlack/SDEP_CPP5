@@ -20,6 +20,53 @@ from src.models import Base
 logger = logging.getLogger(__name__)
 
 
+# Columnas opcionales añadidas a la tabla empleados en versiones posteriores
+# de la aplicación. SQLite no soporta ALTER TABLE ... ADD COLUMN IF NOT EXISTS,
+# por eso se consulta PRAGMA table_info antes de agregar cada columna.
+MIGRACIONES_EMPLEADOS = {
+    "titulo_secundaria": "VARCHAR(100)",
+    "institucion_bancaria": "VARCHAR(100)",
+    "numero_cuenta": "VARCHAR(50)",
+    "tipo_cuenta": "VARCHAR(30)",
+    "carnet_discapacidad": "VARCHAR(30)",
+    "enfermedades_preexistentes": "TEXT",
+    "alergias_medicamentosas": "TEXT",
+    "alergias_alimentarias": "TEXT",
+    "tipo_contratacion": "VARCHAR(50)",
+    "hijos": "TEXT",
+}
+
+
+def migrar_columnas(engine) -> int:
+    """
+    Agrega a la tabla empleados las columnas nuevas que falten.
+
+    Se ejecuta en cada arranque (create_tables) para que las bases de datos
+    creadas con versiones anteriores ganen los campos nuevos sin perder datos.
+
+    Returns:
+        int: Cantidad de columnas agregadas
+    """
+    try:
+        with engine.begin() as conn:
+            existe = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='empleados'")
+            ).fetchone()
+            if not existe:
+                return 0
+            existentes = {row[1] for row in conn.execute(text("PRAGMA table_info(empleados)"))}
+            agregadas = 0
+            for columna, tipo in MIGRACIONES_EMPLEADOS.items():
+                if columna not in existentes:
+                    conn.execute(text(f"ALTER TABLE empleados ADD COLUMN {columna} {tipo}"))
+                    logger.info(f"Migración: columna empleados.{columna} agregada")
+                    agregadas += 1
+            return agregadas
+    except SQLAlchemyError as e:
+        logger.warning(f"No se pudo migrar el esquema de la base de datos: {e}")
+        return 0
+
+
 class DatabaseConfig:
     """Configuración de la base de datos SQLite"""
 
@@ -81,9 +128,10 @@ class DatabaseConfig:
             raise
 
     def create_tables(self):
-        """Crea todas las tablas que aún no existan"""
+        """Crea todas las tablas que aún no existan y migra columnas nuevas"""
         try:
             Base.metadata.create_all(bind=self.engine)
+            migrar_columnas(self.engine)
             logger.info("Tablas de base de datos verificadas exitosamente")
             return True
         except SQLAlchemyError as e:

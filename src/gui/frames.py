@@ -264,7 +264,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         
         self.tree.heading("cedula", text="Cédula")
         self.tree.heading("nombre", text="Nombre")
-        self.tree.heading("cargo", text="Cargo")
+        self.tree.heading("cargo", text="Puesto de Trabajo")
         self.tree.heading("departamento", text="Departamento")
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("salario", text="Salario")
@@ -329,28 +329,31 @@ class EmpleadosFrame(ctk.CTkFrame):
             # Mostrar error pero no bloquear la UI
             self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
     
+    def _aplicar_filtros(self):
+        """Aplica el término de búsqueda y el filtro de tipo combinados"""
+        try:
+            termino = self.search_entry.get().strip()
+            tipo = self.tipo_combo.get()
+            if not termino and tipo == "Todos":
+                empleados = self.main_window.empleado_service.listar_empleados_activos()
+            else:
+                filtros = {"activo": 1}
+                if termino:
+                    filtros["busqueda"] = termino
+                if tipo != "Todos":
+                    filtros["tipo"] = tipo
+                empleados = self.main_window.empleado_service.listar_filtrados(filtros)
+            self._update_tree(empleados)
+        except Exception:
+            self._load_empleados()
+    
     def _on_search(self, event=None):
-        """Maneja el evento de búsqueda"""
-        search_term = self.search_entry.get()
-        if search_term:
-            empleados = self.main_window.empleado_service.buscar_empleados(search_term)
-        else:
-            empleados = self.main_window.empleado_service.listar_empleados_activos()
-        
-        self._update_tree(empleados)
+        """Maneja el evento de búsqueda por nombre o cédula"""
+        self._aplicar_filtros()
     
     def _on_filter(self, event=None):
-        """Maneja el evento de filtrado"""
-        tipo = self.tipo_combo.get()
-        if tipo != "Todos":
-            try:
-                empleados = self.main_window.empleado_service.listar_por_tipo(tipo)
-            except:
-                empleados = self.main_window.empleado_service.listar_empleados_activos()
-        else:
-            empleados = self.main_window.empleado_service.listar_empleados_activos()
-        
-        self._update_tree(empleados)
+        """Maneja el evento de filtrado por tipo"""
+        self._aplicar_filtros()
     
     def _update_tree(self, empleados: List[Empleado]):
         """Actualiza el treeview con una lista de empleados"""
@@ -535,6 +538,14 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         contacto_tab = notebook.add("Contacto")
         self._create_contacto_details_tab(contacto_tab)
         
+        # Pestaña de salud y datos bancarios
+        salud_tab = notebook.add("Salud y Bancarios")
+        self._create_salud_details_tab(salud_tab)
+        
+        # Pestaña de familia
+        familia_tab = notebook.add("Familia")
+        self._create_familia_details_tab(familia_tab)
+        
         # Botón de cerrar
         btn_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         btn_frame.pack(fill="x", padx=10, pady=10)
@@ -572,18 +583,20 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tipo_empleado_label = self._create_detail_field(form_frame, "Tipo Empleado:", 0, 0)
-        self.cargo_label = self._create_detail_field(form_frame, "Cargo:", 0, 2)
+        self.cargo_label = self._create_detail_field(form_frame, "Puesto de Trabajo:", 0, 2)
         self.departamento_label = self._create_detail_field(form_frame, "Departamento:", 1, 0)
-        self.fecha_contratacion_label = self._create_detail_field(form_frame, "Fecha Contratación:", 1, 2)
+        self.fecha_contratacion_label = self._create_detail_field(form_frame, "Fecha de Ingreso a la Institución:", 1, 2)
         
         self.salario_base_label = self._create_detail_field(form_frame, "Salario Base:", 2, 0)
         self.nivel_educativo_label = self._create_detail_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_label = self._create_detail_field(form_frame, "Especialidad:", 3, 0)
-        self.titulo_obtenido_label = self._create_detail_field(form_frame, "Título Obtenido:", 3, 2)
+        self.titulo_obtenido_label = self._create_detail_field(form_frame, "Título Universitario:", 3, 2)
+        self.tipo_contratacion_label = self._create_detail_field(form_frame, "Tipo de Contratación:", 4, 0)
+        self.titulo_secundaria_label = self._create_detail_field(form_frame, "Título Secundaria:", 4, 2)
         
         # Información adicional
-        self.activo_label = self._create_detail_field(form_frame, "Estado:", 4, 0)
-        self.antiguedad_label = self._create_detail_field(form_frame, "Antigüedad:", 4, 2)
+        self.activo_label = self._create_detail_field(form_frame, "Estado:", 5, 0)
+        self.antiguedad_label = self._create_detail_field(form_frame, "Antigüedad:", 5, 2)
     
     def _create_contacto_details_tab(self, parent):
         """Crea la pestaña de contacto (solo lectura)"""
@@ -592,7 +605,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         
         self.telefono_label = self._create_detail_field(form_frame, "Teléfono:", 0, 0)
         self.celular_label = self._create_detail_field(form_frame, "Celular:", 0, 2)
-        self.email_label = self._create_detail_field(form_frame, "Email:", 1, 0)
+        self.email_label = self._create_detail_field(form_frame, "Correo Electrónico:", 1, 0)
         self.direccion_label = self._create_detail_field(form_frame, "Dirección:", 1, 2)
         
         self.ciudad_label = self._create_detail_field(form_frame, "Ciudad:", 2, 0)
@@ -610,6 +623,26 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.contacto_emergencia_nombre_label = self._create_detail_field(emergency_frame, "Nombre:", 1, 0)
         self.contacto_emergencia_telefono_label = self._create_detail_field(emergency_frame, "Teléfono:", 1, 2)
         self.contacto_emergencia_relacion_label = self._create_detail_field(emergency_frame, "Relación:", 2, 0)
+    
+    def _create_salud_details_tab(self, parent):
+        """Crea la pestaña de salud y datos bancarios (solo lectura)"""
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.carnet_discapacidad_label = self._create_detail_field(form_frame, "Carnet de Discapacidad:", 0, 0)
+        self.institucion_bancaria_label = self._create_detail_field(form_frame, "Institución Bancaria:", 0, 2)
+        self.numero_cuenta_label = self._create_detail_field(form_frame, "Número de Cuenta:", 1, 0)
+        self.tipo_cuenta_label = self._create_detail_field(form_frame, "Tipo de Cuenta:", 1, 2)
+        self.enfermedades_preexistentes_label = self._create_detail_field(form_frame, "Enfermedades Preexistentes / Crónicas:", 2, 0)
+        self.alergias_medicamentosas_label = self._create_detail_field(form_frame, "Alergias Medicamentosas:", 3, 0)
+        self.alergias_alimentarias_label = self._create_detail_field(form_frame, "Alergias Alimentarias o Ambientales:", 4, 0)
+    
+    def _create_familia_details_tab(self, parent):
+        """Crea la pestaña de familia (solo lectura)"""
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.hijos_label = self._create_detail_field(form_frame, "Hijos (nombres, edades y cédulas):", 0, 0)
     
     def _create_detail_field(self, parent, label: str, row: int, col: int) -> ctk.CTkLabel:
         """Crea un campo de detalle (solo lectura)"""
@@ -646,6 +679,8 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.nivel_educativo_label.configure(text=self.empleado.nivel_educativo or "-")
         self.especialidad_label.configure(text=self.empleado.especialidad or "-")
         self.titulo_obtenido_label.configure(text=self.empleado.titulo_obtenido or "-")
+        self.tipo_contratacion_label.configure(text=self.empleado.tipo_contratacion or "-")
+        self.titulo_secundaria_label.configure(text=self.empleado.titulo_secundaria or "-")
         
         # Información adicional
         self.activo_label.configure(text="Activo" if self.empleado.activo else "Inactivo")
@@ -664,6 +699,18 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.contacto_emergencia_nombre_label.configure(text=self.empleado.contacto_emergencia_nombre or "-")
         self.contacto_emergencia_telefono_label.configure(text=self.empleado.contacto_emergencia_telefono or "-")
         self.contacto_emergencia_relacion_label.configure(text=self.empleado.contacto_emergencia_relacion or "-")
+        
+        # Salud y datos bancarios
+        self.carnet_discapacidad_label.configure(text=self.empleado.carnet_discapacidad or "-")
+        self.institucion_bancaria_label.configure(text=self.empleado.institucion_bancaria or "-")
+        self.numero_cuenta_label.configure(text=self.empleado.numero_cuenta or "-")
+        self.tipo_cuenta_label.configure(text=self.empleado.tipo_cuenta or "-")
+        self.enfermedades_preexistentes_label.configure(text=self.empleado.enfermedades_preexistentes or "-")
+        self.alergias_medicamentosas_label.configure(text=self.empleado.alergias_medicamentosas or "-")
+        self.alergias_alimentarias_label.configure(text=self.empleado.alergias_alimentarias or "-")
+        
+        # Familia
+        self.hijos_label.configure(text=self.empleado.hijos or "-")
     
     def _on_close(self):
         """Cierra el diálogo"""
@@ -719,6 +766,14 @@ class EmpleadoDialog(ctk.CTkToplevel):
         contacto_tab = notebook.add("Contacto")
         self._create_contacto_tab(contacto_tab)
         
+        # Pestaña de salud y datos bancarios
+        salud_tab = notebook.add("Salud y Bancarios")
+        self._create_salud_tab(salud_tab)
+        
+        # Pestaña de familia
+        familia_tab = notebook.add("Familia")
+        self._create_familia_tab(familia_tab)
+        
         # Botones
         btn_frame = ctk.CTkFrame(self)
         btn_frame.pack(fill="x", padx=10, pady=10)
@@ -768,14 +823,17 @@ class EmpleadoDialog(ctk.CTkToplevel):
         
         self.tipo_empleado_combo = self._create_combo_field(form_frame, "Tipo Empleado:", 0, 0,
                                                             ["docente", "administrativo", "mantenimiento"])
-        self.cargo_entry = self._create_form_field(form_frame, "Cargo:", 0, 2)
+        self.cargo_entry = self._create_form_field(form_frame, "Puesto de Trabajo:", 0, 2)
         self.departamento_entry = self._create_form_field(form_frame, "Departamento:", 1, 0)
-        self.fecha_contratacion_entry = self._create_form_field(form_frame, "Fecha Contratación:", 1, 2)
+        self.fecha_contratacion_entry = self._create_form_field(form_frame, "Fecha de Ingreso a la Institución:", 1, 2)
         
         self.salario_base_entry = self._create_form_field(form_frame, "Salario Base:", 2, 0)
         self.nivel_educativo_entry = self._create_form_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_entry = self._create_form_field(form_frame, "Especialidad:", 3, 0)
-        self.titulo_obtenido_entry = self._create_form_field(form_frame, "Título Obtenido:", 3, 2)
+        self.titulo_obtenido_entry = self._create_form_field(form_frame, "Título Universitario:", 3, 2)
+        self.tipo_contratacion_combo = self._create_combo_field(form_frame, "Tipo de Contratación:", 4, 0,
+                                                                ["", "fijo", "indefinido", "temporal", "por_horas"])
+        self.titulo_secundaria_entry = self._create_form_field(form_frame, "Título Secundaria:", 4, 2)
     
     def _create_contacto_tab(self, parent):
         """Crea la pestaña de contacto"""
@@ -784,7 +842,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         
         self.telefono_entry = self._create_form_field(form_frame, "Teléfono:", 0, 0)
         self.celular_entry = self._create_form_field(form_frame, "Celular:", 0, 2)
-        self.email_entry = self._create_form_field(form_frame, "Email:", 1, 0)
+        self.email_entry = self._create_form_field(form_frame, "Correo Electrónico:", 1, 0)
         self.direccion_entry = self._create_form_field(form_frame, "Dirección:", 1, 2)
         
         self.ciudad_entry = self._create_form_field(form_frame, "Ciudad:", 2, 0)
@@ -802,6 +860,49 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.contacto_emergencia_nombre_entry = self._create_form_field(emergency_frame, "Nombre:", 1, 0)
         self.contacto_emergencia_telefono_entry = self._create_form_field(emergency_frame, "Teléfono:", 1, 2)
         self.contacto_emergencia_relacion_entry = self._create_form_field(emergency_frame, "Relación:", 2, 0)
+    
+    def _create_salud_tab(self, parent):
+        """Crea la pestaña de salud y datos bancarios"""
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.carnet_discapacidad_entry = self._create_form_field(form_frame, "Carnet de Discapacidad:", 0, 0)
+        self.institucion_bancaria_entry = self._create_form_field(form_frame, "Institución Bancaria:", 0, 2)
+        self.numero_cuenta_entry = self._create_form_field(form_frame, "Número de Cuenta:", 1, 0)
+        self.tipo_cuenta_combo = self._create_combo_field(form_frame, "Tipo de Cuenta:", 1, 2,
+                                                          ["", "ahorro", "corriente"])
+        
+        self.enfermedades_preexistentes_text = self._create_text_field(
+            form_frame, "Enfermedades Preexistentes / Crónicas:", 2, 0)
+        self.alergias_medicamentosas_text = self._create_text_field(
+            form_frame, "Alergias Medicamentosas:", 3, 0)
+        self.alergias_alimentarias_text = self._create_text_field(
+            form_frame, "Alergias Alimentarias o Ambientales:", 4, 0)
+    
+    def _create_familia_tab(self, parent):
+        """Crea la pestaña de datos familiares"""
+        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.hijos_text = self._create_text_field(
+            form_frame, "Hijos (nombres, edades y cédulas):", 0, 0, height=140)
+        ctk.CTkLabel(
+            form_frame,
+            text="Ej.: María López (10 años, C.I. 12345678); Juan López (5 años, C.I. 87654321)",
+            text_color="#888888", font=("Arial", 9)
+        ).grid(row=1, column=1, columnspan=3, padx=5, pady=2, sticky="w")
+    
+    def _create_text_field(self, parent, label: str, row: int, col: int, height: int = 80) -> ctk.CTkTextbox:
+        """Crea un campo de texto multilínea"""
+        ctk.CTkLabel(parent, text=label, text_color="white").grid(row=row, column=col, padx=5, pady=5, sticky="ne")
+        textbox = ctk.CTkTextbox(
+            parent, width=400, height=height, fg_color="#3c3c3c", text_color="white")
+        textbox.grid(row=row, column=col+1, columnspan=3, padx=5, pady=5, sticky="ew")
+        return textbox
+    
+    def _get_text(self, textbox: ctk.CTkTextbox) -> str:
+        """Obtiene el texto de un CTkTextbox"""
+        return textbox.get("1.0", tk.END).strip()
     
     def _create_form_field(self, parent, label: str, row: int, col: int) -> ctk.CTkEntry:
         """Crea un campo de formulario"""
@@ -910,6 +1011,36 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.contacto_emergencia_relacion:
             self.contacto_emergencia_relacion_entry.delete(0, tk.END)
             self.contacto_emergencia_relacion_entry.insert(0, self.empleado.contacto_emergencia_relacion)
+        
+        # Datos laborales adicionales
+        if self.empleado.tipo_contratacion:
+            self.tipo_contratacion_combo.set(self.empleado.tipo_contratacion)
+        if self.empleado.titulo_secundaria:
+            self.titulo_secundaria_entry.delete(0, tk.END)
+            self.titulo_secundaria_entry.insert(0, self.empleado.titulo_secundaria)
+        
+        # Salud y datos bancarios
+        if self.empleado.carnet_discapacidad:
+            self.carnet_discapacidad_entry.delete(0, tk.END)
+            self.carnet_discapacidad_entry.insert(0, self.empleado.carnet_discapacidad)
+        if self.empleado.institucion_bancaria:
+            self.institucion_bancaria_entry.delete(0, tk.END)
+            self.institucion_bancaria_entry.insert(0, self.empleado.institucion_bancaria)
+        if self.empleado.numero_cuenta:
+            self.numero_cuenta_entry.delete(0, tk.END)
+            self.numero_cuenta_entry.insert(0, self.empleado.numero_cuenta)
+        if self.empleado.tipo_cuenta:
+            self.tipo_cuenta_combo.set(self.empleado.tipo_cuenta)
+        if self.empleado.enfermedades_preexistentes:
+            self.enfermedades_preexistentes_text.insert("1.0", self.empleado.enfermedades_preexistentes)
+        if self.empleado.alergias_medicamentosas:
+            self.alergias_medicamentosas_text.insert("1.0", self.empleado.alergias_medicamentosas)
+        if self.empleado.alergias_alimentarias:
+            self.alergias_alimentarias_text.insert("1.0", self.empleado.alergias_alimentarias)
+        
+        # Familia
+        if self.empleado.hijos:
+            self.hijos_text.insert("1.0", self.empleado.hijos)
     
     def _get_form_data(self) -> dict:
         """Obtiene los datos del formulario"""
@@ -942,6 +1073,16 @@ class EmpleadoDialog(ctk.CTkToplevel):
             "contacto_emergencia_nombre": self.contacto_emergencia_nombre_entry.get(),
             "contacto_emergencia_telefono": self.contacto_emergencia_telefono_entry.get(),
             "contacto_emergencia_relacion": self.contacto_emergencia_relacion_entry.get(),
+            "tipo_contratacion": self.tipo_contratacion_combo.get(),
+            "titulo_secundaria": self.titulo_secundaria_entry.get(),
+            "carnet_discapacidad": self.carnet_discapacidad_entry.get(),
+            "institucion_bancaria": self.institucion_bancaria_entry.get(),
+            "numero_cuenta": self.numero_cuenta_entry.get(),
+            "tipo_cuenta": self.tipo_cuenta_combo.get(),
+            "enfermedades_preexistentes": self._get_text(self.enfermedades_preexistentes_text),
+            "alergias_medicamentosas": self._get_text(self.alergias_medicamentosas_text),
+            "alergias_alimentarias": self._get_text(self.alergias_alimentarias_text),
+            "hijos": self._get_text(self.hijos_text),
         }
     
     def _parse_date(self, date_str: str) -> Optional[date]:

@@ -5,7 +5,7 @@ Repositorio para operaciones de datos de empleados con manejo de errores mejorad
 
 from typing import List, Optional, Union
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
@@ -13,6 +13,30 @@ from src.models import Empleado, TipoEmpleado
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
+
+
+# Pares para búsqueda insensible a mayúsculas y tildes (SQLite LIKE no
+# normaliza caracteres acentuados: "gomez" debe encontrar "Gómez").
+_ACENTOS = [
+    ("á", "a"), ("é", "e"), ("í", "i"), ("ó", "o"), ("ú", "u"),
+    ("ü", "u"), ("ñ", "n"),
+]
+
+
+def _normalizar_expr(col):
+    """Expresión SQL que pasa una columna a minúsculas sin tildes"""
+    expr = func.lower(col)
+    for acento, plano in _ACENTOS:
+        expr = func.replace(expr, acento, plano)
+    return expr
+
+
+def _normalizar_termino(termino: str) -> str:
+    """Normaliza un término de búsqueda: minúsculas y sin tildes"""
+    texto = termino.lower()
+    for acento, plano in _ACENTOS:
+        texto = texto.replace(acento, plano)
+    return texto
 
 
 class EmpleadoRepository(BaseRepository[Empleado]):
@@ -74,15 +98,23 @@ class EmpleadoRepository(BaseRepository[Empleado]):
             return []
     
     def search_empleados(self, search_term: str) -> List[Empleado]:
-        """Busca empleados por nombre, apellido o cédula con manejo de errores"""
+        """
+        Busca empleados por nombre, apellido o cédula (insensible a mayúsculas y tildes)
+
+        Solo devuelve empleados activos, igual que la lista principal del frame.
+        """
         try:
-            term = search_term.strip()
+            term = _normalizar_termino(search_term.strip())
+            if not term:
+                return self.get_activos()
+            patron = f"%{term}%"
             return self.session.query(Empleado).filter(
+                Empleado.activo == 1,
                 or_(
-                    Empleado.nombres.like(f"%{term}%"),
-                    Empleado.apellidos.like(f"%{term}%"),
-                    Empleado.cedula.like(f"%{term}%")
-                )
+                    _normalizar_expr(Empleado.nombres).like(patron),
+                    _normalizar_expr(Empleado.apellidos).like(patron),
+                    _normalizar_expr(Empleado.cedula).like(patron),
+                ),
             ).all()
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar empleados con término {search_term}: {e}")
@@ -126,14 +158,16 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 query = query.filter(Empleado.cargo == filtros["cargo"])
             
             if "busqueda" in filtros and filtros["busqueda"]:
-                search = filtros["busqueda"].strip()
-                query = query.filter(
-                    or_(
-                        Empleado.nombres.like(f"%{search}%"),
-                        Empleado.apellidos.like(f"%{search}%"),
-                        Empleado.cedula.like(f"%{search}%")
+                search = _normalizar_termino(filtros["busqueda"].strip())
+                if search:
+                    patron = f"%{search}%"
+                    query = query.filter(
+                        or_(
+                            _normalizar_expr(Empleado.nombres).like(patron),
+                            _normalizar_expr(Empleado.apellidos).like(patron),
+                            _normalizar_expr(Empleado.cedula).like(patron),
+                        )
                     )
-                )
             
             return query.all()
         except SQLAlchemyError as e:

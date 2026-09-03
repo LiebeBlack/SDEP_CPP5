@@ -105,6 +105,24 @@ class Empleado(Base, BaseModel):
     nivel_educativo = Column(String(50), nullable=True)
     especialidad = Column(String(100), nullable=True)
     titulo_obtenido = Column(String(100), nullable=True)
+    titulo_secundaria = Column(String(100), nullable=True)
+    
+    # Datos bancarios
+    institucion_bancaria = Column(String(100), nullable=True)
+    numero_cuenta = Column(String(50), nullable=True)
+    tipo_cuenta = Column(String(30), nullable=True)
+    
+    # Datos de salud
+    carnet_discapacidad = Column(String(30), nullable=True)
+    enfermedades_preexistentes = Column(Text, nullable=True)
+    alergias_medicamentosas = Column(Text, nullable=True)
+    alergias_alimentarias = Column(Text, nullable=True)
+    
+    # Datos laborales adicionales
+    tipo_contratacion = Column(String(50), nullable=True)
+    
+    # Datos familiares
+    hijos = Column(Text, nullable=True)
     
     # Datos adicionales
     observaciones = Column(Text, nullable=True)

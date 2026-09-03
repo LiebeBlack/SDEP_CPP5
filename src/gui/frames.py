@@ -100,14 +100,19 @@ class DashboardFrame(ctk.CTkFrame):
         def go_to_nomina():
             self.main_window._show_frame("nomina")
         
-        actions = [
-            ("Nuevo Empleado", go_to_empleados),
-            ("Nuevo Documento", go_to_documentos),
-            ("Nueva Incidencia", go_to_incidencias),
-            ("Generar Nómina", go_to_nomina),
+        # Solo se muestran accesos a módulos permitidos por el rol del usuario
+        acciones = [
+            ("Ir a Empleados", go_to_empleados, "empleados"),
+            ("Ir a Documentos", go_to_documentos, "documentos"),
+            ("Ir a Incidencias", go_to_incidencias, "incidencias"),
+            ("Ir a Nómina", go_to_nomina, "nomina"),
+        ]
+        acciones = [
+            (text, command) for text, command, modulo in acciones
+            if self.main_window.puede_ver_modulo(modulo)
         ]
         
-        for i, (text, command) in enumerate(actions):
+        for i, (text, command) in enumerate(acciones):
             btn = ctk.CTkButton(
                 actions_container,
                 text=text,
@@ -537,9 +542,10 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         close_btn = ctk.CTkButton(btn_frame, text="Cerrar", command=self._on_close)
         close_btn.pack(side="right", padx=5)
         
-        # Botón de editar
-        edit_btn = ctk.CTkButton(btn_frame, text="Editar", command=self._on_edit)
-        edit_btn.pack(side="right", padx=5)
+        # Botón de editar (solo con permiso de actualización)
+        if self.main_window.tiene_permiso("update"):
+            edit_btn = ctk.CTkButton(btn_frame, text="Editar", command=self._on_edit)
+            edit_btn.pack(side="right", padx=5)
     
     def _create_personal_details_tab(self, parent):
         """Crea la pestaña de datos personales (solo lectura)"""
@@ -1804,8 +1810,11 @@ class IncidenciaDialog(ctk.CTkToplevel):
                 "fecha_fin": self._parse_date(self.fecha_fin_entry.get()),
                 "motivo": self.motivo_text.get("1.0", "end").strip(),
                 "descripcion": self.descripcion_text.get("1.0", "end").strip(),
-                "documento_soporte_nombre": self.file_label.cget("text") if self.file_content else None
             }
+            # Solo se declara un nuevo soporte si el usuario eligió un archivo;
+            # de lo contrario se conserva el nombre del soporte existente.
+            if self.file_content:
+                datos["documento_soporte_nombre"] = self.file_label.cget("text")
             
             # Validar campos requeridos
             if not datos["motivo"]:
@@ -2649,6 +2658,14 @@ class ConfiguracionFrame(ctk.CTkFrame):
             return
         try:
             from src.config import db_config
+            # Cerrar la sesión de la ventana para liberar el archivo de la
+            # base de datos antes de reemplazarlo (requisito en Windows).
+            try:
+                if getattr(self.main_window, "session", None) is not None:
+                    db_config.close_session(self.main_window.session)
+                    self.main_window.session = None
+            except Exception:
+                pass
             db_config.restore_backup(nombre)
             messagebox.showinfo(
                 "Restauración exitosa",
@@ -2749,6 +2766,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 messagebox.showerror("Error", "Usuario no encontrado")
                 return
             accion = "desactivar" if usuario.activo else "activar"
+            participio = "desactivado" if usuario.activo else "activado"
             if not messagebox.askyesno(
                 "Confirmar", f"¿Desea {accion} al usuario '{usuario.username}'?"):
                 return
@@ -2758,7 +2776,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 usuario_actual=self.main_window.current_user,
             )
             self._load_usuarios()
-            messagebox.showinfo("Éxito", f"Usuario {accion}do correctamente")
+            messagebox.showinfo("Éxito", f"Usuario {participio} correctamente")
         except ValueError as e:
             messagebox.showerror("Error", str(e))
         finally:

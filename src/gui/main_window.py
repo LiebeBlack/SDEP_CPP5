@@ -109,27 +109,33 @@ class MainWindow(ctk.CTk):
         # Confirmar salida antes de cerrar
         self.protocol("WM_DELETE_WINDOW", self._on_exit)
 
+        # Copiar el nombre de usuario MIENTRAS el objeto sigue ligado a la
+        # sesión de login; cualquier cierre de sesión scoped posterior lo
+        # dejaría detached (incluso para atributos de clave primaria).
+        username_snapshot = None
+        if current_user is not None:
+            try:
+                username_snapshot = current_user.username
+            except Exception:
+                username_snapshot = None
+
         self._init_database()
 
-        # Servicios con una sesión dedicada a la ventana
-        self.session = db_config.get_session()
+        # Sesión propia y no scoped para toda la ventana: las operaciones
+        # internas que usan get_session/close_session (registry) no la
+        # cierran ni invalidan sus objetos cargados.
+        self.session = db_config.new_session()
         self.empleado_service = EmpleadoService(self.session)
         self.documento_service = DocumentoService(self.session)
         self.incidencia_service = IncidenciaService(self.session)
         self.pago_service = PagoService(self.session)
         self.config_service = ConfiguracionService(self.session)
 
-        # Re-ligar el usuario a la sesión de la ventana: si la sesión de
-        # login ya se cerró, el objeto llegaría detached y fallaría en el
-        # primer acceso a atributos no-PK (rol, username, ...)
-        if current_user is not None:
-            try:
-                refrescado = self.session.get(Usuario, current_user.id)
-                if refrescado is not None:
-                    current_user = refrescado
-            except Exception:
-                pass
-        self.current_user = current_user
+        # Cargar el usuario autenticado en la sesión dedicada
+        self.current_user = None
+        if username_snapshot:
+            self.current_user = self.session.query(Usuario).filter(
+                Usuario.username == username_snapshot).first()
 
         # Estado de la interfaz
         self.current_frame = None

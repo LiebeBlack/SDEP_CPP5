@@ -34,11 +34,12 @@ class DatabaseConfig:
         self._ensure_data_directory()
 
         self.engine = self._create_engine()
-        self.SessionLocal = scoped_session(sessionmaker(
+        self.SessionFactory = sessionmaker(
             autocommit=False,
             autoflush=False,
             bind=self.engine
-        ))
+        )
+        self.SessionLocal = scoped_session(self.SessionFactory)
 
         logger.info(f"Base de datos configurada: {self.database_path}")
 
@@ -110,13 +111,30 @@ class DatabaseConfig:
             raise
 
     def get_session(self):
-        """Retorna una sesión de base de datos"""
+        """
+        Retorna una sesión de base de datos ligada al registry scoped
+
+        La misma sesión se reutiliza dentro del hilo hasta que se cierra
+        con close_session(). Es la opción por defecto para operaciones
+        puntuales (auditoría, configuración, etc.).
+        """
         try:
             return self.SessionLocal()
         except Exception as e:
             logger.error(f"Error obteniendo sesión de base de datos: {e}")
             self._safe_log_error(e, context={"operation": "get_session"})
             raise
+
+    def new_session(self):
+        """
+        Retorna una sesión independiente y no gestionada por el registry
+
+        Las sesiones scoped se cierran en cascada (SessionLocal.remove),
+        invalidando cualquier objeto que estuvieran cargando. Una ventana
+        de larga duración (MainWindow) necesita una sesión propia que
+        sobreviva a esas operaciones.
+        """
+        return self.SessionFactory()
 
     def close_session(self, session):
         """Cierra una sesión de base de datos de forma segura"""

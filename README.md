@@ -19,8 +19,9 @@ Este sistema proporciona una solución integral para la administración de recur
 - Carga y almacenamiento de documentos digitalizados
 - Soporte para PDFs e imágenes
 - Clasificación por tipo de documento
-- Control de vencimientos
+- Control de vencimientos (reporte PDF con vencidos y por vencer)
 - Gestión de documentos por empleado
+- Exportación del listado a Excel/CSV
 
 ### Incidencias y Permisos
 - Registro de reposos médicos, ausencias y permisos
@@ -28,6 +29,7 @@ Este sistema proporciona una solución integral para la administración de recur
 - Gestión de documentos de soporte
 - Cálculo automático de días
 - Control de incidencias vigentes
+- Reporte PDF y exportación a Excel/CSV (por empleado o general)
 
 ### Nómina y Pagos
 - Generación automática de nóminas por periodo
@@ -42,7 +44,12 @@ Este sistema proporciona una solución integral para la administración de recur
 - Recibos de pago
 - Reportes de empleados
 - Planilla de nómina por periodo con totales (ISSS, AFP, ISR, neto)
+- Reporte de incidencias y control de vencimientos de documentos
 - Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel)
+
+### Seguridad y Auditoría
+- Cambio de contraseña del usuario logueado
+- Visor de auditoría (solo administradores) con filtro por tipo y exportación
 
 ## 📋 Requisitos del Sistema
 
@@ -71,10 +78,17 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
 3. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
    Inno Setup (asistente en español/inglés, accesos directos, desinstalador).
 4. **Artefactos**: instala Setup.exe y ZIP portable como artefactos del run.
-5. **Release**: al crear una etiqueta `vX.Y.Z` publica automáticamente un
-   Release de GitHub con el instalador y la versión portable.
+5. **Release continua**: cada push a `main` publica automáticamente un
+   Release de GitHub con el instalador y la versión portable (sin
+   necesidad de crear etiquetas). Un push con etiqueta `vX.Y.Z` genera
+   una release versionada con ese nombre.
 
-Para publicar una versión final:
+Cada cambio publicado genera su Release automáticamente:
+```bash
+git push origin main
+```
+
+Para una release versionada (opcional):
 ```bash
 git tag v1.0.3
 git push origin v1.0.3

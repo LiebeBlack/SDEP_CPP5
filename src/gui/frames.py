@@ -18,6 +18,8 @@ from src.utils.helpers import (
 )
 from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
+from src.utils.audit_logger import audit_logger, AuditEventType
+from src.services.auth_service import AuthService
 
 
 def _id_fila_seleccionada(tree) -> Optional[int]:
@@ -32,6 +34,21 @@ def _id_fila_seleccionada(tree) -> Optional[int]:
         return int(tags[0])
     except (TypeError, ValueError, IndexError):
         return None
+
+
+def _estado_documento(documento) -> str:
+    """Estado legible de un documento según su vencimiento"""
+    if not documento.fecha_vencimiento:
+        return "Sin vencimiento"
+    try:
+        dias = documento.dias_vencimiento
+    except Exception:
+        return "Vigente"
+    if dias < 0:
+        return "Vencido"
+    if dias <= 30:
+        return "Por vencer"
+    return "Vigente"
 
 
 class DashboardFrame(ctk.CTkFrame):
@@ -1259,6 +1276,12 @@ class DocumentosFrame(ctk.CTkFrame):
             new_doc_btn = ctk.CTkButton(actions_frame, text="Nuevo Documento", command=self._on_new_documento)
             new_doc_btn.pack(side="left", padx=5)
         
+        if self.main_window.tiene_permiso("report"):
+            venc_btn = ctk.CTkButton(actions_frame, text="Control de Vencimientos", command=self._on_reporte_vencimientos)
+            venc_btn.pack(side="left", padx=5)
+            export_doc_btn = ctk.CTkButton(actions_frame, text="Exportar", command=self._on_exportar_documentos)
+            export_doc_btn.pack(side="left", padx=5)
+        
         # Tabla de documentos
         table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -1325,6 +1348,80 @@ class DocumentosFrame(ctk.CTkFrame):
         if selected in self.empleado_data:
             self.current_empleado_id = self.empleado_data[selected]
             self._load_documentos()
+    
+    def _documentos_visibles(self):
+        """Documentos mostrados en la tabla (por empleado o todos)"""
+        if self.current_empleado_id:
+            return self.main_window.documento_service.listar_documentos_empleado(self.current_empleado_id)
+        return self.main_window.documento_service.listar_todas()
+    
+    def _on_exportar_documentos(self):
+        """Exporta los documentos visibles a Excel o CSV"""
+        documentos = self._documentos_visibles()
+        if not documentos:
+            messagebox.showwarning("Advertencia", "No hay documentos para exportar")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            initialfile=f"documentos_{date.today().strftime('%Y%m%d')}.xlsx",
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            for doc in documentos:
+                empleado = self.main_window.empleado_service.obtener_empleado(doc.empleado_id)
+                filas.append({
+                    "Empleado": empleado.nombre_completo if empleado else "Desconocido",
+                    "Cédula": empleado.cedula if empleado else "",
+                    "Tipo": doc.tipo_documento,
+                    "Título": doc.titulo,
+                    "Fecha Emisión": format_date(doc.fecha_emision),
+                    "Fecha Vencimiento": format_date(doc.fecha_vencimiento),
+                    "Estado": _estado_documento(doc),
+                })
+            exportar_archivo(filas, file_path)
+            messagebox.showinfo("Éxito", f"Documentos exportados exitosamente:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar documentos: {str(e)}")
+    
+    def _on_reporte_vencimientos(self):
+        """Genera el control de vencimientos de documentos en PDF"""
+        documentos = (self.main_window.documento_service.listar_vencidos()
+                      + self.main_window.documento_service.listar_por_vencer(30))
+        if not documentos:
+            messagebox.showwarning("Advertencia", "No hay documentos vencidos ni por vencer")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"vencimientos_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            for doc in documentos:
+                empleado = self.main_window.empleado_service.obtener_empleado(doc.empleado_id)
+                filas.append({
+                    "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
+                    "tipo_documento": doc.tipo_documento,
+                    "titulo": doc.titulo,
+                    "fecha_vencimiento": doc.fecha_vencimiento,
+                    "estado": _estado_documento(doc),
+                })
+            pdf_gen = PDFGenerator()
+            pdf_gen.generate_reporte_vencimientos(
+                filas, file_path,
+                titulo=f"Generado el {format_date(date.today())}")
+            messagebox.showinfo("Éxito", f"Control de vencimientos generado:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al generar control de vencimientos: {str(e)}")
     
     def _load_documentos(self):
         """Carga los documentos del empleado seleccionado"""
@@ -1666,6 +1763,12 @@ class IncidenciasFrame(ctk.CTkFrame):
             new_incidencia_btn = ctk.CTkButton(actions_frame, text="Nueva Incidencia", command=self._on_new_incidencia)
             new_incidencia_btn.pack(side="left", padx=5)
         
+        if self.main_window.tiene_permiso("report"):
+            reporte_inc_btn = ctk.CTkButton(actions_frame, text="Reporte PDF", command=self._on_reporte_incidencias)
+            reporte_inc_btn.pack(side="left", padx=5)
+            export_inc_btn = ctk.CTkButton(actions_frame, text="Exportar", command=self._on_exportar_incidencias)
+            export_inc_btn.pack(side="left", padx=5)
+        
         # Tabla de incidencias
         table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -1736,6 +1839,85 @@ class IncidenciasFrame(ctk.CTkFrame):
         if selected in self.empleado_data:
             self.current_empleado_id = self.empleado_data[selected]
             self._load_incidencias()
+    
+    def _incidencias_visibles(self):
+        """Incidencias mostradas en la tabla (por empleado o todas)"""
+        if self.current_empleado_id:
+            return self.main_window.incidencia_service.listar_incidencias_empleado(self.current_empleado_id)
+        return self.main_window.incidencia_service.listar_todas()
+    
+    def _on_exportar_incidencias(self):
+        """Exporta las incidencias visibles a Excel o CSV"""
+        incidencias = self._incidencias_visibles()
+        if not incidencias:
+            messagebox.showwarning("Advertencia", "No hay incidencias para exportar")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            initialfile=f"incidencias_{date.today().strftime('%Y%m%d')}.xlsx",
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            for inc in incidencias:
+                empleado = self.main_window.empleado_service.obtener_empleado(inc.empleado_id)
+                filas.append({
+                    "Empleado": empleado.nombre_completo if empleado else "Desconocido",
+                    "Cédula": empleado.cedula if empleado else "",
+                    "Tipo": inc.tipo_incidencia,
+                    "Fecha Inicio": format_date(inc.fecha_inicio),
+                    "Fecha Fin": format_date(inc.fecha_fin),
+                    "Días": inc.dias_solicitados,
+                    "Estado": str(inc.estado).capitalize(),
+                    "Motivo": inc.motivo or "",
+                })
+            exportar_archivo(filas, file_path)
+            messagebox.showinfo("Éxito", f"Incidencias exportadas exitosamente:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar incidencias: {str(e)}")
+    
+    def _on_reporte_incidencias(self):
+        """Genera el reporte de incidencias en PDF"""
+        incidencias = self._incidencias_visibles()
+        if not incidencias:
+            messagebox.showwarning("Advertencia", "No hay incidencias para generar el reporte")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"reporte_incidencias_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            titulo = "Todas las incidencias"
+            if self.current_empleado_id:
+                empleado = self.main_window.empleado_service.obtener_empleado(self.current_empleado_id)
+                if empleado:
+                    titulo = f"Empleado: {empleado.nombre_completo}"
+            for inc in incidencias:
+                empleado = self.main_window.empleado_service.obtener_empleado(inc.empleado_id)
+                filas.append({
+                    "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
+                    "tipo_incidencia": inc.tipo_incidencia,
+                    "fecha_inicio": inc.fecha_inicio,
+                    "fecha_fin": inc.fecha_fin,
+                    "dias_solicitados": inc.dias_solicitados,
+                    "estado": inc.estado,
+                    "motivo": inc.motivo or "",
+                })
+            pdf_gen = PDFGenerator()
+            pdf_gen.generate_reporte_incidencias(filas, file_path, titulo=titulo)
+            messagebox.showinfo("Éxito", f"Reporte de incidencias generado:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al generar reporte de incidencias: {str(e)}")
     
     def _load_incidencias(self):
         """Carga las incidencias del empleado seleccionado"""
@@ -2619,6 +2801,11 @@ class ConfiguracionFrame(ctk.CTkFrame):
         usuarios_tab = self.notebook.add("Usuarios")
         self._create_usuarios_tab(usuarios_tab)
         
+        # Pestaña de auditoría (solo administradores)
+        if self.main_window.tiene_permiso("config"):
+            auditoria_tab = self.notebook.add("Auditoría")
+            self._create_auditoria_tab(auditoria_tab)
+        
         # Botones generales
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=10)
@@ -2629,6 +2816,114 @@ class ConfiguracionFrame(ctk.CTkFrame):
         refresh_btn = ctk.CTkButton(
             btn_frame, text="Actualizar", command=self._load_configuracion)
         refresh_btn.pack(side="left", padx=5)
+        
+        password_btn = ctk.CTkButton(
+            btn_frame, text="Cambiar Contraseña", command=self._on_cambiar_password)
+        password_btn.pack(side="left", padx=5)
+    
+    def _on_cambiar_password(self):
+        """Abre el diálogo para cambiar la contraseña del usuario actual"""
+        if self.main_window.current_user is None:
+            messagebox.showerror("Error", "No hay una sesión de usuario activa")
+            return
+        dialog = CambiarPasswordDialog(self, self.main_window)
+        self.wait_window(dialog)
+    
+    def _create_auditoria_tab(self, parent):
+        """Crea la pestaña de auditoría (solo administradores)"""
+        filtro_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        filtro_frame.pack(fill="x", padx=10, pady=(10, 5))
+        
+        ctk.CTkLabel(filtro_frame, text="Tipo de evento:", text_color="white").pack(side="left", padx=5)
+        self.audit_tipo_combo = ttk.Combobox(
+            filtro_frame,
+            values=["Todos"] + [t.value for t in AuditEventType],
+            width=22, state="readonly", font=("Arial", 9))
+        self.audit_tipo_combo.pack(side="left", padx=5)
+        self.audit_tipo_combo.set("Todos")
+        self.audit_tipo_combo.bind("<<ComboboxSelected>>", lambda e: self._load_auditoria())
+        
+        refresh_btn = ctk.CTkButton(filtro_frame, text="Actualizar", command=self._load_auditoria)
+        refresh_btn.pack(side="left", padx=5)
+        export_btn = ctk.CTkButton(filtro_frame, text="Exportar", command=self._on_exportar_auditoria)
+        export_btn.pack(side="left", padx=5)
+        
+        table_frame = ctk.CTkFrame(parent, fg_color="#1a1a1a")
+        table_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        scrollbar = ctk.CTkScrollbar(table_frame)
+        scrollbar.pack(side="right", fill="y")
+        
+        self.audit_tree = ttk.Treeview(
+            table_frame, columns=("fecha", "tipo", "usuario", "exito", "detalle"),
+            show="headings", yscrollcommand=scrollbar.set)
+        self.audit_tree.heading("fecha", text="Fecha")
+        self.audit_tree.heading("tipo", text="Tipo")
+        self.audit_tree.heading("usuario", text="Usuario")
+        self.audit_tree.heading("exito", text="Éxito")
+        self.audit_tree.heading("detalle", text="Detalle")
+        self.audit_tree.column("fecha", width=170, minwidth=140)
+        self.audit_tree.column("tipo", width=140, minwidth=100)
+        self.audit_tree.column("usuario", width=120, minwidth=90)
+        self.audit_tree.column("exito", width=60, minwidth=50)
+        self.audit_tree.column("detalle", width=400, minwidth=250)
+        self.audit_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.configure(command=self.audit_tree.yview)
+        self._load_auditoria()
+    
+    def _load_auditoria(self):
+        """Carga los eventos de auditoría recientes (con filtro opcional)"""
+        for item in self.audit_tree.get_children():
+            self.audit_tree.delete(item)
+        try:
+            tipo = self.audit_tipo_combo.get()
+            eventos = audit_logger.get_recent_events(200)
+            if tipo != "Todos":
+                eventos = [e for e in eventos if e.get("event_type") == tipo]
+            for ev in eventos:
+                detalle = ""
+                detalles = ev.get("details") or {}
+                if isinstance(detalles, dict) and "operation" in detalles:
+                    detalle = str(detalles["operation"])
+                self.audit_tree.insert("", "end", values=(
+                    ev.get("timestamp", ""),
+                    ev.get("event_type", ""),
+                    ev.get("user", ""),
+                    "Sí" if ev.get("success") else "No",
+                    detalle,
+                ))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al cargar auditoría: {str(e)}")
+    
+    def _on_exportar_auditoria(self):
+        """Exporta los eventos de auditoría recientes a Excel o CSV"""
+        eventos = audit_logger.get_recent_events(200)
+        if not eventos:
+            messagebox.showwarning("Advertencia", "No hay eventos de auditoría para exportar")
+            return
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            initialfile=f"auditoria_{date.today().strftime('%Y%m%d')}.xlsx",
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")])
+        if not file_path:
+            return
+        try:
+            filas = []
+            for ev in eventos:
+                detalle = ev.get("details") or {}
+                if isinstance(detalle, dict):
+                    detalle = detalle.get("operation", "")
+                filas.append({
+                    "Fecha": ev.get("timestamp", ""),
+                    "Tipo": ev.get("event_type", ""),
+                    "Usuario": ev.get("user", ""),
+                    "Entidad": ev.get("entity_type", ""),
+                    "Éxito": "Sí" if ev.get("success") else "No",
+                    "Detalle": str(detalle or ""),
+                })
+            exportar_archivo(filas, file_path)
+            messagebox.showinfo("Éxito", f"Auditoría exportada exitosamente:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar auditoría: {str(e)}")
     
     def _create_seguridad_tab(self, parent):
         """Crea la pestaña de seguridad y respaldos"""
@@ -3489,3 +3784,80 @@ class UsuarioDialog(ctk.CTkToplevel):
             messagebox.showerror("Error", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar usuario: {str(e)}")
+
+
+class CambiarPasswordDialog(ctk.CTkToplevel):
+    """Diálogo para que el usuario actual cambie su contraseña"""
+    
+    def __init__(self, parent, main_window):
+        super().__init__(parent)
+        self.main_window = main_window
+        self.result = False
+        self.title("Cambiar Contraseña")
+        self.geometry("420x280")
+        self.resizable(False, False)
+        mantener_ventana_al_frente(self)
+        self.transient(parent)
+        self.grab_set()
+        self._create_widgets()
+    
+    def _create_widgets(self):
+        """Crea los widgets del diálogo"""
+        form = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        ctk.CTkLabel(form, text="Contraseña actual:", text_color="white").grid(
+            row=0, column=0, padx=5, pady=8, sticky="e")
+        self.actual_entry = ctk.CTkEntry(form, width=240, show="*",
+                                         fg_color="#3c3c3c", text_color="white")
+        self.actual_entry.grid(row=0, column=1, padx=5, pady=8, sticky="w")
+        
+        ctk.CTkLabel(form, text="Nueva contraseña:", text_color="white").grid(
+            row=1, column=0, padx=5, pady=8, sticky="e")
+        self.nueva_entry = ctk.CTkEntry(form, width=240, show="*",
+                                        fg_color="#3c3c3c", text_color="white")
+        self.nueva_entry.grid(row=1, column=1, padx=5, pady=8, sticky="w")
+        
+        ctk.CTkLabel(form, text="Confirmar contraseña:", text_color="white").grid(
+            row=2, column=0, padx=5, pady=8, sticky="e")
+        self.confirmar_entry = ctk.CTkEntry(form, width=240, show="*",
+                                            fg_color="#3c3c3c", text_color="white")
+        self.confirmar_entry.grid(row=2, column=1, padx=5, pady=8, sticky="w")
+        
+        ctk.CTkLabel(
+            form, text="La contraseña debe tener al menos 8 caracteres.",
+            text_color="#999999", font=("Arial", 9)).grid(
+            row=3, column=0, columnspan=2, pady=(4, 8))
+        
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=10, pady=10)
+        
+        save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
+        save_btn.pack(side="right", padx=5)
+        cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy)
+        cancel_btn.pack(side="right", padx=5)
+    
+    def _on_save(self):
+        """Valida y cambia la contraseña"""
+        actual = self.actual_entry.get()
+        nueva = self.nueva_entry.get()
+        confirmar = self.confirmar_entry.get()
+        
+        if not nueva:
+            messagebox.showerror("Error", "Debe ingresar la nueva contraseña")
+            return
+        if nueva != confirmar:
+            messagebox.showerror("Error", "Las contraseñas no coinciden")
+            return
+        
+        try:
+            auth = AuthService(self.main_window.session)
+            auth.cambiar_password(
+                self.main_window.current_user, nueva, actual_password=actual)
+            self.result = True
+            messagebox.showinfo("Éxito", "Contraseña cambiada correctamente")
+            self.destroy()
+        except ValueError as e:
+            messagebox.showerror("Error de Validación", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al cambiar contraseña: {str(e)}")

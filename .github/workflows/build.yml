@@ -132,6 +132,25 @@ jobs:
             -DestinationPath "SistemaGestionPersonal-Windows-$env:APP_VERSION.zip" -Force
           Write-Host "OK zip portable"
 
+      - name: Definir etiqueta y nombre del release
+        shell: pwsh
+        run: |
+          $isTag = $env:GITHUB_REF_TYPE -eq "tag"
+          if ($isTag) {
+            # Push de etiqueta v*: el release usa la etiqueta versionada
+            $tag = $env:GITHUB_REF_NAME
+            $nombre = "Sistema de Gestión de Personal $env:APP_VERSION"
+          } else {
+            # Push normal (main): release continua sin etiqueta manual.
+            # El nombre no empieza con "v" para no re-disparar el workflow
+            # (el trigger de etiquetas solo escucha "v*").
+            $tag = "continuous-v$env:APP_VERSION.$env:GITHUB_RUN_NUMBER"
+            $nombre = "Release continua v$env:APP_VERSION (#$env:GITHUB_RUN_NUMBER)"
+          }
+          Write-Output "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+          Write-Output "RELEASE_NAME=$nombre" >> $env:GITHUB_ENV
+          Write-Host "Release: $nombre (etiqueta $tag)"
+
       - name: Subir instalador (Setup.exe)
         uses: actions/upload-artifact@v4
         with:
@@ -146,11 +165,15 @@ jobs:
           path: SistemaGestionPersonal-Windows-${{ env.APP_VERSION }}.zip
           retention-days: 30
 
-      - name: Publicar release (etiquetas v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publicar release (cada push a main o etiqueta v*)
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: Sistema de Gestión de Personal ${{ env.APP_VERSION }}
+          name: ${{ env.RELEASE_NAME }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          body: |
+            Compilación automática del commit `${{ github.sha }}` en `${{ github.ref_name }}`.
+            Descarga el instalador (**Setup.exe**) o la versión portable (ZIP).
           files: |
             dist_installer/SistemaGestionPersonal-Setup-${{ env.APP_VERSION }}.exe
             SistemaGestionPersonal-Windows-${{ env.APP_VERSION }}.zip

@@ -153,6 +153,16 @@ El sistema le alertará sobre:
 - Documentos por vencer en los próximos 30 días
 - Documentos vigentes
 
+Para generar el reporte en PDF:
+1. Haga clic en **Control de Vencimientos**
+2. El reporte incluye documentos vencidos y por vencer, con el estado de cada uno
+
+### Exportar Documentos
+
+1. Haga clic en **Exportar**
+2. Elija **Excel (.xlsx)** o **CSV**
+3. El archivo contiene los documentos del empleado seleccionado (o todos)
+
 ### Ver y Descargar Documentos
 
 1. Seleccione el documento de la lista
@@ -190,6 +200,12 @@ El sistema le alertará sobre:
    - **Aprobar**: Acepta la incidencia
    - **Rechazar**: Deniega la incidencia
    - **Completar**: Marca como finalizada
+
+### Reporte y Exportación de Incidencias
+
+- **Reporte PDF**: genera el reporte de las incidencias del empleado
+  seleccionado (o de todas si no hay ninguno seleccionado)
+- **Exportar**: guarda el listado en Excel (.xlsx) o CSV
 3. Al aprobar, puede especificar:
    - Quién aprueba
    - Comentarios de aprobación
@@ -286,6 +302,19 @@ Ajuste los porcentajes de deducciones:
 Defina políticas de la empresa:
 - **Días de Vacaciones**: Días anuales de descanso
 - **Horas Laborales**: Horas de trabajo semanales
+
+### Cambiar Contraseña
+
+1. Haga clic en **Cambiar Contraseña** (abajo en Configuración)
+2. Ingrese la contraseña actual y la nueva (mínimo 8 caracteres)
+3. Confirme la nueva contraseña y guarde
+
+### Visor de Auditoría (solo administradores)
+
+La pestaña **Auditoría** muestra los eventos recientes del sistema:
+- Filtre por tipo de evento (inicio de sesión, respaldos, cambios, errores)
+- Use **Actualizar** para recargar y **Exportar** para guardar el listado
+  en Excel (.xlsx) o CSV
 
 ## Panel de Control (Dashboard)
 

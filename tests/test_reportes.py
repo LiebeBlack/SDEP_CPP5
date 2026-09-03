@@ -210,3 +210,112 @@ def test_exportar_xlsx_sanea_caracteres_control(tmp_path):
     openpyxl = pytest.importorskip("openpyxl")
     pagina = openpyxl.load_workbook(salida).active
     assert pagina["A2"].value == "valor sucio"
+
+
+# --- Reporte de incidencias ---
+
+def test_generar_reporte_incidencias_pdf(session, tmp_path):
+    filas = [{
+        "nombre_empleado": "Pedro Lara",
+        "tipo_incidencia": "permiso",
+        "fecha_inicio": date(2026, 8, 10),
+        "fecha_fin": date(2026, 8, 12),
+        "dias_solicitados": 3,
+        "estado": "pendiente",
+        "motivo": "Trámite personal",
+    }]
+    salida = str(tmp_path / "incidencias.pdf")
+    resultado = PDFGenerator().generate_reporte_incidencias(
+        filas, salida, titulo="Empleado: Pedro Lara")
+    assert resultado == salida
+    assert os.path.getsize(salida) > 1500
+    with open(salida, "rb") as archivo:
+        assert archivo.read(5) == b"%PDF-"
+
+
+def test_generar_reporte_incidencias_vacio_error(session, tmp_path):
+    with pytest.raises(ValueError):
+        PDFGenerator().generate_reporte_incidencias([], str(tmp_path / "x.pdf"))
+
+
+def test_incidencia_service_listar_todas(session):
+    from datetime import timedelta
+
+    from src.services.incidencia_service import IncidenciaService
+
+    emp_svc = EmpleadoService(session)
+    emp = emp_svc.crear_empleado(_datos_empleado(cedula="33333333-1"))
+    inc_svc = IncidenciaService(session)
+    hoy = date.today()
+    inc_svc.crear_incidencia({
+        "empleado_id": emp.id, "tipo_incidencia": "permiso",
+        "fecha_inicio": hoy + timedelta(days=1),
+        "fecha_fin": hoy + timedelta(days=2),
+        "motivo": "Trámite personal",
+    })
+    inc_svc.crear_incidencia({
+        "empleado_id": emp.id, "tipo_incidencia": "ausencia",
+        "fecha_inicio": hoy + timedelta(days=5),
+        "fecha_fin": hoy + timedelta(days=6),
+        "motivo": "Cita médica",
+    })
+    assert len(inc_svc.listar_todas()) == 2
+
+
+# --- Control de vencimientos ---
+
+def test_generar_reporte_vencimientos_pdf(session, tmp_path):
+    filas = [{
+        "nombre_empleado": "María Fernández",
+        "tipo_documento": "cedula",
+        "titulo": "Cédula de identidad",
+        "fecha_vencimiento": date(2026, 9, 15),
+        "estado": "Por vencer",
+    }]
+    salida = str(tmp_path / "vencimientos.pdf")
+    resultado = PDFGenerator().generate_reporte_vencimientos(
+        filas, salida, titulo="Generado el 01/09/2026")
+    assert resultado == salida
+    assert os.path.getsize(salida) > 1500
+    with open(salida, "rb") as archivo:
+        assert archivo.read(5) == b"%PDF-"
+
+
+def test_generar_reporte_vencimientos_vacio_error(session, tmp_path):
+    with pytest.raises(ValueError):
+        PDFGenerator().generate_reporte_vencimientos([], str(tmp_path / "x.pdf"))
+
+
+def test_documentos_vencidos_y_por_vencer(session, storage):
+    from datetime import timedelta
+
+    from src.services.documento_service import DocumentoService
+
+    emp_svc = EmpleadoService(session)
+    emp = emp_svc.crear_empleado(_datos_empleado(cedula="44444444-1"))
+    doc_svc = DocumentoService(session)
+    hoy = date.today()
+    doc_svc.crear_documento({
+        "empleado_id": emp.id, "tipo_documento": "cedula",
+        "titulo": "Cédula vencida",
+        "fecha_emision": hoy - timedelta(days=400),
+        "fecha_vencimiento": hoy - timedelta(days=10),
+        "nombre_archivo": "vencida.pdf",
+    }, b"%PDF-x")
+    doc_svc.crear_documento({
+        "empleado_id": emp.id, "tipo_documento": "reposo",
+        "titulo": "Reposo por vencer",
+        "fecha_emision": hoy - timedelta(days=5),
+        "fecha_vencimiento": hoy + timedelta(days=5),
+        "nombre_archivo": "reposo.pdf",
+    }, b"%PDF-x")
+    doc_svc.crear_documento({
+        "empleado_id": emp.id, "tipo_documento": "titulo",
+        "titulo": "Título vigente",
+        "fecha_emision": hoy - timedelta(days=300),
+        "fecha_vencimiento": hoy + timedelta(days=200),
+        "nombre_archivo": "titulo.pdf",
+    }, b"%PDF-x")
+    assert len(doc_svc.listar_vencidos()) == 1
+    assert len(doc_svc.listar_por_vencer(30)) == 1
+    assert len(doc_svc.listar_todas()) == 3

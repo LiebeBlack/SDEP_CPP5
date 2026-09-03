@@ -166,6 +166,10 @@ class DocumentoService:
         """Lista documentos por tipo"""
         return self.repository.get_by_tipo(tipo)
     
+    def listar_todas(self) -> List[Documento]:
+        """Lista todos los documentos registrados"""
+        return self.repository.get_all(limit=None)
+    
     def listar_documentos_empleado_tipo(self, empleado_id: int, tipo: str) -> List[Documento]:
         """Lista documentos de un empleado por tipo"""
         return self.repository.get_by_empleado_y_tipo(empleado_id, tipo)

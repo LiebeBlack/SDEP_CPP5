@@ -1,6 +1,7 @@
 # ⚡ Quick Start Guide - CI/CD con Instalador de Windows
 
-Guía rápida del flujo CI/CD: pruebas, ejecutable e instalador automáticos.
+Guía rápida del flujo CI/CD: pruebas, ejecutable, instalador y release
+automáticos.
 
 ## 🚀 Configuración en 2 minutos
 
@@ -18,26 +19,30 @@ Ve a `Settings > Branches`:
 ### Build & Release (`build.yml`)
 - **Trigger**: Push a main/develop, etiquetas `v*`, manual
 - **Función**: Pruebas (pytest) + ejecutable Windows + instalador (Inno Setup)
-- **Output**: `Setup.exe` + ZIP portable (artefactos, y Release en etiquetas `v*`)
+- **Output**: `Setup.exe` + ZIP portable
+  - Push a **main** → Release automática en GitHub (sin etiqueta)
+  - Push a **develop** → solo artefactos
+  - Etiqueta `v*` → Release versionada con el nombre de la etiqueta
 - **Duración**: ~5-7 minutos
 
 ## 🎯 Flujo de Trabajo
 
-### Compilación automática (sin release)
+### Release automática por cada push (sin etiqueta)
 ```bash
-# Cualquier push a main/develop compila y sube el instalador como artefacto
+# Cualquier push a main compila, instala y publica un Release automáticamente
 git push origin main
 ```
 
 **Resultado:**
-- ✅ Pruebas automatizadas (58 pruebas)
+- ✅ Pruebas automatizadas (79 pruebas)
 - ✅ Ejecutable Windows (onedir, icono, versión)
 - ✅ Instalador `Setup.exe` subido como artefacto
 - ✅ ZIP portable subido como artefacto
+- ✅ Release en GitHub con instalador adjunto (etiqueta interna automática)
 
-### Release final con instalador
+### Release versionada (opcional)
 ```bash
-# Crea el release en GitHub con el instalador Setup.exe y el ZIP portable
+# Crea una release con nombre y etiqueta versionados (ej: v1.0.3)
 git tag v1.0.3
 git push origin v1.0.3
 ```
@@ -60,7 +65,7 @@ git push origin v1.0.3
 3. Verifica que `LICENSE` y `assets\app.ico` existan
 
 ### Release no se publica
-1. Asegúrate de usar una etiqueta `v*` (ej: `v1.0.3`)
+1. Verifica que el push fue a `main` (o usa una etiqueta `v*`)
 2. Verifica que el GITHUB_TOKEN tenga permisos de `contents: write`
 3. Revisa los logs del workflow
 
@@ -71,4 +76,4 @@ git push origin v1.0.3
 ---
 
 **¡Listo!** El sistema CI/CD está configurado para compilar el software e
-instalador final de Windows automáticamente.
+instalador final de Windows y publicar un Release por cada cambio enviado.

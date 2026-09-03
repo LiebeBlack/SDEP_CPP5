@@ -852,6 +852,169 @@ class PDFGenerator:
         
         doc.build(story)
         return output_path
+    
+    def generate_reporte_incidencias(self, filas: List[Dict], output_path: str,
+                                     titulo: Optional[str] = None) -> str:
+        """
+        Genera un reporte de incidencias y permisos
+        
+        Args:
+            filas: Lista de diccionarios con los datos de cada incidencia
+                (claves: nombre_empleado, tipo_incidencia, fecha_inicio,
+                fecha_fin, dias_solicitados, estado, motivo)
+            output_path: Ruta donde se guardará el PDF
+            titulo: Título adicional (empleado o periodo, opcional)
+            
+        Returns:
+            Ruta del PDF generado
+            
+        Raises:
+            ValueError: Si la lista está vacía
+        """
+        if not filas:
+            raise ValueError("No hay incidencias para incluir en el reporte")
+        
+        config = self._get_configuracion()
+        
+        doc = SimpleDocTemplate(
+            output_path, pagesize=A4,
+            rightMargin=36, leftMargin=36, topMargin=48, bottomMargin=30)
+        
+        story = []
+        story.append(Paragraph(
+            config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+            self.styles['CustomTitle']))
+        story.append(Spacer(1, 0.15*inch))
+        story.append(Paragraph("REPORTE DE INCIDENCIAS Y PERMISOS", self.styles['CustomTitle']))
+        if titulo:
+            story.append(Paragraph(titulo, self.styles['CustomData']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        encabezados = ["No.", "Empleado", "Tipo", "Desde", "Hasta", "Días", "Estado", "Motivo"]
+        tabla_datos = [encabezados]
+        total_dias = 0
+        
+        for indice, fila in enumerate(filas, start=1):
+            dias = self._flotante(fila.get("dias_solicitados"))
+            total_dias += dias
+            motivo = str(fila.get("motivo", "") or "")
+            if len(motivo) > 40:
+                motivo = motivo[:40] + "..."
+            tabla_datos.append([
+                str(indice),
+                str(fila.get("nombre_empleado", "")),
+                str(fila.get("tipo_incidencia", "")),
+                format_date(fila.get("fecha_inicio")),
+                format_date(fila.get("fecha_fin")),
+                str(int(dias)) if dias == int(dias) else f"{dias:g}",
+                str(fila.get("estado", "")).capitalize(),
+                motivo,
+            ])
+        
+        tabla = Table(tabla_datos, repeatRows=1,
+                      colWidths=[0.4*inch, 1.5*inch, 1.0*inch, 0.95*inch,
+                                 0.95*inch, 0.5*inch, 0.9*inch, 1.2*inch])
+        tabla.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 7.5),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+            ('GRID', (0, 0), (-1, -1), 0.4, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(tabla)
+        story.append(Spacer(1, 0.15*inch))
+        story.append(Paragraph(
+            f"Total de incidencias: <b>{len(filas)}</b> | Días solicitados: <b>{int(total_dias)}</b>",
+            self.styles['CustomData']))
+        
+        doc.build(story)
+        return output_path
+    
+    def generate_reporte_vencimientos(self, filas: List[Dict], output_path: str,
+                                      titulo: Optional[str] = None) -> str:
+        """
+        Genera un control de vencimientos de documentos
+        
+        Args:
+            filas: Lista de diccionarios con los datos de cada documento
+                (claves: nombre_empleado, tipo_documento, titulo,
+                fecha_vencimiento, estado)
+            output_path: Ruta donde se guardará el PDF
+            titulo: Título adicional (opcional)
+            
+        Returns:
+            Ruta del PDF generado
+            
+        Raises:
+            ValueError: Si la lista está vacía
+        """
+        if not filas:
+            raise ValueError("No hay documentos para incluir en el control")
+        
+        config = self._get_configuracion()
+        
+        doc = SimpleDocTemplate(
+            output_path, pagesize=A4,
+            rightMargin=36, leftMargin=36, topMargin=48, bottomMargin=30)
+        
+        story = []
+        story.append(Paragraph(
+            config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+            self.styles['CustomTitle']))
+        story.append(Spacer(1, 0.15*inch))
+        story.append(Paragraph("CONTROL DE VENCIMIENTOS DE DOCUMENTOS", self.styles['CustomTitle']))
+        if titulo:
+            story.append(Paragraph(titulo, self.styles['CustomData']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        encabezados = ["No.", "Empleado", "Tipo", "Título", "Vence", "Estado"]
+        tabla_datos = [encabezados]
+        conteos = {"Vigente": 0, "Por vencer": 0, "Vencido": 0}
+        
+        for indice, fila in enumerate(filas, start=1):
+            estado = str(fila.get("estado", "")).capitalize()
+            conteos[estado] = conteos.get(estado, 0) + 1
+            titulo_doc = str(fila.get("titulo", "") or "")
+            if len(titulo_doc) > 45:
+                titulo_doc = titulo_doc[:45] + "..."
+            tabla_datos.append([
+                str(indice),
+                str(fila.get("nombre_empleado", "")),
+                str(fila.get("tipo_documento", "")),
+                titulo_doc,
+                format_date(fila.get("fecha_vencimiento")),
+                estado,
+            ])
+        
+        tabla = Table(tabla_datos, repeatRows=1,
+                      colWidths=[0.4*inch, 1.8*inch, 1.1*inch, 2.1*inch,
+                                 0.95*inch, 1.0*inch])
+        tabla.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 7.5),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+            ('GRID', (0, 0), (-1, -1), 0.4, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(tabla)
+        story.append(Spacer(1, 0.15*inch))
+        resumen = " | ".join(f"{nombre}: <b>{cantidad}</b>" for nombre, cantidad in conteos.items())
+        story.append(Paragraph(
+            f"Total de documentos: <b>{len(filas)}</b> | {resumen}",
+            self.styles['CustomData']))
+        
+        doc.build(story)
+        return output_path
 
 
 # Instancia global del generador de PDFs

@@ -293,6 +293,12 @@ class PDFGenerator:
             """
             story.append(Paragraph(especialidad, self.styles['CustomBody']))
         
+        if empleado.titulo_secundaria:
+            titulo_sec = f"""
+            Con título de bachiller en <b>{empleado.titulo_secundaria}</b>.
+            """
+            story.append(Paragraph(titulo_sec, self.styles['CustomBody']))
+        
         if empleado.titulo_obtenido:
             titulo = f"""
             Obteniendo el título de <b>{empleado.titulo_obtenido}</b>.

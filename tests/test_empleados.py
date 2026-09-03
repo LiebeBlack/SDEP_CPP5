@@ -84,6 +84,42 @@ def test_busqueda_por_nombre_y_cedula(session):
     assert len(servicio.buscar_empleados("Inexistente")) == 0
 
 
+def test_busqueda_insensible_a_mayusculas_y_tildes(session):
+    servicio = EmpleadoService(session)
+    servicio.crear_empleado(_datos_empleado(cedula="7770001", apellidos="Gómez"))
+    # Sin tilde, en minúsculas: debe encontrar a "Gómez"
+    assert len(servicio.buscar_empleados("gomez")) >= 1
+    # Mayúsculas sin tilde
+    assert len(servicio.buscar_empleados("GOMEZ")) >= 1
+    # Nombre parcial sin tilde
+    assert len(servicio.buscar_empleados("ana")) >= 1
+
+
+def test_busqueda_solo_empleados_activos(session):
+    servicio = EmpleadoService(session)
+    emp = servicio.crear_empleado(_datos_empleado(cedula="7770002", nombres="Carlos"))
+    servicio.eliminar_empleado(emp.id)
+    session.expire_all()
+    assert servicio.buscar_empleados("Carlos") == []
+
+
+def test_busqueda_combinada_con_tipo(session):
+    servicio = EmpleadoService(session)
+    servicio.crear_empleado(_datos_empleado(cedula="7770003", nombres="Pedro"))
+    servicio.crear_empleado(_datos_empleado(
+        cedula="7770004", nombres="Pedro",
+        tipo_empleado=TipoEmpleado.ADMINISTRATIVO.value,
+        apellidos="Ruiz",
+    ))
+    # Solo docentes llamados Pedro
+    docentes = servicio.listar_filtrados({"busqueda": "Pedro", "tipo": "docente", "activo": 1})
+    assert len(docentes) == 1
+    assert docentes[0].apellidos == "Gómez"
+    # Todos los Pedro (dos tipos)
+    todos = servicio.listar_filtrados({"busqueda": "Pedro", "activo": 1})
+    assert len(todos) == 2
+
+
 def test_estadisticas(session):
     servicio = EmpleadoService(session)
     servicio.crear_empleado(_datos_empleado())
@@ -128,3 +164,67 @@ def test_actualizar_foto(session, storage):
     assert servicio.actualizar_foto(empleado.id, ruta)
     session.expire_all()
     assert servicio.obtener_empleado(empleado.id).foto_ruta == ruta
+
+
+def test_campos_opcionales_adicionales(session):
+    """Los campos opcionales (bancarios, salud, familia, académicos) se persisten"""
+    servicio = EmpleadoService(session)
+    datos = _datos_empleado(cedula="5550001", **{
+        "institucion_bancaria": "Banco Nacional",
+        "numero_cuenta": "123456789",
+        "tipo_cuenta": "ahorro",
+        "carnet_discapacidad": "DISC-001",
+        "enfermedades_preexistentes": "Asma",
+        "alergias_medicamentosas": "Penicilina",
+        "alergias_alimentarias": "Maní",
+        "tipo_contratacion": "indefinido",
+        "titulo_secundaria": "Bachiller en Ciencias",
+        "hijos": "María (10 años, C.I. 12345678)",
+    })
+    empleado = servicio.crear_empleado(datos)
+    session.expire_all()
+    emp = servicio.obtener_empleado(empleado.id)
+    assert emp.institucion_bancaria == "Banco Nacional"
+    assert emp.numero_cuenta == "123456789"
+    assert emp.tipo_cuenta == "ahorro"
+    assert emp.carnet_discapacidad == "DISC-001"
+    assert emp.enfermedades_preexistentes == "Asma"
+    assert emp.alergias_medicamentosas == "Penicilina"
+    assert emp.alergias_alimentarias == "Maní"
+    assert emp.tipo_contratacion == "indefinido"
+    assert emp.titulo_secundaria == "Bachiller en Ciencias"
+    assert "María" in emp.hijos
+
+
+def test_campos_opcionales_vacios_son_none(session):
+    """Los campos opcionales vacíos se guardan como NULL"""
+    servicio = EmpleadoService(session)
+    datos = _datos_empleado(cedula="5550002")
+    datos.update({
+        "institucion_bancaria": "",
+        "numero_cuenta": "",
+        "tipo_contratacion": "",
+        "hijos": "",
+    })
+    empleado = servicio.crear_empleado(datos)
+    session.expire_all()
+    emp = servicio.obtener_empleado(empleado.id)
+    assert emp.institucion_bancaria is None
+    assert emp.numero_cuenta is None
+    assert emp.tipo_contratacion is None
+    assert emp.hijos is None
+
+
+def test_actualizar_campos_opcionales(session):
+    """La actualización persiste los campos opcionales nuevos"""
+    servicio = EmpleadoService(session)
+    empleado = servicio.crear_empleado(_datos_empleado(cedula="5550003"))
+    servicio.actualizar_empleado(empleado.id, {
+        "institucion_bancaria": "Banco del Pacífico",
+        "tipo_contratacion": "fijo",
+    })
+    session.expire_all()
+    emp = servicio.obtener_empleado(empleado.id)
+    assert emp.institucion_bancaria == "Banco del Pacífico"
+    assert emp.tipo_contratacion == "fijo"
+    assert emp.numero_cuenta is None

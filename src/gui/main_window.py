@@ -6,7 +6,7 @@ Ventana principal de la aplicación (requiere sesión iniciada)
 from typing import Optional
 
 import customtkinter as ctk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 
 from src.config import settings, db_config
 from src.models import Usuario
@@ -16,6 +16,7 @@ from src.services.documento_service import DocumentoService
 from src.services.incidencia_service import IncidenciaService
 from src.services.pago_service import PagoService
 from src.services.configuracion_service import ConfiguracionService
+from src.gui.theme import setup_ui_raiz, enable_windows_dpi_awareness
 from src.gui.frames import (
     DashboardFrame, EmpleadosFrame, DocumentosFrame,
     IncidenciasFrame, NominaFrame, ConfiguracionFrame,
@@ -58,46 +59,26 @@ ROL_LABELS = {
 
 
 def configure_treeview_style():
-    """Configura el estilo de Treeview para modo oscuro"""
-    try:
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure("Treeview",
-                        background="#2b2b2b",
-                        foreground="white",
-                        fieldbackground="#2b2b2b",
-                        rowheight=28,
-                        borderwidth=0,
-                        font=('Arial', 10))
-        style.configure("Treeview.Heading",
-                        background="#3c3c3c",
-                        foreground="white",
-                        relief="flat",
-                        borderwidth=0,
-                        font=('Arial', 10, 'bold'))
-        style.map("Treeview",
-                  background=[('selected', '#1f538d')],
-                  foreground=[('selected', 'white')])
-        style.map("Treeview.Heading",
-                  background=[('active', '#4c4c4c')])
-        style.configure("Vertical.TScrollbar",
-                        background="#3c3c3c",
-                        troughcolor="#2b2b2b",
-                        bordercolor="#2b2b2b",
-                        arrowcolor="white")
-    except Exception:
-        pass
+    """
+    Configura el estilo oscuro de la UI (compatibilidad)
+
+    Delega en src.gui.theme para que Treeview, Combobox y sus menús
+    desplegables compartan el mismo tema.
+    """
+    from src.gui.theme import configure_ttk_styles
+    configure_ttk_styles()
 
 
 class MainWindow(ctk.CTk):
     """Ventana principal del sistema"""
 
     def __init__(self, current_user: Optional[Usuario] = None):
+        enable_windows_dpi_awareness()
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
         super().__init__()
-        configure_treeview_style()
+        setup_ui_raiz(self)
 
         self._exit_status = "exit"
 

@@ -60,32 +60,33 @@ El sistema sigue una arquitectura en capas separando la lógica de negocio, acce
 - **Capa de GUI**: Interfaz gráfica con CustomTkinter
 - **Capa de Utilidades**: Funciones auxiliares y helpers
 
-## 🔄 CI/CD Pipeline
+## 🔄 CI/CD Pipeline (GitHub Actions)
 
-Este proyecto cuenta con un sistema CI/CD automatizado mediante GitHub Actions:
+El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
 
-### Características del CI/CD
-- ✅ **Pre-releases Automáticas**: Cada push a develop crea un release pre-release
-- ✅ **Construcción Automatizada**: Generación de ejecutables Windows
-- ✅ **Releases Controlados**: Releases oficiales con tags manuales
-- ✅ **Ejecutables Automáticos**: Cada release incluye el ejecutable
+1. **Pruebas**: ejecuta la suite completa de pytest (aislada) en cada push.
+2. **Compilación**: en `windows-latest`, empaqueta la app con PyInstaller
+   (directorio `onedir` + icono + metadatos de versión).
+3. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
+   Inno Setup (asistente en español/inglés, accesos directos, desinstalador).
+4. **Artefactos**: instala Setup.exe y ZIP portable como artefactos del run.
+5. **Release**: al crear una etiqueta `vX.Y.Z` publica automáticamente un
+   Release de GitHub con el instalador y la versión portable.
 
-### Workflows Disponibles
-- **Build Workflow**: Construcción + Pre-releases automáticas (push a develop)
-- **Release Workflow**: Releases oficiales con ejecutables (tags manuales)
+Para publicar una versión final:
+```bash
+git tag v1.0.3
+git push origin v1.0.3
+```
 
-### Documentación del CI/CD
-- 📖 [Guía Rápida de Configuración](QUICKSTART_CICD.md)
-- 🔧 [Workflows GitHub Actions](.github/workflows/README.md)
-- **Notifications**: Alertas y monitoreo en tiempo real
+## 🔧 Instalación
 
-### Documentación del CI/CD
-- 📖 [Documentación Completa CI/CD](CI_CD_DOCUMENTATION.md)
-- ⚡ [Guía Rápida de Configuración](QUICKSTART_CICD.md)
-- 🔧 [Workflows GitHub Actions](.github/workflows/README.md)
-- 🤝 [Guía de Contribución](CONTRIBUTING.md)
+### Instalador para usuarios finales (Windows 10/11)
 
-## �🔧 Instalación
+Descargue `SistemaGestionPersonal-Setup-<versión>.exe` desde el Release o
+los artefactos del workflow y ejecútelo. Los datos de la aplicación
+(base de datos, documentos, respaldos) se guardan en
+`%LOCALAPPDATA%\SistemaGestionPersonal`, independientes de la instalación.
 
 ### Entorno de Desarrollo
 
@@ -112,19 +113,26 @@ pip install -r requirements.txt
 python src/main.py
 ```
 
-### Construcción de Ejecutable
+### Construcción de Ejecutable e Instalador (local)
 
-1. Instalar dependencias de desarrollo:
+1. Instalar dependencias de construcción:
 ```bash
-pip install -r requirements-dev.txt
+pip install pyinstaller
+# Instale además Inno Setup 6: https://jrsoftware.org/isdl.php
+# o con Chocolatey: choco install innosetup -y
 ```
 
-2. Ejecutar script de construcción:
+2. Ejecutar el script de construcción:
 ```bash
-python build.py
+python build.py        # ejecutable + instalador
+python build.py --exe  # solo el ejecutable
 ```
 
-3. El ejecutable se generará en `dist/SistemaGestionPersonal/`
+3. Resultados:
+   - Ejecutable: `dist/SistemaGestionPersonal/`
+   - Instalador: `dist_installer/SistemaGestionPersonal-Setup-<versión>.exe`
+
+> La versión se lee del archivo `VERSION` (fuente única).
 
 ## 📁 Estructura del Proyecto
 
@@ -303,5 +311,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 1.0.2  
+**Versión**: 1.0.3  
 **Última actualización**: 2026

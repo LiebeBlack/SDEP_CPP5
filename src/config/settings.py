@@ -11,23 +11,31 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-APP_VERSION_DEFAULT = "1.0.2"
+# Nombre de la carpeta de datos cuando la app está instalada en Windows
+APP_DATA_DIR_NAME = "SistemaGestionPersonal"
+
+APP_VERSION_DEFAULT = "1.0.3"
 
 
 def _resolve_base_dir() -> Path:
     """
-    Resuelve el directorio base de la aplicación
+    Resuelve el directorio base de la aplicación (dónde viven los datos)
 
-    Prioridad: variable de entorno SGP_BASE_DIR (datos portátiles o
-    ejecución de pruebas), ejecutable empaquetado (PyInstaller) y, en
-    desarrollo, la raíz del repositorio. En un ejecutable la ruta del
-    código queda en un directorio temporal (_MEIPASS); los datos deben
-    vivir junto al ejecutable para no perderse al salir.
+    Prioridad:
+      1. SGP_BASE_DIR: ruta explícita (modo portable o pruebas).
+      2. Ejecutable empaquetado (PyInstaller): %LOCALAPPDATA%/... si
+         está disponible. Una app instalada en "Program Files" no puede
+         escribir junto al ejecutable; los datos del usuario van al
+         perfil de Windows.
+      3. Desarrollo: la raíz del repositorio.
     """
     override = os.getenv("SGP_BASE_DIR")
     if override:
         return Path(override).resolve()
     if getattr(sys, "frozen", False):
+        local_data = os.getenv("LOCALAPPDATA")
+        if local_data:
+            return Path(local_data) / APP_DATA_DIR_NAME
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent.parent
 

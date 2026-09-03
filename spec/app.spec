@@ -1,63 +1,77 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for Sistema de Gestión de Personal
+PyInstaller spec para "Sistema de Gestión de Personal".
+
+Genera una carpeta distribuible (onedir) en dist/SistemaGestionPersonal
+que luego se empaqueta en un instalador con Inno Setup:
+
+    pyinstaller --noconfirm --clean spec/app.spec
+
+El modo onedir evita la extracción a TEMP de cada arranque (onefile),
+reduce falsos positivos antivirus y acelera el inicio.
 """
 
-import os
-import sys
+from pathlib import Path
 
-# Get the directory containing this spec file
-spec_root = os.path.dirname(SPEC)
-# Get the project root (parent of spec directory)
-project_root = os.path.dirname(spec_root)
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-block_cipher = None
+spec_root = Path(SPEC).resolve().parent
+project_root = spec_root.parent
+
+app_name = "SistemaGestionPersonal"
+icono = str(project_root / "assets" / "app.ico")
+version_resource = str(project_root / "spec" / "version_info.txt")
+
+# customtkinter incluye temas y recursos JSON que deben empaquetarse
+# junto al código; se recolectan explícitamente.
+datas = collect_data_files("customtkinter")
+
+# Importaciones dinámicas/opcionales que conviene garantizar
+hiddenimports = [
+    "customtkinter",
+    "PIL",
+    "PIL._tkinter_finder",
+    "reportlab",
+    "python_dotenv",
+    "sqlalchemy.dialects.sqlite",
+    *collect_submodules("reportlab.graphics"),
+]
 
 a = Analysis(
-    [os.path.join(project_root, 'src', 'main.py')],
-    pathex=[project_root],
+    [str(project_root / "src" / "main.py")],
+    pathex=[str(project_root)],
     binaries=[],
-    datas=[
-        (os.path.join(project_root, 'src'), 'src'),
-    ],
-    hiddenimports=[
-        'customtkinter',
-        'PIL',
-        'reportlab',
-        'SQLAlchemy',
-        'python_dotenv',
-    ],
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=["PyQt5", "PyQt6", "PySide2", "PySide6", "matplotlib", "numpy"],
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
-    name='SistemaGestionPersonal',
+    exclude_binaries=True,
+    name=app_name,
     debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=None,
+    icon=icono,
+    version=version_resource,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    name=app_name,
 )

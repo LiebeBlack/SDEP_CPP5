@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sistema-gestion-personal"
-version = "1.0.2"
+version = "1.0.3"
 description = "Sistema de Gestión de Personal y Nómina para Instituciones Educativas"
 readme = "README.md"
 requires-python = ">=3.10"

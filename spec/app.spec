@@ -32,7 +32,7 @@ hiddenimports = [
     "PIL",
     "PIL._tkinter_finder",
     "reportlab",
-    "python_dotenv",
+    "dotenv",
     "sqlalchemy.dialects.sqlite",
     *collect_submodules("reportlab.graphics"),
 ]

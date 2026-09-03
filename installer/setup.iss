@@ -12,6 +12,8 @@
 
 #define MyAppName "Sistema de Gestión de Personal"
 #define MyAppExeName "SistemaGestionPersonal.exe"
+; Nombre de la carpeta de salida de PyInstaller (spec/app.spec)
+#define MyDistDir "SistemaGestionPersonal"
 #define MyAppPublisher "Sistema de Gestión de Personal"
 #define MyAppURL "https://github.com/LiebeBlack/SDEP_CPP5"
 #define MyAppId "{{8C1E9F5A-3B6D-4A2E-9C41-D7F06B2A5E91}"
@@ -54,7 +56,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\dist\{#MyAppName}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\{#MyDistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

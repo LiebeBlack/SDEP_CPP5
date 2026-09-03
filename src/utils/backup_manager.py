@@ -77,6 +77,35 @@ class BackupManager:
             logger.error(f"Error calculando checksum: {e}")
             return ""
     
+    @staticmethod
+    def _online_copy(source: Path, destination: Path) -> None:
+        """
+        Copia una base de datos SQLite de forma consistente
+
+        Usa la API sqlite3 .backup() que produce una copia correcta
+        aunque existan conexiones activas al archivo origen.
+        """
+        import sqlite3
+
+        temp_path = destination.with_name(destination.name + ".tmp")
+        try:
+            src_conn = sqlite3.connect(str(source))
+            try:
+                dst_conn = sqlite3.connect(str(temp_path))
+                try:
+                    src_conn.backup(dst_conn)
+                finally:
+                    dst_conn.close()
+            finally:
+                src_conn.close()
+            shutil.move(str(temp_path), str(destination))
+        finally:
+            if temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass
+
     def _compress_file(self, source: Path, destination: Path) -> bool:
         """Comprime un archivo usando gzip"""
         try:
@@ -121,15 +150,9 @@ class BackupManager:
         backup_path = self.backup_dir / backup_filename
         
         try:
-            # Cerrar conexiones activas antes del backup
-            from src.config import db_config
-            db_config.close_session(db_config.get_session())
-            
-            # Copiar base de datos
-            shutil.copy2(self.db_path, backup_path)
-            
-            # Calcular checksum
-            checksum = self._calculate_checksum(backup_path)
+            # Respaldo consistente usando la API de copia de SQLite,
+            # segura aunque haya conexiones abiertas al archivo.
+            self._online_copy(self.db_path, backup_path)
             
             # Comprimir si se solicita
             if compress:
@@ -138,6 +161,10 @@ class BackupManager:
                     backup_path.unlink()  # Eliminar original
                     backup_path = compressed_path
                     backup_filename = compressed_path.name
+            
+            # Calcular checksum y tamaño sobre el archivo almacenado final
+            checksum = self._calculate_checksum(backup_path)
+            original_checksum = self._calculate_checksum(self.db_path)
             
             # Guardar metadatos
             backup_info = {
@@ -148,7 +175,8 @@ class BackupManager:
                 "size_bytes": backup_path.stat().st_size,
                 "checksum": checksum,
                 "compressed": compress,
-                "original_db_checksum": self._calculate_checksum(self.db_path)
+                "original_db_checksum": original_checksum,
+                "version": 2
             }
             
             self.metadata[backup_name] = backup_info
@@ -185,10 +213,6 @@ class BackupManager:
             raise FileNotFoundError(f"Archivo de backup no encontrado: {backup_path}")
         
         try:
-            # Cerrar conexiones activas
-            from src.config import db_config
-            db_config.close_session(db_config.get_session())
-            
             # Crear backup del estado actual antes de restaurar
             current_backup = f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             self.create_backup(current_backup, compress=False)
@@ -201,13 +225,40 @@ class BackupManager:
                     raise Exception("Error descomprimiendo backup")
             
             # Verificar checksum si se solicita
-            if verify_checksum and backup_info["checksum"]:
-                current_checksum = self._calculate_checksum(temp_restore_path)
-                if current_checksum != backup_info["checksum"]:
-                    raise Exception("Checksum verification failed: backup may be corrupted")
+            if verify_checksum and backup_info.get("checksum"):
+                if backup_info.get("version") == 2:
+                    # v2: el checksum corresponde al archivo guardado (comprimido o no)
+                    if self._calculate_checksum(backup_path) != backup_info["checksum"]:
+                        raise Exception("Checksum verification failed: backup may be corrupted")
+                    if (
+                        backup_info.get("original_db_checksum")
+                        and backup_info.get("compressed")
+                        and self._calculate_checksum(temp_restore_path)
+                        != backup_info["original_db_checksum"]
+                    ):
+                        raise Exception(
+                            "Checksum verification failed: contenido del backup inconsistente")
+                elif backup_info.get("compressed"):
+                    # Legado: el checksum correspondía al contenido descomprimido
+                    if self._calculate_checksum(temp_restore_path) != backup_info["checksum"]:
+                        raise Exception("Checksum verification failed: backup may be corrupted")
+            
+            # Liberar conexiones del motor antes de reemplazar el archivo
+            try:
+                from src.config import db_config
+                db_config.SessionLocal.remove()
+                db_config.engine.dispose()
+            except Exception:
+                pass
             
             # Restaurar base de datos
             shutil.copy2(temp_restore_path, self.db_path)
+            
+            try:
+                from src.config import db_config
+                db_config.engine.dispose()
+            except Exception:
+                pass
             
             # Limpiar archivo temporal
             if temp_restore_path != backup_path and temp_restore_path.exists():
@@ -289,20 +340,21 @@ class BackupManager:
         try:
             backups = self.list_backups()
             
-            # Eliminar backups por antigüedad
+            # Eliminar backups por antigüedad (iterar sobre una copia)
             cutoff_date = datetime.now() - timedelta(days=self.backup_retention_days)
+            pendientes = list(backups)
             
-            for backup in backups:
+            for backup in pendientes:
                 backup_date = datetime.strptime(backup["timestamp"], "%Y%m%d_%H%M%S")
+                excede_maximo = len(pendientes) > self.max_backups
                 
-                # Eliminar si es muy antiguo o si excedemos el máximo
-                if backup_date < cutoff_date or len(backups) > self.max_backups:
+                if backup_date < cutoff_date or excede_maximo:
                     if self.delete_backup(backup["name"]):
                         stats["deleted_count"] += 1
                         stats["deleted_backups"].append(backup["name"])
-                        backups.remove(backup)
+                        pendientes.remove(backup)
             
-            stats["total_after"] = len(backups)
+            stats["total_after"] = len(pendientes)
             logger.info(f"Rotación de backups completada: {stats['deleted_count']} eliminados")
             
         except Exception as e:
@@ -340,14 +392,36 @@ class BackupManager:
             
             # Verificar tamaño
             current_size = backup_path.stat().st_size
-            result["size_correct"] = current_size == backup_info["size_bytes"]
+            result["size_correct"] = current_size == backup_info.get("size_bytes", -1)
             
-            # Verificar checksum
-            if backup_info["checksum"]:
-                current_checksum = self._calculate_checksum(backup_path)
-                result["checksum_valid"] = current_checksum == backup_info["checksum"]
-            
-            result["integrity_ok"] = result["exists"] and result["checksum_valid"] and result["size_correct"]
+            # Verificar checksum según el esquema de metadatos
+            if backup_info.get("checksum"):
+                if backup_info.get("version") == 2:
+                    current_checksum = self._calculate_checksum(backup_path)
+                    result["checksum_valid"] = current_checksum == backup_info["checksum"]
+                    result["integrity_ok"] = (
+                        result["exists"] and result["size_correct"]
+                        and result["checksum_valid"]
+                    )
+                elif backup_info.get("compressed"):
+                    # Legado: verificar contra el contenido descomprimido
+                    try:
+                        with gzip.open(backup_path, "rb") as f:
+                            contenido = hashlib.sha256()
+                            for bloque in iter(lambda: f.read(65536), b""):
+                                contenido.update(bloque)
+                        result["checksum_valid"] = (
+                            contenido.hexdigest() == backup_info["checksum"]
+                        )
+                    except Exception:
+                        result["checksum_valid"] = False
+                    result["integrity_ok"] = (
+                        result["exists"] and result["checksum_valid"]
+                    )
+                else:
+                    current_checksum = self._calculate_checksum(backup_path)
+                    result["checksum_valid"] = current_checksum == backup_info["checksum"]
+                    result["integrity_ok"] = result["checksum_valid"] and result["size_correct"]
             
         except Exception as e:
             logger.error(f"Error verificando integridad: {e}")

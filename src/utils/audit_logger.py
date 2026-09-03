@@ -18,6 +18,8 @@ from typing import Optional, Dict, List, Any
 from enum import Enum
 import traceback
 
+logger = logging.getLogger(__name__)
+
 
 class AuditEventType(Enum):
     """Tipos de eventos de auditoría"""
@@ -69,6 +71,36 @@ class AuditLogger:
         # Registros en memoria para alertas
         self.recent_events = []
         self.max_recent_events = 100
+
+        # Cache de la configuración 'audit_enabled'
+        self._audit_enabled = True
+        self._audit_cache_ts = None
+
+    def _auditoria_habilitada(self) -> bool:
+        """
+        Verifica (con caché) si la auditoría está habilitada en la configuración
+        """
+        import time
+        try:
+            now = time.monotonic()
+            if self._audit_cache_ts is None or now - self._audit_cache_ts > 60:
+                self._audit_cache_ts = now
+                self._audit_enabled = True
+                from src.config import db_config
+                from src.models.configuracion import Configuracion
+                session = db_config.get_session()
+                try:
+                    config = session.query(Configuracion).filter(
+                        Configuracion.clave == "audit_enabled").first()
+                    if config is not None and config.valor is not None:
+                        self._audit_enabled = str(config.valor).strip().lower() in (
+                            "true", "1", "yes", "on", "si", "verdadero")
+                finally:
+                    db_config.close_session(session)
+        except Exception:
+            # Si no se puede consultar, se mantiene el último valor conocido
+            pass
+        return self._audit_enabled
     
     def _setup_loggers(self):
         """Configura los diferentes loggers"""
@@ -118,7 +150,8 @@ class AuditLogger:
                   details: Optional[Dict] = None,
                   ip_address: Optional[str] = None,
                   success: bool = True,
-                  error_message: Optional[str] = None):
+                  error_message: Optional[str] = None,
+                  force: bool = False):
         """
         Registra un evento de auditoría
         
@@ -131,7 +164,11 @@ class AuditLogger:
             ip_address: Dirección IP del usuario
             success: Si la operación fue exitosa
             error_message: Mensaje de error si falló
+            force: Registrar aunque la auditoría esté deshabilitada
         """
+        if not force and not self._auditoria_habilitada():
+            return
+
         event_data = {
             "timestamp": datetime.now().isoformat(),
             "event_type": event_type.value,
@@ -337,27 +374,54 @@ class AuditLogger:
     def export_audit_log(self, start_date: str, end_date: str, 
                         output_file: Optional[str] = None) -> str:
         """
-        Exporta logs de auditoría a un archivo
+        Exporta logs de auditoría a un archivo JSON
         
         Args:
             start_date: Fecha de inicio (YYYY-MM-DD)
             end_date: Fecha de fin (YYYY-MM-DD)
-            output_file: Archivo de salida (opcional)
+            output_file: Nombre del archivo de salida (opcional)
             
         Returns:
             Ruta del archivo exportado
         """
+        import json as _json
+
         if not output_file:
             output_file = f"audit_export_{start_date}_{end_date}.json"
         
-        # Importar settings aquí para evitar problemas de inicialización
         from src.config import settings
-        
         output_path = Path(settings.base_dir) / "exports" / output_file
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Aquí se implementaría la lectura de archivos de log
-        # Por ahora retornamos un placeholder
+
+        # Recolectar eventos de los archivos diarios dentro del rango
+        eventos = []
+        try:
+            patron = "audit_*.log"
+            for archivo in sorted(self.audit_dir.glob(patron)):
+                fecha_archivo = archivo.stem.split("_")[-1]  # YYYYMMDD
+                if len(fecha_archivo) != 8:
+                    continue
+                fecha_iso = f"{fecha_archivo[:4]}-{fecha_archivo[4:6]}-{fecha_archivo[6:]}"
+                if start_date <= fecha_iso <= end_date:
+                    with open(archivo, "r", encoding="utf-8") as f:
+                        for linea in f:
+                            linea = linea.strip()
+                            if not linea:
+                                continue
+                            # El formato es: fecha - nivel - JSON
+                            partes = linea.split(" - ", 2)
+                            if len(partes) == 3:
+                                try:
+                                    eventos.append(_json.loads(partes[2]))
+                                except ValueError:
+                                    continue
+        except Exception as e:
+            logger.error(f"Error exportando auditoría: {e}")
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            _json.dump(eventos, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"Auditoría exportada: {len(eventos)} eventos → {output_path}")
         return str(output_path)
     
     def get_security_summary(self, hours: int = 24) -> Dict:

@@ -201,13 +201,25 @@ def cleanup_application():
             except Exception as e:
                 logger.warning(f"Error cerrando sesión de base de datos: {e}")
         
-        # Crear backup al cerrar (si está habilitado)
+        # Crear backup al cerrar (si está habilitado en la configuración)
         try:
-            from src.utils.backup_manager import get_backup_manager
-            backup_mgr = get_backup_manager()
-            if backup_mgr:
-                backup_info = backup_mgr.create_backup("auto_shutdown", compress=True)
-                logger.info(f"Backup automático creado: {backup_info.get('name')}")
+            from src.config import db_config as _db
+            session = _db.get_session()
+            try:
+                from src.repositories import ConfiguracionRepository
+                habilitado = ConfiguracionRepository(session).get_valor(
+                    "backup_enabled", True)
+            finally:
+                _db.close_session(session)
+
+            if not habilitado:
+                logger.info("Backup al cerrar omitido (deshabilitado en configuración)")
+            else:
+                from src.utils.backup_manager import get_backup_manager
+                backup_mgr = get_backup_manager()
+                if backup_mgr:
+                    backup_info = backup_mgr.create_backup("auto_shutdown", compress=True)
+                    logger.info(f"Backup automático creado: {backup_info.get('name')}")
         except Exception as e:
             logger.warning(f"No se pudo crear backup al cerrar: {e}")
         

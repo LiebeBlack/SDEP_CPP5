@@ -38,9 +38,6 @@ def build_exe():
             "--hidden-import=PIL",
             "--hidden-import=reportlab",
             "--hidden-import=SQLAlchemy",
-            "--hidden-import=pydantic",
-            "--hidden-import=pydantic_core",
-            "--hidden-import=typing_extensions",
             "--hidden-import=python_dotenv",
             "--clean",
             "src/main.py"

@@ -21,6 +21,16 @@ from src.utils.helpers import ensure_directory_exists, format_date
 # Caracteres de control ilegales en celdas XLSX (todo menos tab/CR/LF)
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
+# openpyxl se importa en el nivel superior (aunque opcional) para que
+# PyInstaller lo incluya en el ejecutable empaquetado.
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.utils import get_column_letter
+    _OPENPYXL_DISPONIBLE = True
+except ImportError:  # pragma: no cover
+    _OPENPYXL_DISPONIBLE = False
+
 
 def _valor_plano(valor):
     """Normaliza un valor de celda a texto, número o fecha legible"""
@@ -92,9 +102,8 @@ def escribir_xlsx(datos: Sequence[Dict], ruta: str, hoja: str = "Datos") -> str:
     Returns:
         Ruta del archivo generado
     """
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font
-    from openpyxl.utils import get_column_letter
+    if not _OPENPYXL_DISPONIBLE:
+        raise ValueError("openpyxl no está instalado. Instale el paquete para exportar a Excel.")
 
     encabezados = _encabezados(datos)
     filas = _filas_normalizadas(datos)

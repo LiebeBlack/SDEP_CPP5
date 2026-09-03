@@ -108,6 +108,18 @@ Al iniciar el sistema por primera vez, deberá configurar los datos básicos de 
 3. Confirme la acción
    - **Nota**: Esto solo desactiva el empleado, no elimina su información
 
+### Ficha del Empleado (PDF)
+
+1. Haga clic derecho sobre el empleado en la lista
+2. Elija **Ficha del Empleado (PDF)**
+3. Guarde el archivo; incluye datos personales, de contacto, laborales, académicos, bancarios, de salud y familiares
+
+### Exportar Listado de Empleados
+
+1. Haga clic en **Exportar** (junto a Reporte PDF)
+2. Elija el formato: **Excel (.xlsx)** o **CSV**
+3. El archivo incluye los empleados visibles según la búsqueda y el filtro aplicados
+
 ## Gestión Documental
 
 ### Cargar Documentos
@@ -231,6 +243,20 @@ El sistema calcula automáticamente:
    - Desglose de ingresos y deducciones
    - Monto neto a recibir
 4. Guarde o imprima el recibo
+
+### Planilla de Nómina (PDF)
+
+1. Aplique el filtro de estado deseado (Todos/Pendientes/Pagados)
+2. Haga clic en **Planilla PDF**
+3. El sistema genera el resumen del periodo con:
+   - Un fila por empleado: salario base, extras, ISSS, AFP, ISR, otras deducciones y neto
+   - Fila de **totales** al final
+
+### Exportar Pagos
+
+1. Haga clic en **Exportar** (junto a Planilla PDF)
+2. Elija **Excel (.xlsx)** o **CSV**
+3. El archivo contiene todos los pagos visibles según el filtro de estado
 
 ### Marcar Pagos como Realizados
 

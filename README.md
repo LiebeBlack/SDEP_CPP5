@@ -36,12 +36,13 @@ Este sistema proporciona una solución integral para la administración de recur
 - Generación de recibos de pago en PDF
 - Control de pagos pendientes y realizados
 
-### Generación de Documentos
-- Constancias de trabajo
-- Constancias de estudios
+### Generación de Documentos y Exportación
+- Constancias de trabajo y de estudios
+- Ficha completa del empleado (datos personales, laborales, bancarios, salud y familia)
 - Recibos de pago
 - Reportes de empleados
-- Exportación a PDF
+- Planilla de nómina por periodo con totales (ISSS, AFP, ISR, neto)
+- Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel)
 
 ## 📋 Requisitos del Sistema
 

@@ -2487,8 +2487,25 @@ class ConfiguracionFrame(ctk.CTkFrame):
             self.horas_laborales_entry.delete(0, tk.END)
             self.horas_laborales_entry.insert(0, safe_str(rrhh_config.get("horas_laborales_semana", "")))
             
+            # Datos de la pestaña de seguridad y usuarios
+            self._cargar_seguridad_y_usuarios()
+            
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar configuración: {str(e)}")
+    
+    def _cargar_seguridad_y_usuarios(self):
+        """Carga valores de seguridad, respaldos y usuarios"""
+        try:
+            config_seguridad = self.main_window.config_service.obtener_categoria_dict("seguridad")
+            self.backup_enabled_var.set(bool(config_seguridad.get("backup_enabled", True)))
+            self.audit_enabled_var.set(bool(config_seguridad.get("audit_enabled", True)))
+            self.backup_interval_entry.delete(0, tk.END)
+            self.backup_interval_entry.insert(
+                0, str(config_seguridad.get("backup_interval_hours", 24)))
+        except Exception:
+            pass
+        self._refresh_backups()
+        self._load_usuarios()
     
     def _on_save(self):
         """Guarda la configuración"""
@@ -2528,3 +2545,615 @@ class ConfiguracionFrame(ctk.CTkFrame):
             return int(value) if value else None
         except ValueError:
             return None
+    
+    # ------------------------------------------------------------------
+    # Seguridad y respaldos
+    # ------------------------------------------------------------------
+    def _on_save_seguridad(self):
+        """Guarda la configuración de seguridad y auditoría"""
+        try:
+            self.main_window.config_service.establecer_valor(
+                "backup_enabled", bool(self.backup_enabled_var.get()))
+            self.main_window.config_service.establecer_valor(
+                "audit_enabled", bool(self.audit_enabled_var.get()))
+            intervalo = self._parse_int(self.backup_interval_entry.get()) or 24
+            self.main_window.config_service.establecer_valor(
+                "backup_interval_hours", max(1, min(intervalo, 720)))
+            self._load_configuracion()
+            self._refresh_backups()
+            messagebox.showinfo("Éxito", "Configuración de seguridad guardada")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al guardar configuración: {str(e)}")
+    
+    def _backup_seleccionado(self) -> Optional[str]:
+        """Nombre del respaldo seleccionado en la tabla"""
+        seleccion = self.backup_tree.selection()
+        if not seleccion:
+            return None
+        tags = self.backup_tree.item(seleccion[0], "tags") or ()
+        return tags[0] if tags else None
+    
+    def _refresh_backups(self):
+        """Actualiza la lista de respaldos disponibles"""
+        from src.utils.backup_manager import get_backup_manager
+        from src.utils.helpers import format_file_size
+        
+        for item in self.backup_tree.get_children():
+            self.backup_tree.delete(item)
+        
+        try:
+            backups = get_backup_manager().list_backups()
+            respaldo_texto = "Sí" if self.backup_enabled_var.get() else "No"
+            self.backup_status_label.configure(
+                text=f"Respaldo al cerrar: {respaldo_texto}  ·  "
+                     f"Total: {len(backups)} respaldo(s)")
+            for b in backups:
+                fecha = str(b.get("timestamp", ""))
+                if len(fecha) == 15:
+                    fecha = f"{fecha[6:8]}/{fecha[4:6]}/{fecha[:4]} {fecha[9:11]}:{fecha[11:13]}"
+                self.backup_tree.insert("", "end", values=(
+                    b.get("name", ""),
+                    fecha,
+                    format_file_size(b.get("size_bytes", 0)),
+                    "comprimido" if b.get("compressed") else "directo",
+                ), tags=(b.get("name", ""),))
+        except Exception as e:
+            self.backup_status_label.configure(text=f"Error al listar respaldos: {e}")
+    
+    def _on_create_backup(self):
+        """Crea un respaldo manual de la base de datos"""
+        try:
+            from src.utils.backup_manager import get_backup_manager
+            from src.utils.helpers import get_timestamp
+            info = get_backup_manager().create_backup(f"manual_{get_timestamp()}")
+            self._refresh_backups()
+            messagebox.showinfo("Éxito", f"Respaldo creado: {info.get('name')}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al crear el respaldo: {str(e)}")
+    
+    def _on_verify_backup(self):
+        """Verifica la integridad del respaldo seleccionado"""
+        nombre = self._backup_seleccionado()
+        if not nombre:
+            messagebox.showwarning("Advertencia", "Seleccione un respaldo")
+            return
+        try:
+            from src.utils.backup_manager import get_backup_manager
+            resultado = get_backup_manager().verify_backup_integrity(nombre)
+            mensaje = (
+                f"Respaldo: {nombre}\n\n"
+                f"Archivo presente: {'Sí' if resultado['exists'] else 'No'}\n"
+                f"Tamaño correcto: {'Sí' if resultado['size_correct'] else 'No'}\n"
+                f"Checksum válido: {'Sí' if resultado['checksum_valid'] else 'No'}\n"
+                f"Integridad: {'OK' if resultado['integrity_ok'] else 'CORRUPTA'}"
+            )
+            if resultado["integrity_ok"]:
+                messagebox.showinfo("Verificación de Respaldo", mensaje)
+            else:
+                messagebox.showwarning("Verificación de Respaldo", mensaje)
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al verificar el respaldo: {str(e)}")
+    
+    def _on_restore_backup(self):
+        """Restaura el respaldo seleccionado"""
+        nombre = self._backup_seleccionado()
+        if not nombre:
+            messagebox.showwarning("Advertencia", "Seleccione un respaldo")
+            return
+        
+        if not messagebox.askyesno(
+            "Confirmar restauración",
+            f"Se reemplazará la base de datos actual por el respaldo '{nombre}'.\n"
+            "¿Desea continuar?",
+        ):
+            return
+        try:
+            from src.config import db_config
+            db_config.restore_backup(nombre)
+            messagebox.showinfo(
+                "Restauración exitosa",
+                "Base de datos restaurada. La aplicación se reiniciará.",
+            )
+            self.main_window._on_logout()
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al restaurar el respaldo: {str(e)}")
+    
+    def _on_delete_backup(self):
+        """Elimina el respaldo seleccionado"""
+        nombre = self._backup_seleccionado()
+        if not nombre:
+            messagebox.showwarning("Advertencia", "Seleccione un respaldo")
+            return
+        if messagebox.askyesno(
+            "Confirmar", f"¿Eliminar el respaldo '{nombre}'?"):
+            try:
+                from src.utils.backup_manager import get_backup_manager
+                if get_backup_manager().delete_backup(nombre):
+                    self._refresh_backups()
+                    messagebox.showinfo("Éxito", "Respaldo eliminado")
+                else:
+                    messagebox.showerror("Error", "No se pudo eliminar el respaldo")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al eliminar el respaldo: {str(e)}")
+    
+    # ------------------------------------------------------------------
+    # Administración de usuarios
+    # ------------------------------------------------------------------
+    def _load_usuarios(self):
+        """Carga los usuarios del sistema"""
+        from src.config import db_config
+        from src.services.auth_service import AuthService
+        
+        for item in self.usuarios_tree.get_children():
+            self.usuarios_tree.delete(item)
+        
+        session = db_config.get_session()
+        try:
+            usuarios = AuthService(session).listar_usuarios()
+            for u in usuarios:
+                self.usuarios_tree.insert("", "end", values=(
+                    u.username,
+                    u.rol_valor,
+                    u.nombre_completo or "",
+                    "Activo" if u.activo else "Inactivo",
+                ), tags=(str(u.id),))
+        finally:
+            db_config.close_session(session)
+    
+    def _usuario_seleccionado(self) -> Optional[int]:
+        """ID del usuario seleccionado"""
+        seleccion = self.usuarios_tree.selection()
+        if not seleccion:
+            return None
+        tags = self.usuarios_tree.item(seleccion[0], "tags") or ()
+        if not tags:
+            return None
+        try:
+            return int(tags[0])
+        except (TypeError, ValueError):
+            return None
+    
+    def _on_new_usuario(self):
+        """Crea un nuevo usuario de sistema"""
+        dialog = UsuarioDialog(self, self.main_window)
+        self.wait_window(dialog)
+        if dialog.result:
+            self._load_usuarios()
+    
+    def _on_edit_usuario(self):
+        """Edita el usuario seleccionado"""
+        usuario_id = self._usuario_seleccionado()
+        if usuario_id is None:
+            messagebox.showwarning("Advertencia", "Seleccione un usuario")
+            return
+        dialog = UsuarioDialog(self, self.main_window, usuario_id)
+        self.wait_window(dialog)
+        if dialog.result:
+            self._load_usuarios()
+    
+    def _on_toggle_usuario(self):
+        """Activa o desactiva el usuario seleccionado"""
+        from src.config import db_config
+        from src.services.auth_service import AuthService
+        
+        usuario_id = self._usuario_seleccionado()
+        if usuario_id is None:
+            messagebox.showwarning("Advertencia", "Seleccione un usuario")
+            return
+        
+        session = db_config.get_session()
+        try:
+            auth = AuthService(session)
+            usuario = auth.usuario_por_id(usuario_id)
+            if not usuario:
+                messagebox.showerror("Error", "Usuario no encontrado")
+                return
+            accion = "desactivar" if usuario.activo else "activar"
+            if not messagebox.askyesno(
+                "Confirmar", f"¿Desea {accion} al usuario '{usuario.username}'?"):
+                return
+            auth.actualizar_usuario(
+                usuario_id,
+                {"activo": 0 if usuario.activo else 1},
+                usuario_actual=self.main_window.current_user,
+            )
+            self._load_usuarios()
+            messagebox.showinfo("Éxito", f"Usuario {accion}do correctamente")
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+        finally:
+            db_config.close_session(session)
+
+
+class InfoDialog(ctk.CTkToplevel):
+    """Ventana de solo lectura para mostrar información extensa"""
+    
+    def __init__(self, parent, title: str, text: str):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("620x460")
+        mantener_ventana_al_frente(self)
+        if parent is not None:
+            self.transient(parent)
+        
+        container = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        container.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        textbox = ctk.CTkTextbox(
+            container, fg_color="#1f1f1f", text_color="#e6e6e6",
+            font=ctk.CTkFont(family="Consolas", size=12), wrap="word")
+        textbox.pack(fill="both", expand=True, padx=8, pady=8)
+        textbox.insert("1.0", text)
+        textbox.configure(state="disabled")
+        
+        close_btn = ctk.CTkButton(container, text="Cerrar", width=120, command=self.destroy)
+        close_btn.pack(pady=(0, 8))
+
+
+class PagoDialog(ctk.CTkToplevel):
+    """Diálogo para registrar o editar un pago manual"""
+    
+    TIPOS = [
+        ("salario_base", "Salario Base"),
+        ("bonificacion", "Bonificación"),
+        ("horas_extra", "Horas Extra"),
+        ("comision", "Comisión"),
+        ("descuento", "Descuento"),
+    ]
+    METODOS = ["transferencia", "efectivo", "cheque", "deposito"]
+    
+    def __init__(self, parent, main_window, pago=None):
+        super().__init__(parent)
+        self.main_window = main_window
+        self.pago = pago
+        self.result = False
+        
+        self.title("Editar Pago" if pago else "Nuevo Pago")
+        self.geometry("620x560")
+        mantener_ventana_al_frente(self)
+        if parent is not None:
+            self.transient(parent)
+        
+        self._create_widgets()
+        if pago:
+            self._load_pago_data()
+    
+    def _create_widgets(self):
+        form = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Empleado
+        ctk.CTkLabel(form, text="Empleado:", text_color="white").grid(
+            row=0, column=0, padx=8, pady=6, sticky="e")
+        self.empleado_combo = ttk.Combobox(
+            form, width=38, state="readonly", font=("Arial", 9))
+        self.empleado_combo.grid(row=0, column=1, columnspan=3, padx=8, pady=6, sticky="w")
+        self._load_empleados()
+        
+        # Tipo de pago
+        ctk.CTkLabel(form, text="Tipo de Pago:", text_color="white").grid(
+            row=1, column=0, padx=8, pady=6, sticky="e")
+        self.tipo_combo = ttk.Combobox(
+            form, width=30, state="readonly", font=("Arial", 9))
+        self.tipo_combo['values'] = [etiqueta for _, etiqueta in self.TIPOS]
+        self.tipo_combo.grid(row=1, column=1, padx=8, pady=6, sticky="w")
+        self.tipo_combo.current(0)
+        
+        ctk.CTkLabel(form, text="Método:", text_color="white").grid(
+            row=1, column=2, padx=8, pady=6, sticky="e")
+        self.metodo_combo = ttk.Combobox(
+            form, width=20, values=self.METODOS, state="readonly", font=("Arial", 9))
+        self.metodo_combo.grid(row=1, column=3, padx=8, pady=6, sticky="w")
+        self.metodo_combo.set("transferencia")
+        
+        # Periodo
+        ctk.CTkLabel(form, text="Período desde:", text_color="white").grid(
+            row=2, column=0, padx=8, pady=6, sticky="e")
+        self.periodo_inicio_entry = ctk.CTkEntry(
+            form, width=110, fg_color="#3c3c3c", text_color="white",
+            placeholder_text="DD/MM/YYYY")
+        self.periodo_inicio_entry.grid(row=2, column=1, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Período hasta:", text_color="white").grid(
+            row=2, column=2, padx=8, pady=6, sticky="e")
+        self.periodo_fin_entry = ctk.CTkEntry(
+            form, width=110, fg_color="#3c3c3c", text_color="white",
+            placeholder_text="DD/MM/YYYY")
+        self.periodo_fin_entry.grid(row=2, column=3, padx=8, pady=6, sticky="w")
+        
+        # Montos
+        monto_fila = 3
+        ctk.CTkLabel(form, text="Salario Base:", text_color="white").grid(
+            row=monto_fila, column=0, padx=8, pady=6, sticky="e")
+        self.salario_entry = ctk.CTkEntry(
+            form, width=140, fg_color="#3c3c3c", text_color="white")
+        self.salario_entry.grid(row=monto_fila, column=1, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Bonificaciones:", text_color="white").grid(
+            row=monto_fila, column=2, padx=8, pady=6, sticky="e")
+        self.bonificaciones_entry = ctk.CTkEntry(
+            form, width=140, fg_color="#3c3c3c", text_color="white")
+        self.bonificaciones_entry.grid(
+            row=monto_fila, column=3, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Horas Extra:", text_color="white").grid(
+            row=4, column=0, padx=8, pady=6, sticky="e")
+        self.horas_extra_entry = ctk.CTkEntry(
+            form, width=140, fg_color="#3c3c3c", text_color="white")
+        self.horas_extra_entry.grid(row=4, column=1, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Otras Deducciones:", text_color="white").grid(
+            row=4, column=2, padx=8, pady=6, sticky="e")
+        self.otras_deducciones_entry = ctk.CTkEntry(
+            form, width=140, fg_color="#3c3c3c", text_color="white")
+        self.otras_deducciones_entry.grid(
+            row=4, column=3, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Descuentos:", text_color="white").grid(
+            row=5, column=0, padx=8, pady=6, sticky="e")
+        self.descuentos_entry = ctk.CTkEntry(
+            form, width=140, fg_color="#3c3c3c", text_color="white")
+        self.descuentos_entry.grid(row=5, column=1, padx=8, pady=6, sticky="w")
+        
+        self.pagado_var = tk.BooleanVar(value=False)
+        pagado_chk = ctk.CTkCheckBox(
+            form, text="Marcar como pagado", variable=self.pagado_var)
+        pagado_chk.grid(row=5, column=3, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Observaciones:", text_color="white").grid(
+            row=6, column=0, padx=8, pady=6, sticky="ne")
+        self.observaciones_text = ctk.CTkTextbox(
+            form, width=400, height=60, fg_color="#3c3c3c", text_color="white")
+        self.observaciones_text.grid(
+            row=6, column=1, columnspan=3, padx=8, pady=6, sticky="w")
+        
+        # Botones
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=10, pady=10)
+        
+        save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
+        save_btn.pack(side="right", padx=5)
+        cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy)
+        cancel_btn.pack(side="right", padx=5)
+    
+    def _load_empleados(self):
+        empleados = self.main_window.empleado_service.listar_empleados_activos()
+        self.empleado_map = {
+            f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
+        self.empleado_combo['values'] = list(self.empleado_map.keys())
+        if self.pago:
+            empleado = self.main_window.empleado_service.obtener_empleado(
+                self.pago.empleado_id)
+            if empleado:
+                etiqueta = f"{empleado.nombre_completo} ({empleado.cedula})"
+                if etiqueta in self.empleado_map:
+                    self.empleado_combo.set(etiqueta)
+                else:
+                    self.empleado_combo['values'] = \
+                        [etiqueta] + list(self.empleado_map.keys())
+                    self.empleado_combo.set(etiqueta)
+                self.empleado_combo.configure(state="readonly")
+        elif self.empleado_map:
+            self.empleado_combo.current(0)
+    
+    def _load_pago_data(self):
+        """Precarga los datos del pago en el formulario"""
+        if not self.pago:
+            return
+        tipo_actual = self.pago.tipo_pago
+        for valor, etiqueta in self.TIPOS:
+            if valor == tipo_actual:
+                self.tipo_combo.set(etiqueta)
+                break
+        else:
+            self.tipo_combo.set(tipo_actual)
+        self.metodo_combo.set(self.pago.metodo_pago or "transferencia")
+        self.periodo_inicio_entry.insert(
+            0, format_date(self.pago.periodo_inicio))
+        self.periodo_fin_entry.insert(0, format_date(self.pago.periodo_fin))
+        self.salario_entry.insert(0, str(float(self.pago.salario_base or 0)))
+        self.bonificaciones_entry.insert(
+            0, str(float(self.pago.bonificaciones or 0)))
+        self.horas_extra_entry.insert(
+            0, str(float(self.pago.horas_extra or 0)))
+        self.otras_deducciones_entry.insert(
+            0, str(float(self.pago.otras_deducciones or 0)))
+        self.descuentos_entry.insert(0, str(float(self.pago.descuentos or 0)))
+        self.pagado_var.set(bool(self.pago.pagado))
+        if self.pago.observaciones:
+            self.observaciones_text.insert("1.0", self.pago.observaciones)
+    
+    def _on_save(self):
+        """Guarda el pago (crea o actualiza)"""
+        try:
+            if not self.empleado_combo.get():
+                messagebox.showerror("Error", "Seleccione un empleado")
+                return
+            
+            if self.pago:
+                empleado_id = self.pago.empleado_id
+            else:
+                empleado_id = self.empleado_map[self.empleado_combo.get()]
+            
+            tipo_etiqueta = self.tipo_combo.get()
+            tipo_valor = tipo_etiqueta
+            for valor, etiqueta in self.TIPOS:
+                if etiqueta == tipo_etiqueta:
+                    tipo_valor = valor
+                    break
+            
+            datos = {
+                "empleado_id": empleado_id,
+                "tipo_pago": tipo_valor,
+                "metodo_pago": self.metodo_combo.get(),
+                "periodo_inicio": self.periodo_inicio_entry.get(),
+                "periodo_fin": self.periodo_fin_entry.get(),
+                "salario_base": self._parse_float(self.salario_entry.get()),
+                "bonificaciones": self._parse_float(self.bonificaciones_entry.get()),
+                "horas_extra": self._parse_float(self.horas_extra_entry.get()),
+                "otras_deducciones": self._parse_float(self.otras_deducciones_entry.get()),
+                "descuentos": self._parse_float(self.descuentos_entry.get()),
+                "pagado": 1 if self.pagado_var.get() else 0,
+                "observaciones": self.observaciones_text.get("1.0", "end").strip() or None,
+            }
+            
+            errores = self.main_window.pago_service.validar_datos_pago(datos)
+            if errores:
+                messagebox.showerror("Errores de Validación", "\n".join(errores))
+                return
+            
+            if self.pago:
+                self.main_window.pago_service.actualizar_pago(self.pago.id, datos)
+                messagebox.showinfo("Éxito", "Pago actualizado correctamente")
+            else:
+                self.main_window.pago_service.crear_pago(datos)
+                messagebox.showinfo("Éxito", "Pago registrado correctamente")
+            
+            self.result = True
+            self.destroy()
+        except ValueError as e:
+            messagebox.showerror("Error de Validación", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al guardar pago: {str(e)}")
+    
+    def _parse_float(self, value: str) -> Optional[float]:
+        try:
+            return float(value) if value else 0.0
+        except ValueError:
+            return 0.0
+
+
+class UsuarioDialog(ctk.CTkToplevel):
+    """Diálogo para crear o editar un usuario de sistema"""
+    
+    def __init__(self, parent, main_window, usuario_id: Optional[int] = None):
+        super().__init__(parent)
+        self.main_window = main_window
+        self.usuario_id = usuario_id
+        self.result = False
+        
+        self.title("Editar Usuario" if usuario_id else "Nuevo Usuario")
+        self.geometry("480x430")
+        mantener_ventana_al_frente(self)
+        if parent is not None:
+            self.transient(parent)
+        
+        self.usuario = None
+        if usuario_id:
+            from src.config import db_config
+            from src.services.auth_service import AuthService
+            session = db_config.get_session()
+            try:
+                self.usuario = AuthService(session).usuario_por_id(usuario_id)
+            finally:
+                db_config.close_session(session)
+        
+        self._create_widgets()
+        if self.usuario:
+            self._load_usuario_data()
+    
+    def _create_widgets(self):
+        form = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        ctk.CTkLabel(form, text="Usuario:", text_color="white").grid(
+            row=0, column=0, padx=8, pady=6, sticky="e")
+        self.username_entry = ctk.CTkEntry(
+            form, width=260, fg_color="#3c3c3c", text_color="white")
+        self.username_entry.grid(row=0, column=1, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Nombre Completo:", text_color="white").grid(
+            row=1, column=0, padx=8, pady=6, sticky="e")
+        self.nombre_entry = ctk.CTkEntry(
+            form, width=260, fg_color="#3c3c3c", text_color="white")
+        self.nombre_entry.grid(row=1, column=1, padx=8, pady=6, sticky="w")
+        
+        ctk.CTkLabel(form, text="Rol:", text_color="white").grid(
+            row=2, column=0, padx=8, pady=6, sticky="e")
+        self.rol_combo = ttk.Combobox(
+            form, values=["admin", "manager", "user", "viewer"],
+            width=20, state="readonly", font=("Arial", 9))
+        self.rol_combo.grid(row=2, column=1, padx=8, pady=6, sticky="w")
+        self.rol_combo.set("user")
+        
+        if self.usuario is None:
+            ctk.CTkLabel(form, text="Contraseña:", text_color="white").grid(
+                row=3, column=0, padx=8, pady=6, sticky="e")
+            self.password_entry = ctk.CTkEntry(
+                form, width=260, show="*", fg_color="#3c3c3c",
+                text_color="white")
+            self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
+        else:
+            ctk.CTkLabel(
+                form, text="Nueva Contraseña (opcional):",
+                text_color="white").grid(row=3, column=0, padx=8, pady=6, sticky="e")
+            self.password_entry = ctk.CTkEntry(
+                form, width=260, show="*", fg_color="#3c3c3c",
+                text_color="white", placeholder_text="Dejar vacía para no cambiar")
+            self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
+        
+        self.activo_var = tk.BooleanVar(value=True)
+        activo_chk = ctk.CTkCheckBox(
+            form, text="Cuenta activa", variable=self.activo_var)
+        activo_chk.grid(row=4, column=1, padx=8, pady=6, sticky="w")
+        
+        hint = ctk.CTkLabel(
+            form,
+            text="Mínimo 6 caracteres para la contraseña.",
+            text_color="#888888", font=ctk.CTkFont(size=11))
+        hint.grid(row=5, column=1, padx=8, pady=2, sticky="w")
+        
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=10, pady=10)
+        
+        save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
+        save_btn.pack(side="right", padx=5)
+        cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy)
+        cancel_btn.pack(side="right", padx=5)
+    
+    def _load_usuario_data(self):
+        self.username_entry.insert(0, self.usuario.username)
+        if self.usuario.nombre_completo:
+            self.nombre_entry.insert(0, self.usuario.nombre_completo)
+        self.rol_combo.set(self.usuario.rol_valor)
+        self.activo_var.set(bool(self.usuario.activo))
+    
+    def _on_save(self):
+        from src.config import db_config
+        from src.services.auth_service import AuthService
+        
+        try:
+            session = db_config.get_session()
+            try:
+                auth = AuthService(session)
+                if self.usuario:
+                    datos = {
+                        "username": self.username_entry.get(),
+                        "nombre_completo": self.nombre_entry.get(),
+                        "rol": self.rol_combo.get(),
+                        "activo": 1 if self.activo_var.get() else 0,
+                    }
+                    nueva_pass = self.password_entry.get()
+                    if nueva_pass:
+                        datos["password"] = nueva_pass
+                    auth.actualizar_usuario(
+                        self.usuario.id, datos,
+                        usuario_actual=self.main_window.current_user)
+                    messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
+                else:
+                    auth.crear_usuario(
+                        username=self.username_entry.get(),
+                        password=self.password_entry.get(),
+                        rol=self.rol_combo.get(),
+                        nombre_completo=self.nombre_entry.get(),
+                        debe_cambiar_password=False,
+                    )
+                    messagebox.showinfo("Éxito", "Usuario creado correctamente")
+                self.result = True
+                self.destroy()
+            finally:
+                db_config.close_session(session)
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al guardar usuario: {str(e)}")

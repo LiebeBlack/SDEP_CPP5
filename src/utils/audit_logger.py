@@ -388,9 +388,10 @@ class AuditLogger:
 
         if not output_file:
             output_file = f"audit_export_{start_date}_{end_date}.json"
-        
+
         from src.config import settings
-        output_path = Path(settings.base_dir) / "exports" / output_file
+        # Respetar la ruta de exportaciones configurada (no asumir base_dir)
+        output_path = Path(settings.exports_path) / output_file
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Recolectar eventos de los archivos diarios dentro del rango

@@ -18,10 +18,15 @@ def _resolve_base_dir() -> Path:
     """
     Resuelve el directorio base de la aplicación
 
-    En un ejecutable PyInstaller (sys.frozen) la ruta del código queda
-    en un directorio temporal (_MEIPASS); los datos de la aplicación
-    deben vivir junto al ejecutable para no perderse al salir.
+    Prioridad: variable de entorno SGP_BASE_DIR (datos portátiles o
+    ejecución de pruebas), ejecutable empaquetado (PyInstaller) y, en
+    desarrollo, la raíz del repositorio. En un ejecutable la ruta del
+    código queda en un directorio temporal (_MEIPASS); los datos deben
+    vivir junto al ejecutable para no perderse al salir.
     """
+    override = os.getenv("SGP_BASE_DIR")
+    if override:
+        return Path(override).resolve()
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent.parent

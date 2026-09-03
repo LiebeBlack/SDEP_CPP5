@@ -17,6 +17,11 @@ from src.services.auth_service import (
 )
 from src.utils.helpers import mantener_ventana_al_frente
 from src.utils.security import SecurityValidator
+from src.gui.theme import (
+    enable_windows_dpi_awareness,
+    setup_ui_raiz,
+    centrar_ventana,
+)
 
 
 class CambiarPasswordDialog(ctk.CTkToplevel):
@@ -112,17 +117,19 @@ class LoginWindow(ctk.CTk):
     """Ventana de inicio de sesión"""
 
     def __init__(self):
+        enable_windows_dpi_awareness()
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
         super().__init__()
+        setup_ui_raiz(self)
 
         self.user: Optional[Usuario] = None
 
         self.title("Iniciar Sesión — Sistema de Gestión de Personal")
-        self.geometry("880x480")
         self.resizable(False, False)
         self.configure(fg_color="#1a1a1a")
+        centrar_ventana(self, 880, 480)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._create_ui()

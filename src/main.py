@@ -24,6 +24,14 @@ project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Nitidez en Windows con escalado > 100 %: debe ejecutarse ANTES de
+# crear cualquier ventana Tk para evitar una UI borrosa o deformada.
+try:
+    from src.gui.theme import enable_windows_dpi_awareness
+    enable_windows_dpi_awareness()
+except Exception:
+    pass
+
 # Configurar logging detallado
 logging.basicConfig(
     level=logging.INFO,
@@ -145,7 +153,12 @@ def run_application():
             # 1. Inicio de sesión
             login = LoginWindow()
             user = login.run()
-            login.destroy()
+            # La ventana de login ya se destruye a sí misma al autenticar
+            # (o al cerrar); destruirla de nuevo lanza TclError.
+            try:
+                login.destroy()
+            except Exception:
+                pass
             if user is None:
                 logger.info("Sesión cancelada por el usuario")
                 break
@@ -249,8 +262,45 @@ def cleanup_application():
             pass
 
 
+def _selftest() -> bool:
+    """
+    Verificación de arranque para el ejecutable empaquetado
+
+    Se invoca con: SistemaGestionPersonal.exe --selftest
+    Valida entorno, base de datos y que los módulos GUI quedaron
+    incluidos en el paquete. El código de salida indica el resultado.
+    """
+    try:
+        if not setup_environment():
+            logger.error("Selftest: falló la configuración del entorno")
+            return False
+        if not initialize_database():
+            logger.error("Selftest: falló la inicialización de la base de datos")
+            return False
+
+        # Fuerza la importación de los módulos GUI para detectar paquetes
+        # faltantes en el build (customtkinter, tkinter, etc.)
+        import src.gui.login_window  # noqa: F401
+        import src.gui.main_window  # noqa: F401
+        import src.gui.frames  # noqa: F401
+
+        from src.config import settings
+        from src.utils.backup_manager import get_backup_manager
+        get_backup_manager()
+        logger.info(f"Selftest OK (v{settings.app_version})")
+        return True
+    except Exception as e:
+        logger.error(f"Selftest: error inesperado: {e}")
+        return False
+
+
 def main():
     """Función principal con mejoras de seguridad"""
+    # Modo de autoverificación para el ejecutable empaquetado
+    if "--selftest" in sys.argv:
+        ok = _selftest()
+        sys.exit(0 if ok else 1)
+
     # Configurar manejadores de señales
     try:
         signal.signal(signal.SIGINT, signal_handler)

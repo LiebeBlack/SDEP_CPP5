@@ -1,6 +1,6 @@
 """Pruebas del servicio de empleados"""
 
-from datetime import date, timedelta
+from datetime import date
 
 import pytest
 
@@ -101,17 +101,21 @@ def test_estadisticas(session):
 
 
 def test_edad_y_antiguedad():
-    servicio = None  # solo propiedades del modelo
     from src.models import Empleado
+    hoy = date.today()
+    try:
+        fecha_contrato = date(hoy.year - 5, hoy.month, hoy.day)
+    except ValueError:  # 29 de febrero sin año bisiesto a 5 años
+        fecha_contrato = date(hoy.year - 5, hoy.month, 28)
     emp = Empleado(
         nombres="X", apellidos="Y", cedula="0001",
         fecha_nacimiento=date(1980, 1, 1),
         tipo_empleado=TipoEmpleado.DOCENTE.value,
         cargo="Docente", departamento="Ciencias",
         salario_base=100.0,
-        fecha_contratacion=date.today() - timedelta(days=365 * 5),
+        fecha_contratacion=fecha_contrato,
     )
-    assert emp.edad == date.today().year - 1980  # cumpleaños en enero ya transcurrido
+    assert emp.edad == hoy.year - 1980  # cumpleaños en enero ya transcurrido
     assert emp.antiguedad_anos == 5
 
 

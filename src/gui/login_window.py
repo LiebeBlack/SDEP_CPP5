@@ -276,6 +276,7 @@ class LoginWindow(ctk.CTk):
                     return
 
             self.user = usuario
+            self._session_activa = session
             self.destroy()
         except ValueError as e:
             messagebox.showerror("Error de Autenticación", str(e))
@@ -284,7 +285,11 @@ class LoginWindow(ctk.CTk):
             messagebox.showerror(
                 "Error", f"Error al iniciar sesión: {str(e)}")
         finally:
-            db_config.close_session(session)
+            # La sesión permanece abierta si el inicio de sesión fue exitoso:
+            # el Usuario autenticado sigue ligado a ella y la ventana principal
+            # (misma sesión scoped) la cerrará al salir o cerrar sesión.
+            if self.user is None:
+                db_config.close_session(session)
 
     def _on_close(self):
         self.user = None

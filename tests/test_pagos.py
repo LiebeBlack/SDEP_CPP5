@@ -84,7 +84,8 @@ def test_actualizar_pago_recalcula(session, empleado):
     servicio = PagoService(session)
     pago = servicio.crear_pago(_pago_base(empleado.id))
     actualizado = servicio.actualizar_pago(pago.id, {"bonificaciones": 300.0})
-    assert float(actualizado.monto_bruto) == pytest.approx(2300.0)
+    # 2000 (salario) + 300 (bonificaciones) + 50 (horas extra)
+    assert float(actualizado.monto_bruto) == pytest.approx(2350.0)
 
 
 def test_generar_nomina_empleado(session, empleado):

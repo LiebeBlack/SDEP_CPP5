@@ -99,7 +99,6 @@ class MainWindow(ctk.CTk):
         super().__init__()
         configure_treeview_style()
 
-        self.current_user = current_user
         self._exit_status = "exit"
 
         self.title(settings.app_name)
@@ -119,6 +118,18 @@ class MainWindow(ctk.CTk):
         self.incidencia_service = IncidenciaService(self.session)
         self.pago_service = PagoService(self.session)
         self.config_service = ConfiguracionService(self.session)
+
+        # Re-ligar el usuario a la sesión de la ventana: si la sesión de
+        # login ya se cerró, el objeto llegaría detached y fallaría en el
+        # primer acceso a atributos no-PK (rol, username, ...)
+        if current_user is not None:
+            try:
+                refrescado = self.session.get(Usuario, current_user.id)
+                if refrescado is not None:
+                    current_user = refrescado
+            except Exception:
+                pass
+        self.current_user = current_user
 
         # Estado de la interfaz
         self.current_frame = None

@@ -21,6 +21,7 @@ from src.gui.theme import (
     enable_windows_dpi_awareness,
     setup_ui_raiz,
     centrar_ventana,
+    cancelar_after_pendientes,
 )
 
 
@@ -269,6 +270,7 @@ class LoginWindow(ctk.CTk):
 
             self.user = usuario
             self._session_activa = session
+            cancelar_after_pendientes(self)
             self.destroy()
         except ValueError as e:
             messagebox.showerror("Error de Autenticación", str(e))
@@ -285,6 +287,7 @@ class LoginWindow(ctk.CTk):
 
     def _on_close(self):
         self.user = None
+        cancelar_after_pendientes(self)
         self.destroy()
 
     def run(self) -> Optional[Usuario]:

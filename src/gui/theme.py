@@ -211,11 +211,46 @@ def centrar_ventana(ventana, ancho: int, alto: int) -> None:
         ventana.geometry(f"{ancho}x{alto}")
 
 
+def cancelar_after_pendientes(root) -> None:
+    """
+    Cancela los temporizadores `after` pendientes de una ventana
+
+    CustomTkinter programa tareas internas (comprobación de DPI,
+    animaciones de botones, redibujos). Si la ventana se destruye antes
+    de que esas tareas se ejecuten, Tk las ejecuta igualmente sobre
+    widgets ya eliminados y escribe en stderr líneas como
+    "invalid command name ...". Se cancelan antes de destruir.
+    """
+    try:
+        for id_tarea in root.tk.call("after", "info"):
+            try:
+                root.after_cancel(id_tarea)
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+
+def silenciar_errores_fondo(root) -> None:
+    """
+    Evita que los errores de fondo de Tcl (after internos) ensucien stderr
+
+    Solo afecta a errores Tcl de segundo plano; los errores de los
+    callbacks de Python se siguen manejando con report_callback_exception.
+    """
+    try:
+        root.tk.call("proc", "bgerror", "msg", "")
+    except Exception:
+        pass
+
+
 def setup_ui_raiz(root) -> None:
     """
     Aplicación completa de apariencia al crear una ventana raíz:
-    estilos ttk, listbox de combos y escalado de CustomTkinter.
+    estilos ttk, listbox de combos, escalado de CustomTkinter y
+    limpieza de errores de fondo de Tcl.
     """
     enable_windows_dpi_awareness()
     configure_ttk_styles(root)
     aplicar_escalado_customtkinter(root)
+    silenciar_errores_fondo(root)

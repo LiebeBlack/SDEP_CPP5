@@ -15,23 +15,8 @@ from src.services.auth_service import (
     AuthService,
     DEFAULT_ADMIN_PASSWORD,
 )
+from src.utils.helpers import mantener_ventana_al_frente
 from src.utils.security import SecurityValidator
-
-
-def _mantener_al_frente(window):
-    """Mantiene la ventana temporalmente al frente para capturar el foco"""
-    try:
-        window.attributes("-topmost", True)
-        window.after(120, lambda: _quitar_al_frente(window))
-    except Exception:
-        pass
-
-
-def _quitar_al_frente(window):
-    try:
-        window.attributes("-topmost", False)
-    except Exception:
-        pass
 
 
 class CambiarPasswordDialog(ctk.CTkToplevel):
@@ -46,7 +31,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.title("Cambiar Contraseña")
         self.geometry("480x330")
         self.resizable(False, False)
-        _mantener_al_frente(self)
+        mantener_ventana_al_frente(self)
         self.transient(parent)
 
         self._create_widgets()

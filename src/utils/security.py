@@ -402,7 +402,8 @@ class PermissionChecker:
         """
         # Mapeo de roles a permisos
         role_permissions = {
-            'admin': ['create', 'read', 'update', 'delete', 'config', 'backup', 'restore'],
+            'admin': ['create', 'read', 'update', 'delete', 'report',
+                      'config', 'backup', 'restore'],
             'manager': ['create', 'read', 'update', 'delete', 'report'],
             'user': ['read', 'update_own'],
             'viewer': ['read']

@@ -38,7 +38,7 @@ jobs:
     - name: Build executable
       run: |
         Write-Host "Building executable..."
-        pyinstaller --onefile --windowed --name=SistemaGestionPersonal --add-data="src;src" --hidden-import=customtkinter --hidden-import=PIL --hidden-import=reportlab --hidden-import=SQLAlchemy --hidden-import=pydantic --hidden-import=pydantic_core --hidden-import=typing_extensions --hidden-import=python_dotenv --clean src/main.py
+        pyinstaller --onefile --windowed --name=SistemaGestionPersonal --add-data="src;src" --hidden-import=customtkinter --hidden-import=PIL --hidden-import=reportlab --hidden-import=SQLAlchemy --hidden-import=python_dotenv --clean src/main.py
         if (Test-Path "dist/SistemaGestionPersonal.exe") {
           Write-Host "✓ Executable created successfully"
           $size = (Get-Item "dist/SistemaGestionPersonal.exe").Length / 1MB

@@ -128,6 +128,7 @@ class MainWindow(ctk.CTk):
 
         self.update()
         self._show_frame("dashboard")
+        self._programar_respaldo_periodico()
 
     # ------------------------------------------------------------------
     # Permisos del usuario actual
@@ -397,6 +398,49 @@ class MainWindow(ctk.CTk):
             if self.session is not None:
                 db_config.close_session(self.session)
                 self.session = None
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
+    # Respaldos automáticos
+    # ------------------------------------------------------------------
+    def _programar_respaldo_periodico(self):
+        """Programa respaldos automáticos según el intervalo configurado"""
+        try:
+            intervalo_horas = self.config_service.obtener_valor(
+                "backup_interval_hours", 24) or 24
+            intervalo_horas = max(1, int(intervalo_horas))
+            self._verificar_respaldo_periodico()
+            # Reprogramar en 30 minutos para reaccionar a cambios de configuración
+            self.after(30 * 60 * 1000, self._programar_respaldo_periodico)
+        except Exception:
+            pass
+
+    def _verificar_respaldo_periodico(self):
+        """Crea un respaldo automático si ha transcurrido el intervalo configurado"""
+        try:
+            habilitado = self.config_service.obtener_valor("backup_enabled", True)
+            if not habilitado:
+                return
+            intervalo_horas = self.config_service.obtener_valor(
+                "backup_interval_hours", 24) or 24
+            intervalo_horas = max(1, int(intervalo_horas))
+
+            from src.utils.backup_manager import get_backup_manager
+            from src.utils.helpers import get_timestamp
+            from datetime import datetime, timedelta
+
+            gestor = get_backup_manager()
+            respaldos = gestor.list_backups()
+            ultimo = respaldos[0]["timestamp"] if respaldos else None
+
+            vencido = True
+            if ultimo and len(str(ultimo)) == 15:
+                ultima_fecha = datetime.strptime(str(ultimo), "%Y%m%d_%H%M%S")
+                vencido = datetime.now() - ultima_fecha > timedelta(hours=intervalo_horas)
+
+            if vencido:
+                gestor.create_backup(f"auto_{get_timestamp()}")
         except Exception:
             pass
 

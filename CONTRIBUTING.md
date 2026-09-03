@@ -347,33 +347,14 @@ Brief description of changes
 
 ### Workflow Overview
 
-Our CI/CD pipeline consists of several workflows:
+The CI/CD pipeline consists of a single workflow:
 
-1. **CI Workflow** (`ci.yml`)
-   - Runs on every push and PR
-   - Performs quality checks
-   - Runs test suite
-   - Generates coverage reports
-
-2. **Build Workflow** (`build.yml`)
-   - Creates Windows executables
-   - Packages applications
-   - Generates build artifacts
-
-3. **Release Workflow** (`release.yml`)
-   - Automated versioning
-   - Creates GitHub releases
-   - Generates changelogs
-
-4. **Canary Deployment** (`canary-deployment.yml`)
-   - Gradual rollout strategy
-   - Monitoring and rollback
-   - Production safety
-
-5. **Notifications** (`notifications.yml`)
-   - Workflow status alerts
-   - Security notifications
-   - Health monitoring
+1. **Build & Release** (`build.yml`)
+   - Runs on every push to main/develop and on `v*` tags
+   - Job 1 (`tests`): runs the pytest suite and uploads coverage
+   - Job 2 (`build`, Windows): compiles the executable with PyInstaller,
+     verifies it with `--selftest`, builds the Inno Setup installer,
+     uploads artifacts, and publishes a GitHub Release on `v*` tags
 
 ### CI/CD Best Practices
 
@@ -401,14 +382,11 @@ gh run view <run-id> --log
 ### Manual Workflow Triggers
 
 ```bash
-# Trigger build
-gh workflow run build.yml -f build_type=release
+# Trigger build manually
+gh workflow run build.yml
 
-# Trigger release
-gh workflow run release.yml -f release_type=minor
-
-# Trigger canary deployment
-gh workflow run canary-deployment.yml -f deployment_percentage=10
+# Trigger a release build from a tag
+git tag v1.0.3 && git push origin v1.0.3
 ```
 
 ---

@@ -4,23 +4,39 @@ Configuración general de la aplicación
 """
 
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
 load_dotenv()
 
+APP_VERSION_DEFAULT = "1.0.2"
+
+
+def _resolve_base_dir() -> Path:
+    """
+    Resuelve el directorio base de la aplicación
+
+    En un ejecutable PyInstaller (sys.frozen) la ruta del código queda
+    en un directorio temporal (_MEIPASS); los datos de la aplicación
+    deben vivir junto al ejecutable para no perderse al salir.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent.parent
+
 
 class Settings:
     """Configuración de la aplicación"""
-    
+
     def __init__(self):
         # Directorio base de la aplicación
-        self.base_dir = Path(__file__).parent.parent.parent
-        
+        self.base_dir = _resolve_base_dir()
+
         # Aplicación
         self.app_name = os.getenv("APP_NAME", "Sistema de Gestión de Personal")
-        self.app_version = os.getenv("APP_VERSION", "1.0.0")
+        self.app_version = os.getenv("APP_VERSION", APP_VERSION_DEFAULT)
         self.debug = os.getenv("DEBUG", "False").lower() == "true"
         
         # Base de datos

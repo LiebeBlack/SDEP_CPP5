@@ -7,12 +7,30 @@ import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import tkinter as tk
 import os
+import sys
+import webbrowser
 from typing import Optional, List
 from datetime import date, datetime
 
 from src.models import Empleado, TipoEmpleado, TipoDocumento, TipoIncidencia, EstadoIncidencia, TipoPago, MetodoPago
-from src.utils.helpers import format_date, format_currency, calculate_age
+from src.utils.helpers import (
+    format_date, format_currency, parse_date, mantener_ventana_al_frente
+)
 from src.utils.pdf_generator import PDFGenerator
+
+
+def _id_fila_seleccionada(tree) -> Optional[int]:
+    """ID numérico de la fila seleccionada en un Treeview o None"""
+    seleccion = tree.selection()
+    if not seleccion:
+        return None
+    tags = tree.item(seleccion[0], "tags") or ()
+    if not tags:
+        return None
+    try:
+        return int(tags[0])
+    except (TypeError, ValueError, IndexError):
+        return None
 
 
 class DashboardFrame(ctk.CTkFrame):
@@ -208,15 +226,17 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.tipo_combo.set("Todos")
         self.tipo_combo.bind("<<ComboboxSelected>>", self._on_filter)
         
-        # Botones de acción
+        # Botones de acción (según permisos del rol)
         btn_frame = ctk.CTkFrame(search_frame)
         btn_frame.pack(side="right", padx=5)
         
-        new_btn = ctk.CTkButton(btn_frame, text="Nuevo Empleado", command=self._on_new_empleado)
-        new_btn.pack(side="left", padx=5)
+        if self.main_window.tiene_permiso("create"):
+            new_btn = ctk.CTkButton(btn_frame, text="Nuevo Empleado", command=self._on_new_empleado)
+            new_btn.pack(side="left", padx=5)
         
-        report_btn = ctk.CTkButton(btn_frame, text="Reporte PDF", command=self._on_reporte_empleados)
-        report_btn.pack(side="left", padx=5)
+        if self.main_window.tiene_permiso("report"):
+            report_btn = ctk.CTkButton(btn_frame, text="Reporte PDF", command=self._on_reporte_empleados)
+            report_btn.pack(side="left", padx=5)
         
         refresh_btn = ctk.CTkButton(btn_frame, text="Actualizar", command=self._load_empleados)
         refresh_btn.pack(side="left", padx=5)
@@ -254,22 +274,24 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
-        # Eventos
+        # Doble clic para ver detalles (un clic solo selecciona)
         self.tree.bind("<Double-1>", self._on_double_click)
-        self.tree.bind("<Button-1>", self._on_single_click)
         
-        # Menú contextual
+        # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_details)
-        self.context_menu.add_command(label="Editar", command=self._on_edit)
+        if self.main_window.tiene_permiso("update"):
+            self.context_menu.add_command(label="Editar", command=self._on_edit)
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="Constancia de Trabajo (PDF)", command=self._on_constancia_trabajo)
-        self.context_menu.add_command(label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios)
+        if self.main_window.tiene_permiso("report"):
+            self.context_menu.add_command(label="Constancia de Trabajo (PDF)", command=self._on_constancia_trabajo)
+            self.context_menu.add_command(label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Ver Documentos", command=self._on_documents)
         self.context_menu.add_command(label="Ver Incidencias", command=self._on_incidencias)
-        self.context_menu.add_separator()
-        self.context_menu.add_command(label="Eliminar", command=self._on_delete)
+        if self.main_window.tiene_permiso("delete"):
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Eliminar", command=self._on_delete)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
     
@@ -345,10 +367,6 @@ class EmpleadosFrame(ctk.CTkFrame):
         """Maneja doble clic en un empleado"""
         self._on_view_details()
     
-    def _on_single_click(self, event):
-        """Maneja clic simple en un empleado"""
-        self._on_view_details()
-    
     def _show_context_menu(self, event):
         """Muestra el menú contextual"""
         item = self.tree.identify_row(event.y)
@@ -357,13 +375,11 @@ class EmpleadosFrame(ctk.CTkFrame):
             self.context_menu.post(event.x_root, event.y_root)
     
     def _get_selected_empleado(self) -> Optional[Empleado]:
-        """Obtiene el empleado seleccionado"""
-        selection = self.tree.selection()
-        if selection:
-            item = self.tree.item(selection[0])
-            empleado_id = int(item["tags"][0])
-            return self.main_window.empleado_service.obtener_empleado(empleado_id)
-        return None
+        """Obtiene el empleado seleccionado o None si la fila no tiene datos"""
+        empleado_id = _id_fila_seleccionada(self.tree)
+        if empleado_id is None:
+            return None
+        return self.main_window.empleado_service.obtener_empleado(empleado_id)
     
     def _on_new_empleado(self):
         """Maneja la creación de nuevo empleado"""
@@ -489,19 +505,12 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.title(f"Detalles: {empleado.nombre_completo}")
         self.geometry("700x500")
         
-        # Hacer que la ventana esté siempre al frente
-        self.attributes('-topmost', True)
-        self.after(100, self._remove_topmost)
+        mantener_ventana_al_frente(self)
         
         self._create_widgets()
         self._load_empleado_data()
     
-    def _remove_topmost(self):
-        """Remueve el atributo topmost después de un delay"""
-        try:
-            self.attributes('-topmost', False)
-        except Exception:
-            pass
+
     
     def _create_widgets(self):
         """Crea los widgets del diálogo de detalles"""
@@ -676,21 +685,15 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.title("Nuevo Empleado" if not empleado else "Editar Empleado")
         self.geometry("800x600")
         
-        # Hacer que la ventana esté siempre al frente
-        self.attributes('-topmost', True)
-        self.after(100, self._remove_topmost)
+        mantener_ventana_al_frente(self)
         
         self._create_widgets()
-    
-    def _remove_topmost(self):
-        """Remueve el atributo topmost después de un delay"""
-        try:
-            self.attributes('-topmost', False)
-        except Exception:
-            pass
         
-        if empleado:
+        # En modo edición precargar los datos del empleado
+        if self.empleado and self.edit_mode:
             self._load_empleado_data()
+    
+
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
@@ -740,6 +743,17 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.altura_entry = self._create_form_field(form_frame, "Altura (m):", 3, 2)
         self.tipo_sangre_entry = self._create_form_field(form_frame, "Tipo Sangre:", 4, 0)
         self.nacionalidad_entry = self._create_form_field(form_frame, "Nacionalidad:", 4, 2)
+        
+        # Foto de perfil (opcional)
+        ctk.CTkLabel(form_frame, text="Foto de Perfil:", text_color="white").grid(
+            row=5, column=0, padx=5, pady=10, sticky="e")
+        self.photo_label = ctk.CTkLabel(
+            form_frame, text="Sin foto", text_color="#aaaaaa", anchor="w")
+        self.photo_label.grid(row=5, column=1, padx=5, pady=10, sticky="w")
+        photo_btn = ctk.CTkButton(
+            form_frame, text="Seleccionar…", width=110,
+            command=self._on_select_foto)
+        photo_btn.grid(row=5, column=2, columnspan=2, padx=5, pady=10, sticky="w")
     
     def _create_laboral_tab(self, parent):
         """Crea la pestaña de datos laborales"""
@@ -805,6 +819,8 @@ class EmpleadoDialog(ctk.CTkToplevel):
             return
         
         # Datos personales
+        if self.empleado.foto_ruta:
+            self.photo_label.configure(text=os.path.basename(self.empleado.foto_ruta))
         self.nombres_entry.delete(0, tk.END)
         self.nombres_entry.insert(0, self.empleado.nombres)
         self.apellidos_entry.delete(0, tk.END)
@@ -924,8 +940,36 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _parse_date(self, date_str: str) -> Optional[date]:
         """Parsea una fecha"""
-        from src.utils.helpers import parse_date
         return parse_date(date_str)
+    
+    def _on_select_foto(self):
+        """Selecciona una imagen para la foto de perfil"""
+        ruta = filedialog.askopenfilename(
+            title="Seleccionar foto de perfil",
+            filetypes=[
+                ("Imágenes", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
+                ("Todos los archivos", "*.*"),
+            ],
+        )
+        if ruta:
+            self.photo_path = ruta
+            self.photo_label.configure(text=os.path.basename(ruta), text_color="#8ab4f8")
+    
+    def _guardar_foto(self, empleado_id: int):
+        """Guarda la foto seleccionada y actualiza la ruta del empleado"""
+        ruta = getattr(self, "photo_path", None)
+        if not ruta or not os.path.exists(ruta):
+            return
+        try:
+            from src.utils.document_manager import document_manager
+            with open(ruta, "rb") as f:
+                contenido = f.read()
+            ruta_guardada, _ = document_manager.save_photo(
+                contenido, os.path.basename(ruta), empleado_id)
+            self.main_window.empleado_service.actualizar_foto(empleado_id, ruta_guardada)
+        except Exception as e:
+            messagebox.showwarning(
+                "Advertencia", f"El empleado se guardó pero no se pudo almacenar la foto: {e}")
     
     def _parse_float(self, value: str) -> Optional[float]:
         """Parsea un float"""
@@ -947,6 +991,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
             
             if self.empleado and self.edit_mode:
                 self.main_window.empleado_service.actualizar_empleado(self.empleado.id, datos)
+                self._guardar_foto(self.empleado.id)
                 messagebox.showinfo("Éxito", "Empleado actualizado correctamente")
             else:
                 # Verificar que la cédula no exista antes de crear
@@ -956,7 +1001,8 @@ class EmpleadoDialog(ctk.CTkToplevel):
                         messagebox.showerror("Error", "Ya existe un empleado con esta cédula")
                         return
                 
-                self.main_window.empleado_service.crear_empleado(datos)
+                empleado = self.main_window.empleado_service.crear_empleado(datos)
+                self._guardar_foto(empleado.id)
                 messagebox.showinfo("Éxito", "Empleado creado correctamente")
             
             self.result = True
@@ -1001,8 +1047,9 @@ class DocumentosFrame(ctk.CTkFrame):
         actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         actions_frame.pack(fill="x", padx=10, pady=5)
         
-        new_doc_btn = ctk.CTkButton(actions_frame, text="Nuevo Documento", command=self._on_new_documento)
-        new_doc_btn.pack(side="left", padx=5)
+        if self.main_window.tiene_permiso("create"):
+            new_doc_btn = ctk.CTkButton(actions_frame, text="Nuevo Documento", command=self._on_new_documento)
+            new_doc_btn.pack(side="left", padx=5)
         
         # Tabla de documentos
         table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
@@ -1031,13 +1078,19 @@ class DocumentosFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
-        # Menú contextual
+        # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Documento", command=self._on_view_documento)
         self.context_menu.add_command(label="Descargar", command=self._on_download_documento)
-        self.context_menu.add_command(label="Eliminar", command=self._on_delete_documento)
+        if self.main_window.tiene_permiso("update"):
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Editar", command=self._on_edit_documento)
+        if self.main_window.tiene_permiso("delete"):
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Eliminar", command=self._on_delete_documento)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
+        self.tree.bind("<Double-1>", lambda e: self._on_view_documento())
         
         # Cargar empleados
         self._load_empleados()
@@ -1071,14 +1124,14 @@ class DocumentosFrame(ctk.CTkFrame):
             self.tree.delete(item)
         
         if not self.current_empleado_id:
-            self.tree.insert("", "end", values=("", "", "", ""))
+            self.tree.insert("", "end", values=("Seleccione un empleado", "", "", ""))
             return
         
         try:
             documentos = self.main_window.documento_service.listar_documentos_empleado(self.current_empleado_id)
             
             if not documentos:
-                self.tree.insert("", "end", values=("", "No hay documentos", "", ""))
+                self.tree.insert("", "end", values=("", "No hay documentos registrados", "", ""))
                 return
             
             for doc in documentos:
@@ -1106,13 +1159,20 @@ class DocumentosFrame(ctk.CTkFrame):
             self.context_menu.post(event.x_root, event.y_root)
     
     def _get_selected_documento(self):
-        """Obtiene el documento seleccionado"""
-        selection = self.tree.selection()
-        if selection:
-            item = self.tree.item(selection[0])
-            doc_id = int(item["tags"][0])
-            return self.main_window.documento_service.obtener_documento(doc_id)
-        return None
+        """Obtiene el documento seleccionado o None si la fila no tiene datos"""
+        documento_id = _id_fila_seleccionada(self.tree)
+        if documento_id is None:
+            return None
+        return self.main_window.documento_service.obtener_documento(documento_id)
+    
+    def _on_edit_documento(self):
+        """Edita el documento seleccionado"""
+        documento = self._get_selected_documento()
+        if documento:
+            dialog = DocumentoDialog(self, self.main_window, documento.empleado_id, documento)
+            self.wait_window(dialog)
+            if dialog.result:
+                self._load_documentos()
     
     def _on_new_documento(self):
         """Maneja la creación de nuevo documento"""
@@ -1125,6 +1185,20 @@ class DocumentosFrame(ctk.CTkFrame):
         if dialog.result:
             self._load_documentos()
     
+    def _abrir_con_aplicacion(self, ruta: str):
+        """Abre un archivo con la aplicación predeterminada del sistema"""
+        try:
+            if sys.platform == "win32":
+                os.startfile(ruta)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                import subprocess
+                subprocess.Popen(["open", ruta])
+            else:
+                import subprocess
+                subprocess.Popen(["xdg-open", ruta])
+        except Exception:
+            webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
+    
     def _on_view_documento(self):
         """Muestra el documento seleccionado en el visor del sistema"""
         import tempfile
@@ -1132,25 +1206,26 @@ class DocumentosFrame(ctk.CTkFrame):
         if not documento:
             return
         
-        # 1. Si existe el archivo en disco, intentar abrirlo directamente
+        # 1. Si existe el archivo en disco, abrirlo directamente
         if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
-            try:
-                os.startfile(documento.ruta_archivo)
-                return
-            except Exception:
-                pass
+            self._abrir_con_aplicacion(documento.ruta_archivo)
+            return
         
-        # 2. Si hay contenido binario, guardar a archivo temporal y abrir
+        # 2. Si hay contenido binario, guardar a un archivo temporal y abrirlo
         contenido = self.main_window.documento_service.obtener_archivo(documento.id)
         if contenido:
             try:
                 ext = os.path.splitext(documento.nombre_archivo)[1] or ".pdf"
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
-                temp_file.write(contenido)
-                temp_file.close()
-                os.startfile(temp_file.name)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                    tmp.write(contenido)
+                    nombre_temporal = tmp.name
+                self._abrir_con_aplicacion(nombre_temporal)
             except Exception:
-                messagebox.showinfo("Documento", f"Documento: {documento.titulo}\nArchivo: {documento.nombre_archivo}\nTamaño: {len(contenido)} bytes")
+                messagebox.showinfo(
+                    "Documento",
+                    f"Documento: {documento.titulo}\nArchivo: {documento.nombre_archivo}"
+                    f"\nTamaño: {len(contenido)} bytes",
+                )
         else:
             messagebox.showerror("Error", "No se pudo recuperar el archivo del documento")
     
@@ -1186,28 +1261,39 @@ class DocumentosFrame(ctk.CTkFrame):
 class DocumentoDialog(ctk.CTkToplevel):
     """Diálogo para crear/editar documento"""
     
-    def __init__(self, parent, main_window, empleado_id: int):
+    def __init__(self, parent, main_window, empleado_id: int, documento=None):
         super().__init__(parent)
         self.main_window = main_window
         self.empleado_id = empleado_id
+        self.documento = documento
         self.result = False
         self.file_content = None
         
-        self.title("Nuevo Documento")
+        self.title("Editar Documento" if documento else "Nuevo Documento")
         self.geometry("600x400")
         
-        # Hacer que la ventana esté siempre al frente
-        self.attributes('-topmost', True)
-        self.after(100, self._remove_topmost)
+        mantener_ventana_al_frente(self)
         
         self._create_widgets()
+        if documento:
+            self._load_documento_data()
     
-    def _remove_topmost(self):
-        """Remueve el atributo topmost después de un delay"""
-        try:
-            self.attributes('-topmost', False)
-        except Exception:
-            pass
+    def _load_documento_data(self):
+        """Precarga los datos del documento en el formulario"""
+        if not self.documento:
+            return
+        
+        self.tipo_combo.set(self.documento.tipo_documento)
+        self.titulo_entry.insert(0, self.documento.titulo)
+        if self.documento.descripcion:
+            self.descripcion_text.insert("1.0", self.documento.descripcion)
+        if self.documento.fecha_emision:
+            self.fecha_emision_entry.insert(0, format_date(self.documento.fecha_emision))
+        if self.documento.fecha_vencimiento:
+            self.fecha_vencimiento_entry.insert(0, format_date(self.documento.fecha_vencimiento))
+        if self.documento.nombre_archivo:
+            self.file_label.configure(text=self.documento.nombre_archivo)
+
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
@@ -1283,9 +1369,11 @@ class DocumentoDialog(ctk.CTkToplevel):
             self.file_label.configure(text=filename)
     
     def _on_save(self):
-        """Guarda el documento"""
+        """Guarda (crea o actualiza) el documento"""
         try:
-            if not self.file_content:
+            # Al editar, el archivo solo es obligatorio si no había uno previo
+            requiere_archivo = not (self.documento and self.documento.ruta_archivo)
+            if requiere_archivo and not self.file_content:
                 messagebox.showerror("Error", "Debe seleccionar un archivo")
                 return
             
@@ -1299,18 +1387,25 @@ class DocumentoDialog(ctk.CTkToplevel):
                 "nombre_archivo": self.file_label.cget("text")
             }
             
-            # Validar campos requeridos
             if not datos["titulo"]:
                 messagebox.showerror("Error", "El título es requerido")
                 return
+            
+            if self.documento is None and self.file_content:
+                datos["nombre_archivo"] = self.file_label.cget("text")
             
             errores = self.main_window.documento_service.validar_datos_documento(datos)
             if errores:
                 messagebox.showerror("Errores de Validación", "\n".join(errores))
                 return
             
-            self.main_window.documento_service.crear_documento(datos, self.file_content)
-            messagebox.showinfo("Éxito", "Documento creado correctamente")
+            if self.documento:
+                self.main_window.documento_service.actualizar_documento(
+                    self.documento.id, datos, self.file_content)
+                messagebox.showinfo("Éxito", "Documento actualizado correctamente")
+            else:
+                self.main_window.documento_service.crear_documento(datos, self.file_content)
+                messagebox.showinfo("Éxito", "Documento creado correctamente")
             
             self.result = True
             self.destroy()
@@ -1359,8 +1454,9 @@ class IncidenciasFrame(ctk.CTkFrame):
         actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
         actions_frame.pack(fill="x", padx=10, pady=5)
         
-        new_incidencia_btn = ctk.CTkButton(actions_frame, text="Nueva Incidencia", command=self._on_new_incidencia)
-        new_incidencia_btn.pack(side="left", padx=5)
+        if self.main_window.tiene_permiso("create"):
+            new_incidencia_btn = ctk.CTkButton(actions_frame, text="Nueva Incidencia", command=self._on_new_incidencia)
+            new_incidencia_btn.pack(side="left", padx=5)
         
         # Tabla de incidencias
         table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
@@ -1391,14 +1487,19 @@ class IncidenciasFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
-        # Menú contextual
+        # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_incidencia)
-        self.context_menu.add_command(label="Aprobar", command=self._on_approve_incidencia)
-        self.context_menu.add_command(label="Rechazar", command=self._on_reject_incidencia)
-        self.context_menu.add_command(label="Eliminar", command=self._on_delete_incidencia)
+        if self.main_window.tiene_permiso("update"):
+            self.context_menu.add_command(label="Editar", command=self._on_edit_incidencia)
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Aprobar", command=self._on_approve_incidencia)
+            self.context_menu.add_command(label="Rechazar", command=self._on_reject_incidencia)
+        if self.main_window.tiene_permiso("delete"):
+            self.context_menu.add_command(label="Eliminar", command=self._on_delete_incidencia)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
+        self.tree.bind("<Double-1>", lambda e: self._on_view_incidencia())
     
     def _load_data(self):
         """Carga los datos iniciales"""
@@ -1434,14 +1535,14 @@ class IncidenciasFrame(ctk.CTkFrame):
             self.tree.delete(item)
         
         if not self.current_empleado_id:
-            self.tree.insert("", "end", values=("", "", "", "", ""))
+            self.tree.insert("", "end", values=("Seleccione un empleado", "", "", "", ""))
             return
         
         try:
             incidencias = self.main_window.incidencia_service.listar_incidencias_empleado(self.current_empleado_id)
             
             if not incidencias:
-                self.tree.insert("", "end", values=("", "No hay incidencias", "", "", ""))
+                self.tree.insert("", "end", values=("", "No hay incidencias registradas", "", "", ""))
                 return
             
             for incidencia in incidencias:
@@ -1469,13 +1570,27 @@ class IncidenciasFrame(ctk.CTkFrame):
             self.context_menu.post(event.x_root, event.y_root)
     
     def _get_selected_incidencia(self):
-        """Obtiene la incidencia seleccionada"""
-        selection = self.tree.selection()
-        if selection:
-            item = self.tree.item(selection[0])
-            incidencia_id = int(item["tags"][0])
-            return self.main_window.incidencia_service.obtener_incidencia(incidencia_id)
-        return None
+        """Obtiene la incidencia seleccionada o None si la fila no tiene datos"""
+        incidencia_id = _id_fila_seleccionada(self.tree)
+        if incidencia_id is None:
+            return None
+        return self.main_window.incidencia_service.obtener_incidencia(incidencia_id)
+    
+    def _on_edit_incidencia(self):
+        """Edita la incidencia seleccionada"""
+        incidencia = self._get_selected_incidencia()
+        if incidencia:
+            if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
+                messagebox.showwarning(
+                    "Advertencia",
+                    "Solo las incidencias pendientes pueden editarse",
+                )
+                return
+            dialog = IncidenciaDialog(
+                self, self.main_window, incidencia.empleado_id, incidencia)
+            self.wait_window(dialog)
+            if dialog.result:
+                self._load_incidencias()
     
     def _on_new_incidencia(self):
         """Maneja la creación de nueva incidencia"""
@@ -1553,46 +1668,58 @@ class IncidenciasFrame(ctk.CTkFrame):
     
     def _show_incidencia_details(self, incidencia):
         """Muestra los detalles de una incidencia"""
-        details = f"""
+        detalle = f"""
 Tipo: {incidencia.tipo_incidencia}
 Estado: {incidencia.estado}
+Empleado ID: {incidencia.empleado_id}
 Fecha Solicitud: {format_date(incidencia.fecha_solicitud)}
 Periodo: {format_date(incidencia.fecha_inicio)} - {format_date(incidencia.fecha_fin)}
 Días Solicitados: {incidencia.dias_solicitados}
 Días Aprobados: {incidencia.dias_aprobados or 'N/A'}
+Afecta Nómina: {'Sí' if incidencia.afecta_nominas else 'No'}
 Motivo: {incidencia.motivo}
 Descripción: {incidencia.descripcion or 'N/A'}
 Aprobado Por: {incidencia.aprobado_por or 'N/A'}
+Fecha Aprobación: {format_date(incidencia.fecha_aprobacion) if incidencia.fecha_aprobacion else 'N/A'}
 Comentarios: {incidencia.comentarios_aprobacion or 'N/A'}
+Soporte: {incidencia.documento_soporte_nombre or 'N/A'}
 """
-        messagebox.showinfo("Detalles de Incidencia", details)
+        InfoDialog(self, "Detalles de Incidencia", detalle)
 
 
 class IncidenciaDialog(ctk.CTkToplevel):
     """Diálogo para crear/editar incidencia"""
     
-    def __init__(self, parent, main_window, empleado_id: int):
+    def __init__(self, parent, main_window, empleado_id: int, incidencia=None):
         super().__init__(parent)
         self.main_window = main_window
         self.empleado_id = empleado_id
+        self.incidencia = incidencia
         self.result = False
         self.file_content = None
         
-        self.title("Nueva Incidencia")
+        self.title("Editar Incidencia" if incidencia else "Nueva Incidencia")
         self.geometry("600x500")
         
-        # Hacer que la ventana esté siempre al frente
-        self.attributes('-topmost', True)
-        self.after(100, self._remove_topmost)
+        mantener_ventana_al_frente(self)
         
         self._create_widgets()
+        if incidencia:
+            self._load_incidencia_data()
     
-    def _remove_topmost(self):
-        """Remueve el atributo topmost después de un delay"""
-        try:
-            self.attributes('-topmost', False)
-        except Exception:
-            pass
+    def _load_incidencia_data(self):
+        """Precarga los datos de la incidencia en el formulario"""
+        if not self.incidencia:
+            return
+        self.tipo_combo.set(self.incidencia.tipo_incidencia)
+        self.fecha_inicio_entry.insert(0, format_date(self.incidencia.fecha_inicio))
+        self.fecha_fin_entry.insert(0, format_date(self.incidencia.fecha_fin))
+        self.motivo_text.insert("1.0", self.incidencia.motivo)
+        if self.incidencia.descripcion:
+            self.descripcion_text.insert("1.0", self.incidencia.descripcion)
+        if self.incidencia.documento_soporte_nombre:
+            self.file_label.configure(text=self.incidencia.documento_soporte_nombre)
+
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
@@ -1694,8 +1821,13 @@ class IncidenciaDialog(ctk.CTkToplevel):
                 messagebox.showerror("Errores de Validación", "\n".join(errores))
                 return
             
-            self.main_window.incidencia_service.crear_incidencia(datos, self.file_content)
-            messagebox.showinfo("Éxito", "Incidencia creada correctamente")
+            if self.incidencia:
+                self.main_window.incidencia_service.actualizar_incidencia(
+                    self.incidencia.id, datos, self.file_content)
+                messagebox.showinfo("Éxito", "Incidencia actualizada correctamente")
+            else:
+                self.main_window.incidencia_service.crear_incidencia(datos, self.file_content)
+                messagebox.showinfo("Éxito", "Incidencia creada correctamente")
             
             self.result = True
             self.destroy()
@@ -1728,18 +1860,11 @@ class ApprovalDialog(ctk.CTkToplevel):
         self.title(title)
         self.geometry("400x300")
         
-        # Hacer que la ventana esté siempre al frente
-        self.attributes('-topmost', True)
-        self.after(100, self._remove_topmost)
+        mantener_ventana_al_frente(self)
         
         self._create_widgets(title, action, incidencia)
     
-    def _remove_topmost(self):
-        """Remueve el atributo topmost después de un delay"""
-        try:
-            self.attributes('-topmost', False)
-        except Exception:
-            pass
+
     
     def _create_widgets(self, title: str, action: str, incidencia):
         """Crea los widgets del diálogo"""
@@ -1848,6 +1973,11 @@ class NominaFrame(ctk.CTkFrame):
         self.estado_combo.set("Todos")
         self.estado_combo.bind("<<ComboboxSelected>>", self._on_filter)
         
+        if self.main_window.tiene_permiso("create"):
+            nuevo_pago_btn = ctk.CTkButton(
+                filter_frame, text="Nuevo Pago", command=self._on_new_pago)
+            nuevo_pago_btn.pack(side="left", padx=5)
+        
         refresh_btn = ctk.CTkButton(filter_frame, text="Actualizar", command=self._load_pagos)
         refresh_btn.pack(side="right", padx=5)
         
@@ -1882,14 +2012,22 @@ class NominaFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
-        # Menú contextual
+        # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_pago)
-        self.context_menu.add_command(label="Generar Recibo", command=self._on_generate_recibo)
-        self.context_menu.add_command(label="Marcar Pagado", command=self._on_mark_paid)
-        self.context_menu.add_command(label="Eliminar", command=self._on_delete_pago)
+        if self.main_window.tiene_permiso("report"):
+            self.context_menu.add_command(label="Generar Recibo", command=self._on_generate_recibo)
+        if self.main_window.tiene_permiso("update"):
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Marcar Pagado", command=self._on_mark_paid)
+            self.context_menu.add_command(label="Marcar Pendiente", command=self._on_mark_unpaid)
+            self.context_menu.add_command(label="Editar", command=self._on_edit_pago)
+        if self.main_window.tiene_permiso("delete"):
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Eliminar", command=self._on_delete_pago)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
+        self.tree.bind("<Double-1>", lambda e: self._on_view_pago())
     
     def _load_pagos(self):
         """Carga la lista de pagos"""
@@ -1907,7 +2045,7 @@ class NominaFrame(ctk.CTkFrame):
                 pagos = self.main_window.pago_service.listar_pagos()
             
             if not pagos:
-                self.tree.insert("", "end", values=("", "No hay pagos", "", "", "", ""))
+                self.tree.insert("", "end", values=("", "No hay pagos registrados", "", "", "", ""))
                 return
             
             for pago in pagos:
@@ -1970,13 +2108,27 @@ class NominaFrame(ctk.CTkFrame):
             self.context_menu.post(event.x_root, event.y_root)
     
     def _get_selected_pago(self):
-        """Obtiene el pago seleccionado"""
-        selection = self.tree.selection()
-        if selection:
-            item = self.tree.item(selection[0])
-            pago_id = int(item["tags"][0])
-            return self.main_window.pago_service.obtener_pago(pago_id)
-        return None
+        """Obtiene el pago seleccionado o None si la fila no tiene datos"""
+        pago_id = _id_fila_seleccionada(self.tree)
+        if pago_id is None:
+            return None
+        return self.main_window.pago_service.obtener_pago(pago_id)
+    
+    def _on_new_pago(self):
+        """Abre el diálogo para registrar un pago manual"""
+        dialog = PagoDialog(self, self.main_window)
+        self.wait_window(dialog)
+        if dialog.result:
+            self._load_pagos()
+    
+    def _on_edit_pago(self):
+        """Edita el pago seleccionado"""
+        pago = self._get_selected_pago()
+        if pago:
+            dialog = PagoDialog(self, self.main_window, pago)
+            self.wait_window(dialog)
+            if dialog.result:
+                self._load_pagos()
     
     def _on_view_pago(self):
         """Muestra detalles del pago seleccionado"""
@@ -2002,6 +2154,7 @@ Empleado: {nombre_empleado}
 Periodo: {format_date(pago.periodo_inicio)} - {format_date(pago.periodo_fin)}
 Tipo: {pago.tipo_pago}
 Método: {pago.metodo_pago}
+Referencia: {pago.referencia_pago or 'N/A'}
 
 Salario Base: {format_currency(salario_base)}
 Bonificaciones: {format_currency(bonif)}
@@ -2018,7 +2171,7 @@ Deducciones:
 Total Neto: {format_currency(neto)}
 Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 """
-            messagebox.showinfo("Detalles del Pago", details)
+            InfoDialog(self, "Detalles del Pago", details)
     
     def _on_generate_recibo(self):
         """Genera recibo de pago"""
@@ -2075,6 +2228,22 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al marcar pago: {str(e)}")
     
+    def _on_mark_unpaid(self):
+        """Marca el pago como pendiente"""
+        pago = self._get_selected_pago()
+        if pago:
+            if not pago.pagado:
+                messagebox.showinfo("Información", "Este pago ya está pendiente")
+                return
+            
+            if messagebox.askyesno("Confirmar", "¿Desea marcar este pago como pendiente?"):
+                try:
+                    self.main_window.pago_service.marcar_pendiente(pago.id)
+                    self._load_pagos()
+                    messagebox.showinfo("Éxito", "Pago marcado como pendiente")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error al marcar pago: {str(e)}")
+    
     def _on_delete_pago(self):
         """Elimina el pago seleccionado"""
         pago = self._get_selected_pago()
@@ -2089,7 +2258,6 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
     
     def _parse_date(self, date_str: str) -> Optional[date]:
         """Parsea una fecha"""
-        from src.utils.helpers import parse_date
         return parse_date(date_str)
 
 
@@ -2120,9 +2288,131 @@ class ConfiguracionFrame(ctk.CTkFrame):
         rrhh_tab = self.notebook.add("Recursos Humanos")
         self._create_rrhh_tab(rrhh_tab)
         
-        # Botón de guardar
-        save_btn = ctk.CTkButton(self, text="Guardar Cambios", command=self._on_save)
-        save_btn.pack(pady=10)
+        # Pestaña de seguridad y respaldos (admin)
+        seguridad_tab = self.notebook.add("Seguridad y Respaldo")
+        self._create_seguridad_tab(seguridad_tab)
+        
+        # Pestaña de usuarios (admin)
+        usuarios_tab = self.notebook.add("Usuarios")
+        self._create_usuarios_tab(usuarios_tab)
+        
+        # Botones generales
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(pady=10)
+        
+        save_btn = ctk.CTkButton(btn_frame, text="Guardar Cambios", command=self._on_save)
+        save_btn.pack(side="left", padx=5)
+        
+        refresh_btn = ctk.CTkButton(
+            btn_frame, text="Actualizar", command=self._load_configuracion)
+        refresh_btn.pack(side="left", padx=5)
+    
+    def _create_seguridad_tab(self, parent):
+        """Crea la pestaña de seguridad y respaldos"""
+        # Opciones de respaldo automático y auditoría
+        options = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        options.pack(fill="x", padx=10, pady=(10, 5))
+        
+        self.backup_enabled_var = tk.BooleanVar(value=True)
+        backup_chk = ctk.CTkCheckBox(
+            options, text="Respaldo automático al cerrar",
+            variable=self.backup_enabled_var)
+        backup_chk.grid(row=0, column=0, padx=10, pady=8, sticky="w")
+        
+        self.audit_enabled_var = tk.BooleanVar(value=True)
+        audit_chk = ctk.CTkCheckBox(
+            options, text="Auditoría de eventos",
+            variable=self.audit_enabled_var)
+        audit_chk.grid(row=0, column=1, padx=10, pady=8, sticky="w")
+        
+        ctk.CTkLabel(options, text="Intervalo (horas):", text_color="white").grid(
+            row=1, column=0, padx=(10, 5), pady=6, sticky="e")
+        self.backup_interval_entry = ctk.CTkEntry(
+            options, width=80, fg_color="#3c3c3c", text_color="white")
+        self.backup_interval_entry.grid(row=1, column=1, padx=5, pady=6, sticky="w")
+        
+        save_seg_btn = ctk.CTkButton(
+            options, text="Guardar Seguridad", command=self._on_save_seguridad)
+        save_seg_btn.grid(row=1, column=3, padx=15, pady=6, sticky="e")
+        
+        options.grid_columnconfigure(3, weight=1)
+        
+        # Información del directorio de respaldos
+        info = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        info.pack(fill="x", padx=10, pady=5)
+        self.backup_status_label = ctk.CTkLabel(
+            info, text="Cargando estado de respaldos…", text_color="#cccccc",
+            anchor="w", justify="left")
+        self.backup_status_label.pack(fill="x", padx=10, pady=8)
+        
+        # Tabla de respaldos
+        table_frame = ctk.CTkFrame(parent, fg_color="#1a1a1a")
+        table_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        scrollbar = ctk.CTkScrollbar(table_frame)
+        scrollbar.pack(side="right", fill="y")
+        
+        self.backup_tree = ttk.Treeview(
+            table_frame, columns=("nombre", "fecha", "tamano", "tipo"),
+            show="headings", yscrollcommand=scrollbar.set)
+        self.backup_tree.heading("nombre", text="Nombre")
+        self.backup_tree.heading("fecha", text="Fecha")
+        self.backup_tree.heading("tamano", text="Tamaño")
+        self.backup_tree.heading("tipo", text="Tipo")
+        self.backup_tree.column("nombre", width=220, minwidth=150)
+        self.backup_tree.column("fecha", width=140, minwidth=100)
+        self.backup_tree.column("tamano", width=100, minwidth=70)
+        self.backup_tree.column("tipo", width=90, minwidth=70)
+        self.backup_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.configure(command=self.backup_tree.yview)
+        
+        # Acciones sobre respaldos
+        actions = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        actions.pack(fill="x", padx=10, pady=(5, 10))
+        
+        create_btn = ctk.CTkButton(actions, text="Crear Respaldo", command=self._on_create_backup)
+        create_btn.pack(side="left", padx=5, pady=6)
+        verify_btn = ctk.CTkButton(actions, text="Verificar", command=self._on_verify_backup)
+        verify_btn.pack(side="left", padx=5, pady=6)
+        restore_btn = ctk.CTkButton(actions, text="Restaurar", command=self._on_restore_backup)
+        restore_btn.pack(side="left", padx=5, pady=6)
+        delete_btn = ctk.CTkButton(actions, text="Eliminar", command=self._on_delete_backup)
+        delete_btn.pack(side="left", padx=5, pady=6)
+    
+    def _create_usuarios_tab(self, parent):
+        """Crea la pestaña de administración de usuarios"""
+        table_frame = ctk.CTkFrame(parent, fg_color="#1a1a1a")
+        table_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        scrollbar = ctk.CTkScrollbar(table_frame)
+        scrollbar.pack(side="right", fill="y")
+        
+        self.usuarios_tree = ttk.Treeview(
+            table_frame, columns=("usuario", "rol", "nombre", "estado"),
+            show="headings", yscrollcommand=scrollbar.set)
+        self.usuarios_tree.heading("usuario", text="Usuario")
+        self.usuarios_tree.heading("rol", text="Rol")
+        self.usuarios_tree.heading("nombre", text="Nombre")
+        self.usuarios_tree.heading("estado", text="Estado")
+        self.usuarios_tree.column("usuario", width=150, minwidth=100)
+        self.usuarios_tree.column("rol", width=130, minwidth=90)
+        self.usuarios_tree.column("nombre", width=220, minwidth=150)
+        self.usuarios_tree.column("estado", width=100, minwidth=70)
+        self.usuarios_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.configure(command=self.usuarios_tree.yview)
+        
+        actions = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        actions.pack(fill="x", padx=10, pady=(0, 10))
+        
+        nuevo_btn = ctk.CTkButton(actions, text="Nuevo Usuario", command=self._on_new_usuario)
+        nuevo_btn.pack(side="left", padx=5, pady=6)
+        editar_btn = ctk.CTkButton(actions, text="Editar", command=self._on_edit_usuario)
+        editar_btn.pack(side="left", padx=5, pady=6)
+        toggle_btn = ctk.CTkButton(
+            actions, text="Activar / Desactivar", command=self._on_toggle_usuario)
+        toggle_btn.pack(side="left", padx=5, pady=6)
+        
+        self.usuarios_tree.bind("<Double-1>", lambda e: self._on_edit_usuario())
     
     def _create_general_tab(self, parent):
         """Crea la pestaña de configuración general"""

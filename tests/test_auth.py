@@ -43,6 +43,31 @@ def test_seed_admin_y_login(session):
     assert usuario.debe_cambiar_password
 
 
+def test_cambiar_password_requiere_actual(session):
+    auth = AuthService(session)
+    admin = auth.usuario_por_username(DEFAULT_ADMIN_USERNAME)
+    with pytest.raises(ValueError):
+        auth.cambiar_password(admin, "nuevaSegura1", actual_password="incorrecta")
+
+
+def test_cambiar_password_exitoso(session):
+    auth = AuthService(session)
+    admin = auth.usuario_por_username(DEFAULT_ADMIN_USERNAME)
+    assert auth.cambiar_password(admin, "nuevaSegura1", actual_password=DEFAULT_ADMIN_PASSWORD)
+    session.refresh(admin)
+    assert SecurityValidator.verify_password("nuevaSegura1", admin.password_hash)
+    assert admin.debe_cambiar_password == 0
+    # La nueva contraseña ya autentica
+    assert auth.autenticar(DEFAULT_ADMIN_USERNAME, "nuevaSegura1").id == admin.id
+
+
+def test_cambiar_password_rechaza_corta(session):
+    auth = AuthService(session)
+    admin = auth.usuario_por_username(DEFAULT_ADMIN_USERNAME)
+    with pytest.raises(ValueError):
+        auth.cambiar_password(admin, "corta", actual_password=DEFAULT_ADMIN_PASSWORD)
+
+
 def test_login_password_incorrecta(session):
     auth = AuthService(session)
     ensure_default_admin(session)

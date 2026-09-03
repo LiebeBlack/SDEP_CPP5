@@ -182,6 +182,10 @@ class IncidenciaService:
         """Lista incidencias de un empleado"""
         return self.repository.get_by_empleado(empleado_id)
     
+    def listar_todas(self) -> List[Incidencia]:
+        """Lista todas las incidencias registradas"""
+        return self.repository.get_all(limit=None)
+    
     def listar_por_tipo(self, tipo: str) -> List[Incidencia]:
         """Lista incidencias por tipo"""
         return self.repository.get_by_tipo(tipo)

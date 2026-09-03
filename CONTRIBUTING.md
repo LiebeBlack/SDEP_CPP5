@@ -350,11 +350,13 @@ Brief description of changes
 The CI/CD pipeline consists of a single workflow:
 
 1. **Build & Release** (`build.yml`)
-   - Runs on every push to main/develop and on `v*` tags
+   - Runs on every push to main/develop, on `v*` tags, and manually
    - Job 1 (`tests`): runs the pytest suite and uploads coverage
    - Job 2 (`build`, Windows): compiles the executable with PyInstaller,
      verifies it with `--selftest`, builds the Inno Setup installer,
-     uploads artifacts, and publishes a GitHub Release on `v*` tags
+     uploads artifacts, and publishes a GitHub Release on **every push
+     to main** (continuous release, no tag required) or on `v*` tags
+     (versioned release)
 
 ### CI/CD Best Practices
 
@@ -385,7 +387,10 @@ gh run view <run-id> --log
 # Trigger build manually
 gh workflow run build.yml
 
-# Trigger a release build from a tag
+# Every push to main publishes a Release automatically (no tag needed)
+git push origin main
+
+# Optional: versioned release from a tag
 git tag v1.0.3 && git push origin v1.0.3
 ```
 

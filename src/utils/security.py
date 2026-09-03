@@ -214,40 +214,68 @@ class SecurityValidator:
         """
         return secrets.token_hex(length)
     
+    # Parámetros del derivador de clave (PBKDF2-HMAC-SHA256)
+    PBKDF2_ITERATIONS = 200_000
+    PBKDF2_SALT_BYTES = 16
+
     @classmethod
     def hash_password(cls, password: str) -> str:
         """
-        Hashea una contraseña de forma segura
-        
+        Hashea una contraseña con PBKDF2-HMAC-SHA256 y salt aleatorio
+
+        El resultado tiene el formato: pbkdf2$<iteraciones>$<salt_hex>$<hash_hex>
+
         Args:
             password: Contraseña en texto plano
-            
+
         Returns:
-            Hash de la contraseña
+            Hash seguro de la contraseña
         """
-        # Usar SHA-256 con salt (en producción usar bcrypt o argon2)
-        salt = secrets.token_hex(16)
-        password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
-        return f"{salt}${password_hash}"
-    
+        salt = secrets.token_bytes(cls.PBKDF2_SALT_BYTES)
+        derived = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            cls.PBKDF2_ITERATIONS,
+        )
+        return f"pbkdf2${cls.PBKDF2_ITERATIONS}${salt.hex()}${derived.hex()}"
+
     @classmethod
     def verify_password(cls, password: str, password_hash: str) -> bool:
         """
-        Verifica una contraseña contra su hash
-        
+        Verifica una contraseña contra su hash almacenado
+
+        Soporta hashes PBKDF2 (formato pbkdf2$...) y, por compatibilidad,
+        hashes SHA-256 legados (formato salt$hash).
+
         Args:
             password: Contraseña en texto plano
             password_hash: Hash almacenado
-            
+
         Returns:
             True si la contraseña es correcta
         """
-        try:
-            salt, hash_value = password_hash.split('$')
-            computed_hash = hashlib.sha256((password + salt).encode()).hexdigest()
-            return secrets.compare_digest(computed_hash, hash_value)
-        except Exception:
+        if not password_hash or "$" not in password_hash:
             return False
+        try:
+            parts = password_hash.split("$")
+            if parts[0] == "pbkdf2" and len(parts) == 4:
+                _, iterations_str, salt_hex, stored_hex = parts
+                iterations = int(iterations_str)
+                salt = bytes.fromhex(salt_hex)
+                derived = hashlib.pbkdf2_hmac(
+                    "sha256", password.encode("utf-8"), salt, iterations
+                )
+                return secrets.compare_digest(derived.hex(), stored_hex)
+
+            # Hash legado: salt$sha256_hex
+            if len(parts) == 2:
+                salt, hash_value = parts
+                computed = hashlib.sha256((password + salt).encode()).hexdigest()
+                return secrets.compare_digest(computed, hash_value)
+        except (ValueError, TypeError):
+            return False
+        return False
     
     @classmethod
     def validate_data_integrity(cls, data: Dict, required_fields: List[str]) -> List[str]:

@@ -9,6 +9,7 @@ from .documento_repository import DocumentoRepository
 from .incidencia_repository import IncidenciaRepository
 from .pago_repository import PagoRepository
 from .configuracion_repository import ConfiguracionRepository
+from .usuario_repository import UsuarioRepository
 
 __all__ = [
     "BaseRepository",
@@ -16,5 +17,6 @@ __all__ = [
     "DocumentoRepository",
     "IncidenciaRepository",
     "PagoRepository",
-    "ConfiguracionRepository"
+    "ConfiguracionRepository",
+    "UsuarioRepository"
 ]

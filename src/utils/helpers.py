@@ -399,3 +399,20 @@ def log_message(message: str, level: str = "INFO") -> None:
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] [{level}] {message}")
+
+
+def mantener_ventana_al_frente(window) -> None:
+    """Mantiene una ventana temporalmente al frente para capturar el foco"""
+    try:
+        window.attributes("-topmost", True)
+        window.after(120, lambda: quitar_ventana_al_frente(window))
+    except Exception:
+        pass
+
+
+def quitar_ventana_al_frente(window) -> None:
+    """Quita el atributo topmost de una ventana"""
+    try:
+        window.attributes("-topmost", False)
+    except Exception:
+        pass

@@ -128,26 +128,51 @@ def initialize_database():
 
 
 def run_application():
-    """Ejecuta la aplicación GUI con manejo de errores mejorado"""
+    """
+    Ejecuta la aplicación GUI con sesiones de usuario
+
+    Muestra la ventana de inicio de sesión y, tras autenticar, la ventana
+    principal. Al cerrar sesión se vuelve al login; al salir se termina.
+    """
     global application_instance
     try:
+        from src.gui.login_window import LoginWindow
         from src.gui.main_window import MainWindow
-        
+        from src.services.auth_service import AuthService
+
         logger.info("Iniciando aplicación...")
-        app = MainWindow()
-        application_instance = app
-        
-        try:
-            from src.utils.audit_logger import get_audit_logger, AuditEventType
-            audit = get_audit_logger()
-            if audit:
-                audit.log_system_event(AuditEventType.SYSTEM_START, 
-                                       details={"operation": "run_application"})
-        except Exception:
-            pass
-        
-        app.run()
-        
+        while True:
+            # 1. Inicio de sesión
+            login = LoginWindow()
+            user = login.run()
+            login.destroy()
+            if user is None:
+                logger.info("Sesión cancelada por el usuario")
+                break
+
+            logger.info(f"Sesión iniciada: {user.username} ({user.rol_valor})")
+
+            # 2. Ventana principal
+            app = MainWindow(current_user=user)
+            application_instance = app
+            status = app.run()
+            application_instance = None
+
+            # 3. Registro de cierre de sesión en auditoría
+            try:
+                from src.config import db_config
+                session = db_config.get_session()
+                try:
+                    AuthService(session).cerrar_sesion(user.username)
+                finally:
+                    db_config.close_session(session)
+            except Exception:
+                pass
+
+            if status != "logout":
+                logger.info("Aplicación finalizada")
+                break
+
     except Exception as e:
         logger.error(f"Error al ejecutar la aplicación: {str(e)}")
         try:

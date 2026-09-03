@@ -123,3 +123,16 @@ class MetodoPago(BaseEnum):
     EFECTIVO = "efectivo"
     CHEQUE = "cheque"
     DEPOSITO = "deposito"
+
+
+class RolUsuario(BaseEnum):
+    """
+    Roles de usuario del sistema
+    
+    Determinan qué módulos y acciones puede realizar cada usuario
+    en la aplicación.
+    """
+    ADMIN = "admin"
+    MANAGER = "manager"
+    USER = "user"
+    VIEWER = "viewer"

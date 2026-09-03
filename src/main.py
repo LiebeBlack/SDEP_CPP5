@@ -150,7 +150,12 @@ def run_application():
                 logger.info("Sesión cancelada por el usuario")
                 break
 
-            logger.info(f"Sesión iniciada: {user.username} ({user.rol_valor})")
+            # Copiar a valores simples mientras el usuario sigue ligado a la
+            # sesión de login; la ventana principal re-liga el objeto a su
+            # propia sesión (ver MainWindow).
+            username = user.username
+            rol = user.rol_valor
+            logger.info(f"Sesión iniciada: {username} ({rol})")
 
             # 2. Ventana principal
             app = MainWindow(current_user=user)
@@ -163,7 +168,7 @@ def run_application():
                 from src.config import db_config
                 session = db_config.get_session()
                 try:
-                    AuthService(session).cerrar_sesion(user.username)
+                    AuthService(session).cerrar_sesion(username)
                 finally:
                     db_config.close_session(session)
             except Exception:

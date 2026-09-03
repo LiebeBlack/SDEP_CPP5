@@ -127,6 +127,31 @@ class BackupManager:
         except Exception as e:
             logger.error(f"Error descomprimiendo archivo: {e}")
             return False
+
+    @staticmethod
+    def _validate_sqlite(file_path: Path) -> bool:
+        """
+        Valida que un archivo sea una base SQLite íntegra
+
+        PRAGMA integrity_check recorre la estructura interna de la base,
+        algo que la comparación de bytes con el archivo original no puede
+        garantizar: el respaldo con sqlite .backup() produce un archivo
+        compactado que legítimamente difiere del original.
+        """
+        import sqlite3
+
+        try:
+            if not file_path.exists() or file_path.stat().st_size == 0:
+                return False
+            conn = sqlite3.connect(str(file_path))
+            try:
+                resultado = conn.execute("PRAGMA integrity_check").fetchone()
+                return resultado is not None and resultado[0] == "ok"
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error validando integridad SQLite: {e}")
+            return False
     
     def create_backup(self, backup_name: Optional[str] = None, compress: bool = True) -> Dict:
         """
@@ -164,7 +189,6 @@ class BackupManager:
             
             # Calcular checksum y tamaño sobre el archivo almacenado final
             checksum = self._calculate_checksum(backup_path)
-            original_checksum = self._calculate_checksum(self.db_path)
             
             # Guardar metadatos
             backup_info = {
@@ -175,7 +199,6 @@ class BackupManager:
                 "size_bytes": backup_path.stat().st_size,
                 "checksum": checksum,
                 "compressed": compress,
-                "original_db_checksum": original_checksum,
                 "version": 2
             }
             
@@ -217,6 +240,12 @@ class BackupManager:
             current_backup = f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             self.create_backup(current_backup, compress=False)
             
+            # v2: el checksum corresponde al archivo almacenado; verificar
+            # antes de descomprimir para detectar corrupción de forma limpia
+            if verify_checksum and backup_info.get("checksum") and backup_info.get("version") == 2:
+                if self._calculate_checksum(backup_path) != backup_info["checksum"]:
+                    raise Exception("Checksum verification failed: backup may be corrupted")
+            
             # Descomprimir si es necesario
             temp_restore_path = backup_path
             if backup_info["compressed"]:
@@ -224,24 +253,16 @@ class BackupManager:
                 if not self._decompress_file(backup_path, temp_restore_path):
                     raise Exception("Error descomprimiendo backup")
             
-            # Verificar checksum si se solicita
+            # Legado v1: el checksum correspondía al contenido descomprimido
+            if verify_checksum and backup_info.get("checksum") and backup_info.get("version") != 2:
+                if self._calculate_checksum(temp_restore_path) != backup_info["checksum"]:
+                    raise Exception("Checksum verification failed: backup may be corrupted")
+
+            # El contenido debe ser una base SQLite íntegra antes de restaurarla
             if verify_checksum and backup_info.get("checksum"):
-                if backup_info.get("version") == 2:
-                    # v2: el checksum corresponde al archivo guardado (comprimido o no)
-                    if self._calculate_checksum(backup_path) != backup_info["checksum"]:
-                        raise Exception("Checksum verification failed: backup may be corrupted")
-                    if (
-                        backup_info.get("original_db_checksum")
-                        and backup_info.get("compressed")
-                        and self._calculate_checksum(temp_restore_path)
-                        != backup_info["original_db_checksum"]
-                    ):
-                        raise Exception(
-                            "Checksum verification failed: contenido del backup inconsistente")
-                elif backup_info.get("compressed"):
-                    # Legado: el checksum correspondía al contenido descomprimido
-                    if self._calculate_checksum(temp_restore_path) != backup_info["checksum"]:
-                        raise Exception("Checksum verification failed: backup may be corrupted")
+                if not self._validate_sqlite(temp_restore_path):
+                    raise Exception(
+                        "Verificación fallida: el backup no contiene una base de datos válida")
             
             # Liberar conexiones del motor antes de reemplazar el archivo
             try:

@@ -26,6 +26,7 @@ def test_ciclo_completo_backup_y_restauracion(session, db_config):
 
     gestor = get_backup_manager()
     primero = _crear_empleado(session, "70010001")
+    primero_id = primero.id
 
     info = gestor.create_backup("estado_inicial")
     assert info["version"] == 2
@@ -33,15 +34,16 @@ def test_ciclo_completo_backup_y_restauracion(session, db_config):
     assert info["checksum"]
 
     segundo = _crear_empleado(session, "70010002")
-    assert EmpleadoService(session).obtener_empleado(segundo.id) is not None
+    segundo_id = segundo.id
+    assert EmpleadoService(session).obtener_empleado(segundo_id) is not None
 
     # Restaurar: el segundo empleado debe desaparecer
     assert gestor.restore_backup("estado_inicial")
 
     nueva_sesion = db_config.get_session()
     try:
-        assert EmpleadoService(nueva_sesion).obtener_empleado(primero.id) is not None
-        assert EmpleadoService(nueva_sesion).obtener_empleado(segundo.id) is None
+        assert EmpleadoService(nueva_sesion).obtener_empleado(primero_id) is not None
+        assert EmpleadoService(nueva_sesion).obtener_empleado(segundo_id) is None
     finally:
         db_config.close_session(nueva_sesion)
 

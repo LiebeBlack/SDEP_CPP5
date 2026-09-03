@@ -1,9 +1,14 @@
 """
 Fixtures de pruebas
 
-Antes de importar cualquier módulo de src se redirige la base de datos
-a un archivo temporal, de modo que la suite nunca toca la base de datos
-real del proyecto.
+Antes de importar cualquier módulo de src se redirige TODO el almacenamiento
+(base de datos, documentos, fotos, exportaciones, backups, logs) a un
+directorio temporal mediante SGP_BASE_DIR. Así la suite nunca toca la base
+de datos ni los directorios reales del proyecto.
+
+Cada prueba comienza con una base de datos recién sembrada (tablas +
+configuración inicial + usuario admin), de modo que los servicios que
+asumen unicidad de cédula o conteos exactos se ejecutan aislados.
 """
 
 import atexit
@@ -13,14 +18,8 @@ import tempfile
 
 # --- Aislamiento: variables de entorno antes de importar src ---
 _TMP_ROOT = tempfile.mkdtemp(prefix="sgp_tests_")
-_DB_PATH = os.path.join(_TMP_ROOT, "test_personal.db")
-_STORAGE_ROOT = os.path.join(_TMP_ROOT, "storage")
-
-os.environ["DATABASE_PATH"] = _DB_PATH
-os.environ["DATABASE_URL"] = f"sqlite:///{_DB_PATH.replace(os.sep, '/')}"
-os.environ["DOCUMENTS_PATH"] = "documents"
-os.environ["PHOTOS_PATH"] = "photos"
-os.environ["EXPORTS_PATH"] = "exports"
+os.environ["SGP_BASE_DIR"] = _TMP_ROOT
+os.environ["DATABASE_PATH"] = "test_personal.db"
 os.environ["DEBUG"] = "False"
 
 
@@ -31,6 +30,18 @@ def _cleanup():
 atexit.register(_cleanup)
 
 import pytest  # noqa: E402
+
+
+def _reset_database(db_config):
+    """Limpia todas las tablas y vuelve a sembrar la configuración inicial"""
+    from sqlalchemy import text
+
+    from src.models import Base
+
+    with db_config.engine.begin() as conn:
+        for tabla in Base.metadata.sorted_tables:
+            conn.execute(text(f'DELETE FROM "{tabla.name}"'))
+    db_config.init_db()
 
 
 @pytest.fixture(scope="session")
@@ -44,7 +55,8 @@ def db_config():
 
 @pytest.fixture()
 def session(db_config):
-    """Sesión de base de datos aislada por prueba"""
+    """Sesión de base de datos limpia y sembrada para cada prueba"""
+    _reset_database(db_config)
     sesion = db_config.get_session()
     yield sesion
     db_config.close_session(sesion)

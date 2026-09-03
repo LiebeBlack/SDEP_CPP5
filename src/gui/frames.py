@@ -17,6 +17,7 @@ from src.utils.helpers import (
     format_date, format_currency, parse_date, mantener_ventana_al_frente
 )
 from src.utils.pdf_generator import PDFGenerator
+from src.utils.exporter import exportar_archivo
 
 
 def _id_fila_seleccionada(tree) -> Optional[int]:
@@ -242,6 +243,8 @@ class EmpleadosFrame(ctk.CTkFrame):
         if self.main_window.tiene_permiso("report"):
             report_btn = ctk.CTkButton(btn_frame, text="Reporte PDF", command=self._on_reporte_empleados)
             report_btn.pack(side="left", padx=5)
+            export_btn = ctk.CTkButton(btn_frame, text="Exportar", command=self._on_exportar_empleados)
+            export_btn.pack(side="left", padx=5)
         
         refresh_btn = ctk.CTkButton(btn_frame, text="Actualizar", command=self._load_empleados)
         refresh_btn.pack(side="left", padx=5)
@@ -291,6 +294,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         if self.main_window.tiene_permiso("report"):
             self.context_menu.add_command(label="Constancia de Trabajo (PDF)", command=self._on_constancia_trabajo)
             self.context_menu.add_command(label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios)
+            self.context_menu.add_command(label="Ficha del Empleado (PDF)", command=self._on_ficha_empleado)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Ver Documentos", command=self._on_documents)
         self.context_menu.add_command(label="Ver Incidencias", command=self._on_incidencias)
@@ -329,21 +333,23 @@ class EmpleadosFrame(ctk.CTkFrame):
             # Mostrar error pero no bloquear la UI
             self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
     
+    def _consultar_empleados_visibles(self) -> List[Empleado]:
+        """Empleados que cumplen la búsqueda, el filtro de tipo y activos"""
+        termino = self.search_entry.get().strip()
+        tipo = self.tipo_combo.get()
+        if not termino and tipo == "Todos":
+            return self.main_window.empleado_service.listar_empleados_activos()
+        filtros = {"activo": 1}
+        if termino:
+            filtros["busqueda"] = termino
+        if tipo != "Todos":
+            filtros["tipo"] = tipo
+        return self.main_window.empleado_service.listar_filtrados(filtros)
+    
     def _aplicar_filtros(self):
         """Aplica el término de búsqueda y el filtro de tipo combinados"""
         try:
-            termino = self.search_entry.get().strip()
-            tipo = self.tipo_combo.get()
-            if not termino and tipo == "Todos":
-                empleados = self.main_window.empleado_service.listar_empleados_activos()
-            else:
-                filtros = {"activo": 1}
-                if termino:
-                    filtros["busqueda"] = termino
-                if tipo != "Todos":
-                    filtros["tipo"] = tipo
-                empleados = self.main_window.empleado_service.listar_filtrados(filtros)
-            self._update_tree(empleados)
+            self._update_tree(self._consultar_empleados_visibles())
         except Exception:
             self._load_empleados()
     
@@ -476,6 +482,61 @@ class EmpleadosFrame(ctk.CTkFrame):
                 messagebox.showinfo("Éxito", f"Reporte de empleados generado exitosamente:\n{file_path}")
             except Exception as e:
                 messagebox.showerror("Error", f"Error al generar reporte: {str(e)}")
+    
+    def _on_ficha_empleado(self):
+        """Genera la ficha completa del empleado seleccionado en PDF"""
+        empleado = self._get_selected_empleado()
+        if not empleado:
+            messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"ficha_{empleado.cedula}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if file_path:
+            try:
+                pdf_gen = PDFGenerator()
+                pdf_gen.generate_ficha_empleado(empleado, file_path)
+                messagebox.showinfo("Éxito", f"Ficha del empleado generada exitosamente:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al generar ficha: {str(e)}")
+    
+    def _on_exportar_empleados(self):
+        """Exporta la lista visible de empleados a Excel o CSV"""
+        empleados = self._consultar_empleados_visibles()
+        if not empleados:
+            messagebox.showwarning("Advertencia", "No hay empleados para exportar")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            initialfile=f"empleados_{date.today().strftime('%Y%m%d')}.xlsx",
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            for emp in empleados:
+                tipo_display = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or "")
+                filas.append({
+                    "Cédula": str(emp.cedula),
+                    "Nombre Completo": emp.nombre_completo,
+                    "Puesto de Trabajo": emp.cargo or "",
+                    "Departamento": emp.departamento or "",
+                    "Tipo": tipo_display,
+                    "Correo Electrónico": emp.email or "",
+                    "Teléfono": emp.telefono or "",
+                    "Salario Mensual": float(emp.salario_base or 0),
+                    "Estado": "Activo" if emp.activo else "Inactivo",
+                })
+            exportar_archivo(filas, file_path)
+            messagebox.showinfo("Éxito", f"Listado exportado exitosamente:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar listado: {str(e)}")
     
     def _on_delete(self):
         """Elimina el empleado seleccionado"""
@@ -2128,6 +2189,12 @@ class NominaFrame(ctk.CTkFrame):
                 filter_frame, text="Nuevo Pago", command=self._on_new_pago)
             nuevo_pago_btn.pack(side="left", padx=5)
         
+        if self.main_window.tiene_permiso("report"):
+            planilla_btn = ctk.CTkButton(filter_frame, text="Planilla PDF", command=self._on_planilla_pdf)
+            planilla_btn.pack(side="left", padx=5)
+            export_pagos_btn = ctk.CTkButton(filter_frame, text="Exportar", command=self._on_exportar_pagos)
+            export_pagos_btn.pack(side="left", padx=5)
+        
         refresh_btn = ctk.CTkButton(filter_frame, text="Actualizar", command=self._load_pagos)
         refresh_btn.pack(side="right", padx=5)
         
@@ -2179,20 +2246,30 @@ class NominaFrame(ctk.CTkFrame):
         self.tree.bind("<Button-3>", self._show_context_menu)
         self.tree.bind("<Double-1>", lambda e: self._on_view_pago())
     
+    def _obtener_pagos_filtrados(self):
+        """Pagos según el filtro de estado seleccionado"""
+        estado = self.estado_combo.get()
+        if estado == "Pendientes":
+            return self.main_window.pago_service.listar_pendientes()
+        if estado == "Pagados":
+            return self.main_window.pago_service.listar_pagados()
+        return self.main_window.pago_service.listar_pagos()
+    
+    def _pagos_con_empleado(self):
+        """Lista de (pago, empleado) para los pagos visibles"""
+        resultado = []
+        for pago in self._obtener_pagos_filtrados():
+            empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
+            resultado.append((pago, empleado))
+        return resultado
+    
     def _load_pagos(self):
         """Carga la lista de pagos"""
         for item in self.tree.get_children():
             self.tree.delete(item)
         
         try:
-            estado = self.estado_combo.get()
-            
-            if estado == "Pendientes":
-                pagos = self.main_window.pago_service.listar_pendientes()
-            elif estado == "Pagados":
-                pagos = self.main_window.pago_service.listar_pagados()
-            else:
-                pagos = self.main_window.pago_service.listar_pagos()
+            pagos = self._obtener_pagos_filtrados()
             
             if not pagos:
                 self.tree.insert("", "end", values=("", "No hay pagos registrados", "", "", "", ""))
@@ -2361,6 +2438,102 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al generar recibo: {str(e)}")
+    
+    def _on_exportar_pagos(self):
+        """Exporta los pagos visibles a Excel o CSV"""
+        pares = self._pagos_con_empleado()
+        if not pares:
+            messagebox.showwarning("Advertencia", "No hay pagos para exportar")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            initialfile=f"pagos_{date.today().strftime('%Y%m%d')}.xlsx",
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            for pago, empleado in pares:
+                nombre = empleado.nombre_completo if empleado else "Desconocido"
+                cedula = empleado.cedula if empleado else ""
+                filas.append({
+                    "Empleado": nombre,
+                    "Cédula": str(cedula),
+                    "Periodo Inicio": format_date(pago.periodo_inicio),
+                    "Periodo Fin": format_date(pago.periodo_fin),
+                    "Tipo de Pago": pago.tipo_pago,
+                    "Método de Pago": pago.metodo_pago,
+                    "Salario Base": float(pago.salario_base or 0),
+                    "Bonificaciones": float(pago.bonificaciones or 0),
+                    "Horas Extra": float(pago.horas_extra or 0),
+                    "ISSS": float(pago.deduccion_seguro or 0),
+                    "AFP": float(pago.deduccion_pension or 0),
+                    "ISR": float(pago.deduccion_impuesto or 0),
+                    "Otras Deducciones": float(pago.otras_deducciones or 0),
+                    "Descuentos": float(pago.descuentos or 0),
+                    "Neto a Pagar": float(pago.monto_neto or 0),
+                    "Estado": "Pagado" if pago.pagado else "Pendiente",
+                    "Referencia": pago.referencia_pago or "",
+                })
+            exportar_archivo(filas, file_path)
+            messagebox.showinfo("Éxito", f"Pagos exportados exitosamente:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar pagos: {str(e)}")
+    
+    def _on_planilla_pdf(self):
+        """Genera la planilla de nómina PDF con totales para los pagos visibles"""
+        pares = self._pagos_con_empleado()
+        if not pares:
+            messagebox.showwarning("Advertencia", "No hay pagos para generar la planilla")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"planilla_nomina_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if not file_path:
+            return
+        
+        try:
+            filas = []
+            fechas_inicio = []
+            fechas_fin = []
+            for pago, empleado in pares:
+                filas.append({
+                    "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
+                    "cedula": empleado.cedula if empleado else "",
+                    "cargo": empleado.cargo if empleado else "",
+                    "salario_base": float(pago.salario_base or 0),
+                    "bonificaciones": float(pago.bonificaciones or 0),
+                    "horas_extra": float(pago.horas_extra or 0),
+                    "deduccion_seguro": float(pago.deduccion_seguro or 0),
+                    "deduccion_pension": float(pago.deduccion_pension or 0),
+                    "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
+                    "otras_deducciones": float(pago.otras_deducciones or 0),
+                    "descuentos": float(pago.descuentos or 0),
+                    "monto_neto": float(pago.monto_neto or 0),
+                    "periodo_inicio": pago.periodo_inicio,
+                    "periodo_fin": pago.periodo_fin,
+                })
+                if pago.periodo_inicio:
+                    fechas_inicio.append(pago.periodo_inicio)
+                if pago.periodo_fin:
+                    fechas_fin.append(pago.periodo_fin)
+            
+            titulo_periodo = None
+            if fechas_inicio and fechas_fin:
+                titulo_periodo = (f"Periodo: {format_date(min(fechas_inicio))} a "
+                                  f"{format_date(max(fechas_fin))} | Registros: {len(filas)}")
+            
+            pdf_gen = PDFGenerator()
+            pdf_gen.generate_reporte_nomina(filas, file_path, titulo_periodo=titulo_periodo)
+            messagebox.showinfo("Éxito", f"Planilla de nómina generada exitosamente:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al generar planilla: {str(e)}")
     
     def _on_mark_paid(self):
         """Marca el pago como realizado"""

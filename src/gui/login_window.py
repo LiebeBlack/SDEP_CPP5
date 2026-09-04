@@ -177,8 +177,9 @@ class LoginWindow(ctk.CTk):
             text_color="#aabbdd",
         ).pack(pady=(0, 30))
 
-        # Panel derecho: formulario
-        form = ctk.CTkFrame(self, corner_radius=0, fg_color="#1a1a1a")
+        # Panel derecho: formulario (colores de la paleta activa para que
+        # las etiquetas sigan siendo legibles al cambiar a tema claro)
+        form = ctk.CTkFrame(self, corner_radius=0, fg_color=COLORES["fondo"])
         form.pack(side="right", fill="both", expand=True)
 
         inner = ctk.CTkFrame(form, fg_color="transparent")

@@ -285,7 +285,7 @@ class MainWindow(ctk.CTk):
         self.apariencia_btn.pack(side="right", padx=5, pady=12)
 
         # Ayuda (guía rápida de uso y atajos)
-        ayuda_btn = ctk.CTkButton(
+        self.ayuda_btn = ctk.CTkButton(
             self.header,
             text="Ayuda",
             width=90,
@@ -294,10 +294,10 @@ class MainWindow(ctk.CTk):
             hover_color=COLORES["panel_hover"],
             command=self._on_ayuda,
         )
-        ayuda_btn.pack(side="right", padx=5, pady=12)
+        self.ayuda_btn.pack(side="right", padx=5, pady=12)
 
         # Acerca de (información de la aplicación)
-        about_btn = ctk.CTkButton(
+        self.about_btn = ctk.CTkButton(
             self.header,
             text="Acerca de",
             width=100,
@@ -306,10 +306,10 @@ class MainWindow(ctk.CTk):
             hover_color=COLORES["panel_hover"],
             command=self._on_acerca_de,
         )
-        about_btn.pack(side="right", padx=5, pady=12)
+        self.about_btn.pack(side="right", padx=5, pady=12)
 
         # Cerrar sesión
-        logout_btn = ctk.CTkButton(
+        self.logout_btn = ctk.CTkButton(
             self.header,
             text="Cerrar Sesión",
             width=120,
@@ -318,17 +318,19 @@ class MainWindow(ctk.CTk):
             hover_color=COLORES["panel_hover"],
             command=self._on_logout,
         )
-        logout_btn.pack(side="right", padx=(5, 10), pady=12)
+        self.logout_btn.pack(side="right", padx=(5, 10), pady=12)
 
         # Salir de la aplicación
-        exit_btn = ctk.CTkButton(
+        self.exit_btn = ctk.CTkButton(
             self.header,
             text="Salir",
             width=80,
             height=35,
+            fg_color=COLORES["campo"],
+            hover_color=COLORES["panel_hover"],
             command=self._on_exit,
         )
-        exit_btn.pack(side="right", padx=5, pady=12)
+        self.exit_btn.pack(side="right", padx=5, pady=12)
 
         self.content_frame = ctk.CTkFrame(
             self.main_container, fg_color=COLORES["fondo"])
@@ -587,6 +589,17 @@ class MainWindow(ctk.CTk):
             self.status_label.configure(text_color=COLORES["texto_suave"])
             self.datetime_label.configure(text_color=COLORES["texto_suave"])
             self.content_frame.configure(fg_color=COLORES["fondo"])
+            # Botones de la cabecera (se recrean con la paleta nueva)
+            self.apariencia_btn.configure(
+                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.ayuda_btn.configure(
+                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.about_btn.configure(
+                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.logout_btn.configure(
+                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.exit_btn.configure(
+                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
         except Exception:
             pass
 

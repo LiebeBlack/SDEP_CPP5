@@ -9,15 +9,15 @@
     "compressed": true,
     "original_db_checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
     "exists": true,
-    "age_days": 0
+    "age_days": 1
   },
   "auto_shutdown": {
     "name": "auto_shutdown",
     "filename": "auto_shutdown.db.gz",
     "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\auto_shutdown.db.gz",
-    "timestamp": "20260903_055043",
-    "size_bytes": 4772,
-    "checksum": "b09dec4df3cc78a10e3c2670a3b72709b447943903edc5c3d25e5abe44f03da8",
+    "timestamp": "20260904_045706",
+    "size_bytes": 4980,
+    "checksum": "e177bca45b358393a8bd0e843cb3ed137a17705f8a7d62fb3e850e540d4e6642",
     "compressed": true,
     "version": 2
   },
@@ -31,6 +31,6 @@
     "compressed": true,
     "original_db_checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
     "exists": true,
-    "age_days": 0
+    "age_days": 1
   }
 }

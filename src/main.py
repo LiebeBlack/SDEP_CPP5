@@ -47,6 +47,63 @@ logger = logging.getLogger(__name__)
 application_instance = None
 
 
+def _notificar_error_global(titulo: str, mensaje: str):
+    """Intenta informar al usuario del error sin bloquear la consola"""
+    try:
+        from tkinter import messagebox
+        messagebox.showerror(titulo, mensaje)
+    except Exception:
+        pass
+
+
+def manejar_excepcion_no_capturada(exc_type, exc_value, exc_traceback):
+    """
+    Fallback global ante fallos: registra y avisa cualquier excepción
+    no capturada en lugar de dejar que el programa termine en silencio.
+
+    Registra en el log y en la auditoría y muestra un mensaje amigable;
+    el programa continúa o cierra según la gravedad del error.
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logger.error(
+        "Excepción no capturada",
+        exc_info=(exc_type, exc_value, exc_traceback),
+    )
+    try:
+        from src.utils.audit_logger import get_audit_logger
+        audit = get_audit_logger()
+        if audit:
+            audit.log_error(exc_value, context={"operation": "excepcion_global"})
+    except Exception:
+        pass
+    _notificar_error_global(
+        "Error inesperado",
+        f"Ocurrió un error no controlado:\n{exc_value}\n\n"
+        "El sistema intentará continuar. Si el error persiste, "
+        "contacte al administrador.",
+    )
+
+
+def instalar_manejador_excepciones():
+    """
+    Instala los manejadores globales de excepciones (fallback ante fallos).
+
+    Cubre tanto el hilo principal como los hilos secundarios; la instalación
+    es idempotente para no pisar manejadores previos en reejecuciones.
+    """
+    if getattr(sys, "_sgp_excepthook_instalado", False):
+        return
+    sys.excepthook = manejar_excepcion_no_capturada
+    try:
+        import threading
+        threading.excepthook = manejar_excepcion_no_capturada
+    except Exception:
+        pass
+    sys._sgp_excepthook_instalado = True
+
+
 def signal_handler(signum, frame):
     """Manejador de señales para cierre seguro"""
     logger.info(f"Señal {signum} recibida, iniciando cierre seguro...")
@@ -169,11 +226,31 @@ def run_application():
             rol = user.rol_valor
             logger.info(f"Sesión iniciada: {username} ({rol})")
 
-            # 2. Ventana principal
-            app = MainWindow(current_user=user)
+            # 2. Ventana principal (con limpieza garantizada ante fallos)
+            app = None
+            try:
+                app = MainWindow(current_user=user)
+            except Exception:
+                # Fallback: si la construcción falló a mitad de camino,
+                # liberar la sesión scoped del hilo antes de propagar.
+                try:
+                    from src.config import db_config
+                    db_config.SessionLocal.remove()
+                except Exception:
+                    pass
+                raise
             application_instance = app
-            status = app.run()
-            application_instance = None
+            try:
+                status = app.run()
+            finally:
+                # Fallback anti-fugas: la sesión de la ventana se cierra
+                # siempre, incluso si la ejecución falló o se interrumpió.
+                application_instance = None
+                try:
+                    from src.config import db_config
+                    db_config.close_session(app.session)
+                except Exception:
+                    pass
 
             # 3. Registro de cierre de sesión en auditoría
             try:
@@ -295,6 +372,9 @@ def _selftest() -> bool:
 
 def main():
     """Función principal con mejoras de seguridad"""
+    # Fallback global ante excepciones no capturadas
+    instalar_manejador_excepciones()
+
     # Modo de autoverificación para el ejecutable empaquetado
     if "--selftest" in sys.argv:
         ok = _selftest()

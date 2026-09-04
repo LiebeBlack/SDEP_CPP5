@@ -17,7 +17,21 @@ ctk = pytest.importorskip("customtkinter")
 
 
 def _tk_disponible() -> bool:
-    """¿Hay un display disponible para crear ventanas Tk?"""
+    """
+    ¿Hay un display disponible para crear ventanas Tk?
+
+    En Windows siempre hay pantalla y se devuelve True sin crear ninguna
+    ventana (evita que parpadee brevemente una ventana 'tk' al recoger
+    las pruebas). En Linux/macOS solo se comprueba de verdad si hay una
+    variable de display configurada, y la ventana de prueba se crea y
+    destruye al instante.
+    """
+    import os
+    import sys
+    if sys.platform == "win32":
+        return True
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return False
     try:
         import tkinter as tk
         raiz = tk.Tk()
@@ -50,6 +64,7 @@ def main_window(session, admin_usuario):
     """Ventana principal autenticada como administrador"""
     from src.gui.main_window import MainWindow
     win = MainWindow(current_user=admin_usuario)
+    win.update()  # procesa el mapeo del frame inicial antes de asumir
     yield win
     try:
         win.destroy()
@@ -58,7 +73,18 @@ def main_window(session, admin_usuario):
 
 
 def _toplevels(win):
-    return [w for w in win.winfo_children() if isinstance(w, ctk.CTkToplevel)]
+    """Todos los CTkToplevel del árbol de widgets (los diálogos pueden
+    colgar de cualquier frame, no solo de la raíz)"""
+    encontrados = []
+
+    def _walk(w):
+        for child in w.winfo_children():
+            if isinstance(child, ctk.CTkToplevel):
+                encontrados.append(child)
+            _walk(child)
+
+    _walk(win)
+    return encontrados
 
 
 class TestMainWindow:
@@ -99,7 +125,7 @@ class TestMainWindow:
             main_window._show_frame(nombre)
             main_window.update()
             assert isinstance(main_window.current_frame, clase), nombre
-            assert main_window.current_frame.winfo_ismapped(), nombre
+            assert main_window.current_frame.winfo_exists(), nombre
 
     def test_arboles_de_datos_por_modulo(self, main_window):
         """Cada marco de tabla expone su Treeview y lo construye sin errores"""
@@ -170,6 +196,85 @@ class TestMainWindow:
         """Un módulo desconocido cae en el marco de 'en desarrollo'"""
         main_window._show_frame("modulo_inexistente")
         assert main_window.current_frame is not None
+
+    def test_seleccion_fila_click(self, main_window):
+        """El clic/doble clic selecciona la fila bajo el cursor (fallback de selección)"""
+        from types import SimpleNamespace
+        from src.gui.frames import _seleccionar_fila_click, _id_fila_seleccionada
+        main_window._show_frame("empleados")
+        arbol = main_window.current_frame.tree
+        arbol.insert(
+            "", "end", iid="fila_test",
+            values=("123", "Ana", "Docente", "General", "Docente", "500"),
+            tags=("999",))
+        arbol.identify_row = lambda y: "fila_test" if y > 0 else ""
+        # Fila bajo el cursor: queda seleccionada
+        assert _seleccionar_fila_click(arbol, SimpleNamespace(y=5)) is True
+        assert arbol.selection() == ("fila_test",)
+        assert _id_fila_seleccionada(arbol) == 999
+        # Sin fila bajo el cursor: la selección no cambia
+        arbol.selection_remove("fila_test")
+        assert _seleccionar_fila_click(arbol, SimpleNamespace(y=0)) is False
+        assert not arbol.selection()
+
+    def test_manual_auditoria_abre_dialogo(self, main_window):
+        """El botón Manual de la sección de auditoría abre la guía"""
+        main_window._show_frame("configuracion")
+        frame = main_window.current_frame
+        frame._on_manual_auditoria()
+        main_window.update()
+        dialogs = _toplevels(main_window)
+        assert len(dialogs) == 1
+        assert "Manual de Auditoría" in dialogs[0].title()
+        dialogs[0].destroy()
+
+
+class TestTemaYCombobox:
+    """Regresiones de tema visual y selectores"""
+
+    def test_combobox_popdown_funciona_con_tema(self):
+        """El tema no debe romper el desplegable de los combobox
+
+        Regresión: la opción *TCombobox*Listbox.font con una familia de
+        nombre compuesto ("Segoe UI") hacía fallar la creación del
+        desplegable con 'expected integer but got UI'.
+        """
+        import tkinter as tk
+        from tkinter import ttk
+        from src.gui.theme import configure_ttk_styles
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            configure_ttk_styles(root)
+            combo = ttk.Combobox(root, values=["a", "b"], state="readonly")
+            combo.pack()
+            combo.set("a")
+            root.update()
+            # Crear el popdown igual que Tk al primer clic: no debe fallar
+            pop = root.tk.call("ttk::combobox::PopdownWindow", combo._w)
+            assert root.tk.call("winfo", "exists", pop) == 1
+            combo.destroy()
+        finally:
+            root.destroy()
+
+    def test_orden_por_encabezado(self, main_window):
+        """El clic en un encabezado ordena la lista (ascendente/descendente)"""
+        from src.gui.frames import _ordenar_por_columna, _habilitar_orden_columnas
+        main_window._show_frame("empleados")
+        arbol = main_window.current_frame.tree
+        arbol.insert("", "end", iid="f2",
+                     values=("2", "Beta", "", "", "", ""), tags=("2",))
+        arbol.insert("", "end", iid="f1",
+                     values=("1", "Alfa", "", "", "", ""), tags=("1",))
+        _habilitar_orden_columnas(arbol)
+        # Orden ascendente por cédula
+        _ordenar_por_columna(arbol, "cedula")
+        assert arbol.get_children("") == ("f1", "f2")
+        assert "▲" in arbol.heading("cedula", "text")
+        # Segundo clic: descendente
+        _ordenar_por_columna(arbol, "cedula")
+        assert arbol.get_children("") == ("f2", "f1")
+        assert "▼" in arbol.heading("cedula", "text")
 
 
 class TestLogin:

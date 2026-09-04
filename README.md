@@ -89,8 +89,10 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
 3. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
    Inno Setup (asistente en español/inglés, accesos directos, desinstalador).
 4. **Compilación Linux**: en `ubuntu-latest`, compila el mismo `spec/app.spec`
-   y empaqueta la versión portable de Linux en un `tar.gz` (autoverificada
-   con `--selftest` bajo `xvfb-run`).
+   con un Python portable (glibc 2.17) y empaqueta la versión portable de
+   Linux en un `tar.gz`. El binario funciona en distribuciones antiguas como
+   Debian 11 y Ubuntu 19; se autoverifica con `--selftest` bajo `xvfb-run` y
+   se prueba dentro de un contenedor `debian:11`.
 5. **Artefactos**: sube Setup.exe, ZIP portable (Windows) y tar.gz (Linux)
    como artefactos del run.
 6. **Release continua**: cada push a `main` publica automáticamente un

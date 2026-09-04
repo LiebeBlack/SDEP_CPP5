@@ -7,13 +7,12 @@ de empleados, incluyendo carga, almacenamiento, validación y control
 de vencimientos.
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import date
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 import os
 import uuid
 
-from src.models import Documento, TipoDocumento
+from src.models import Documento
 from src.repositories import DocumentoRepository
 from src.config import settings
 

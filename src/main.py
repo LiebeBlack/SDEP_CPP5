@@ -4,7 +4,6 @@ Punto de entrada principal de la aplicación con mejoras de seguridad
 """
 
 import sys
-import os
 import logging
 from pathlib import Path
 import io

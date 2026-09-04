@@ -7,13 +7,12 @@ de empleados, incluyendo creación, actualización, eliminación, búsqueda y
 estadísticas.
 """
 
-from typing import List, Optional, Dict, Union, Any
+from typing import List, Optional, Dict, Union
 from datetime import date
 from sqlalchemy.orm import Session
 
 from src.models import Empleado, TipoEmpleado
 from src.repositories import EmpleadoRepository
-from src.config import settings
 
 
 class EmpleadoService:

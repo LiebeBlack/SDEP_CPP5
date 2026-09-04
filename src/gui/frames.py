@@ -10,9 +10,9 @@ import os
 import sys
 import webbrowser
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date
 
-from src.models import Empleado, TipoEmpleado, TipoDocumento, TipoIncidencia, EstadoIncidencia, TipoPago, MetodoPago
+from src.models import Empleado, EstadoIncidencia
 from src.utils.helpers import (
     format_date, format_currency, parse_date, mantener_ventana_al_frente
 )
@@ -2076,7 +2076,7 @@ class IncidenciasFrame(ctk.CTkFrame):
         """Elimina la incidencia seleccionada"""
         incidencia = self._get_selected_incidencia()
         if incidencia:
-            if messagebox.askyesno("Confirmar", f"¿Desea eliminar la incidencia?"):
+            if messagebox.askyesno("Confirmar", "¿Desea eliminar la incidencia?"):
                 try:
                     self.main_window.incidencia_service.eliminar_incidencia(incidencia.id)
                     self._load_incidencias()
@@ -2086,10 +2086,13 @@ class IncidenciasFrame(ctk.CTkFrame):
     
     def _show_incidencia_details(self, incidencia):
         """Muestra los detalles de una incidencia"""
+        empleado = self.main_window.empleado_service.obtener_empleado(
+            incidencia.empleado_id)
+        nombre_empleado = empleado.nombre_completo if empleado else "Desconocido"
         detalle = f"""
 Tipo: {incidencia.tipo_incidencia}
 Estado: {incidencia.estado}
-Empleado ID: {incidencia.empleado_id}
+Empleado: {nombre_empleado}
 Fecha Solicitud: {format_date(incidencia.fecha_solicitud)}
 Periodo: {format_date(incidencia.fecha_inicio)} - {format_date(incidencia.fecha_fin)}
 Días Solicitados: {incidencia.dias_solicitados}
@@ -2300,7 +2303,10 @@ class ApprovalDialog(ctk.CTkToplevel):
         
         # Aprobado por
         ctk.CTkLabel(form_frame, text=f"{action} por:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
-        self.approved_by_entry = ctk.CTkEntry(form_frame, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="Nombre del aprobador")
+        placeholder_actor = "Su nombre" if action == "Rechazar" else "Nombre del aprobador"
+        self.approved_by_entry = ctk.CTkEntry(
+            form_frame, width=300, fg_color=COLORES["campo"],
+            text_color=COLORES["texto"], placeholder_text=placeholder_actor)
         self.approved_by_entry.pack(padx=5, pady=5)
         if hasattr(self, 'approved_by') and self.approved_by:
             self.approved_by_entry.insert(0, self.approved_by)

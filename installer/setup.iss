@@ -1,13 +1,13 @@
 ; Instalador de "Sistema de Gestión de Personal"
 ;
 ; Compilación (desde la raíz del proyecto):
-;   ISCC.exe /DMyAppVersion=1.0.3 installer\setup.iss
+;   ISCC.exe /DMyAppVersion=1.0.4 installer\setup.iss
 ;
 ; El ejecutable debe haberse generado antes con:
 ;   pyinstaller --noconfirm --clean spec\app.spec
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.3"
+  #define MyAppVersion "1.0.4"
 #endif
 
 #define MyAppName "Sistema de Gestión de Personal"

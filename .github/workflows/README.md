@@ -25,9 +25,9 @@ Release con el instalador `Setup.exe` y el ZIP portable.
 ### 2. Release versionada (opcional)
 
 ```bash
-# Para una release con nombre y etiqueta versionados (ej: v1.0.3)
-git tag v1.0.3
-git push origin v1.0.3
+# Para una release con nombre y etiqueta versionados (ej: v1.0.4)
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
 ### 3. Compilación manual
@@ -53,8 +53,8 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow.
 
 ## 📝 Notas
 
-- **Versionado**: la versión se lee de `VERSION` (actualmente 1.0.3).
-- **Etiquetas de release continua**: `v1.0.3-ci.<run_number>` (únicas por
+- **Versionado**: la versión se lee de `VERSION` (actualmente 1.0.4).
+- **Etiquetas de release continua**: `v1.0.4-ci.<run_number>` (únicas por
   compilación, no requieren gestión manual).
 - **Instalador**: instala en `Program Files` y guarda los datos del usuario
   en `%LOCALAPPDATA%\SistemaGestionPersonal`.

@@ -200,16 +200,16 @@ Para generar el reporte en PDF:
    - **Aprobar**: Acepta la incidencia
    - **Rechazar**: Deniega la incidencia
    - **Completar**: Marca como finalizada
+3. Al aprobar, puede especificar:
+   - Quién aprueba
+   - Comentarios de aprobación
+   - Días aprobados (pueden diferir de los solicitados)
 
 ### Reporte y Exportación de Incidencias
 
 - **Reporte PDF**: genera el reporte de las incidencias del empleado
   seleccionado (o de todas si no hay ninguno seleccionado)
 - **Exportar**: guarda el listado en Excel (.xlsx) o CSV
-3. Al aprobar, puede especificar:
-   - Quién aprueba
-   - Comentarios de aprobación
-   - Días aprobados (pueden diferir de los solicitados)
 
 ### Incidencias Vigentes
 
@@ -308,6 +308,23 @@ Defina políticas de la empresa:
 1. Haga clic en **Cambiar Contraseña** (abajo en Configuración)
 2. Ingrese la contraseña actual y la nueva (mínimo 8 caracteres)
 3. Confirme la nueva contraseña y guarde
+
+### Apariencia (Tema Oscuro/Claro)
+
+El botón ☀️/**🌙** de la cabecera alterna entre el tema oscuro (por
+defecto) y el tema claro. La preferencia se guarda automáticamente y se
+recupera en el siguiente inicio de sesión, incluyendo la ventana de
+acceso.
+
+### Ayuda y Acerca de
+
+- **Ayuda**: abre una guía rápida con los módulos, atajos de teclado y
+  consejos de uso.
+- **Acerca de**: muestra la versión del sistema, los roles disponibles
+  y detalles técnicos.
+
+Ambas ventanas están disponibles desde la cabecera de la ventana
+principal y se cierran con **Esc** o el botón **Cerrar**.
 
 ### Visor de Auditoría (solo administradores)
 
@@ -431,11 +448,23 @@ Si encuentra problemas que no puede resolver:
 
 ## Atajos de Teclado
 
-- **Ctrl+N**: Nuevo registro (en la sección activa)
-- **Ctrl+S**: Guardar cambios
-- **Ctrl+F**: Buscar
-- **F5**: Actualizar lista
-- **Esc**: Cerrar ventana o cancelar
+Los atajos permiten moverse y trabajar sin usar el ratón. Se aplican en
+el módulo que esté visible en ese momento:
+
+| Atajo | Acción |
+| --- | --- |
+| **Ctrl+1 … Ctrl+6** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Nómina, 6 Configuración |
+| **Ctrl+N** | Nuevo registro del módulo activo (Empleado, Documento, Incidencia, Pago, Usuario) |
+| **Ctrl+F** | Enfocar la búsqueda (Empleados) o el filtro del módulo activo |
+| **Ctrl+S** | Guardar cambios en el módulo de Configuración |
+| **F5** | Actualizar la lista o los datos del módulo activo |
+| **Esc** | Cerrar cuadros de diálogo; en la ventana principal, limpiar la selección de la tabla |
+
+**Nota**: algunos atajos solo están disponibles en los módulos que
+soportan la acción (por ejemplo, Ctrl+N no tiene efecto en el
+Dashboard). Los diálogos abiertos (formularios, confirmaciones)
+capturan el teclado mientras están visibles, por lo que los atajos de
+la ventana principal se reactivan al cerrarlos.
 
 ## Actualizaciones del Sistema
 
@@ -453,5 +482,5 @@ Este sistema ha sido diseñado para ser intuitivo y eficiente. Con la práctica,
 
 ---
 
-**Versión del Sistema**: 1.0.2  
+**Versión del Sistema**: 1.0.4  
 **Última Actualización**: 2026

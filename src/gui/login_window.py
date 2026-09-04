@@ -22,6 +22,8 @@ from src.gui.theme import (
     setup_ui_raiz,
     centrar_ventana,
     cancelar_after_pendientes,
+    aplicar_modo_apariencia,
+    COLORES,
 )
 
 
@@ -38,48 +40,49 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.geometry("480x330")
         self.resizable(False, False)
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         self.transient(parent)
 
         self._create_widgets()
 
     def _create_widgets(self):
-        container = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         container.pack(fill="both", expand=True, padx=20, pady=20)
 
         ctk.CTkLabel(
             container,
             text="Debe cambiar la contraseña inicial\nantes de continuar",
             font=ctk.CTkFont(size=15, weight="bold"),
-            text_color="white",
+            text_color=COLORES["texto"],
             justify="center",
         ).pack(pady=(10, 20))
 
         ctk.CTkLabel(
             container,
             text="Usuario:",
-            text_color="white",
+            text_color=COLORES["texto"],
             anchor="w",
         ).pack(fill="x", padx=5)
         self.user_label = ctk.CTkLabel(
             container,
             text=self.usuario.username,
-            text_color="#8ab4f8",
+            text_color=COLORES["texto_suave"],
             anchor="w",
         )
         self.user_label.pack(fill="x", padx=5, pady=(0, 10))
 
         ctk.CTkLabel(
-            container, text="Nueva contraseña:", text_color="white", anchor="w"
+            container, text="Nueva contraseña:", text_color=COLORES["texto"], anchor="w"
         ).pack(fill="x", padx=5)
         self.new_pass = ctk.CTkEntry(
-            container, show="*", fg_color="#3c3c3c", text_color="white")
+            container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.new_pass.pack(fill="x", padx=5, pady=(2, 8))
 
         ctk.CTkLabel(
-            container, text="Confirmar contraseña:", text_color="white", anchor="w"
+            container, text="Confirmar contraseña:", text_color=COLORES["texto"], anchor="w"
         ).pack(fill="x", padx=5)
         self.confirm_pass = ctk.CTkEntry(
-            container, show="*", fg_color="#3c3c3c", text_color="white")
+            container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.confirm_pass.pack(fill="x", padx=5, pady=(2, 12))
 
         btn_frame = ctk.CTkFrame(container, fg_color="transparent")
@@ -126,10 +129,24 @@ class LoginWindow(ctk.CTk):
         setup_ui_raiz(self)
 
         self.user: Optional[Usuario] = None
+        self._session_activa = None
+
+        # Respetar el modo de apariencia guardado por el usuario
+        try:
+            from src.services.configuracion_service import ConfiguracionService
+            session = db_config.get_session()
+            try:
+                modo = ConfiguracionService(session).obtener_valor(
+                    "apariencia_modo", "Dark") or "Dark"
+            finally:
+                db_config.close_session(session)
+            aplicar_modo_apariencia(modo)
+        except Exception:
+            aplicar_modo_apariencia("Dark")
 
         self.title("Iniciar Sesión — Sistema de Gestión de Personal")
         self.resizable(False, False)
-        self.configure(fg_color="#1a1a1a")
+        self.configure(fg_color=COLORES["fondo"])
         centrar_ventana(self, 880, 480)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -171,24 +188,24 @@ class LoginWindow(ctk.CTk):
             inner,
             text="Iniciar Sesión",
             font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="white",
+            text_color=COLORES["texto"],
         ).pack(pady=(0, 20))
 
         ctk.CTkLabel(
-            inner, text="Usuario:", text_color="white", anchor="w"
+            inner, text="Usuario:", text_color=COLORES["texto"], anchor="w"
         ).pack(fill="x")
         self.username_entry = ctk.CTkEntry(
-            inner, width=320, height=38, fg_color="#2b2b2b",
-            text_color="white", placeholder_text="Nombre de usuario")
+            inner, width=320, height=38, fg_color=COLORES["panel"],
+            text_color=COLORES["texto"], placeholder_text="Nombre de usuario")
         self.username_entry.pack(pady=(4, 12))
         self.username_entry.bind("<Return>", lambda e: self._focus_password())
 
         ctk.CTkLabel(
-            inner, text="Contraseña:", text_color="white", anchor="w"
+            inner, text="Contraseña:", text_color=COLORES["texto"], anchor="w"
         ).pack(fill="x")
         self.password_entry = ctk.CTkEntry(
-            inner, width=320, height=38, show="*", fg_color="#2b2b2b",
-            text_color="white", placeholder_text="Contraseña")
+            inner, width=320, height=38, show="*", fg_color=COLORES["panel"],
+            text_color=COLORES["texto"], placeholder_text="Contraseña")
         self.password_entry.pack(pady=(4, 16))
         self.password_entry.bind("<Return>", lambda e: self._on_login())
 

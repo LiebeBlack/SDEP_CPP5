@@ -600,13 +600,13 @@ project/
 
 ### GUI Frameworks
 ```
-� Tkinter - Standard library, cross-platform, simple
-� PyQt5/PySide6 - Qt framework, profesional, multi-platform
-� Kivy - Multi-touch, mobile/desktop, OpenGL
-� Dear PyGui - GPU-accelerated, moderno, simple
-� PySimpleGUI - Simple, beginner-friendly
-� CustomTkinter - Tkinter con UI moderna
-� PyQt-Fluent - Windows 11 Fluent Design
+• Tkinter - Standard library, cross-platform, simple
+• PyQt5/PySide6 - Qt framework, profesional, multi-platform
+• Kivy - Multi-touch, mobile/desktop, OpenGL
+• Dear PyGui - GPU-accelerated, moderno, simple
+• PySimpleGUI - Simple, beginner-friendly
+• CustomTkinter - Tkinter con UI moderna
+• PyQt-Fluent - Windows 11 Fluent Design
 🎨 wxPython - Native look & feel, cross-platform
 ```
 
@@ -632,12 +632,12 @@ project/
 
 ### Data & Storage
 ```
-�️ SQLite - Base de datos local (integrado en Python)
-�️ SQLAlchemy - ORM para desktop apps
+🗄️ SQLite - Base de datos local (integrado en Python)
+🗄️ SQLAlchemy - ORM para desktop apps
 🗄️ Peewee - ORM ligero para desktop
-�️ TinyDB - Document database ligero
-�️ Pickle/shelve - Serialización nativa
-�️ JSON/YAML - Configuración y datos
+🗄️ TinyDB - Document database ligero
+🗄️ Pickle/shelve - Serialización nativa
+🗄️ JSON/YAML - Configuración y datos
 ```
 
 ### Testing GUI

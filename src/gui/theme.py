@@ -1,7 +1,8 @@
 """
 GUI Theme
-Configuración visual global: alta resolución (DPI) y estilos oscuros
-consistentes para widgets ttk (Treeview, Combobox, menús desplegables).
+Configuración visual global: paletas de apariencia (oscura/clara),
+alta resolución (DPI) y estilos consistentes para widgets ttk
+(Treeview, Combobox, menús desplegables).
 
 El módulo también centraliza las funciones de apariencia que antes vivían
 duplicadas en main_window/login_window.
@@ -17,15 +18,67 @@ except Exception:  # pragma: no cover
 
 _DPI_CONFIGURADO = False
 
-COLORES = {
+# Paleta oscura (tema por defecto)
+PALETA_OSCURA = {
     "fondo": "#1a1a1a",
     "panel": "#2b2b2b",
+    "panel_hover": "#3a3a3a",
     "campo": "#3c3c3c",
     "texto": "white",
     "texto_suave": "#cccccc",
     "acento": "#1f538d",
     "borde": "#555555",
 }
+
+# Paleta clara (tema alternativo)
+PALETA_CLARA = {
+    "fondo": "#f2f2f2",
+    "panel": "#e2e2e2",
+    "panel_hover": "#d4d4d4",
+    "campo": "#ffffff",
+    "texto": "#1a1a1a",
+    "texto_suave": "#555555",
+    "acento": "#2a6fdb",
+    "borde": "#aaaaaa",
+}
+
+# Paleta activa (se muta en caliente al cambiar de tema, de modo que los
+# widgets creados después del cambio toman los colores nuevos)
+COLORES = dict(PALETA_OSCURA)
+
+
+def aplicar_modo_apariencia(modo: str = "Dark") -> None:
+    """
+    Aplica un modo de apariencia ("Dark" o "Light") a toda la aplicación.
+
+    Cambia el modo de CustomTkinter (los widgets con colores por defecto
+    se actualizan solos), actualiza la paleta global y reaplica los
+    estilos ttk (tablas, combos, menús).
+
+    Los widgets creados con colores explícitos tomados de la paleta
+    (COLORES) se recoloran al recrearse; las ventanas principales
+    reconfiguran su "chrome" (barra lateral, cabecera, barra de estado)
+    inmediatamente después de llamar a esta función.
+    """
+    if not _CTK_DISPONIBLE:
+        return
+    modo = modo if modo in ("Dark", "Light", "System") else "Dark"
+    ctk.set_appearance_mode(modo)
+    if modo == "Light":
+        paleta = PALETA_CLARA
+    else:
+        # "Dark" y "System" usan la paleta oscura (la interfaz está
+        # diseñada sobre esta; el tema claro es una alternativa explícita)
+        paleta = PALETA_OSCURA
+    COLORES.clear()
+    COLORES.update(paleta)
+    try:
+        import tkinter as tk
+        raiz = tk._default_root
+        if raiz is not None:
+            configure_ttk_styles(raiz)
+    except Exception:
+        pass
 
 
 def enable_windows_dpi_awareness() -> bool:
@@ -69,10 +122,11 @@ def enable_windows_dpi_awareness() -> bool:
 
 def configure_ttk_styles(root=None) -> None:
     """
-    Aplica el tema oscuro a Treeview y Combobox (ttk).
+    Aplica la paleta activa a Treeview y Combobox (ttk).
 
     Requiere que exista una ventana raíz Tk (se crea una por defecto si
-    no se pasa una). Idempotente: se puede llamar al crear cada ventana.
+    no se pasa una). Idempotente: se puede llamar al crear cada ventana
+    y al cambiar de tema.
     """
     try:
         from tkinter import ttk
@@ -95,7 +149,7 @@ def configure_ttk_styles(root=None) -> None:
         style.configure(
             "Treeview",
             background=COLORES["panel"],
-            foreground="white",
+            foreground=COLORES["texto"],
             fieldbackground=COLORES["panel"],
             rowheight=28,
             borderwidth=0,
@@ -103,8 +157,8 @@ def configure_ttk_styles(root=None) -> None:
         )
         style.configure(
             "Treeview.Heading",
-            background="#3c3c3c",
-            foreground="white",
+            background=COLORES["campo"],
+            foreground=COLORES["texto"],
             relief="flat",
             borderwidth=0,
             font=("Segoe UI", 10, "bold"),
@@ -114,15 +168,18 @@ def configure_ttk_styles(root=None) -> None:
             background=[("selected", COLORES["acento"])],
             foreground=[("selected", "white")],
         )
-        style.map("Treeview.Heading", background=[("active", "#4c4c4c")])
+        style.map(
+            "Treeview.Heading",
+            background=[("active", COLORES["panel_hover"])],
+        )
 
         # --- Scrollbar vertical ---
         style.configure(
             "Vertical.TScrollbar",
-            background="#3c3c3c",
+            background=COLORES["campo"],
             troughcolor=COLORES["panel"],
             bordercolor=COLORES["panel"],
-            arrowcolor="white",
+            arrowcolor=COLORES["texto_suave"],
         )
 
         # --- Combobox (selectores) ---
@@ -130,29 +187,29 @@ def configure_ttk_styles(root=None) -> None:
             "TCombobox",
             fieldbackground=COLORES["campo"],
             background=COLORES["campo"],
-            foreground="white",
-            arrowcolor="#cccccc",
-            bordercolor="#555555",
+            foreground=COLORES["texto"],
+            arrowcolor=COLORES["texto_suave"],
+            bordercolor=COLORES["borde"],
             lightcolor=COLORES["campo"],
             darkcolor=COLORES["campo"],
             selectbackground=COLORES["campo"],
-            selectforeground="white",
+            selectforeground=COLORES["texto"],
             padding=4,
         )
         style.map(
             "TCombobox",
             fieldbackground=[("readonly", COLORES["campo"]),
                              ("focus", COLORES["campo"])],
-            foreground=[("readonly", "white")],
+            foreground=[("readonly", COLORES["texto"])],
             selectbackground=[("readonly", COLORES["campo"])],
-            selectforeground=[("readonly", "white")],
+            selectforeground=[("readonly", COLORES["texto"])],
         )
         style.configure(
             "TEntry",
             fieldbackground=COLORES["campo"],
-            foreground="white",
-            insertcolor="white",
-            bordercolor="#555555",
+            foreground=COLORES["texto"],
+            insertcolor=COLORES["texto"],
+            bordercolor=COLORES["borde"],
             lightcolor=COLORES["campo"],
             darkcolor=COLORES["campo"],
         )
@@ -160,7 +217,7 @@ def configure_ttk_styles(root=None) -> None:
         # Lista desplegable del Combobox (es un Listbox interno de Tk)
         for clave, valor in (
             ("*TCombobox*Listbox.background", COLORES["campo"]),
-            ("*TCombobox*Listbox.foreground", "white"),
+            ("*TCombobox*Listbox.foreground", COLORES["texto"]),
             ("*TCombobox*Listbox.selectBackground", COLORES["acento"]),
             ("*TCombobox*Listbox.selectForeground", "white"),
             ("*TCombobox*Listbox.borderWidth", "1"),

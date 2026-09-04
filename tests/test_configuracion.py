@@ -77,3 +77,13 @@ def test_validar_datos(session):
     errores = servicio.validar_datos_configuracion({
         "clave": "", "tipo_dato": "xml"})
     assert len(errores) >= 2
+
+
+def test_apariencia_modo_se_persiste(session):
+    """El modo de apariencia (oscuro/claro) se guarda y se recupera"""
+    servicio = ConfiguracionService(session)
+    assert servicio.establecer_valor("apariencia_modo", "Light")
+    session.expire_all()
+    assert servicio.obtener_valor("apariencia_modo", "Dark") == "Light"
+    # Valor por defecto cuando la clave no existe
+    assert servicio.obtener_valor("apariencia_modo_inexistente", "Dark") == "Dark"

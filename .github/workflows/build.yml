@@ -44,7 +44,7 @@ jobs:
           if-no-files-found: ignore
 
   build-linux:
-    name: Compilar ejecutable (Linux)
+    name: "Compilar ejecutable (Linux: Debian 11 / Ubuntu 19)"
     needs: tests
     runs-on: ubuntu-latest
     env:
@@ -54,15 +54,24 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v5
 
-      - name: Configurar Python (Linux)
-        uses: actions/setup-python@v6
+      - name: Configurar uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.11"
+          enable-cache: true
+
+      - name: Instalar Python 3.11 portable (glibc 2.17)
+        run: |
+          # uv instala python-build-standalone, compilado contra glibc 2.17.
+          # Al empaquetar con ese intérprete, el ejecutable funciona en
+          # distribuciones antiguas: Debian 11 (glibc 2.31), Ubuntu 19
+          # (2.29/2.30), Ubuntu 18.04 (2.27), etc.
+          uv python install 3.11
+          echo "$(dirname "$(uv python find 3.11)")" >> "$GITHUB_PATH"
+          python --version
 
       - name: Instalar dependencias
         run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+          uv pip install --python "$(uv python find 3.11)" -r requirements.txt pyinstaller
 
       - name: Instalar xvfb (pantalla virtual para el selftest GUI)
         run: sudo apt-get update && sudo apt-get install -y xvfb
@@ -73,8 +82,8 @@ jobs:
           echo "APP_VERSION=$ver" >> $GITHUB_ENV
           echo "Versión detectada: $ver"
 
-      - name: Verificar importación de módulos
-        run: python -c "import sys; sys.path.insert(0, '.'); import src.main; print('imports OK')"
+      - name: Verificar importación de módulos (incluye tkinter)
+        run: python -c "import sys; sys.path.insert(0, '.'); import tkinter; import src.main; print('imports OK (tkinter + app)')"
 
       - name: Compilar ejecutable (PyInstaller onedir)
         run: python -m PyInstaller --noconfirm --clean spec/app.spec
@@ -89,7 +98,44 @@ jobs:
           ls -lh "$binario"
 
       - name: Autoverificar ejecutable (selftest)
-        run: xvfb-run -a ./dist/SistemaGestionPersonal/SistemaGestionPersonal --selftest
+        run: |
+          SGP_BASE_DIR=/tmp/sgp_selftest xvfb-run -a ./dist/SistemaGestionPersonal/SistemaGestionPersonal --selftest
+
+      - name: Verificar compatibilidad glibc (Debian 11 y Ubuntu 19)
+        run: |
+          set -e
+          if ! command -v objdump >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq binutils
+          fi
+          MAX_GLIBC=""
+          for f in $(find dist/SistemaGestionPersonal -type f \( -name 'SistemaGestionPersonal' -o -name '*.so*' \)); do
+            v=$(objdump -T "$f" 2>/dev/null | grep -oP 'GLIBC_[0-9]+\.[0-9]+' | sed 's/GLIBC_//' | sort -V | tail -1)
+            if [ -n "$v" ]; then
+              echo "  $f -> glibc $v"
+              if [ -z "$MAX_GLIBC" ]; then MAX_GLIBC="$v"; else MAX_GLIBC=$(printf '%s\n%s\n' "$MAX_GLIBC" "$v" | sort -V | tail -1); fi
+            fi
+          done
+          echo "Versión máxima de glibc requerida: ${MAX_GLIBC:-ninguna}"
+          if [ -n "$MAX_GLIBC" ] && [ "$(printf '%s\n2.28\n' "$MAX_GLIBC" | sort -V | tail -1)" = "2.28" ]; then
+            echo "OK: máximo glibc $MAX_GLIBC (Debian 11 usa 2.31, Ubuntu 19 usa 2.29/2.30)"
+          else
+            echo "ERROR: el paquete requiere glibc ${MAX_GLIBC:-desconocida}; no funcionará en Debian 11 / Ubuntu 19"
+            exit 1
+          fi
+
+      - name: Probar ejecutable en Debian 11 real (contenedor glibc 2.31)
+        run: |
+          docker run --rm \
+            -v "$PWD/dist:/app" \
+            debian:11-slim bash -c "
+              set -e
+              # bullseye está EOL: apt debe usar archive.debian.org
+              sed -i 's|deb.debian.org|archive.debian.org|g' /etc/apt/sources.list 2>/dev/null || true
+              apt-get update -qq || true
+              apt-get install -y -qq xvfb xauth fonts-dejavu-core >/dev/null 2>&1
+              SGP_BASE_DIR=/tmp/sgp_selftest xvfb-run -a /app/SistemaGestionPersonal/SistemaGestionPersonal --selftest
+              echo 'OK: el ejecutable funciona en Debian 11'
+            "
 
       - name: Crear paquete portable (tar.gz)
         run: |

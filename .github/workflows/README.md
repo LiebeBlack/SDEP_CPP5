@@ -41,13 +41,19 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow.
 - Sube el reporte de cobertura como artefacto.
 
 ### build-linux (ubuntu)
-1. Instala dependencias y PyInstaller (+ `xvfb` para el selftest GUI).
-2. Lee la versión desde `VERSION` (fuente única).
-3. Compila el ejecutable con `spec/app.spec` (el mismo spec sirve para
+1. Instala uv y un Python 3.11 portable (`python-build-standalone`, glibc 2.17)
+   para que el ejecutable funcione en distribuciones antiguas (Debian 11,
+   Ubuntu 19, etc.).
+2. Instala dependencias y PyInstaller (+ `xvfb` para el selftest GUI).
+3. Lee la versión desde `VERSION` (fuente única).
+4. Compila el ejecutable con `spec/app.spec` (el mismo spec sirve para
    Windows y Linux; icono/versión solo se aplican en Windows).
-4. Autoverifica el ejecutable empaquetado con `--selftest` bajo `xvfb-run`.
-5. Empaqueta `dist/SistemaGestionPersonal` en un `tar.gz` portable.
-6. Sube el `tar.gz` como artefacto; el job de Windows lo adjunta al Release.
+5. Autoverifica el ejecutable empaquetado con `--selftest` bajo `xvfb-run`.
+6. Verifica que el paquete no requiera glibc > 2.28 (Debian 11 = 2.31,
+   Ubuntu 19 = 2.29/2.30) y prueba el binario real dentro de un contenedor
+   `debian:11`.
+7. Empaqueta `dist/SistemaGestionPersonal` en un `tar.gz` portable.
+8. Sube el `tar.gz` como artefacto; el job de Windows lo adjunta al Release.
 
 ### build (windows)
 1. Instala dependencias y PyInstaller.

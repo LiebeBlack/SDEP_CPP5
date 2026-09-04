@@ -88,11 +88,11 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
 3. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
    Inno Setup (asistente en español/inglés, accesos directos, desinstalador).
-4. **Compilación Linux**: en `ubuntu-latest`, compila el mismo `spec/app.spec`
-   con un Python portable (glibc 2.17) y empaqueta la versión portable de
-   Linux en un `tar.gz`. El binario funciona en distribuciones antiguas como
-   Debian 11 y Ubuntu 19; se autoverifica con `--selftest` bajo `xvfb-run` y
-   se prueba dentro de un contenedor `debian:11`.
+4. **Compilación Linux**: compila el mismo `spec/app.spec` dentro de un
+   contenedor **Ubuntu 22.04** (glibc 2.35) y empaqueta la versión portable
+   de Linux en un `tar.gz`. El binario funciona en Ubuntu 22.04, Debian 12
+   y Debian 13; se autoverifica con `--selftest` bajo `xvfb-run` en Ubuntu
+   22.04 y se prueba dentro de contenedores `debian:12` y `debian:13`.
 5. **Artefactos**: sube Setup.exe, ZIP portable (Windows) y tar.gz (Linux)
    como artefactos del run.
 6. **Release continua**: cada push a `main` publica automáticamente un

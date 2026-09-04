@@ -41,17 +41,18 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow.
 - Sube el reporte de cobertura como artefacto.
 
 ### build-linux (ubuntu)
-1. Instala uv y un Python 3.11 portable (`python-build-standalone`, glibc 2.17)
-   para que el ejecutable funcione en distribuciones antiguas (Debian 11,
-   Ubuntu 19, etc.).
-2. Instala dependencias y PyInstaller (+ `xvfb` para el selftest GUI).
+1. Compila dentro de un contenedor **Ubuntu 22.04** (glibc 2.35) con su
+   Python 3.10, de modo que el ejecutable funcione en Ubuntu 22.04,
+   Debian 12 y Debian 13.
+2. Instala dependencias y PyInstaller dentro del contenedor.
 3. Lee la versión desde `VERSION` (fuente única).
 4. Compila el ejecutable con `spec/app.spec` (el mismo spec sirve para
    Windows y Linux; icono/versión solo se aplican en Windows).
-5. Autoverifica el ejecutable empaquetado con `--selftest` bajo `xvfb-run`.
-6. Verifica que el paquete no requiera glibc > 2.28 (Debian 11 = 2.31,
-   Ubuntu 19 = 2.29/2.30) y prueba el binario real dentro de un contenedor
-   `debian:11`.
+5. Autoverifica el ejecutable empaquetado con `--selftest` bajo `xvfb-run`
+   dentro de Ubuntu 22.04.
+6. Verifica que el paquete no requiera glibc > 2.35 (Ubuntu 22.04 = 2.35,
+   Debian 12 = 2.36, Debian 13 = 2.41) y prueba el binario real dentro de
+   contenedores `debian:12` y `debian:13`.
 7. Empaqueta `dist/SistemaGestionPersonal` en un `tar.gz` portable.
 8. Sube el `tar.gz` como artefacto; el job de Windows lo adjunta al Release.
 

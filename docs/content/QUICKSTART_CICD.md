@@ -21,9 +21,10 @@ Ve a `Settings > Branches`:
 - **Función**: Pruebas (pytest) + ejecutable Windows + instalador (Inno Setup)
   + ejecutable Linux portable (PyInstaller en ubuntu)
 - **Output**: `Setup.exe` + ZIP portable (Windows) + `tar.gz` portable (Linux)
-- **Compatibilidad**: el ejecutable Linux se compila contra glibc 2.17 y
-  funciona en Debian 11, Ubuntu 19 y versiones más nuevas (verificado en CI
-  dentro de un contenedor `debian:11`)
+- **Compatibilidad**: el ejecutable Linux se compila en Ubuntu 22.04
+  (glibc 2.35) y funciona en Ubuntu 22.04, Debian 12 y Debian 13
+  (verificado en CI dentro de contenedores `ubuntu:22.04`, `debian:12`
+  y `debian:13`)
   - Push a **main** → Release automática en GitHub (sin etiqueta)
   - Push a **develop** → solo artefactos
   - Etiqueta `v*` → Release versionada con el nombre de la etiqueta

@@ -240,7 +240,7 @@ Sistema CI/CD con GitHub Actions:
 4. Documentar cualquier ajuste necesario
 
 ### Para Expansión Futura
-1. ✅ **Autenticación multi-usuario** - Ya implementada (v1.0.4: login, roles y permisos)
+1. ✅ **Autenticación multi-usuario** - Ya implementada (v2.79: login, roles y permisos)
 2. Desarrollar versión web del sistema
 3. Agregar más funcionalidades de reportes personalizados
 4. Integrar con otros sistemas institucionales

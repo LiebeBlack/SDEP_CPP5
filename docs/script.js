@@ -115,39 +115,46 @@
         const renderer = new marked.Renderer();
 
         // Custom Heading Renderer with Anchor Links
-        renderer.heading = function (text, level) {
+        // Nota: marked v13+ pasa un token (objeto) en lugar de un string;
+        // el HTML del contenido inline se obtiene con this.parser.parseInline.
+        renderer.heading = function (token) {
+            const html = this.parser.parseInline(token.tokens);
             // Clean text for slug
-            const plainText = text.replace(/<[^>]*>/g, '').trim();
+            const plainText = html.replace(/<[^>]*>/g, '').trim();
             const slug = plainText.toLowerCase()
                 .replace(/[^\w\s-]/g, '')
                 .replace(/\s+/g, '-');
 
             return `
-                <h${level} id="${slug}">
+                <h${token.depth} id="${slug}">
                     <a class="header-anchor" href="#${slug}" aria-hidden="true">#</a>
-                    <span>${text}</span>
-                </h${level}>
+                    <span>${html}</span>
+                </h${token.depth}>
             `;
         };
 
         // Custom Code Block Renderer
-        renderer.code = function (code, lang) {
-            const validLang = lang && lang.trim() ? lang.trim().toLowerCase() : 'text';
+        // Nota: marked v13+ pasa un token (objeto) en lugar de (code, lang).
+        renderer.code = function (token) {
+            const validLang = token.lang && token.lang.trim() ? token.lang.trim().toLowerCase() : 'text';
+            const codeHtml = token.escaped ? token.text : escapeHtml(token.text);
             return `
                 <div class="code-block-wrapper">
                     <div class="code-block-header">
                         <span class="code-lang-label">${validLang}</span>
-                        <button class="code-btn-copy" type="button" data-code="${encodeURIComponent(code)}">
+                        <button class="code-btn-copy" type="button" data-code="${encodeURIComponent(token.text)}">
                             <span>📋</span> Copiar
                         </button>
                     </div>
-                    <pre><code class="language-${validLang}">${escapeHtml(code)}</code></pre>
+                    <pre><code class="language-${validLang}">${codeHtml}</code></pre>
                 </div>
             `;
         };
 
         // Custom Blockquote with GitHub Callout support
-        renderer.blockquote = function (quote) {
+        // Nota: marked v13+ pasa un token (objeto); el HTML se obtiene con this.parser.parse.
+        renderer.blockquote = function (token) {
+            const quote = this.parser.parse(token.tokens);
             const alertRegex = /^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br>)?([\s\S]*?)<\/p>/i;
             const match = quote.match(alertRegex);
 

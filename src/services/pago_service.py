@@ -7,14 +7,12 @@ generación de pagos y emisión de recibos, integrándose con incidencias
 para el cálculo de días trabajados.
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import date, timedelta
+from typing import List, Optional, Dict
+from datetime import date
 from sqlalchemy.orm import Session
-import os
 
-from src.models import Pago, TipoPago, MetodoPago, Empleado
+from src.models import Pago, TipoPago, MetodoPago
 from src.repositories import PagoRepository, EmpleadoRepository, ConfiguracionRepository
-from src.config import settings
 
 
 class PagoService:

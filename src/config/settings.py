@@ -14,7 +14,7 @@ load_dotenv()
 # Nombre de la carpeta de datos cuando la app está instalada en Windows
 APP_DATA_DIR_NAME = "SistemaGestionPersonal"
 
-APP_VERSION_DEFAULT = "1.0.3"
+APP_VERSION_DEFAULT = "1.0.4"
 
 
 def _resolve_base_dir() -> Path:

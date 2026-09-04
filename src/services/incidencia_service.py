@@ -6,13 +6,13 @@ Este servicio gestiona el ciclo de vida completo de incidencias,
 incluyendo registro, aprobación, rechazo y control de vigencia.
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import date, timedelta
+from typing import List, Optional, Dict
+from datetime import date
 from sqlalchemy.orm import Session
 import uuid
 import os
 
-from src.models import Incidencia, TipoIncidencia, EstadoIncidencia
+from src.models import Incidencia, EstadoIncidencia
 from src.repositories import IncidenciaRepository
 from src.config import settings
 

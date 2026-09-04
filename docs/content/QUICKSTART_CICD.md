@@ -19,11 +19,12 @@ Ve a `Settings > Branches`:
 ### Build & Release (`build.yml`)
 - **Trigger**: Push a main/develop, etiquetas `v*`, manual
 - **Función**: Pruebas (pytest) + ejecutable Windows + instalador (Inno Setup)
-- **Output**: `Setup.exe` + ZIP portable
+  + ejecutable Linux portable (PyInstaller en ubuntu)
+- **Output**: `Setup.exe` + ZIP portable (Windows) + `tar.gz` portable (Linux)
   - Push a **main** → Release automática en GitHub (sin etiqueta)
   - Push a **develop** → solo artefactos
   - Etiqueta `v*` → Release versionada con el nombre de la etiqueta
-- **Duración**: ~5-7 minutos
+- **Duración**: ~5-9 minutos (Windows y Linux compilan en paralelo)
 
 ## 🎯 Flujo de Trabajo
 
@@ -38,17 +39,18 @@ git push origin main
 - ✅ Ejecutable Windows (onedir, icono, versión)
 - ✅ Instalador `Setup.exe` subido como artefacto
 - ✅ ZIP portable subido como artefacto
-- ✅ Release en GitHub con instalador adjunto (etiqueta interna automática)
+- ✅ Ejecutable Linux (`tar.gz` portable) subido como artefacto y al Release
+- ✅ Release en GitHub con instalador y versiones portables adjuntas (etiqueta interna automática)
 
 ### Release versionada (opcional)
 ```bash
-# Crea una release con nombre y etiqueta versionados (ej: v1.0.4)
-git tag v1.0.4
-git push origin v1.0.4
+# Crea una release con nombre y etiqueta versionados (ej: v2.79)
+git tag v2.79
+git push origin v2.79
 ```
 
 **Resultado:**
-- ✅ Release en GitHub con el instalador adjunto
+- ✅ Release en GitHub con el instalador y las versiones portables adjuntas
 - ✅ Instalador con instalación en `Program Files`
 - ✅ Datos del usuario en `%LOCALAPPDATA%\SistemaGestionPersonal`
 

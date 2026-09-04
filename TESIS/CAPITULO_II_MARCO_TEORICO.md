@@ -10,43 +10,45 @@ Este marco teórico proporciona la base conceptual y técnica necesaria para abo
 
 ### 2.2.1 Antecedentes Internacionales
 
-#### 2.2.1.1 Sistemas de Gestión de Recursos Humanos en Educación Superior
+#### 2.2.1.1 Gestión Electrónica de Recursos Humanos (e-HRM)
 
-Smith et al. (2020) realizaron un estudio exhaustivo sobre la implementación de sistemas de gestión de recursos humanos (HRM) en universidades de Estados Unidos y Europa. La investigación identificó que las instituciones que implementaron sistemas integrados de gestión experimentaron mejoras significativas en eficiencia administrativa, con reducciones de hasta 60% en tiempos de procesamiento de nóminas y mejoras del 45% en satisfacción del personal administrativo.
+Bondarouk y Ruël (2009) introdujeron y delimitaron el campo de la gestión electrónica de recursos humanos (e-HRM), definiéndolo como la configuración de tecnologías de información que habilita las actividades de gestión del personal a través de la web. En su edición de un número especial de la *International Journal of Human Resource Management*, los autores identificaron los principales desafíos de la e-HRM en la era digital: la alineación entre las estrategias de negocio y las soluciones tecnológicas, la aceptación por parte de los usuarios, y la necesidad de redefinir los roles del área de recursos humanos.
 
-El estudio destacó la importancia de considerar factores organizacionales y culturales en la implementación de sistemas tecnológicos, recomendando estrategias de cambio gestionado y capacitación intensiva del personal. Los autores concluyeron que el éxito de la implementación depende más de factores humanos que de la tecnología misma.
+El trabajo concluyó que el éxito de estos sistemas depende en gran medida de factores organizacionales y humanos —como la capacitación y la gestión del cambio— más que de la tecnología en sí misma, un hallazgo directamente relevante para la implementación de sistemas de gestión de personal en instituciones educativas.
 
-#### 2.2.1.2 Implementación de ERPs en Instituciones Educativas
+#### 2.2.1.2 Implementación de ERPs en Instituciones de Educación Superior
 
-García y Martínez (2019) analizaron experiencias de implementación de sistemas ERP (Enterprise Resource Planning) en instituciones educativas de América Latina. Su investigación reveló que las instituciones exitosas en la implementación de estos sistemas compartieron características comunes: liderazgo comprometido, planificación detallada, participación de usuarios finales en el diseño, y enfoque iterativo con retroalimentación continua.
+Pollock y Cornford (2004) analizaron, mediante un estudio de caso en una universidad, los procesos de implementación de sistemas ERP (*Enterprise Resource Planning*). La investigación evidenció que las universidades constituyen organizaciones socialmente complejas y, en muchos sentidos, singulares, cuyos procesos administrativos no siempre se ajustan a los flujos estandarizados que asumen los sistemas comerciales.
 
-El estudio identificó barreras comunes: resistencia al cambio, falta de capacitación técnica, y limitaciones presupuestarias. Los autores recomendaron enfoques de implementación por fases, comenzando con módulos críticos y expandiendo gradualmente el alcance del sistema.
+Los autores demostraron que el éxito de la implementación depende de adaptar el sistema al contexto institucional, gestionar las expectativas de los distintos actores y acompañar el proceso con estrategias de cambio organizacional, más que de la mera instalación técnica del software.
 
-#### 2.2.1.3 Automatización de Procesos Administrativos Educativos
+#### 2.2.1.3 Transformación Digital de Instituciones Educativas
 
-Johnson y Williams (2018) investigaron el impacto de la automatización de procesos administrativos en instituciones educativas del Reino Unido. Su investigación demostró que la automatización de procesos rutinarios permitió redirigir hasta el 30% del tiempo administrativo hacia actividades de apoyo académico directo.
+Benavides et al. (2020) realizaron una revisión sistemática de la literatura sobre transformación digital en instituciones de educación superior, analizando investigaciones publicadas entre 2000 y 2019. El estudio identificó los principales impulsores de la transformación digital (demanda de nuevos servicios, presión competitiva, madurez tecnológica), las barreras más frecuentes (resistencia al cambio, limitaciones presupuestarias, brechas de competencias digitales) y las tecnologías habilitadoras aplicadas en el sector educativo.
 
-El estudio enfatizó la importancia de mantener interfaces intuitivas y proporcionar capacitación continua para asegurar la adopción exitosa de nuevas tecnologías. Los autores concluyeron que la automatización debe complementar, no reemplazar, el juicio humano en procesos administrativos complejos.
+La revisión concluyó que la transformación digital debe abordarse como un proceso integral de cambio organizacional y no como la simple incorporación de herramientas tecnológicas aisladas.
 
 ### 2.2.2 Antecedentes Nacionales
 
-#### 2.2.2.1 Sistemas de Información para Gestión Educativa
+En el contexto de países en desarrollo, la literatura internacional ofrece hallazgos directamente transferibles a la realidad nacional. A continuación se presentan tres estudios cuyos resultados informan el diseño del sistema propuesto; las referencias locales específicas se completan en la sección de antecedentes locales.
 
-Rodríguez (2021) realizó una investigación sobre sistemas de información para gestión educativa en instituciones públicas de [País]. El estudio identificó que la mayoría de las instituciones utilizan sistemas fragmentados no integrados, con procesos manuales significativos en áreas críticas como gestión de personal y procesamiento de nóminas.
+#### 2.2.2.1 Toma de Decisiones Basada en Datos en Países en Desarrollo
 
-La investigación recomendó el desarrollo de sistemas modulares que puedan implementarse por fases, permitiendo a las instituciones adoptar funcionalidades según sus necesidades y capacidades presupuestarias. El autor destacó la importancia de considerar el contexto específico de cada institución en el diseño de soluciones tecnológicas.
+Voogt y Pieters (2019), en el número especial de la *Journal of Professional Capital and Community* dedicado a la toma de decisiones basada en datos en países en desarrollo, analizaron la influencia del sistema educativo y la cultura organizacional en el uso efectivo de los datos administrativos. El estudio concluyó que la disponibilidad de sistemas de información confiables es condición necesaria, pero no suficiente, para la mejora de la gestión educativa: se requiere además capacidad institucional para interpretar los datos y traducirlos en acciones.
 
-#### 2.2.2.2 Experiencias de Digitalización en Instituciones Educativas Públicas
+Este hallazgo respalda la decisión de acompañar la implementación del sistema con capacitación y documentación, tal como propone la presente investigación.
 
-Pérez (2020) documentó experiencias de digitalización en instituciones educativas públicas de [País], identificando patrones de éxito y fracaso en proyectos de implementación tecnológica. Las experiencias exitosas se caracterizaron por: involucramiento temprano de usuarios finales, capacitación intensiva, y mantenimiento de expectativas realistas sobre los beneficios esperados.
+#### 2.2.2.2 Obstáculos para la Integración de las TIC en Educación
 
-El estudio concluyó que la digitalización debe abordarse como un proceso de cambio organizacional, no simplemente como un proyecto tecnológico. Los factores críticos de éxito incluyeron liderazgo comprometido, recursos adecuados, y enfoque en beneficios tangibles para usuarios finales.
+Pelgrum (2001) presentó los resultados de una evaluación educativa de alcance mundial (IEA) sobre los obstáculos para la integración de las tecnologías de la información y la comunicación (TIC) en la educación. El estudio identificó como principales barreras la insuficiencia de equipos y software, la limitada capacitación de los docentes y el personal administrativo, y la falta de tiempo para familiarizarse con las nuevas herramientas.
 
-#### 2.2.2.3 Desarrollo de Software Educativo de Bajo Costo
+Estos obstáculos —documentados en contextos muy diversos— son consistentes con las dificultades observadas en instituciones educativas de recursos limitados y refuerzan la necesidad de soluciones tecnológicas simples, accesibles y acompañadas de formación.
 
-López y Sánchez (2019) investigaron estrategias para el desarrollo de software educativo de bajo costo adaptado a contextos de recursos limitados. Su investigación identificó que el uso de tecnologías de código abierto, arquitecturas modulares, y metodologías de desarrollo ágil permitieron reducir significativamente los costos de desarrollo sin sacrificar funcionalidad crítica.
+#### 2.2.2.3 Software de Código Abierto en el Ámbito Educativo
 
-Los autores recomendaron enfocarse en funcionalidades esenciales primero, con posibilidad de expansión futura según disponibilidad de recursos. También destacaron la importancia de documentación completa para facilitar el mantenimiento y expansión del sistema por personal con capacitación técnica limitada.
+Lakhan y Jhunjhunwala (2008) analizaron los patrones de adopción de software de código abierto en instituciones educativas, destacando sus beneficios económicos (eliminación de costos de licenciamiento), su flexibilidad para adaptarse a necesidades específicas y los retos asociados a su adopción (soporte técnico, curvas de aprendizaje, compatibilidad con sistemas existentes).
+
+La investigación concluyó que las instituciones con recursos limitados pueden obtener beneficios significativos del software de código abierto cuando cuentan con documentación adecuada y capacidades técnicas mínimas, precisamente el enfoque adoptado por el presente proyecto.
 
 ### 2.2.3 Antecedentes Locales
 
@@ -93,7 +95,7 @@ Para este proyecto, se adoptará un enfoque iterativo del SDLC, permitiendo cicl
 
 #### 2.3.1.2 Patrones de Diseño Arquitectónicos
 
-Los patrones de diseño arquitectónicos proporcionan soluciones reutilizables a problemas comunes en el diseño de software. Según Gamma et al. (2021), los patrones relevantes para este proyecto incluyen:
+Los patrones de diseño arquitectónicos proporcionan soluciones reutilizables a problemas comunes en el diseño de software. Según Gamma et al. (1994), los patrones relevantes para este proyecto incluyen:
 
 - **Repository Pattern:** Abstrae la lógica de acceso a datos, proporcionando una interfaz para operaciones CRUD sin exponer detalles de implementación.
 - **Service Layer Pattern:** Encapsula la lógica de negocio, separándola de la presentación y el acceso a datos.
@@ -104,7 +106,7 @@ Estos patrones contribuirán a la mantenibilidad, escalabilidad y testabilidad d
 
 #### 2.3.1.3 Metodologías Ágiles de Desarrollo
 
-Las metodologías ágiles enfatizan el desarrollo iterativo, colaboración con clientes, y respuesta al cambio. Según Beck et al. (2020), los principios ágiles incluyen:
+Las metodologías ágiles enfatizan el desarrollo iterativo, colaboración con clientes, y respuesta al cambio. Según Beck et al. (2001), los principios ágiles incluyen:
 
 - **Desarrollo iterativo:** Entrega continua de funcionalidad en ciclos cortos.
 - **Colaboración con clientes:** Involucramiento activo de usuarios finales en el proceso.
@@ -169,7 +171,7 @@ Las bases de datos relacionales organizan datos en tablas con relaciones definid
 - **Integridad de datos:** Reglas que aseguran consistencia y precisión de los datos.
 - **Flexibilidad en consultas:** Lenguaje SQL para consultas complejas y flexibles.
 - **Escalabilidad:** Capacidad para manejar crecientes volúmenes de datos.
-- **Estándarización:** SQL como lenguaje estándar para bases de datos relacionales.
+- **Estandarización:** SQL como lenguaje estándar para bases de datos relacionales.
 
 El sistema propuesto utilizará SQLite como base de datos relacional, con SQLAlchemy como ORM para mapeo objeto-relacional.
 
@@ -300,7 +302,7 @@ El sistema implementará estas medidas de seguridad para proteger la informació
 
 - **Empleado:** Persona contratada por una institución educativa para desempeñar funciones específicas.
 
-- **Documento:** Registro físico o digital que contiene información oficial relacionada con un empleado (cedula, título, certificado, etc.).
+- **Documento:** Registro físico o digital que contiene información oficial relacionada con un empleado (cédula, título, certificado, etc.).
 
 - **Incidencia:** Evento que afecta la asistencia o disponibilidad de un empleado (permiso, reposo médico, ausencia, vacaciones).
 
@@ -380,7 +382,7 @@ El Sistema de Gestión de Personal y Nómina se basa en el siguiente modelo conc
 
 **Principios de Diseño:**
 - **Separación de Responsabilidades:** Cada capa tiene una responsabilidad clara
-- **Baja Acoplamiento:** Mínima dependencia entre componentes
+- **Bajo Acoplamiento:** Mínima dependencia entre componentes
 - **Alta Cohesión:** Componentes enfocados en una única responsabilidad
 - **Abstracción:** Interfaces bien definidas entre capas
 
@@ -388,6 +390,6 @@ El Sistema de Gestión de Personal y Nómina se basa en el siguiente modelo conc
 
 Este capítulo ha establecido el fundamento teórico y conceptual necesario para el desarrollo del Sistema de Gestión de Personal y Nómina. Los antecedentes revisados proporcionan lecciones valiosas de implementaciones similares, mientras que las bases teóricas ofrecen los principios conceptuales que guiarán el diseño e implementación del sistema.
 
-El marco legal identifica las normativas que el sistema debe cumplir, asegurando que la solución sea no solo técnicamente sólida sino también legalmente compliant. Las definiciones de términos establecen un vocabulario común para facilitar la comunicación y comprensión del proyecto.
+El marco legal identifica las normativas que el sistema debe cumplir, asegurando que la solución sea no solo técnicamente sólida sino también legalmente conforme. Las definiciones de términos establecen un vocabulario común para facilitar la comunicación y comprensión del proyecto.
 
 El modelo conceptual presentado proporciona una visión clara de la arquitectura del sistema, estableciendo las relaciones entre componentes y los principios de diseño que guiarán su desarrollo. Este marco teórico sólido proporciona la base necesaria para abordar la metodología de investigación presentada en el siguiente capítulo.

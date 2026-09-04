@@ -154,7 +154,7 @@ El tamaño de muestra propuesto se justifica por:
 **Procedimiento:**
 - Sesiones de 60-90 minutos donde usuarios realizan tareas específicas.
 - Registro de tiempos, errores y comentarios.
-- Think-aloud protocol (usuarios verbalizan su proceso mental).
+- Protocolo de pensamiento en voz alta (*think-aloud*): los usuarios verbalizan su proceso mental.
 - Análisis de resultados para identificar mejoras de diseño.
 
 **Tareas típicas:** Registro de empleado, procesamiento de nómina, búsqueda de documento, generación de reporte.
@@ -506,7 +506,7 @@ Solo participarán aquellos que firmen consentimiento informado por escrito.
 
 #### 3.7.2.2 Propiedad Intelectual
 
-- **Código abierto:** Sistema será liberado bajo licencia permissiva para uso educativo.
+- **Código abierto:** Sistema será liberado bajo licencia permisiva para uso educativo.
 - **Atribución:** Reconocimiento apropiado de contribuciones de participantes.
 - **Uso comercial:** Restricciones apropiadas sobre uso comercial del sistema.
 - **Modificaciones:** Política clara sobre modificaciones y derivados.
@@ -629,11 +629,11 @@ Si el enfoque metodológico no está funcionando:
 
 ## 3.10 CONCLUSIONES DEL CAPÍTULO
 
-Este capítulo ha presentado una metodología de investigación rigurosa y apropiada para el desarrollo e implementación del Sistema de Gestión de Personal y Nómina. El enfoque mixto, combinando métodos cuantitativos y cualitativos, permitirá una evaluación comprehensiva del impacto del sistema.
+Este capítulo ha presentado una metodología de investigación rigurosa y apropiada para el desarrollo e implementación del Sistema de Gestión de Personal y Nómina. El enfoque mixto, combinando métodos cuantitativos y cualitativos, permitirá una evaluación comprensiva del impacto del sistema.
 
 La metodología de investigación-acción combinada con prototipado evolutivo asegura que el desarrollo del sistema esté informado continuamente por feedback de usuarios reales, maximizando la probabilidad de éxito y la utilidad práctica de la solución.
 
-Los procedimientos éticos detallados garantizan que la investigación se conductede de manera responsable, protegiendo los derechos y bienestar de los participantes mientras se genera conocimiento valioso para el campo.
+Los procedimientos éticos detallados garantizan que la investigación se lleva a cabo de manera responsable, protegiendo los derechos y bienestar de los participantes mientras se genera conocimiento valioso para el campo.
 
 Los criterios de calidad establecidos proporcionan estándares claros para evaluar tanto el sistema desarrollado como la calidad de la investigación misma, asegurando que el proyecto cumpla con estándares académicos y profesionales.
 

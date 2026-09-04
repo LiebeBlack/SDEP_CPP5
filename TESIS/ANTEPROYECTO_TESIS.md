@@ -35,7 +35,7 @@
 
 ### 2.1 Descripción de la Realidad Problemática
 
-Las instituciones educativas contemporáneas enfrentan desafíos significativos en la gestión administrativa de recursos humanos, particularly en contextos donde la implementación de soluciones tecnológicas resulta limitada por factores económicos, técnicos y culturales. La gestión manual de información de personal, procesamiento de nóminas, control documental y administración de incidencias representa una carga administrativa excesiva que afecta negativamente la eficiencia operativa y la calidad del servicio educativo.
+Las instituciones educativas contemporáneas enfrentan desafíos significativos en la gestión administrativa de recursos humanos, particularmente en contextos donde la implementación de soluciones tecnológicas resulta limitada por factores económicos, técnicos y culturales. La gestión manual de información de personal, procesamiento de nóminas, control documental y administración de incidencias representa una carga administrativa excesiva que afecta negativamente la eficiencia operativa y la calidad del servicio educativo.
 
 En la actualidad, muchas instituciones educativas dependen de procesos manuales o sistemas informáticos obsoletos para la gestión de personal, lo que conlleva múltiples inconvenientes:
 
@@ -58,6 +58,7 @@ Esta situación es particularmente crítica en instituciones educativas de recur
 3. ¿Cómo implementar módulos de gestión de empleados, documentos, incidencias y nómina que respondan a las necesidades específicas del contexto educativo?
 4. ¿Qué funcionalidades de reportes y generación de documentos son necesarias para facilitar la toma de decisiones administrativas?
 5. ¿Cómo validar la efectividad del sistema mediante pruebas funcionales con usuarios reales en instituciones educativas?
+6. ¿Cuál es el impacto cuantitativo y cualitativo de la implementación del sistema en la eficiencia administrativa de las instituciones educativas piloto?
 
 ### 2.3 Justificación de la Investigación
 
@@ -125,18 +126,18 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 ### 5.1 Antecedentes de la Investigación
 
 **Internacionales:**
-- Sistemas de gestión de recursos humanos en educación superior (Smith et al., 2020)
-- Implementación de ERPs en instituciones educativas (García & Martínez, 2019)
-- Automatización de procesos administrativos educativos (Johnson & Williams, 2018)
+- Gestión electrónica de recursos humanos (e-HRM) y sus desafíos en la era digital (Bondarouk & Ruël, 2009)
+- Implementación de ERPs en instituciones de educación superior (Pollock & Cornford, 2004)
+- Transformación digital de instituciones educativas (Benavides et al., 2020)
 
 **Nacionales:**
-- Sistemas de información para gestión educativa en [País] (Rodríguez, 2021)
-- Experiencias de digitalización en instituciones educativas públicas (Pérez, 2020)
-- Desarrollo de software educativo de bajo costo (López & Sánchez, 2019)
+- Toma de decisiones basada en datos en países en desarrollo (Voogt & Pieters, 2019)
+- Obstáculos para la integración de TIC en educación (Pelgrum, 2001)
+- Software de código abierto en el ámbito educativo (Lakhan & Jhunjhunwala, 2008)
 
 **Locales:**
-- Sistemas de gestión implementados en instituciones similares (Referencias locales)
-- Experiencias previas de digitalización administrativa (Casos de estudio regionales)
+- Sistemas de gestión implementados en instituciones similares ([Completar con casos reales de la región])
+- Experiencias previas de digitalización administrativa ([Completar con casos de estudio regionales])
 
 ### 5.2 Bases Teóricas
 
@@ -291,6 +292,8 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 | Impresión de documentación | $30 | 1 | $30 |
 | Transporte para visitas | $100 | 5 | $500 |
 | **Subtotal Recursos de Operación** | | | **$580** |
+
+*(Estos montos coinciden con el desglose detallado del Anexo 10 de la tesis.)*
 
 ### 8.4 Presupuesto Total
 

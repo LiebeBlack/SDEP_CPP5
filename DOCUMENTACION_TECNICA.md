@@ -86,12 +86,24 @@ Registra los pagos y nóminas:
 - **Desglose**: Salario base, deducciones (seguro, pensión, impuesto)
 - **Estado**: Pagado/pendiente, fecha de registro
 
+### Modelo Usuario
+
+Gestiona el acceso al sistema (autenticación y roles):
+- **Credenciales**: `username` único y `password_hash` (PBKDF2)
+- **Identidad**: Nombre completo
+- **Rol**: admin, manager, user o viewer (enum `RolUsuario`)
+- **Estado**: Activo/inactivo, debe cambiar contraseña, último acceso,
+  intentos fallidos y bloqueo
+
 ### Modelo Configuración
 
-Almacena la configuración del sistema:
+Almacena la configuración del sistema en pares clave/valor tipados
+(`string`, `int`, `float`, `bool` vía `valor_typed`):
 - **Configuración General**: Nombre de institución, dirección, contacto
 - **Configuración de Nómina**: Porcentajes de deducciones, salario mínimo
 - **Configuración de RRHH**: Días de vacaciones, horas laborales
+- **Configuración de Seguridad**: Respaldos y auditoría
+- **Preferencias de interfaz**: `apariencia_modo` (tema oscuro/claro)
 
 ## Servicios del Sistema
 
@@ -167,35 +179,117 @@ Gestión de archivos físicos:
 - Control de espacios
 - Validación de tipos de archivo
 
-### PDFGenerator
+### Security
 
-Generación de documentos PDF:
-- Constancias de trabajo
-- Constancias de estudios
-- Recibos de pago
-- Reportes de empleados
-- Documentos oficiales
+Validación y saneamiento de datos de entrada, verificación de permisos
+por rol y cifrado de contraseñas:
+- `SecurityValidator`: validación de patrones (email, teléfono, cédula,
+  nombres de archivo), saneamiento de strings y archivos, control de
+  tamaño y extensión, rango numérico
+- `hash_password` / `verify_password`: PBKDF2-HMAC-SHA256 con salt
+  aleatorio (200.000 iteraciones) y compatibilidad con hashes legados
+- `PermissionChecker`: matriz de permisos por rol
+  (create/read/update/delete/report/config/backup/restore) y de acceso
+  a módulos
+- `SecurityLogger`: registra eventos de seguridad en la auditoría
+
+### AuditLogger
+
+Registro persistente de eventos del sistema en archivos JSON:
+- Eventos de sistema (inicio/cierre), autenticación, respaldos, cambios
+  de datos y errores
+- Consulta de eventos recientes y exportación a Excel/CSV desde la GUI
+- Se activa/desactiva desde Configuración > Seguridad y Respaldo
+
+### BackupManager
+
+Copias de seguridad de la base de datos:
+- Creación manual y automática (al cerrar o por intervalo configurable
+  en horas)
+- Compresión opcional, metadatos en `backup_metadata.json`
+- Verificación de integridad (archivo presente, tamaño y checksum)
+- Restauración y eliminación desde la interfaz, con confirmación
+- Restauración programática con cierre previo de la sesión (Windows)
+
+### Exporter
+
+Exportación de listados a archivos:
+- **Excel (.xlsx)** mediante `openpyxl`
+- **CSV** con BOM UTF-8 para compatibilidad con Excel
+- Uso común desde todos los módulos (empleados, documentos,
+  incidencias, pagos, auditoría)
 
 ## Interfaz Gráfica
 
 ### Componentes Principales
 
-1. **MainWindow**: Ventana principal del sistema
-2. **DashboardFrame**: Panel de control con estadísticas
-3. **EmpleadosFrame**: Gestión de empleados
-4. **DocumentosFrame**: Gestión documental
-5. **IncidenciasFrame**: Control de permisos y ausencias
-6. **NominaFrame**: Procesamiento de nóminas
-7. **ConfiguracionFrame**: Configuración del sistema
+1. **LoginWindow**: Inicio de sesión con credenciales, aviso de primer
+   acceso y obligación de cambiar la contraseña inicial
+2. **MainWindow**: Ventana principal con barra lateral, cabecera, barra
+   de estado, atajos de teclado y tema de apariencia
+3. **DashboardFrame**: Panel de control con tarjetas estadísticas
+   navegables y acciones rápidas
+4. **EmpleadosFrame**: Gestión de empleados (CRUD, búsqueda, filtros,
+   reportes PDF y exportación)
+5. **DocumentosFrame**: Gestión documental con control de vencimientos
+6. **IncidenciasFrame**: Control de permisos y ausencias con flujo de
+   aprobación
+7. **NominaFrame**: Procesamiento de nóminas, recibos y planillas PDF
+8. **ConfiguracionFrame**: Configuración institucional, de nómina, RRHH,
+   seguridad/respaldos, usuarios y auditoría
+9. **Diálogos (Toplevel)**: `EmpleadoDialog`, `EmpleadoDetailsDialog`,
+   `DocumentoDialog`, `IncidenciaDialog`, `ApprovalDialog`, `PagoDialog`,
+   `UsuarioDialog`, `CambiarPasswordDialog`, `InfoDialog` (texto extenso
+   para Ayuda/Acerca de). Todos se cierran con **Esc**
+
+### Theme (Apariencia)
+
+El módulo `src/gui/theme.py` centraliza la apariencia de la aplicación:
+
+- Paletas **oscura** (`PALETA_OSCURA`) y **clara** (`PALETA_CLARA`) con
+  claves semánticas (fondo, panel, campo, texto, acento, borde) en el
+  diccionario global `COLORES`
+- `aplicar_modo_apariencia(modo)`: cambia el modo de CustomTkinter,
+  actualiza `COLORES` y reaplica los estilos ttk (tablas, combos, menús)
+- Los frames leen los colores de `COLORES` al construirse; al alternar
+  el tema, la ventana principal reconfigura su "chrome" y recrea el
+  frame activo para que tome la paleta nueva
+- La preferencia se guarda con la clave `apariencia_modo` ("Dark"/
+  "Light") en la tabla de configuración y se aplica en el login y en
+  la ventana principal
+- `enable_windows_dpi_awareness()`: alta resolución en Windows
+- `centrar_ventana`, `cancelar_after_pendientes`, `silenciar_errores_fondo`:
+  utilidades de ventana y limpieza de temporizadores
 
 ### Características de la Interfaz
 
-- Diseño moderno con tema oscuro
-- Navegación intuitiva por módulos
+- Diseño moderno con tema oscuro por defecto y tema claro configurable
+- Navegación por módulos con barra lateral, clic en tarjetas del
+  Dashboard y atajos de teclado (Ctrl+1..6)
+- Cabecera con acceso a Ayuda, Acerca de, tema de apariencia, cierre de
+  sesión y salida
+- Barra de estado inferior con reloj y mensajes contextuales
 - Tablas con filtros y búsqueda
 - Formularios de entrada validados
+- Menús contextuales con clic derecho y doble clic para ver detalles
 - Generación de reportes en tiempo real
 - Adaptabilidad a diferentes tamaños de pantalla
+
+### Atajos de Teclado
+
+| Atajo | Acción |
+| --- | --- |
+| Ctrl+1 … Ctrl+6 | Navegar al módulo correspondiente |
+| Ctrl+N | Nuevo registro en el módulo activo |
+| Ctrl+F | Enfocar búsqueda/filtro |
+| Ctrl+S | Guardar (Configuración) |
+| F5 | Actualizar lista |
+| Esc | Cerrar diálogo o limpiar selección |
+
+Los atajos se enlazan en `MainWindow._bind_atajos()` y delegan en
+métodos canónicos por tipo de frame (tablas `METODOS_REFRESCAR`,
+`METODOS_NUEVO` y `METODOS_GUARDAR`), lo que permite ampliarlos sin
+acoplar la ventana principal a cada módulo.
 
 ## Seguridad y Validación
 
@@ -203,9 +297,15 @@ Generación de documentos PDF:
 
 - Almacenamiento local de datos (sin conexión a internet requerida)
 - Validación de entradas de usuario
-- Control de acceso por tipo de usuario
-- Encriptación de contraseñas (si se implementa)
-- Registro de auditoría (opcional)
+- Control de acceso por tipo de usuario y por módulo
+- Contraseñas con hash **PBKDF2-HMAC-SHA256** (200.000 iteraciones,
+  salt aleatorio de 16 bytes; formato `pbkdf2$iteraciones$salt$hash`),
+  con compatibilidad de lectura para hashes SHA-256 legados
+- Bloqueo de cuenta y contador de intentos fallidos de inicio de sesión
+- Registro de auditoría persistente (archivos JSON) con eventos de
+  sistema, autenticación, respaldos, cambios de datos y errores
+- Verificación de integridad de respaldos (checksum)
+- Copias de seguridad automáticas al cerrar y por intervalo configurable
 
 ### Validaciones Implementadas
 

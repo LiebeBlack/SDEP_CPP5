@@ -48,8 +48,19 @@ Este sistema proporciona una solución integral para la administración de recur
 - Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel)
 
 ### Seguridad y Auditoría
+- Autenticación de usuarios con contraseñas cifradas (PBKDF2)
+- Roles y permisos por módulo (Administrador, Gestor, Usuario, Solo lectura)
 - Cambio de contraseña del usuario logueado
 - Visor de auditoría (solo administradores) con filtro por tipo y exportación
+- Bloqueo de cuenta por intentos fallidos
+
+### Interfaz y Experiencia de Usuario
+- Tema **oscuro/claro** configurable y persistente (botón ☀️/🌙 en la cabecera)
+- Atajos de teclado para navegar y operar más rápido
+- Panel de control (Dashboard) con tarjetas estadísticas navegables
+- Ventanas integradas de **Ayuda** (guía rápida) y **Acerca de**
+- Barra de estado con reloj y mensajes de la aplicación
+- Soporte de alta resolución (DPI) en Windows
 
 ## 📋 Requisitos del Sistema
 
@@ -90,7 +101,7 @@ git push origin main
 
 Para una release versionada (opcional):
 ```bash
-git tag v1.0.3
+git tag v1.0.4
 git push origin v1.0.3
 ```
 
@@ -208,6 +219,17 @@ El sistema utiliza SQLite como base de datos local. La base de datos se crea aut
 
 ## 📖 Uso
 
+### Atajos de Teclado
+
+| Atajo | Acción |
+| --- | --- |
+| `Ctrl+1` … `Ctrl+6` | Ir al módulo 1 (Dashboard) … 6 (Configuración) |
+| `Ctrl+N` | Nuevo registro en el módulo activo |
+| `Ctrl+F` | Buscar / enfocar el filtro del módulo activo |
+| `Ctrl+S` | Guardar cambios (Configuración) |
+| `F5` | Actualizar la lista del módulo activo |
+| `Esc` | Cerrar diálogos o limpiar la selección de la tabla |
+
 ### Primeros Pasos
 
 1. **Configuración Inicial**: 
@@ -265,7 +287,7 @@ flake8 src/
 pylint src/
 ```
 
-## � Flujo de Trabajo
+## 🔄 Flujo de Trabajo
 
 1. **Configuración Inicial**: Al iniciar el sistema por primera vez, configure los datos de la institución
 2. **Registro de Empleados**: Agregue los empleados con sus datos personales y laborales
@@ -273,7 +295,7 @@ pylint src/
 4. **Control de Incidencias**: Registre permisos, reposos y ausencias
 5. **Procesamiento de Nómina**: Genere nóminas periódicas y emita recibos de pago
 
-## �📝 Configuración
+## ⚙️ Configuración
 
 ### Variables de Entorno
 
@@ -326,5 +348,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 1.0.3  
+**Versión**: 1.0.4  
 **Última actualización**: 2026

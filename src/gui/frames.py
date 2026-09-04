@@ -20,6 +20,7 @@ from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
 from src.utils.audit_logger import audit_logger, AuditEventType
 from src.services.auth_service import AuthService
+from src.gui.theme import COLORES
 
 
 def _id_fila_seleccionada(tree) -> Optional[int]:
@@ -67,32 +68,33 @@ class DashboardFrame(ctk.CTkFrame):
             self,
             text="Panel de Control",
             font=ctk.CTkFont(size=24, weight="bold"),
-            text_color="white"
+            text_color=COLORES["texto"]
         )
         title.pack(pady=20)
         
         # Contenedor de tarjetas
-        cards_container = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        cards_container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         cards_container.pack(fill="x", padx=20, pady=10)
         
         # Tarjetas de estadísticas
         self.stats_cards = {}
         
         cards = [
-            ("Total Empleados", "empleados", "👥"),
-            ("Empleados Activos", "activos", "✅"),
-            ("Documentos", "documentos", "📁"),
-            ("Incidencias Pendientes", "incidencias", "📅"),
-            ("Pagos Pendientes", "pagos", "💰"),
+            ("Total Empleados", "empleados", "👥", "empleados"),
+            ("Empleados Activos", "activos", "✅", "empleados"),
+            ("Documentos", "documentos", "📁", "documentos"),
+            ("Incidencias Pendientes", "incidencias", "📅", "incidencias"),
+            ("Pagos Pendientes", "pagos", "💰", "nomina"),
         ]
         
-        for i, (title_text, key, icon) in enumerate(cards):
-            card = self._create_stat_card(cards_container, title_text, icon, key)
+        for i, (title_text, key, icon, modulo) in enumerate(cards):
+            card = self._create_stat_card(
+                cards_container, title_text, icon, key, modulo)
             card.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
             cards_container.grid_columnconfigure(i, weight=1)
         
         # Sección de acciones rápidas
-        actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         actions_frame.pack(fill="x", padx=20, pady=20)
         
         actions_title = ctk.CTkLabel(
@@ -140,34 +142,57 @@ class DashboardFrame(ctk.CTkFrame):
             btn.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
             actions_container.grid_columnconfigure(i, weight=1)
     
-    def _create_stat_card(self, parent, title: str, icon: str, key: str) -> ctk.CTkFrame:
-        """Crea una tarjeta de estadística"""
-        card = ctk.CTkFrame(parent, height=150, fg_color="#3c3c3c", corner_radius=8)
+    def _create_stat_card(self, parent, title: str, icon: str, key: str,
+                          modulo: str = "") -> ctk.CTkFrame:
+        """Crea una tarjeta de estadística (clic navega al módulo indicado)"""
+        card = ctk.CTkFrame(parent, height=150, fg_color=COLORES["campo"], corner_radius=8)
         card.pack_propagate(False)
-        
+
+        if modulo:
+            def _navegar(event=None):
+                if self.main_window.puede_ver_modulo(modulo):
+                    self.main_window._show_frame(modulo)
+                else:
+                    messagebox.showwarning(
+                        "Acceso denegado",
+                        "Su rol no tiene permisos para acceder a este módulo",
+                    )
+
+            card.bind("<Button-1>", _navegar)
+            card.configure(cursor="hand2")
+
         icon_label = ctk.CTkLabel(
             card,
             text=icon,
             font=ctk.CTkFont(size=40)
         )
         icon_label.pack(pady=(15, 5))
-        
+        if modulo:
+            icon_label.bind("<Button-1>", _navegar)
+            icon_label.configure(cursor="hand2")
+
         value_label = ctk.CTkLabel(
             card,
             text="0",
             font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="white"
+            text_color=COLORES["texto"]
         )
         value_label.pack(pady=5)
-        
+        if modulo:
+            value_label.bind("<Button-1>", _navegar)
+            value_label.configure(cursor="hand2")
+
         title_label = ctk.CTkLabel(
             card,
             text=title,
             font=ctk.CTkFont(size=12),
-            text_color="#cccccc"
+            text_color=COLORES["texto_suave"]
         )
         title_label.pack(pady=(5, 15))
-        
+        if modulo:
+            title_label.bind("<Button-1>", _navegar)
+            title_label.configure(cursor="hand2")
+
         self.stats_cards[key] = value_label
         return card
     
@@ -223,19 +248,19 @@ class EmpleadosFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de empleados"""
         # Panel de búsqueda y filtros
-        search_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        search_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         search_frame.pack(fill="x", padx=10, pady=10)
         
         # Campo de búsqueda
-        search_label = tk.Label(search_frame, text="Buscar:", bg="#2b2b2b", fg="white", font=("Arial", 10))
+        search_label = tk.Label(search_frame, text="Buscar:", bg=COLORES["panel"], fg=COLORES["texto"], font=("Arial", 10))
         search_label.pack(side="left", padx=5)
         
-        self.search_entry = tk.Entry(search_frame, width=40, bg="#3c3c3c", fg="white", insertbackground="white")
+        self.search_entry = tk.Entry(search_frame, width=40, bg=COLORES["campo"], fg=COLORES["texto"], insertbackground=COLORES["texto"])
         self.search_entry.pack(side="left", padx=5)
         self.search_entry.bind("<KeyRelease>", self._on_search)
         
         # Filtro por tipo
-        tipo_label = tk.Label(search_frame, text="Tipo:", bg="#2b2b2b", fg="white", font=("Arial", 10))
+        tipo_label = tk.Label(search_frame, text="Tipo:", bg=COLORES["panel"], fg=COLORES["texto"], font=("Arial", 10))
         tipo_label.pack(side="left", padx=5)
         
         self.tipo_combo = ttk.Combobox(
@@ -267,7 +292,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=5)
         
         # Tabla de empleados
-        table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Scrollbar
@@ -592,6 +617,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.geometry("700x500")
         
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         
         self._create_widgets()
         self._load_empleado_data()
@@ -601,7 +627,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
     def _create_widgets(self):
         """Crea los widgets del diálogo de detalles"""
         # Notebook para pestañas
-        notebook = ctk.CTkTabview(self, fg_color="#2b2b2b")
+        notebook = ctk.CTkTabview(self, fg_color=COLORES["panel"])
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Pestaña de datos personales
@@ -625,7 +651,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self._create_familia_details_tab(familia_tab)
         
         # Botón de cerrar
-        btn_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        btn_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         btn_frame.pack(fill="x", padx=10, pady=10)
         
         close_btn = ctk.CTkButton(btn_frame, text="Cerrar", command=self._on_close)
@@ -638,7 +664,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
     
     def _create_personal_details_tab(self, parent):
         """Crea la pestaña de datos personales (solo lectura)"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Campos de datos personales (solo lectura)
@@ -657,7 +683,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
     
     def _create_laboral_details_tab(self, parent):
         """Crea la pestaña de datos laborales (solo lectura)"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tipo_empleado_label = self._create_detail_field(form_frame, "Tipo Empleado:", 0, 0)
@@ -678,7 +704,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
     
     def _create_contacto_details_tab(self, parent):
         """Crea la pestaña de contacto (solo lectura)"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.telefono_label = self._create_detail_field(form_frame, "Teléfono:", 0, 0)
@@ -691,11 +717,11 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.codigo_postal_label = self._create_detail_field(form_frame, "Código Postal:", 3, 0)
         
         # Contacto de emergencia
-        emergency_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
+        emergency_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         emergency_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
         
         emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
-                                     font=ctk.CTkFont(weight="bold"), text_color="white")
+                                     font=ctk.CTkFont(weight="bold"), text_color=COLORES["texto"])
         emergency_label.grid(row=0, column=0, columnspan=4, pady=5)
         
         self.contacto_emergencia_nombre_label = self._create_detail_field(emergency_frame, "Nombre:", 1, 0)
@@ -704,7 +730,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
     
     def _create_salud_details_tab(self, parent):
         """Crea la pestaña de salud y datos bancarios (solo lectura)"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.carnet_discapacidad_label = self._create_detail_field(form_frame, "Carnet de Discapacidad:", 0, 0)
@@ -717,15 +743,15 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
     
     def _create_familia_details_tab(self, parent):
         """Crea la pestaña de familia (solo lectura)"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.hijos_label = self._create_detail_field(form_frame, "Hijos (nombres, edades y cédulas):", 0, 0)
     
     def _create_detail_field(self, parent, label: str, row: int, col: int) -> ctk.CTkLabel:
         """Crea un campo de detalle (solo lectura)"""
-        ctk.CTkLabel(parent, text=label, text_color="white").grid(row=row, column=col, padx=5, pady=5, sticky="e")
-        value_label = ctk.CTkLabel(parent, text="-", text_color="#cccccc", anchor="w")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
+        value_label = ctk.CTkLabel(parent, text="-", text_color=COLORES["texto_suave"], anchor="w")
         value_label.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
         return value_label
     
@@ -817,6 +843,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.geometry("800x600")
         
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         
         self._create_widgets()
         
@@ -829,7 +856,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
         # Notebook para pestañas
-        notebook = ctk.CTkTabview(self, fg_color="#2b2b2b")
+        notebook = ctk.CTkTabview(self, fg_color=COLORES["panel"])
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Pestaña de datos personales
@@ -864,7 +891,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_personal_tab(self, parent):
         """Crea la pestaña de datos personales"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Campos de datos personales
@@ -884,10 +911,10 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.nacionalidad_entry = self._create_form_field(form_frame, "Nacionalidad:", 4, 2)
         
         # Foto de perfil (opcional)
-        ctk.CTkLabel(form_frame, text="Foto de Perfil:", text_color="white").grid(
+        ctk.CTkLabel(form_frame, text="Foto de Perfil:", text_color=COLORES["texto"]).grid(
             row=5, column=0, padx=5, pady=10, sticky="e")
         self.photo_label = ctk.CTkLabel(
-            form_frame, text="Sin foto", text_color="#aaaaaa", anchor="w")
+            form_frame, text="Sin foto", text_color=COLORES["texto_suave"], anchor="w")
         self.photo_label.grid(row=5, column=1, padx=5, pady=10, sticky="w")
         photo_btn = ctk.CTkButton(
             form_frame, text="Seleccionar…", width=110,
@@ -896,7 +923,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_laboral_tab(self, parent):
         """Crea la pestaña de datos laborales"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tipo_empleado_combo = self._create_combo_field(form_frame, "Tipo Empleado:", 0, 0,
@@ -915,7 +942,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_contacto_tab(self, parent):
         """Crea la pestaña de contacto"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.telefono_entry = self._create_form_field(form_frame, "Teléfono:", 0, 0)
@@ -928,7 +955,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.codigo_postal_entry = self._create_form_field(form_frame, "Código Postal:", 3, 0)
         
         # Contacto de emergencia
-        emergency_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
+        emergency_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         emergency_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
         
         emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
@@ -941,7 +968,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_salud_tab(self, parent):
         """Crea la pestaña de salud y datos bancarios"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.carnet_discapacidad_entry = self._create_form_field(form_frame, "Carnet de Discapacidad:", 0, 0)
@@ -959,7 +986,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_familia_tab(self, parent):
         """Crea la pestaña de datos familiares"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.hijos_text = self._create_text_field(
@@ -972,9 +999,9 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_text_field(self, parent, label: str, row: int, col: int, height: int = 80) -> ctk.CTkTextbox:
         """Crea un campo de texto multilínea"""
-        ctk.CTkLabel(parent, text=label, text_color="white").grid(row=row, column=col, padx=5, pady=5, sticky="ne")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="ne")
         textbox = ctk.CTkTextbox(
-            parent, width=400, height=height, fg_color="#3c3c3c", text_color="white")
+            parent, width=400, height=height, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         textbox.grid(row=row, column=col+1, columnspan=3, padx=5, pady=5, sticky="ew")
         return textbox
     
@@ -984,14 +1011,14 @@ class EmpleadoDialog(ctk.CTkToplevel):
     
     def _create_form_field(self, parent, label: str, row: int, col: int) -> ctk.CTkEntry:
         """Crea un campo de formulario"""
-        ctk.CTkLabel(parent, text=label, text_color="white").grid(row=row, column=col, padx=5, pady=5, sticky="e")
-        entry = ctk.CTkEntry(parent, width=200, fg_color="#3c3c3c", text_color="white", placeholder_text=" ")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
+        entry = ctk.CTkEntry(parent, width=200, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text=" ")
         entry.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
         return entry
     
     def _create_combo_field(self, parent, label: str, row: int, col: int, values: List[str]) -> ttk.Combobox:
         """Crea un campo de combo"""
-        ctk.CTkLabel(parent, text=label, text_color="white").grid(row=row, column=col, padx=5, pady=5, sticky="e")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
         combo = ttk.Combobox(parent, values=values, width=25, state="readonly", font=("Arial", 9))
         combo.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
         if values:
@@ -1256,10 +1283,10 @@ class DocumentosFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de documentos"""
         # Panel de selección de empleado
-        selection_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        selection_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         selection_frame.pack(fill="x", padx=10, pady=10)
         
-        ctk.CTkLabel(selection_frame, text="Empleado:", text_color="white").pack(side="left", padx=5)
+        ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
         
         self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=("Arial", 9))
         self.empleado_combo.pack(side="left", padx=5)
@@ -1269,7 +1296,7 @@ class DocumentosFrame(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=5)
         
         # Panel de acciones
-        actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         actions_frame.pack(fill="x", padx=10, pady=5)
         
         if self.main_window.tiene_permiso("create"):
@@ -1283,7 +1310,7 @@ class DocumentosFrame(ctk.CTkFrame):
             export_doc_btn.pack(side="left", padx=5)
         
         # Tabla de documentos
-        table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         scrollbar = ctk.CTkScrollbar(table_frame)
@@ -1578,6 +1605,7 @@ class DocumentoDialog(ctk.CTkToplevel):
         self.geometry("600x400")
         
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         
         self._create_widgets()
         if documento:
@@ -1602,11 +1630,11 @@ class DocumentoDialog(ctk.CTkToplevel):
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
-        form_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Tipo de documento
-        ctk.CTkLabel(form_frame, text="Tipo de Documento:", text_color="white").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        ctk.CTkLabel(form_frame, text="Tipo de Documento:", text_color=COLORES["texto"]).grid(row=0, column=0, padx=5, pady=5, sticky="e")
         self.tipo_combo = ttk.Combobox(
             form_frame,
             values=["cedula", "titulo", "reposo", "certificado", "expediente", "otro"],
@@ -1618,26 +1646,26 @@ class DocumentoDialog(ctk.CTkToplevel):
         self.tipo_combo.set("cedula")  # Valor por defecto
         
         # Título
-        ctk.CTkLabel(form_frame, text="Título:", text_color="white").grid(row=1, column=0, padx=5, pady=5, sticky="e")
-        self.titulo_entry = ctk.CTkEntry(form_frame, width=300, fg_color="#3c3c3c", text_color="white", placeholder_text="Ingrese título")
+        ctk.CTkLabel(form_frame, text="Título:", text_color=COLORES["texto"]).grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        self.titulo_entry = ctk.CTkEntry(form_frame, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="Ingrese título")
         self.titulo_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
         
         # Descripción
-        ctk.CTkLabel(form_frame, text="Descripción:", text_color="white").grid(row=2, column=0, padx=5, pady=5, sticky="ne")
-        self.descripcion_text = ctk.CTkTextbox(form_frame, width=300, height=100, fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(form_frame, text="Descripción:", text_color=COLORES["texto"]).grid(row=2, column=0, padx=5, pady=5, sticky="ne")
+        self.descripcion_text = ctk.CTkTextbox(form_frame, width=300, height=100, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.descripcion_text.grid(row=2, column=1, padx=5, pady=5, sticky="w")
         
         # Fechas
-        ctk.CTkLabel(form_frame, text="Fecha Emisión:", text_color="white").grid(row=3, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_emision_entry = ctk.CTkEntry(form_frame, width=150, fg_color="#3c3c3c", text_color="white", placeholder_text="DD/MM/YYYY")
+        ctk.CTkLabel(form_frame, text="Fecha Emisión:", text_color=COLORES["texto"]).grid(row=3, column=0, padx=5, pady=5, sticky="e")
+        self.fecha_emision_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
         self.fecha_emision_entry.grid(row=3, column=1, padx=5, pady=5, sticky="w")
         
-        ctk.CTkLabel(form_frame, text="Fecha Vencimiento:", text_color="white").grid(row=4, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_vencimiento_entry = ctk.CTkEntry(form_frame, width=150, fg_color="#3c3c3c", text_color="white", placeholder_text="DD/MM/YYYY")
+        ctk.CTkLabel(form_frame, text="Fecha Vencimiento:", text_color=COLORES["texto"]).grid(row=4, column=0, padx=5, pady=5, sticky="e")
+        self.fecha_vencimiento_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
         self.fecha_vencimiento_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
         
         # Archivo
-        file_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
+        file_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         file_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=10)
         
         ctk.CTkLabel(file_frame, text="Archivo:").pack(side="left", padx=5)
@@ -1743,10 +1771,10 @@ class IncidenciasFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de incidencias"""
         # Panel de selección de empleado
-        selection_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        selection_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         selection_frame.pack(fill="x", padx=10, pady=10)
         
-        ctk.CTkLabel(selection_frame, text="Empleado:", text_color="white").pack(side="left", padx=5)
+        ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
         
         self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=("Arial", 9))
         self.empleado_combo.pack(side="left", padx=5)
@@ -1756,7 +1784,7 @@ class IncidenciasFrame(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=5)
         
         # Panel de acciones
-        actions_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         actions_frame.pack(fill="x", padx=10, pady=5)
         
         if self.main_window.tiene_permiso("create"):
@@ -1770,7 +1798,7 @@ class IncidenciasFrame(ctk.CTkFrame):
             export_inc_btn.pack(side="left", padx=5)
         
         # Tabla de incidencias
-        table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         scrollbar = ctk.CTkScrollbar(table_frame)
@@ -2092,6 +2120,7 @@ class IncidenciaDialog(ctk.CTkToplevel):
         self.geometry("600x500")
         
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         
         self._create_widgets()
         if incidencia:
@@ -2113,11 +2142,11 @@ class IncidenciaDialog(ctk.CTkToplevel):
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
-        form_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Tipo de incidencia
-        ctk.CTkLabel(form_frame, text="Tipo de Incidencia:", text_color="white").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        ctk.CTkLabel(form_frame, text="Tipo de Incidencia:", text_color=COLORES["texto"]).grid(row=0, column=0, padx=5, pady=5, sticky="e")
         self.tipo_combo = ttk.Combobox(
             form_frame,
             values=["reposo_medico", "ausencia", "permiso", "vacaciones", "licencia"],
@@ -2129,26 +2158,26 @@ class IncidenciaDialog(ctk.CTkToplevel):
         self.tipo_combo.set("reposo_medico")  # Valor por defecto
         
         # Fechas
-        ctk.CTkLabel(form_frame, text="Fecha Inicio:", text_color="white").grid(row=1, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_inicio_entry = ctk.CTkEntry(form_frame, width=150, fg_color="#3c3c3c", text_color="white", placeholder_text="DD/MM/YYYY")
+        ctk.CTkLabel(form_frame, text="Fecha Inicio:", text_color=COLORES["texto"]).grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        self.fecha_inicio_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
         self.fecha_inicio_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
         
-        ctk.CTkLabel(form_frame, text="Fecha Fin:", text_color="white").grid(row=2, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_fin_entry = ctk.CTkEntry(form_frame, width=150, fg_color="#3c3c3c", text_color="white", placeholder_text="DD/MM/YYYY")
+        ctk.CTkLabel(form_frame, text="Fecha Fin:", text_color=COLORES["texto"]).grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        self.fecha_fin_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
         self.fecha_fin_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
         
         # Motivo
-        ctk.CTkLabel(form_frame, text="Motivo:", text_color="white").grid(row=3, column=0, padx=5, pady=5, sticky="ne")
-        self.motivo_text = ctk.CTkTextbox(form_frame, width=300, height=80, fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(form_frame, text="Motivo:", text_color=COLORES["texto"]).grid(row=3, column=0, padx=5, pady=5, sticky="ne")
+        self.motivo_text = ctk.CTkTextbox(form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.motivo_text.grid(row=3, column=1, padx=5, pady=5, sticky="w")
         
         # Descripción
-        ctk.CTkLabel(form_frame, text="Descripción:", text_color="white").grid(row=4, column=0, padx=5, pady=5, sticky="ne")
-        self.descripcion_text = ctk.CTkTextbox(form_frame, width=300, height=60, fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(form_frame, text="Descripción:", text_color=COLORES["texto"]).grid(row=4, column=0, padx=5, pady=5, sticky="ne")
+        self.descripcion_text = ctk.CTkTextbox(form_frame, width=300, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.descripcion_text.grid(row=4, column=1, padx=5, pady=5, sticky="w")
         
         # Archivo de soporte
-        file_frame = ctk.CTkFrame(form_frame, fg_color="#3c3c3c")
+        file_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         file_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=10)
         
         ctk.CTkLabel(file_frame, text="Documento de Soporte:").pack(side="left", padx=5)
@@ -2254,6 +2283,7 @@ class ApprovalDialog(ctk.CTkToplevel):
         self.geometry("400x300")
         
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         
         self._create_widgets(title, action, incidencia)
     
@@ -2261,7 +2291,7 @@ class ApprovalDialog(ctk.CTkToplevel):
     
     def _create_widgets(self, title: str, action: str, incidencia):
         """Crea los widgets del diálogo"""
-        form_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Información de la incidencia
@@ -2269,22 +2299,22 @@ class ApprovalDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form_frame, text=info_text, font=ctk.CTkFont(weight="bold")).pack(pady=10)
         
         # Aprobado por
-        ctk.CTkLabel(form_frame, text=f"{action} por:", text_color="white").pack(anchor="w", padx=5)
-        self.approved_by_entry = ctk.CTkEntry(form_frame, width=300, fg_color="#3c3c3c", text_color="white", placeholder_text="Nombre del aprobador")
+        ctk.CTkLabel(form_frame, text=f"{action} por:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
+        self.approved_by_entry = ctk.CTkEntry(form_frame, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="Nombre del aprobador")
         self.approved_by_entry.pack(padx=5, pady=5)
         if hasattr(self, 'approved_by') and self.approved_by:
             self.approved_by_entry.insert(0, self.approved_by)
         
         # Días aprobados (solo para aprobación)
         if action == "Aprobar":
-            ctk.CTkLabel(form_frame, text="Días a aprobar:", text_color="white").pack(anchor="w", padx=5)
-            self.dias_entry = ctk.CTkEntry(form_frame, width=100, fg_color="#3c3c3c", text_color="white")
+            ctk.CTkLabel(form_frame, text="Días a aprobar:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
+            self.dias_entry = ctk.CTkEntry(form_frame, width=100, fg_color=COLORES["campo"], text_color=COLORES["texto"])
             self.dias_entry.insert(0, str(incidencia.dias_solicitados))
             self.dias_entry.pack(padx=5, pady=5)
         
         # Comentarios
-        ctk.CTkLabel(form_frame, text="Comentarios:", text_color="white").pack(anchor="w", padx=5)
-        self.comments_text = ctk.CTkTextbox(form_frame, width=300, height=80, fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(form_frame, text="Comentarios:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
+        self.comments_text = ctk.CTkTextbox(form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.comments_text.pack(padx=5, pady=5)
         
         # Botones
@@ -2340,27 +2370,27 @@ class NominaFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de nómina"""
         # Panel de generación de nómina
-        generation_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        generation_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         generation_frame.pack(fill="x", padx=10, pady=10)
         
-        ctk.CTkLabel(generation_frame, text="Generar Nómina:", font=ctk.CTkFont(weight="bold"), text_color="white").pack(side="left", padx=5)
+        ctk.CTkLabel(generation_frame, text="Generar Nómina:", font=ctk.CTkFont(weight="bold"), text_color=COLORES["texto"]).pack(side="left", padx=5)
         
-        ctk.CTkLabel(generation_frame, text="Desde:", text_color="white").pack(side="left", padx=5)
-        self.fecha_inicio_entry = ctk.CTkEntry(generation_frame, width=120, placeholder_text="DD/MM/YYYY", fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(generation_frame, text="Desde:", text_color=COLORES["texto"]).pack(side="left", padx=5)
+        self.fecha_inicio_entry = ctk.CTkEntry(generation_frame, width=120, placeholder_text="DD/MM/YYYY", fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.fecha_inicio_entry.pack(side="left", padx=5)
         
-        ctk.CTkLabel(generation_frame, text="Hasta:", text_color="white").pack(side="left", padx=5)
-        self.fecha_fin_entry = ctk.CTkEntry(generation_frame, width=120, placeholder_text="DD/MM/YYYY", fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(generation_frame, text="Hasta:", text_color=COLORES["texto"]).pack(side="left", padx=5)
+        self.fecha_fin_entry = ctk.CTkEntry(generation_frame, width=120, placeholder_text="DD/MM/YYYY", fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.fecha_fin_entry.pack(side="left", padx=5)
         
         generate_btn = ctk.CTkButton(generation_frame, text="Generar", command=self._on_generate_nomina)
         generate_btn.pack(side="left", padx=5)
         
         # Panel de filtros
-        filter_frame = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        filter_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         filter_frame.pack(fill="x", padx=10, pady=5)
         
-        ctk.CTkLabel(filter_frame, text="Estado:", text_color="white").pack(side="left", padx=5)
+        ctk.CTkLabel(filter_frame, text="Estado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
         self.estado_combo = ttk.Combobox(filter_frame, values=["Todos", "Pendientes", "Pagados"], width=18, state="readonly", font=("Arial", 9))
         self.estado_combo.pack(side="left", padx=5)
         self.estado_combo.set("Todos")
@@ -2381,7 +2411,7 @@ class NominaFrame(ctk.CTkFrame):
         refresh_btn.pack(side="right", padx=5)
         
         # Tabla de pagos
-        table_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         scrollbar = ctk.CTkScrollbar(table_frame)
@@ -2778,7 +2808,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Crea los widgets del frame de configuración"""
         # Notebook para categorías
-        self.notebook = ctk.CTkTabview(self, fg_color="#2b2b2b")
+        self.notebook = ctk.CTkTabview(self, fg_color=COLORES["panel"])
         self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Pestaña de configuración general
@@ -2831,10 +2861,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _create_auditoria_tab(self, parent):
         """Crea la pestaña de auditoría (solo administradores)"""
-        filtro_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        filtro_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         filtro_frame.pack(fill="x", padx=10, pady=(10, 5))
         
-        ctk.CTkLabel(filtro_frame, text="Tipo de evento:", text_color="white").pack(side="left", padx=5)
+        ctk.CTkLabel(filtro_frame, text="Tipo de evento:", text_color=COLORES["texto"]).pack(side="left", padx=5)
         self.audit_tipo_combo = ttk.Combobox(
             filtro_frame,
             values=["Todos"] + [t.value for t in AuditEventType],
@@ -2848,7 +2878,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         export_btn = ctk.CTkButton(filtro_frame, text="Exportar", command=self._on_exportar_auditoria)
         export_btn.pack(side="left", padx=5)
         
-        table_frame = ctk.CTkFrame(parent, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=5)
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
@@ -2928,7 +2958,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     def _create_seguridad_tab(self, parent):
         """Crea la pestaña de seguridad y respaldos"""
         # Opciones de respaldo automático y auditoría
-        options = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        options = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         options.pack(fill="x", padx=10, pady=(10, 5))
         
         self.backup_enabled_var = tk.BooleanVar(value=True)
@@ -2943,10 +2973,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
             variable=self.audit_enabled_var)
         audit_chk.grid(row=0, column=1, padx=10, pady=8, sticky="w")
         
-        ctk.CTkLabel(options, text="Intervalo (horas):", text_color="white").grid(
+        ctk.CTkLabel(options, text="Intervalo (horas):", text_color=COLORES["texto"]).grid(
             row=1, column=0, padx=(10, 5), pady=6, sticky="e")
         self.backup_interval_entry = ctk.CTkEntry(
-            options, width=80, fg_color="#3c3c3c", text_color="white")
+            options, width=80, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.backup_interval_entry.grid(row=1, column=1, padx=5, pady=6, sticky="w")
         
         save_seg_btn = ctk.CTkButton(
@@ -2956,15 +2986,15 @@ class ConfiguracionFrame(ctk.CTkFrame):
         options.grid_columnconfigure(3, weight=1)
         
         # Información del directorio de respaldos
-        info = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        info = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         info.pack(fill="x", padx=10, pady=5)
         self.backup_status_label = ctk.CTkLabel(
-            info, text="Cargando estado de respaldos…", text_color="#cccccc",
+            info, text="Cargando estado de respaldos…", text_color=COLORES["texto_suave"],
             anchor="w", justify="left")
         self.backup_status_label.pack(fill="x", padx=10, pady=8)
         
         # Tabla de respaldos
-        table_frame = ctk.CTkFrame(parent, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
         scrollbar = ctk.CTkScrollbar(table_frame)
@@ -2985,7 +3015,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         scrollbar.configure(command=self.backup_tree.yview)
         
         # Acciones sobre respaldos
-        actions = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        actions = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         actions.pack(fill="x", padx=10, pady=(5, 10))
         
         create_btn = ctk.CTkButton(actions, text="Crear Respaldo", command=self._on_create_backup)
@@ -2999,7 +3029,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _create_usuarios_tab(self, parent):
         """Crea la pestaña de administración de usuarios"""
-        table_frame = ctk.CTkFrame(parent, fg_color="#1a1a1a")
+        table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         scrollbar = ctk.CTkScrollbar(table_frame)
@@ -3019,7 +3049,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.usuarios_tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.usuarios_tree.yview)
         
-        actions = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        actions = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         actions.pack(fill="x", padx=10, pady=(0, 10))
         
         nuevo_btn = ctk.CTkButton(actions, text="Nuevo Usuario", command=self._on_new_usuario)
@@ -3034,7 +3064,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _create_general_tab(self, parent):
         """Crea la pestaña de configuración general"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.nombre_institucion_entry = self._create_form_field(form_frame, "Nombre Institución:", 0)
@@ -3045,7 +3075,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _create_nomina_tab(self, parent):
         """Crea la pestaña de configuración de nómina"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.porcentaje_seguro_entry = self._create_form_field(form_frame, "Porcentaje Seguro Social (%):", 0)
@@ -3055,7 +3085,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _create_rrhh_tab(self, parent):
         """Crea la pestaña de configuración de recursos humanos"""
-        form_frame = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+        form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.dias_vacaciones_entry = self._create_form_field(form_frame, "Días Vacaciones Anual:", 0)
@@ -3063,8 +3093,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _create_form_field(self, parent, label: str, row: int) -> ctk.CTkEntry:
         """Crea un campo de formulario"""
-        ctk.CTkLabel(parent, text=label, text_color="white").grid(row=row, column=0, padx=5, pady=5, sticky="e")
-        entry = ctk.CTkEntry(parent, width=300, fg_color="#3c3c3c", text_color="white")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=0, padx=5, pady=5, sticky="e")
+        entry = ctk.CTkEntry(parent, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         entry.grid(row=row, column=1, padx=5, pady=5, sticky="w")
         return entry
     
@@ -3400,14 +3430,15 @@ class InfoDialog(ctk.CTkToplevel):
         self.title(title)
         self.geometry("620x460")
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
         
-        container = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         container.pack(fill="both", expand=True, padx=10, pady=10)
         
         textbox = ctk.CTkTextbox(
-            container, fg_color="#1f1f1f", text_color="#e6e6e6",
+            container, fg_color=COLORES["campo"], text_color=COLORES["texto"],
             font=ctk.CTkFont(family="Consolas", size=12), wrap="word")
         textbox.pack(fill="both", expand=True, padx=8, pady=8)
         textbox.insert("1.0", text)
@@ -3438,6 +3469,7 @@ class PagoDialog(ctk.CTkToplevel):
         self.title("Editar Pago" if pago else "Nuevo Pago")
         self.geometry("620x560")
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
         
@@ -3446,11 +3478,11 @@ class PagoDialog(ctk.CTkToplevel):
             self._load_pago_data()
     
     def _create_widgets(self):
-        form = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Empleado
-        ctk.CTkLabel(form, text="Empleado:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Empleado:", text_color=COLORES["texto"]).grid(
             row=0, column=0, padx=8, pady=6, sticky="e")
         self.empleado_combo = ttk.Combobox(
             form, width=38, state="readonly", font=("Arial", 9))
@@ -3458,7 +3490,7 @@ class PagoDialog(ctk.CTkToplevel):
         self._load_empleados()
         
         # Tipo de pago
-        ctk.CTkLabel(form, text="Tipo de Pago:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Tipo de Pago:", text_color=COLORES["texto"]).grid(
             row=1, column=0, padx=8, pady=6, sticky="e")
         self.tipo_combo = ttk.Combobox(
             form, width=30, state="readonly", font=("Arial", 9))
@@ -3466,7 +3498,7 @@ class PagoDialog(ctk.CTkToplevel):
         self.tipo_combo.grid(row=1, column=1, padx=8, pady=6, sticky="w")
         self.tipo_combo.current(0)
         
-        ctk.CTkLabel(form, text="Método:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Método:", text_color=COLORES["texto"]).grid(
             row=1, column=2, padx=8, pady=6, sticky="e")
         self.metodo_combo = ttk.Combobox(
             form, width=20, values=self.METODOS, state="readonly", font=("Arial", 9))
@@ -3474,52 +3506,52 @@ class PagoDialog(ctk.CTkToplevel):
         self.metodo_combo.set("transferencia")
         
         # Periodo
-        ctk.CTkLabel(form, text="Período desde:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Período desde:", text_color=COLORES["texto"]).grid(
             row=2, column=0, padx=8, pady=6, sticky="e")
         self.periodo_inicio_entry = ctk.CTkEntry(
-            form, width=110, fg_color="#3c3c3c", text_color="white",
+            form, width=110, fg_color=COLORES["campo"], text_color=COLORES["texto"],
             placeholder_text="DD/MM/YYYY")
         self.periodo_inicio_entry.grid(row=2, column=1, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Período hasta:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Período hasta:", text_color=COLORES["texto"]).grid(
             row=2, column=2, padx=8, pady=6, sticky="e")
         self.periodo_fin_entry = ctk.CTkEntry(
-            form, width=110, fg_color="#3c3c3c", text_color="white",
+            form, width=110, fg_color=COLORES["campo"], text_color=COLORES["texto"],
             placeholder_text="DD/MM/YYYY")
         self.periodo_fin_entry.grid(row=2, column=3, padx=8, pady=6, sticky="w")
         
         # Montos
         monto_fila = 3
-        ctk.CTkLabel(form, text="Salario Base:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Salario Base:", text_color=COLORES["texto"]).grid(
             row=monto_fila, column=0, padx=8, pady=6, sticky="e")
         self.salario_entry = ctk.CTkEntry(
-            form, width=140, fg_color="#3c3c3c", text_color="white")
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.salario_entry.grid(row=monto_fila, column=1, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Bonificaciones:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Bonificaciones:", text_color=COLORES["texto"]).grid(
             row=monto_fila, column=2, padx=8, pady=6, sticky="e")
         self.bonificaciones_entry = ctk.CTkEntry(
-            form, width=140, fg_color="#3c3c3c", text_color="white")
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.bonificaciones_entry.grid(
             row=monto_fila, column=3, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Horas Extra:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Horas Extra:", text_color=COLORES["texto"]).grid(
             row=4, column=0, padx=8, pady=6, sticky="e")
         self.horas_extra_entry = ctk.CTkEntry(
-            form, width=140, fg_color="#3c3c3c", text_color="white")
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.horas_extra_entry.grid(row=4, column=1, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Otras Deducciones:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Otras Deducciones:", text_color=COLORES["texto"]).grid(
             row=4, column=2, padx=8, pady=6, sticky="e")
         self.otras_deducciones_entry = ctk.CTkEntry(
-            form, width=140, fg_color="#3c3c3c", text_color="white")
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.otras_deducciones_entry.grid(
             row=4, column=3, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Descuentos:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Descuentos:", text_color=COLORES["texto"]).grid(
             row=5, column=0, padx=8, pady=6, sticky="e")
         self.descuentos_entry = ctk.CTkEntry(
-            form, width=140, fg_color="#3c3c3c", text_color="white")
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.descuentos_entry.grid(row=5, column=1, padx=8, pady=6, sticky="w")
         
         self.pagado_var = tk.BooleanVar(value=False)
@@ -3527,10 +3559,10 @@ class PagoDialog(ctk.CTkToplevel):
             form, text="Marcar como pagado", variable=self.pagado_var)
         pagado_chk.grid(row=5, column=3, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Observaciones:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Observaciones:", text_color=COLORES["texto"]).grid(
             row=6, column=0, padx=8, pady=6, sticky="ne")
         self.observaciones_text = ctk.CTkTextbox(
-            form, width=400, height=60, fg_color="#3c3c3c", text_color="white")
+            form, width=400, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.observaciones_text.grid(
             row=6, column=1, columnspan=3, padx=8, pady=6, sticky="w")
         
@@ -3662,6 +3694,7 @@ class UsuarioDialog(ctk.CTkToplevel):
         self.title("Editar Usuario" if usuario_id else "Nuevo Usuario")
         self.geometry("480x430")
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
         
@@ -3680,22 +3713,22 @@ class UsuarioDialog(ctk.CTkToplevel):
             self._load_usuario_data()
     
     def _create_widgets(self):
-        form = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form.pack(fill="both", expand=True, padx=10, pady=10)
         
-        ctk.CTkLabel(form, text="Usuario:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Usuario:", text_color=COLORES["texto"]).grid(
             row=0, column=0, padx=8, pady=6, sticky="e")
         self.username_entry = ctk.CTkEntry(
-            form, width=260, fg_color="#3c3c3c", text_color="white")
+            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.username_entry.grid(row=0, column=1, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Nombre Completo:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Nombre Completo:", text_color=COLORES["texto"]).grid(
             row=1, column=0, padx=8, pady=6, sticky="e")
         self.nombre_entry = ctk.CTkEntry(
-            form, width=260, fg_color="#3c3c3c", text_color="white")
+            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.nombre_entry.grid(row=1, column=1, padx=8, pady=6, sticky="w")
         
-        ctk.CTkLabel(form, text="Rol:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Rol:", text_color=COLORES["texto"]).grid(
             row=2, column=0, padx=8, pady=6, sticky="e")
         self.rol_combo = ttk.Combobox(
             form, values=["admin", "manager", "user", "viewer"],
@@ -3704,19 +3737,19 @@ class UsuarioDialog(ctk.CTkToplevel):
         self.rol_combo.set("user")
         
         if self.usuario is None:
-            ctk.CTkLabel(form, text="Contraseña:", text_color="white").grid(
+            ctk.CTkLabel(form, text="Contraseña:", text_color=COLORES["texto"]).grid(
                 row=3, column=0, padx=8, pady=6, sticky="e")
             self.password_entry = ctk.CTkEntry(
-                form, width=260, show="*", fg_color="#3c3c3c",
-                text_color="white")
+                form, width=260, show="*", fg_color=COLORES["campo"],
+                text_color=COLORES["texto"])
             self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
         else:
             ctk.CTkLabel(
                 form, text="Nueva Contraseña (opcional):",
-                text_color="white").grid(row=3, column=0, padx=8, pady=6, sticky="e")
+                text_color=COLORES["texto"]).grid(row=3, column=0, padx=8, pady=6, sticky="e")
             self.password_entry = ctk.CTkEntry(
-                form, width=260, show="*", fg_color="#3c3c3c",
-                text_color="white", placeholder_text="Dejar vacía para no cambiar")
+                form, width=260, show="*", fg_color=COLORES["campo"],
+                text_color=COLORES["texto"], placeholder_text="Dejar vacía para no cambiar")
             self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
         
         self.activo_var = tk.BooleanVar(value=True)
@@ -3797,36 +3830,37 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.geometry("420x280")
         self.resizable(False, False)
         mantener_ventana_al_frente(self)
+        self.bind("<Escape>", lambda e: self.destroy())
         self.transient(parent)
         self.grab_set()
         self._create_widgets()
     
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
-        form = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form.pack(fill="both", expand=True, padx=10, pady=10)
         
-        ctk.CTkLabel(form, text="Contraseña actual:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Contraseña actual:", text_color=COLORES["texto"]).grid(
             row=0, column=0, padx=5, pady=8, sticky="e")
         self.actual_entry = ctk.CTkEntry(form, width=240, show="*",
-                                         fg_color="#3c3c3c", text_color="white")
+                                         fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.actual_entry.grid(row=0, column=1, padx=5, pady=8, sticky="w")
         
-        ctk.CTkLabel(form, text="Nueva contraseña:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Nueva contraseña:", text_color=COLORES["texto"]).grid(
             row=1, column=0, padx=5, pady=8, sticky="e")
         self.nueva_entry = ctk.CTkEntry(form, width=240, show="*",
-                                        fg_color="#3c3c3c", text_color="white")
+                                        fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.nueva_entry.grid(row=1, column=1, padx=5, pady=8, sticky="w")
         
-        ctk.CTkLabel(form, text="Confirmar contraseña:", text_color="white").grid(
+        ctk.CTkLabel(form, text="Confirmar contraseña:", text_color=COLORES["texto"]).grid(
             row=2, column=0, padx=5, pady=8, sticky="e")
         self.confirmar_entry = ctk.CTkEntry(form, width=240, show="*",
-                                            fg_color="#3c3c3c", text_color="white")
+                                            fg_color=COLORES["campo"], text_color=COLORES["texto"])
         self.confirmar_entry.grid(row=2, column=1, padx=5, pady=8, sticky="w")
         
         ctk.CTkLabel(
             form, text="La contraseña debe tener al menos 8 caracteres.",
-            text_color="#999999", font=("Arial", 9)).grid(
+            text_color=COLORES["texto_suave"], font=("Arial", 9)).grid(
             row=3, column=0, columnspan=2, pady=(4, 8))
         
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")

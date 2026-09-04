@@ -28,6 +28,7 @@ El sistema de software está completamente implementado en el directorio `src/`:
 - ✅ incidencia.py - Modelo de incidencia
 - ✅ pago.py - Modelo de pago
 - ✅ configuracion.py - Modelo de configuración
+- ✅ usuario.py - Modelo de usuario (autenticación)
 
 **Repositorios (src/repositories/):**
 - ✅ base_repository.py - Repositorio base
@@ -36,8 +37,10 @@ El sistema de software está completamente implementado en el directorio `src/`:
 - ✅ incidencia_repository.py - Repositorio de incidencias
 - ✅ pago_repository.py - Repositorio de pagos
 - ✅ configuracion_repository.py - Repositorio de configuración
+- ✅ usuario_repository.py - Repositorio de usuarios
 
 **Servicios (src/services/):**
+- ✅ auth_service.py - Autenticación y control de acceso
 - ✅ empleado_service.py - Servicio de empleados
 - ✅ documento_service.py - Servicio de documentos
 - ✅ incidencia_service.py - Servicio de incidencias
@@ -47,11 +50,17 @@ El sistema de software está completamente implementado en el directorio `src/`:
 **Interfaz Gráfica (src/gui/):**
 - ✅ main_window.py - Ventana principal
 - ✅ frames.py - Frames de cada módulo
+- ✅ login_window.py - Ventana de inicio de sesión
+- ✅ theme.py - Temas claro/oscuro y estilos visuales
 
 **Utilidades (src/utils/):**
 - ✅ helpers.py - Funciones auxiliares
 - ✅ validators.py - Validadores
+- ✅ security.py - Seguridad (PBKDF2, permisos, sanitización)
+- ✅ audit_logger.py - Registro de auditoría
+- ✅ backup_manager.py - Respaldos y restauración
 - ✅ document_manager.py - Gestión de documentos
+- ✅ exporter.py - Exportación de datos
 - ✅ pdf_generator.py - Generación de PDFs
 
 **Configuración (src/config/):**
@@ -85,9 +94,24 @@ Archivos de configuración del proyecto:
 
 ### 🧪 Pruebas
 
-Estructura de pruebas implementada:
+Suite automatizada implementada (281 pruebas, todas exitosas):
 
-1. ✅ **tests/__init__.py** - Inicialización de pruebas
+1. ✅ **tests/conftest.py** - Fixtures y aislamiento de la base de datos
+2. ✅ **tests/test_empleados.py** - Pruebas del módulo de empleados
+3. ✅ **tests/test_documentos.py** - Pruebas de gestión documental
+4. ✅ **tests/test_incidencias.py** - Pruebas de incidencias
+5. ✅ **tests/test_pagos.py** - Pruebas de nómina y pagos
+6. ✅ **tests/test_auth.py** - Pruebas de autenticación y roles
+7. ✅ **tests/test_security.py** - Pruebas del módulo de seguridad
+8. ✅ **tests/test_validators.py** - Pruebas de validadores
+9. ✅ **tests/test_helpers.py** - Pruebas de funciones auxiliares
+10. ✅ **tests/test_document_manager.py** - Pruebas del gestor de documentos
+11. ✅ **tests/test_theme.py** - Pruebas de paletas de apariencia
+12. ✅ **tests/test_backups.py** - Pruebas de respaldos
+13. ✅ **tests/test_configuracion.py** - Pruebas de configuración
+14. ✅ **tests/test_migraciones.py** - Pruebas de migraciones de esquema
+
+**Cobertura de código:** 43% total (73% en la lógica de negocio, excluyendo la capa gráfica)
 
 ### 🚀 CI/CD
 
@@ -99,12 +123,13 @@ Sistema CI/CD con GitHub Actions:
 ## 📊 Resumen Estadístico
 
 ### Documentación Académica
-- **Total de documentos:** 9 archivos
-- **Total de contenido:** ~173,000 bytes (~3,700 líneas)
+- **Total de documentos:** 10 archivos (9 + este documento de estado)
+- **Total de contenido:** ~253,000 bytes (~4,670 líneas)
 - **Estructura:** Proyecto social → Anteproyecto → 5 Capítulos → Bibliografía y Anexos
 
 ### Código Fuente
-- **Total de archivos Python:** 32 archivos
+- **Total de archivos Python (src/):** 42 archivos
+- **Archivos de pruebas (tests/):** 10 archivos
 - **Arquitectura:** Capas (Modelos, Repositorios, Servicios, GUI, Utils)
 - **Patrones aplicados:** Repository, Service Layer, MVC
 
@@ -115,18 +140,22 @@ Sistema CI/CD con GitHub Actions:
 ## 🎯 Características del Sistema Implementado
 
 ### Módulos Funcionales
-1. ✅ **Gestión de Empleados** - Registro, edición, búsqueda, filtrado
-2. ✅ **Gestión Documental** - Carga, almacenamiento, control de vencimientos
-3. ✅ **Gestión de Incidencias** - Permisos, reposos, ausencias, aprobaciones
-4. ✅ **Gestión de Nómina** - Cálculo automático, deducciones, recibos PDF
-5. ✅ **Configuración** - Personalización por institución
+1. ✅ **Autenticación de Usuarios** - Login, roles y permisos por módulo
+2. ✅ **Gestión de Empleados** - Registro, edición, búsqueda, filtrado
+3. ✅ **Gestión Documental** - Carga, almacenamiento, control de vencimientos
+4. ✅ **Gestión de Incidencias** - Permisos, reposos, ausencias, aprobaciones
+5. ✅ **Gestión de Nómina** - Cálculo automático, deducciones, recibos PDF
+6. ✅ **Configuración** - Personalización por institución, incluye tema claro/oscuro
 
 ### Funcionalidades Técnicas
-1. ✅ **Base de Datos SQLite** - Almacenamiento persistente
-2. ✅ **Interfaz Gráfica Moderna** - CustomTkinter
-3. ✅ **Generación de PDFs** - ReportLab
+1. ✅ **Base de Datos SQLite** - Almacenamiento persistente con migraciones
+2. ✅ **Interfaz Gráfica Moderna** - CustomTkinter con temas claro/oscuro y atajos de teclado
+3. ✅ **Generación de PDFs** - ReportLab (constancias, recibos, planillas)
 4. ✅ **Validación de Datos** - Validators personalizados
-5. ✅ **Logging** - Registro de eventos
+5. ✅ **Seguridad** - Hash PBKDF2-HMAC-SHA256, control de acceso por rol, sanitización
+6. ✅ **Auditoría** - Registro de acciones críticas
+7. ✅ **Respaldos** - Backup y restauración de la base de datos
+8. ✅ **Exportación** - Exportación de datos en formatos abiertos
 
 ## 🏆 Logros del Proyecto
 
@@ -170,6 +199,14 @@ Sistema CI/CD con GitHub Actions:
 - ✅ Notas de desarrollo creadas
 - ✅ Documentación de tesis completa creada
 
+### Correcciones de la Revisión Integral (septiembre 2026)
+- ✅ Bibliografía verificada: sustituidas las referencias fabricadas por fuentes reales y comprobables (Bondarouk & Ruël, Pollock & Cornford, Benavides et al., Voogt & Pieters, Pelgrum, Lakhan & Jhunjhunwala, Davis)
+- ✅ Capítulo IV anclado a evidencia real: módulos, pruebas (281) y cobertura (43% total / 73% lógica de negocio) medidos sobre el repositorio
+- ✅ Métricas de piloto convertidas en plantillas con marcadores explícitos `[dato real del piloto]` para completar con datos reales
+- ✅ Inconsistencias transversales corregidas (objetivos específicos, muestra, contradicciones internas)
+- ✅ 192 pruebas automatizadas nuevas (validators, helpers, security, document_manager, theme)
+- ✅ Errores ortográficos y gramaticales corregidos en los 10 documentos de la tesis
+
 ## 🎓 Preparación para Presentación
 
 ### Documentos para Presentación
@@ -203,10 +240,11 @@ Sistema CI/CD con GitHub Actions:
 4. Documentar cualquier ajuste necesario
 
 ### Para Expansión Futura
-1. Implementar sistema de autenticación multi-usuario
+1. ✅ **Autenticación multi-usuario** - Ya implementada (v1.0.4: login, roles y permisos)
 2. Desarrollar versión web del sistema
-3. Agregar más funcionalidades de reportes
+3. Agregar más funcionalidades de reportes personalizados
 4. Integrar con otros sistemas institucionales
+5. Versión móvil y multi-tenancia
 
 ## ✨ Conclusión
 
@@ -222,7 +260,7 @@ El Sistema de Gestión de Personal y Nómina para instituciones educativas está
 
 ---
 
-**Fecha de finalización:** 24 de agosto de 2026
+**Fecha de actualización:** 4 de septiembre de 2026
 **Estado:** COMPLETADO ✅
 **Calidad:** ALTA ✅
 **Documentación:** COMPLETA ✅

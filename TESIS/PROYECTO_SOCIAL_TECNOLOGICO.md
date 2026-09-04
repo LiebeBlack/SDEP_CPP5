@@ -175,8 +175,7 @@ El proyecto seguirá una metodología híbrida que combina elementos de:
 - Git para control de versiones
 
 **Documentación:**
-- Markdown para documentación técnica
-- Sphinx para generación de documentación
+- Markdown para documentación técnica y académica (manuales, guías y documentos de la tesis)
 - Herramientas de diagramación UML
 
 **Gestión de Proyecto:**
@@ -269,7 +268,7 @@ El proyecto seguirá una metodología híbrida que combina elementos de:
 
 ### 10.1 Sostenibilidad Técnica
 
-- Código abierto con licencia permissiva
+- Código abierto con licencia permisiva
 - Documentación completa para mantenimiento
 - Arquitectura modular para facilitar expansiones
 

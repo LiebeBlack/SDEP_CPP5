@@ -18,17 +18,17 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 ### 5.2.2 Sobre el Impacto en Eficiencia Administrativa
 
-**Conclusión 2:** La implementación del sistema genera mejoras sustanciales en la eficiencia administrativa de las instituciones educativas, con reducciones promedio del 85% en tiempos de procesamiento y del 88% en tasas de error.
+**Conclusión 2:** El sistema automatiza los procesos clave de gestión de personal (registro, nómina, control documental e incidencias), eliminando las tareas manuales repetitivas que concentran los mayores riesgos de error. La magnitud de las mejoras en eficiencia administrativa debe cuantificarse con las mediciones pre/post de la implementación piloto.
 
-**Evidencia:** Las mediciones pre/post implementación en instituciones piloto demostraron mejoras estadísticamente significativas en todas las métricas de eficiencia evaluadas (p < 0.001).
+**Evidencia:** Las pruebas automatizadas verifican la exactitud de los cálculos de nómina y deducciones; la medición de tiempos de procesamiento y tasas de error pre/post implementación se registrará en el Capítulo IV (sección 4.5) con los datos reales del piloto, y su significancia se evaluará con las pruebas estadísticas definidas en el Capítulo III (sección 3.6.1.2).
 
-**Implicación:** La inversión en tecnología de gestión produce retornos significativos en ahorro de tiempo administrativo, reducción de errores financieros, y mejora en condiciones laborales del personal.
+**Implicación:** La inversión en tecnología de gestión puede producir retornos significativos en ahorro de tiempo administrativo, reducción de errores financieros, y mejora en condiciones laborales del personal.
 
 ### 5.2.3 Sobre la Metodología de Desarrollo
 
 **Conclusión 3:** La metodología híbrida que combina desarrollo de software ágil con investigación-acción es altamente efectiva para proyectos de tecnología social, permitiendo el desarrollo de soluciones técnicamente sólidas que responden efectivamente a necesidades reales de usuarios.
 
-**Evidencia:** El enfoque iterativo con retroalimentación continua de usuarios permitió identificar y corregir problemas temprano, resultando en un sistema con alta satisfacción de usuarios (4.4/5.0) y baja tasa de errores en uso.
+**Evidencia:** El enfoque iterativo con retroalimentación continua de usuarios permitió identificar y corregir problemas temprano durante el desarrollo. La satisfacción de usuarios (promedio: **[dato real del piloto]**/5.0) se medirá con el cuestionario del Anexo 2 durante la implementación piloto.
 
 **Implicación:** Proyectos de tecnología social deben adoptar metodologías que combinen rigor técnico con sensibilidad social, priorizando la participación activa de usuarios finales en el proceso de desarrollo.
 
@@ -36,7 +36,7 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 **Conclusión 4:** La arquitectura modular basada en patrones Repository y Service facilita significativamente el mantenimiento, expansión y testabilidad del sistema, validando las decisiones arquitectónicas tomadas durante el diseño.
 
-**Evidencia:** El tiempo promedio para implementar nuevas funcionalidades fue de 2 días (vs. 7 días estimado para arquitecturas monolíticas), y la tasa de bugs introducidos fue significativamente menor.
+**Evidencia:** La separación de responsabilidades entre capas permitió probar y ampliar cada módulo de forma independiente durante el desarrollo, sin refactorizaciones mayores al incorporar funcionalidades como la autenticación, la auditoría y los respaldos.
 
 **Implicación:** La inversión en diseño arquitectónico cuidadoso produce beneficios a largo plazo en mantenibilidad y capacidad de evolución del sistema.
 
@@ -44,7 +44,7 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 **Conclusión 5:** La combinación de interfaces intuitivas, capacitación adecuada y documentación completa facilita la adopción exitosa de sistemas tecnológicos por usuarios con variados niveles de competencia digital.
 
-**Evidencia:** La tasa de adopción alcanzó el 92% después de 3 meses, con tiempos de aprendizaje de 45 minutos para usuarios básicos y satisfacción con capacitación de 4.1/5.0.
+**Evidencia:** La tasa de adopción, el tiempo de aprendizaje y la satisfacción con la capacitación (indicadores **[dato real del piloto]**) se medirán durante la implementación piloto siguiendo el protocolo del Anexo 3.
 
 **Implicación:** La usabilidad no es solo una característica técnica sino un factor crítico de éxito organizacional que requiere atención especial en proyectos de implementación tecnológica.
 
@@ -66,8 +66,8 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 **Conclusión:** La arquitectura de capas con patrones Repository y Service permitió un desarrollo ordenado, pruebas efectivas, y mantenimiento eficiente, validando la decisión de separar claramente responsabilidades.
 
 **Validación:**
-- Separación de concernes clara entre capas
-- Facilidad para testing unitario e integración
+- Separación clara de responsabilidades entre capas
+- Facilidad para testing unitario e integración (281 pruebas automatizadas)
 - Capacidad para evolución del sistema sin refactorización mayor
 
 **Recomendación:** Proyectos de mediana complejidad deben invertir en diseño arquitectónico antes de implementación, seleccionando patrones apropiados al contexto.
@@ -88,9 +88,10 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 **Conclusión:** Las funcionalidades de reportes y generación de documentos PDF fueron altamente valoradas por usuarios, constituyendo uno de los beneficios más percibidos del sistema.
 
 **Evidencia:**
-- La generación de recibos de pago obtuvo la puntuación más alta de satisfacción (4.6/5.0)
-- Los reportes estadísticos facilitaron significativamente la toma de decisiones administrativa
-- La capacidad de generar documentos oficiales redujo dependencia de procesos manuales extensos
+- La generación de recibos de pago y documentos oficiales en PDF está implementada y verificada por las pruebas del módulo de pagos
+- Los reportes estadísticos facilitan la toma de decisiones administrativa
+- La capacidad de generar documentos oficiales reduce la dependencia de procesos manuales extensos
+- Puntuación de satisfacción con esta funcionalidad (pilotaje): **[dato real del piloto]**/5.0
 
 **Recomendación:** Las funcionalidades de reportes y generación de documentos deben ser priorizadas en sistemas de gestión, ya que proporcionan valor tangible inmediato a usuarios.
 
@@ -99,9 +100,9 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 **Conclusión:** La validación continua con usuarios reales fue crítica para identificar problemas de usabilidad y asegurar que el sistema respondiera efectivamente a necesidades reales.
 
 **Evidencia:**
-- Las pruebas de usabilidad identificaron 6 problemas significativos que fueron corregidos antes de implementación final
-- El feedback de usuarios guió mejoras en 12 funcionalidades específicas
-- La validación en contexto real reveló requisitos no identificados en análisis inicial
+- La validación continua con usuarios permitió incorporar ajustes de usabilidad antes de la implementación final
+- La retroalimentación recibida orientó mejoras en la interfaz (agrupación de campos, visibilidad de exportación, indicaciones del flujo de aprobación)
+- Los problemas de usabilidad detectados en las sesiones piloto se documentarán en el Capítulo IV (sección 4.4.2)
 
 **Recomendación:** La validación con usuarios debe ser continua y extensa, incorporando diferentes tipos de usuarios y contextos de uso.
 
@@ -160,31 +161,31 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 #### 5.4.2.1 Funcionalidades Futuras Prioritarias
 
+*Nota: La autenticación de usuarios con roles y permisos (administrador, gerente, usuario, consulta) ya está implementada en el sistema (v1.0.4); las prioridades siguientes corresponden a expansiones aún pendientes.*
+
 **Prioridad Alta:**
 
-1. **Sistema de autenticación multi-usuario:** Implementar login, roles y permisos para mayor seguridad y control de acceso.
+1. **Versión web del sistema:** Desarrollar interfaz web para acceso remoto y mayor disponibilidad.
 
-2. **Versión web del sistema:** Desarrollar interfaz web para acceso remoto y mayor disponibilidad.
+2. **Integración con sistemas de asistencia:** Conectar con sistemas de control de asistencia para cálculo automático de días trabajados.
 
-3. **Integración con sistemas de asistencia:** Conectar con sistemas de control de asistencia para cálculo automático de días trabajados.
-
-4. **Reportes personalizados:** Permitir a usuarios crear reportes ad-hoc según sus necesidades específicas.
+3. **Reportes personalizados:** Permitir a usuarios crear reportes ad-hoc según sus necesidades específicas.
 
 **Prioridad Media:**
 
-5. **Versión móvil:** Aplicación móvil para acceso en dispositivos portátiles.
+4. **Versión móvil:** Aplicación móvil para acceso en dispositivos portátiles.
 
-6. **Multi-tenancia:** Capacidad para gestionar múltiples instituciones desde una sola instalación.
+5. **Multi-tenancia:** Capacidad para gestionar múltiples instituciones desde una sola instalación.
 
-7. **Integración con sistemas contables:** Conexión con sistemas de contabilidad para automatización contable.
+6. **Integración con sistemas contables:** Conexión con sistemas de contabilidad para automatización contable.
 
-8. **Notificaciones automáticas:** Alertas por email o SMS para eventos importantes (vencimientos, aprobaciones, etc.).
+7. **Notificaciones automáticas:** Alertas por email o SMS para eventos importantes (vencimientos, aprobaciones, etc.).
 
 **Prioridad Baja:**
 
-9. **Inteligencia de negocios:** Análisis predictivo de tendencias de personal y gastos.
+8. **Inteligencia de negocios:** Análisis predictivo de tendencias de personal y gastos.
 
-10. **Portales de autoservicio:** Capacidad para empleados consultar y actualizar su propia información.
+9. **Portales de autoservicio:** Capacidad para empleados consultar y actualizar su propia información.
 
 #### 5.4.2.2 Mejoras Técnicas
 
@@ -312,7 +313,7 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 **Aspecto 3:** Desarrollar capacidades de análisis de datos más avanzadas desde el inicio.
 
-**Razonamiento:** Las capacidades de reportes y análisis de datos fueron identificadas como altamente valores; podrían haberse enfocado más desde el inicio.
+**Razonamiento:** Las capacidades de reportes y análisis de datos fueron identificadas como altamente valoradas; podrían haberse enfocado más desde el inicio.
 
 ## 5.6 CONTRIBUCIONES DEL ESTUDIO
 
@@ -344,7 +345,7 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 ### 5.7.1 Limitaciones Metodológicas
 
-**Limitación 1:** La muestra de instituciones piloto (4) no es representativa de todas las instituciones educativas.
+**Limitación 1:** La muestra de instituciones piloto (3-5) no es representativa de todas las instituciones educativas.
 
 **Implicación:** Los resultados pueden no ser generalizables a contextos muy diferentes en tamaño, tipo, o ubicación geográfica.
 
@@ -392,19 +393,19 @@ El proyecto logró exitosamente todos sus objetivos principales:
 
 ### 5.8.2 Sobre la Validación de Hipótesis
 
-Todas las hipótesis planteadas fueron confirmadas con evidencia empírica:
+La validación empírica de las hipótesis se realizará con la evidencia cuantitativa y cualitativa recopilada durante la implementación piloto:
 
-- **Hipótesis General:** Confirmada con alta significancia estadística (p < 0.001)
-- **Hipótesis Específicas:** Las 5 hipótesis específicas fueron confirmadas con evidencia cuantitativa y cualitativa
+- **Hipótesis General:** La reducción de tiempos de procesamiento (≥ 50%) y de errores administrativos (≥ 80%) se verificará con las mediciones pre/post del piloto y las pruebas estadísticas del Capítulo III.
+- **Hipótesis Específicas:** Las 5 hipótesis específicas se validarán con los indicadores definidos en el Capítulo IV (sección 4.7.2).
 
 ### 5.8.3 Sobre el Impacto del Proyecto
 
-El proyecto generó impacto tangible en las instituciones piloto:
+El proyecto aporta una solución tecnológica completa y verificable, cuyo impacto en las instituciones piloto se medirá durante la implementación real:
 
-- **Impacto Técnico:** Sistema funcional y estable implementado en 4 instituciones
-- **Impacto Operativo:** Reducción del 85% en tiempos de procesamiento y del 88% en tasas de error
-- **Impacto Social:** Mejora en satisfacción laboral del personal y optimización de recursos administrativos
-- **Impacto Académico:** Contribución al campo de sistemas de información educativa con investigación empírica rigurosa
+- **Impacto Técnico:** Sistema funcional y estable (281 pruebas automatizadas, 43% de cobertura total y 73% en lógica de negocio) listo para implementación piloto
+- **Impacto Operativo:** Las mediciones pre/post de tiempos de procesamiento y tasas de error se registrarán en el Capítulo IV (sección 4.5)
+- **Impacto Social:** Mejora esperada en satisfacción laboral del personal y optimización de recursos administrativos, a confirmar con la evidencia del piloto
+- **Impacto Académico:** Contribución al campo de sistemas de información educativa con una investigación aplicada documentada y reproducible
 
 ### 5.8.4 Sobre la Sostenibilidad del Proyecto
 

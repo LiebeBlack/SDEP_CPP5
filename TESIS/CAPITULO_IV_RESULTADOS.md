@@ -173,7 +173,7 @@ Además de las cuatro capas principales, el sistema incorpora módulos transvers
    - Estados: pendiente, aprobado, rechazado, completado
    - Registro de aprobador y fecha de aprobación
    - Comentarios de aprobación/rechazo
-   - Sistema de notificaciones
+   - Seguimiento del estado en el historial de la incidencia
 
 3. **Control de Vigencia:**
    - Identificación de incidencias vigentes
@@ -220,7 +220,7 @@ Además de las cuatro capas principales, el sistema incorpora módulos transvers
 
 1. **Configuración General:**
    - Datos de la institución (nombre, dirección, contacto)
-   - Parámetros de identificación (RUC, etc.)
+   - Parámetros de identificación institucional y fiscal
    - Personalización de logos y branding
 
 2. **Configuración de Nómina:**
@@ -529,12 +529,12 @@ El protocolo de pruebas de rendimiento se define conforme a la metodología del 
 
 ### 4.6.1 Comparación con Sistemas Comerciales
 
-**Características comparadas:**
+**Características comparadas** (los rangos de costos de sistemas comerciales son estimaciones de mercado referenciales; deben ajustarse con cotizaciones reales en la región si están disponibles):
 
 | Característica | Sistema Propuesto | Sistemas Comerciales | Evaluación |
 |---------------|-------------------|---------------------|-------------|
-| Costo inicial | $0 | $5,000-$50,000 | + Ventaja significativa |
-| Costo anual | $0 | $1,000-$10,000 | + Ventaja significativa |
+| Costo inicial | $0 (código abierto) | $5,000-$50,000 (estimado) | + Ventaja significativa |
+| Costo anual | $0 (sin licenciamiento) | $1,000-$10,000 (estimado) | + Ventaja significativa |
 | Funcionalidad básica | Completa | Completa | = Paridad |
 | Funcionalidad avanzada | Limitada | Extensa | - Desventaja |
 | Personalización | Alta | Baja/Media | + Ventaja |
@@ -545,76 +545,78 @@ El protocolo de pruebas de rendimiento se define conforme a la metodología del 
 
 ### 4.6.2 Comparación con Procesos Manuales
 
-**Comparación integral:**
+**Comparación cualitativa** (la cuantificación de la mejora, en términos de tiempos y tasas de error, se completará con las mediciones pre/post de la implementación piloto):
 
-| Aspecto | Manual | Sistema | Mejora |
-|---------|--------|---------|--------|
-| Tiempo de procesamiento | Alto | Bajo | 78% reducción |
-| Tasa de errores | Alto | Bajo | 88% reducción |
-| Accesibilidad de información | Baja | Alta | 95% mejora |
-| Transparencia | Baja | Alta | 92% mejora |
-| Auditabilidad | Difícil | Fácil | 98% mejora |
+| Aspecto | Proceso Manual | Sistema | Mejora Esperada |
+|---------|----------------|---------|----------------|
+| Tiempo de procesamiento | Alto | Bajo | **[dato real del piloto]**% reducción |
+| Tasa de errores | Alto | Bajo | **[dato real del piloto]**% reducción |
+| Accesibilidad de información | Baja | Alta | **[dato real del piloto]**% mejora |
+| Transparencia | Baja | Alta | **[dato real del piloto]**% mejora |
+| Auditabilidad | Difícil | Fácil | Alta (registro de auditoría automatizado) |
 | Escalabilidad | Limitada | Alta | Significativa |
 
 ## 4.7 RESULTADOS DE VALIDACIÓN DE HIPÓTESIS
+
+> **Sección de validación empírica:** La validación definitiva de las hipótesis se realizará con la evidencia cuantitativa y cualitativa recopilada en la implementación piloto (tiempos, tasas de error, encuestas y observaciones). A continuación se presenta la estructura de validación para cada hipótesis con sus indicadores; los valores pendientes deben completarse con los datos reales y las pruebas estadísticas del Capítulo III (sección 3.6.1.2).
 
 ### 4.7.1 Validación de Hipótesis General
 
 **Hipótesis:** La implementación del sistema mejorará significativamente la eficiencia administrativa, reduciendo los tiempos de procesamiento en al menos un 50% y minimizando errores administrativos en un 80%.
 
-**Resultados:**
-- Reducción promedio de tiempos de procesamiento: 85%
-- Reducción promedio de tasas de error: 88%
-- Ambas medidas superan los umbrales establecidos
+**Indicadores y resultados esperados (completar con datos reales):**
+- Reducción promedio de tiempos de procesamiento: **[dato real del piloto]**% (umbral: ≥ 50%)
+- Reducción promedio de tasas de error: **[dato real del piloto]**% (umbral: ≥ 80%)
+- Significancia estadística: **[dato real del piloto]**
 
-**Conclusión:** Hipótesis general **confirmada** con alta significancia estadística (p < 0.001).
+**Conclusión:** **[Pendiente de confirmar con la evidencia del piloto]**
 
 ### 4.7.2 Validación de Hipótesis Específicas
 
 **H1:** La arquitectura modular facilitará el mantenimiento y expansión.
 
-**Evidencia:**
-- Tiempo promedio de implementación de nueva funcionalidad: 2 días (vs. 7 días estimado para arquitectura monolítica)
-- Número de bugs introducidos por nueva funcionalidad: 0.8 vs. 2.3 estimado
-- Facilidad de comprensión de código por nuevos desarrolladores: Alta según evaluación de pares
+**Indicadores:**
+- Tiempo promedio de implementación de nueva funcionalidad: **[dato real del piloto]**
+- Facilidad de comprensión de código por nuevos desarrolladores: **[dato real del piloto]**
 
-**Conclusión:** Hipótesis **confirmada**.
+**Conclusión:** **[Pendiente de confirmar con la evidencia del piloto]**
 
 **H2:** La interfaz gráfica mejorará la usabilidad comparada con interfaces de línea de comando.
 
-**Evidencia:**
-- Tiempo de aprendizaje: 45 minutos para usuarios básicos
-- Tasa de éxito en tareas: 94% en primera ejecución
-- Satisfacción con interfaz: 4.4/5.0
+**Indicadores:**
+- Tiempo de aprendizaje para usuarios básicos: **[dato real del piloto]**
+- Tasa de éxito en tareas: **[dato real del piloto]**%
+- Satisfacción con interfaz: **[dato real del piloto]**/5.0
 
-**Conclusión:** Hipótesis **confirmada**.
+**Conclusión:** **[Pendiente de confirmar con la evidencia del piloto]**
 
 **H3:** La automatización reducirá errores financieros.
 
-**Evidencia:**
-- Reducción de errores en nómina: 94%
-- Ahorro estimado por errores evitados: $12,500/año por institución
-- Reducción de reclamos laborales: 78%
+**Indicadores:**
+- Reducción de errores en nómina: **[dato real del piloto]**%
+- Ahorro estimado por errores evitados: **[dato real del piloto]**/año por institución
+- Reducción de reclamos laborales: **[dato real del piloto]**%
 
-**Conclusión:** Hipótesis **confirmada**.
+**Conclusión:** **[Pendiente de confirmar con la evidencia del piloto]**
 
 **H4:** La digitalización mejorará el acceso a información.
 
-**Evidencia:**
-- Tiempo de búsqueda de información: 15 segundos vs. 8 minutos (97% reducción)
-- Disponibilidad de información: 24/7 vs. horario administrativo
-- Acceso remoto: Posible desde cualquier ubicación
+**Indicadores:**
+- Tiempo de búsqueda de información: **[dato real del piloto]**
+- Disponibilidad de información: **[dato real del piloto]**
 
-**Conclusión:** Hipótesis **confirmada**.
+*Nota: El sistema es una aplicación de escritorio; la disponibilidad de información se limita a los equipos donde está instalado (el acceso remoto vía versión web o móvil figura como expansión futura en el Capítulo V).*
+
+**Conclusión:** **[Pendiente de confirmar con la evidencia del piloto]**
 
 **H5:** La capacitación y documentación facilitarán la adopción.
 
-**Evidencia:**
-- Tasa de adopción: 92% de usuarios activos después de 3 meses
-- Satisfacción con capacitación: 4.1/5.0
-- Utilidad percibida de documentación: 4.3/5.0
+**Indicadores:**
+- Tasa de adopción de usuarios activos: **[dato real del piloto]**%
+- Satisfacción con capacitación: **[dato real del piloto]**/5.0
+- Utilidad percibida de documentación: **[dato real del piloto]**/5.0
 
-**Conclusión:** Hipótesis **confirmada**.
+**Conclusión:** **[Pendiente de confirmar con la evidencia del piloto]**
 
 ## 4.8 ANÁLISIS DE FACTORES DE ÉXITO
 
@@ -660,7 +662,7 @@ El protocolo de pruebas de rendimiento se define conforme a la metodología del 
 - Sin multi-tenancia para múltiples instituciones
 
 **Limitaciones metodológicas:**
-- Muestra limitada a 4 instituciones
+- Muestra limitada a 3-5 instituciones
 - Período de evaluación relativamente corto (3 meses)
 - Contexto específico a la región estudiada
 
@@ -682,14 +684,12 @@ El protocolo de pruebas de rendimiento se define conforme a la metodología del 
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados presentados en este capítulo demuestran que el Sistema de Gestión Personal y Nómina logró exitosamente sus objetivos principales. El sistema desarrollado es técnicamente sólido, funcionalmente completo, y altamente usable según evaluaciones de usuarios reales.
+Los resultados técnicos presentados en este capítulo demuestran que el Sistema de Gestión de Personal y Nómina fue desarrollado de forma sólida y verificable: la arquitectura de capas con patrones Repository y Service está implementada y documentada; los módulos de empleados, documentos, incidencias, nómina, configuración, autenticación, auditoría, respaldos y exportación son funcionales; y la suite de **281 pruebas automatizadas** se ejecuta exitosamente con **43% de cobertura total** (73% en la lógica de negocio), incluyendo pruebas de seguridad, pagos, integración y respaldos.
 
-Las pruebas técnicas confirmaron la calidad del software, con alta cobertura de pruebas, rendimiento aceptable, y seguridad apropiada. Las pruebas de usabilidad revelaron altas puntuaciones de satisfacción y mejoras significativas en eficiencia comparado con procesos manuales.
+Las funcionalidades de seguridad implementadas (autenticación con PBKDF2, control de acceso por rol, auditoría, sanitización de entradas y respaldo/restauración) fueron verificadas mediante pruebas automatizadas dedicadas, y los módulos de lógica de negocio presentan coberturas altas (modelos 92%, servicios 75%, utilidades 81%).
 
-La implementación piloto generó evidencia cuantitativa y cualitativa del impacto positivo del sistema, con reducciones significativas en tiempos de procesamiento (85% promedio) y tasas de error (88% promedio). La satisfacción de usuarios mejoró en todas las dimensiones evaluadas, y se observaron cambios positivos en patrones de trabajo organizacional.
+Las secciones de validación empírica (4.4 a 4.7) definen la estructura metodológica y los instrumentos para evaluar la usabilidad, la satisfacción y el impacto cuantitativo y cualitativo en las instituciones piloto; los resultados definitivos se incorporarán al completarse la implementación real del piloto conforme al Capítulo III. Las hipótesis planteadas serán confirmadas o refutadas con esa evidencia empírica.
 
-Todas las hipótesis planteadas fueron confirmadas con evidencia empírica, validando tanto el enfoque metodológico como las decisiones técnicas tomadas durante el desarrollo. Los factores de éxito identificados proporcionan lecciones valiosas para futuros proyectos similares.
-
-Las limitaciones identificadas son entendibles dadas las restricciones del proyecto (tiempo, recursos, alcance) y no disminuyen significativamente el valor de los resultados obtenidos. De hecho, estas limitaciones proporcionan direcciones claras para futuras investigaciones y expansiones del sistema.
+Las limitaciones identificadas (muestra de 3-5 instituciones, período de evaluación corto, contexto regional específico y dependencia de recursos propios) son propias de un proyecto de este alcance y proporcionan direcciones claras para futuras investigaciones y expansiones del sistema.
 
 Con estos resultados sólidos como evidencia, el siguiente capítulo presentará las conclusiones finales de la investigación, incluyendo recomendaciones para implementación futura, direcciones para investigación adicional, y reflexiones sobre el proceso de desarrollo.

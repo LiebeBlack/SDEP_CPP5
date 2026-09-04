@@ -2,9 +2,11 @@
 
 ## 4.1 INTRODUCCIÓN
 
-El presente capítulo presenta los resultados obtenidos durante el desarrollo e implementación del Sistema de Gestión de Personal y Nómina para instituciones educativas. Se describe el sistema desarrollado, los hallazos de las pruebas técnicas y de usabilidad, los resultados de la validación con usuarios piloto, y el análisis cuantitativo y cualitativo del impacto observado en las instituciones participantes.
+El presente capítulo presenta los resultados obtenidos durante el desarrollo e implementación del Sistema de Gestión de Personal y Nómina para instituciones educativas. Se describe el sistema desarrollado, los hallazgos de las pruebas técnicas y de usabilidad, los resultados de la validación con usuarios piloto, y el análisis cuantitativo y cualitativo del impacto observado en las instituciones participantes.
 
-Los resultados presentados demuestran la viabilidad técnica del sistema, su efectividad para mejorar la eficiencia administrativa, y la satisfacción de los usuarios con la solución implementada.
+**Nota sobre la evidencia presentada:** Las secciones 4.2 y 4.3 reportan resultados técnicos verificables del sistema desarrollado (arquitectura, funcionalidades implementadas, pruebas automatizadas y cobertura de código, todas medibles directamente sobre el repositorio del proyecto). Las secciones 4.4 a 4.7 corresponden a la validación empírica con usuarios en instituciones piloto: su estructura metodológica está definida (Capítulo III) y las tablas incluyen marcadores claros **[dato real del piloto]** que deben completarse con los resultados de la implementación real en cada institución participante antes de la presentación final de la tesis.
+
+Los resultados técnicos demuestran la viabilidad del sistema y su efectividad como herramienta de gestión; la evidencia empírica del piloto complementará estos resultados con la medición de la eficiencia administrativa en el contexto real.
 
 ## 4.2 DESCRIPCIÓN DEL SISTEMA DESARROLLADO
 
@@ -17,37 +19,41 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
 **Tecnología:** CustomTkinter
 
 **Características:**
-- Interfaz moderna con tema oscuro
+- Interfaz moderna con temas claro y oscuro configurables (persistidos en la configuración del sistema)
 - Navegación intuitiva mediante menú lateral
 - Formularios validados con feedback inmediato
 - Tablas con capacidades de búsqueda y filtrado
+- Atajos de teclado (módulos, nuevo, buscar, guardar, actualizar, cerrar diálogos)
 - Diseño responsivo adaptado a diferentes tamaños de pantalla
 
 **Componentes principales:**
+- **LoginWindow:** Ventana de autenticación de usuarios
 - **MainWindow:** Ventana principal del sistema
-- **DashboardFrame:** Panel de control con estadísticas en tiempo real
+- **DashboardFrame:** Panel de control con estadísticas en tiempo real (tarjetas navegables)
 - **EmpleadosFrame:** Gestión completa de empleados
 - **DocumentosFrame:** Gestión documental digital
 - **IncidenciasFrame:** Control de permisos y ausencias
 - **NominaFrame:** Procesamiento de nóminas y pagos
-- **ConfiguracionFrame:** Configuración del sistema
+- **ConfiguracionFrame:** Configuración del sistema (incluida la apariencia claro/oscuro)
 
 #### 4.2.1.2 Capa de Servicios
 
 **Patrón implementado:** Service Layer Pattern
 
 **Servicios implementados:**
+- **AuthService:** Autenticación de usuarios y control de acceso por rol
 - **EmpleadoService:** Lógica de negocio para gestión de empleados
 - **DocumentoService:** Gestión de documentos digitales
 - **IncidenciaService:** Control de permisos y ausencias
 - **PagoService:** Procesamiento de nóminas y cálculos financieros
-- **ConfiguracionService:** Gestión de parámetros configurables
+- **ConfiguracionService:** Gestión de parámetros configurables (incluida la apariencia)
 
 **Responsabilidades:**
 - Validación de reglas de negocio
 - Coordinación entre diferentes repositorios
 - Cálculos complejos (nómina, deducciones)
 - Orquestación de flujos de trabajo
+- Registro de auditoría de acciones críticas
 
 #### 4.2.1.3 Capa de Repositorios
 
@@ -76,12 +82,25 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
 - **Incidencia:** Permisos, reposos y ausencias
 - **Pago:** Pagos y nóminas
 - **Configuracion:** Parámetros configurables del sistema
+- **Usuario:** Usuarios del sistema con roles y credenciales seguras
 
 **Características:**
 - Mapeo objeto-relacional automático
 - Validaciones a nivel de modelo
 - Relaciones entre entidades
 - Propiedades calculadas automáticas
+
+#### 4.2.1.5 Capa de Utilidades y Servicios Transversales
+
+Además de las cuatro capas principales, el sistema incorpora módulos transversales que refuerzan la seguridad, la trazabilidad y la sostenibilidad de los datos:
+
+- **security.py:** Validación y sanitización de entradas, verificación de permisos por rol y gestión de contraseñas con hash PBKDF2-HMAC-SHA256 (200.000 iteraciones) y salt aleatorio.
+- **audit_logger.py:** Registro de auditoría de las acciones críticas del sistema (inicios de sesión, operaciones sobre empleados, documentos, incidencias y nóminas).
+- **backup_manager.py:** Respaldo y restauración de la base de datos con políticas de retención.
+- **exporter.py:** Exportación de datos y reportes en formatos abiertos.
+- **pdf_generator.py:** Generación de documentos oficiales (constancias, recibos de pago, planillas) en formato PDF mediante ReportLab.
+- **document_manager.py:** Gestión del almacenamiento de documentos y fotografías de empleados.
+- **validators.py y helpers.py:** Validaciones de dominio y funciones auxiliares de formateo y manipulación de datos.
 
 ### 4.2.2 Funcionalidades Implementadas
 
@@ -108,10 +127,10 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
    - Indicadores de antigüedad
 
 **Resultados de implementación:**
-- Formulario con 35 campos organizados en 6 pestañas
+- Formulario completo organizado en pestañas temáticas (datos personales, físicos, de contacto y laborales)
 - Validación en tiempo real con feedback visual
-- Tiempo promedio de registro: 3.5 minutos (vs. 15 minutos manual)
-- Índice de satisfacción de usuarios: 4.3/5.0
+- Cobertura funcional verificada por la suite de pruebas automatizadas del sistema (281 pruebas, todas exitosas; ver sección 4.3.1)
+- Medición de tiempo de registro en piloto: **[dato real del piloto]** minutos (vs. proceso manual: **[dato real del piloto]** minutos)
 
 #### 4.2.2.2 Módulo de Gestión Documental
 
@@ -135,10 +154,10 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
    - Organización por empleado
 
 **Resultados de implementación:**
-- Soporte para 6 tipos de documentos principales
-- Tiempo promedio de carga: 45 segundos (vs. 5 minutos manual)
-- Reducción del 85% en pérdida de documentos
-- Control efectivo de vencimientos con alertas automáticas
+- Soporte para los tipos de documentos definidos en la configuración institucional
+- Control de fechas de emisión y vencimiento con alertas automáticas
+- Tiempo promedio de carga en piloto: **[dato real del piloto]** segundos (vs. proceso manual: **[dato real del piloto]** minutos)
+- Porcentaje de pérdida de documentos evitado: **[dato real del piloto]**%
 
 #### 4.2.2.3 Módulo de Gestión de Incidencias
 
@@ -162,10 +181,10 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
    - Historial completo de incidencias
 
 **Resultados de implementación:**
-- Tiempo promedio de registro: 2 minutos (vs. 10 minutos manual)
-- Reducción del 70% en errores de cálculo de días
-- Mejora del 90% en seguimiento de aprobaciones
-- Mayor transparencia en procesos de incidencias
+- Flujo completo de aprobación/rechazo con registro de aprobador y comentarios
+- Cálculo automático de días solicitados con impacto en la nómina
+- Tiempo promedio de registro en piloto: **[dato real del piloto]** minutos (vs. proceso manual: **[dato real del piloto]** minutos)
+- Reducción de errores de cálculo de días en piloto: **[dato real del piloto]**%
 
 #### 4.2.2.4 Módulo de Nómina
 
@@ -190,10 +209,10 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
    - Control de pagos pendientes y realizados
 
 **Resultados de implementación:**
-- Tiempo de generación de nómina para 50 empleados: 5 minutos (vs. 4 horas manual)
-- Reducción del 95% en errores de cálculo
-- Ahorro de tiempo administrativo: 3.5 horas por periodo
-- Precisión financiera del 99.8%
+- Cálculo automático de salario proporcional, deducciones configurables y salario neto
+- Generación de recibos de pago y reportes en PDF
+- Exactitud de los cálculos verificada por las pruebas automatizadas del módulo de pagos (cálculos de proporción, deducciones y neto)
+- Tiempo de generación de nómina en piloto: **[dato real del piloto]** minutos para **[dato real del piloto]** empleados (vs. proceso manual: **[dato real del piloto]** horas)
 
 #### 4.2.2.5 Módulo de Configuración
 
@@ -215,7 +234,7 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
    - Políticas de incidencias
 
 **Resultados de implementación:**
-- Sistema altamente configurable según necesidades institucionales
+- Sistema altamente configurable según necesidades institucionales (datos de la institución, parámetros de nómina, políticas de recursos humanos, apariencia claro/oscuro)
 - Flexibilidad para adaptarse a diferentes contextos
 - Actualización de configuración sin necesidad de modificar código
 
@@ -226,278 +245,285 @@ El Sistema de Gestión de Personal y Nómina se implementó siguiendo una arquit
 **Sistema:** SQLite
 
 **Esquema implementado:**
-- 5 tablas principales (empleados, documentos, incidencias, pagos, configuraciones)
-- 12 tablas de relación y soporte
-- Índices optimizados para consultas frecuentes
-- Integridad referencial entre tablas
+- 6 tablas principales: `empleados`, `documentos`, `incidencias`, `pagos`, `configuraciones` y `usuarios`
+- Índices para las consultas frecuentes (búsqueda por cédula, nombre y periodo)
+- Integridad referencial entre tablas mediante claves foráneas
+- Gestión de migraciones para evolución controlada del esquema
 
 **Rendimiento:**
-- Consultas típicas: < 100ms
-- Consultas complejas con joins: < 500ms
-- Capacidad: Probado hasta 10,000 empleados sin degradación significativa
+- Medición real en piloto: **[dato real del piloto]** ms para consultas típicas
+- Medición real en piloto: **[dato real del piloto]** ms para consultas complejas
+- Capacidad verificada con las pruebas de la suite: **[dato real del piloto]** registros sin degradación significativa
 
 #### 4.2.3.2 Interfaz Gráfica
 
 **Características:**
-- Tema oscuro moderno
+- Temas oscuro y claro configurables por el usuario y persistidos en la configuración
 - Diseño consistente en todos los módulos
 - Validación en tiempo real
 - Feedback visual de acciones
-- Accesibilidad teclado (atajos)
+- Accesibilidad por teclado (atajos: módulos, nuevo, buscar, guardar, actualizar, cerrar)
+- Tarjetas de estadísticas navegables en el panel de control
+- Diálogos auxiliares de ayuda y "Acerca de"
 
 **Rendimiento:**
-- Tiempo de carga de módulos: < 2 segundos
-- Tiempo de respuesta de acciones: < 500ms
-- Uso de memoria: < 200MB en operación normal
+- Tiempo de carga de módulos: **[dato real del piloto]** segundos
+- Tiempo de respuesta de acciones: **[dato real del piloto]** ms
+- Uso de memoria en operación normal: **[dato real del piloto]** MB
 
 #### 4.2.3.3 Seguridad
 
-**Implementaciones:**
-- Autenticación básica (extensible a multi-usuario)
-- Control de acceso por rol
-- Encriptación de contraseñas (si se implementa login)
-- Logging de acciones críticas
-- Respaldos automáticos de base de datos
+**Implementaciones verificadas en el sistema:**
+- Autenticación de usuarios implementada y probada (LoginWindow + AuthService)
+- Control de acceso por rol (administrador, gerente, usuario, consulta) con verificación de permisos por módulo
+- Contraseñas protegidas con hash PBKDF2-HMAC-SHA256 (200.000 iteraciones) y salt aleatorio (seguridad.py)
+- Registro de auditoría de acciones críticas (audit_logger.py)
+- Respaldo y restauración de base de datos con políticas de retención (backup_manager.py)
+- Sanitización de entradas y validación de archivos para mitigar inyección SQL y archivos maliciosos
 
 ## 4.3 RESULTADOS DE PRUEBAS TÉCNICAS
 
-### 4.3.1 Pruebas Unitarias
+### 4.3.1 Pruebas Automatizadas
 
-**Cobertura:** 87% de código cubierto por pruebas unitarias
+**Resultados medidos directamente sobre el repositorio del proyecto (v1.0.4):**
 
-**Resultados por módulo:**
+- **Total de pruebas:** 281 (89 de la suite original + 192 incorporadas durante el desarrollo)
+- **Pruebas exitosas:** 281 (100%)
+- **Pruebas falladas:** 0
+- **Cobertura de código total:** 43%
+- **Cobertura de la lógica de negocio** (modelos, repositorios, servicios, utilidades y configuración; excluye la capa gráfica y el punto de entrada): **73%**
 
-| Módulo | Cobertura | Pruebas Pasadas | Pruebas Falladas |
-|--------|----------|-----------------|-------------------|
-| Modelos | 92% | 156 | 3 |
-| Repositorios | 89% | 98 | 2 |
-| Servicios | 85% | 124 | 5 |
-| Utils | 91% | 67 | 1 |
-| **Total** | **87%** | **445** | **11** |
+**Cobertura por módulo (medida con `pytest --cov=src`):**
 
-**Pruebas falladas corregidas:** Todas las pruebas falladas fueron corregidas antes de la implementación piloto.
+| Módulo | Líneas de Código | Líneas Cubiertas | % Cobertura |
+|--------|----------------|----------------|------------|
+| models | 393 | 363 | 92% |
+| repositories | 678 | 326 | 48% |
+| services | 815 | 608 | 75% |
+| utils | 1442 | 1167 | 81% |
+| config | 265 | 154 | 58% |
+| gui | 3025 | 330 | 11% |
+| main.py | 220 | 0 | 0% |
+| **Total** | **6841** | **2951** | **43%** |
+
+**Interpretación:** La cobertura es alta (≥ 75%) en los módulos de lógica de negocio —modelos, servicios y utilidades—, que concentran las reglas críticas del dominio (cálculos de nómina, validaciones, seguridad). La capa gráfica (GUI) presenta cobertura baja porque su automatización requiere un entorno con pantalla; su funcionalidad se valida mediante las pruebas de usabilidad descritas en la sección 4.4.
 
 ### 4.3.2 Pruebas de Integración
 
-**Escenarios probados:**
+La suite automatizada incluye pruebas de integración que verifican los flujos completos del sistema sobre una base de datos aislada y sembrada para cada prueba:
 
-1. **Flujo completo de empleado:**
-   - Registro → Edición → Documentos → Incidencias → Nómina
-   - Resultado: Exitoso, integración correcta entre módulos
+1. **Flujo de empleados:** Registro → búsqueda → actualización → asociación de documentos, incidencias y pagos (tests/test_empleados.py, test_documentos.py, test_pagos.py).
 
-2. **Flujo de nómina:**
-   - Generación → Aprobación → Pago → Recibo
-   - Resultado: Exitoso, cálculos correctos en todos los casos
+2. **Flujo de nómina:** Cálculo de días trabajados considerando incidencias → cálculo de salario proporcional → deducciones → salario neto → generación de recibos (tests/test_pagos.py).
 
-3. **Flujo de incidencias:**
-   - Solicitud → Aprobación → Impacto en nómina
-   - Resultado: Exitoso, incidencias correctamente consideradas en cálculos
+3. **Flujo de incidencias:** Solicitud → validación de fechas y días → aprobación → impacto en nómina (tests/test_incidencias.py).
 
-**Problemas encontrados y corregidos:**
-- 2 problemas de sincronización entre módulos (corregidos)
-- 1 problema de cálculo en casos extremos (corregido)
-- 3 problemas de rendimiento en consultas complejas (optimizados)
+4. **Autenticación y control de acceso:** Login, roles, verificación de contraseñas y permisos por módulo (tests/test_auth.py).
+
+5. **Persistencia y configuración:** Siembra de configuración inicial, persistencia de parámetros y apariencia, migraciones de esquema (tests/test_configuracion.py, test_migraciones.py).
+
+6. **Respaldo y restauración:** Ciclo completo de backup/restore de la base de datos (tests/test_backups.py).
+
+**Resultado:** Las 281 pruebas (unitarias e de integración) se ejecutan correctamente y sin fallas en la suite completa.
 
 ### 4.3.3 Pruebas de Rendimiento
 
-**Métricas medidas:**
+El protocolo de pruebas de rendimiento se define conforme a la metodología del Capítulo III (sección 3.4.1.5). Las métricas definitivas deben medirse durante la implementación piloto en condiciones reales de uso; la tabla siguiente debe completarse con esos datos:
 
 | Métrica | Objetivo | Resultado | Estado |
 |---------|----------|-----------|--------|
-| Tiempo de respuesta promedio | < 1s | 0.3s | ✓ Cumple |
-| Tiempo de respuesta máximo | < 3s | 1.8s | ✓ Cumple |
-| Uso de memoria en reposo | < 150MB | 125MB | ✓ Cumple |
-| Uso de memoria en carga | < 300MB | 220MB | ✓ Cumple |
-| Tiempo de generación de nómina (50 emp) | < 5min | 3.2min | ✓ Cumple |
+| Tiempo de respuesta promedio | < 1s | **[dato real del piloto]** | ⬜ Pendiente |
+| Tiempo de respuesta máximo | < 3s | **[dato real del piloto]** | ⬜ Pendiente |
+| Uso de memoria en reposo | < 150MB | **[dato real del piloto]** | ⬜ Pendiente |
+| Uso de memoria en carga | < 300MB | **[dato real del piloto]** | ⬜ Pendiente |
+| Tiempo de generación de nómina | < 5min | **[dato real del piloto]** | ⬜ Pendiente |
 
 **Pruebas de carga:**
-- Probado con hasta 1000 empleados en base de datos
-- Rendimiento degradado aceptable (< 20% más lento que con 100 empleados)
-- Sin errores de memoria o crashes
+- Volumen de datos probado: **[dato real del piloto]** empleados en base de datos
+- Degradación de rendimiento observada: **[dato real del piloto]**
+- Comportamiento de memoria: **[dato real del piloto]**
 
 ### 4.3.4 Pruebas de Seguridad
 
-**Vulnerabilidades evaluadas:**
+**Controles implementados y verificados mediante pruebas automatizadas (tests/test_security.py, test_auth.py):**
 
-1. **Inyección SQL:** Mitigado mediante uso de ORM
-2. **XSS (Cross-Site Scripting):** No aplicable (aplicación de escritorio)
-3. **Autenticación:** Implementada con encriptación apropiada
-4. **Autorización:** Control de acceso por rol implementado
-5. **Logging de seguridad:** Acciones críticas registradas
+1. **Inyección SQL:** Mitigado mediante el uso de ORM (SQLAlchemy) con consultas parametrizadas; el módulo de seguridad incluye además sanitización de entradas.
+2. **XSS (Cross-Site Scripting):** No aplicable al tratarse de una aplicación de escritorio; aun así, los campos de texto se sanitizan antes de almacenarse.
+3. **Autenticación:** Implementada con hash PBKDF2-HMAC-SHA256 (200.000 iteraciones, salt aleatorio) y verificación con comparación de tiempo constante; probada en tests/test_auth.py.
+4. **Autorización:** Control de acceso por rol (administrador, gerente, usuario, consulta) con permisos por módulo (security.py: PermissionChecker); probado en tests/test_security.py.
+5. **Auditoría:** Registro de eventos de seguridad y acciones críticas (audit_logger.py, SecurityLogger); probado en tests/test_security.py.
+6. **Archivos:** Validación de nombre, extensión, tamaño y tipo MIME antes del almacenamiento.
 
-**Resultado:** Sistema aprobado en evaluación de seguridad básica.
+**Resultado:** Los controles de seguridad implementados están cubiertos por pruebas automatizadas exitosas (95% de cobertura en security.py).
 
 ## 4.4 RESULTADOS DE PRUEBAS DE USABILIDAD
 
+> **Sección de validación empírica:** Las pruebas de usabilidad se realizarán con los usuarios piloto siguiendo el protocolo del Anexo 3 y la metodología del Capítulo III (secciones 3.4.1.4 y 3.6). Las tablas de esta sección deben completarse con los datos reales obtenidos durante la implementación piloto en cada institución; los marcadores **[dato real del piloto]** indican los campos pendientes.
+
 ### 4.4.1 Pruebas con Usuarios Piloto
 
-**Participantes:** 42 usuarios de 4 instituciones educativas
+**Participantes:** **[dato real del piloto]** usuarios de **[dato real del piloto]** instituciones educativas
 
-**Distribución por rol:**
-- Directivos: 8 (19%)
-- Personal de RRHH: 15 (36%)
-- Personal administrativo: 12 (29%)
-- Personal docente: 7 (17%)
+**Distribución por rol (completar con los datos reales):**
+- Directivos: **[dato real del piloto]**
+- Personal de RRHH: **[dato real del piloto]**
+- Personal administrativo: **[dato real del piloto]**
+- Personal docente: **[dato real del piloto]**
 
 ### 4.4.2 Resultados de Pruebas de Tareas
 
-**Tareas evaluadas:**
+**Tareas evaluadas (tiempos, tasas de éxito y satisfacción subjetiva por completar con datos reales):**
 
 1. **Registro de nuevo empleado:**
-   - Tiempo promedio: 3.2 minutos
-   - Tasa de éxito: 94%
-   - Satisfacción subjetiva: 4.2/5.0
+   - Tiempo promedio: **[dato real del piloto]**
+   - Tasa de éxito: **[dato real del piloto]**%
+   - Satisfacción subjetiva: **[dato real del piloto]**/5.0
 
 2. **Búsqueda de empleado:**
-   - Tiempo promedio: 15 segundos
-   - Tasa de éxito: 98%
-   - Satisfacción subjetiva: 4.5/5.0
+   - Tiempo promedio: **[dato real del piloto]**
+   - Tasa de éxito: **[dato real del piloto]**%
+   - Satisfacción subjetiva: **[dato real del piloto]**/5.0
 
 3. **Generación de nómina:**
-   - Tiempo promedio: 4.8 minutos (para 50 empleados)
-   - Tasa de éxito: 91%
-   - Satisfacción subjetiva: 4.4/5.0
+   - Tiempo promedio: **[dato real del piloto]** (para **[dato real del piloto]** empleados)
+   - Tasa de éxito: **[dato real del piloto]**%
+   - Satisfacción subjetiva: **[dato real del piloto]**/5.0
 
 4. **Generación de recibo PDF:**
-   - Tiempo promedio: 8 segundos
-   - Tasa de éxito: 96%
-   - Satisfacción subjetiva: 4.6/5.0
+   - Tiempo promedio: **[dato real del piloto]**
+   - Tasa de éxito: **[dato real del piloto]**%
+   - Satisfacción subjetiva: **[dato real del piloto]**/5.0
 
-**Problemas de usabilidad identificados:**
-- 3 usuarios tuvieron dificultad con el formulario de empleados (corregido con mejoras en agrupación de campos)
-- 2 usuarios no encontraron la función de exportación (corregido con mejoras en visibilidad)
-- 1 usuario reportó confusión con el flujo de aprobación de incidencias (corregido con mejoras en indicaciones visuales)
+**Problemas de usabilidad identificados (completar con los hallazgos reales de las sesiones):**
+- **[dato real del piloto]** usuarios tuvieron dificultad con **[dato real del piloto]** (corregido con **[dato real del piloto]**)
+- **[dato real del piloto]**
+- **[dato real del piloto]**
 
 ### 4.4.3 Resultados de Encuestas de Satisfacción
 
 **Escala SUS (System Usability Scale):**
 
-- Puntuación promedio: 78.5/100 (Bueno)
-- Rango: 65-92
-- Percentil: 70 (superior al 70% de sistemas evaluados)
+- Puntuación promedio: **[dato real del piloto]**/100
+- Rango: **[dato real del piloto]**
+- Percentil: **[dato real del piloto]**
 
-**Dimensiones específicas:**
+**Dimensiones específicas (completar con las medias y desviaciones reales):**
 
 | Dimensión | Promedio | Desviación | Interpretación |
 |-----------|----------|------------|----------------|
-| Facilidad de aprendizaje | 4.1/5.0 | 0.6 | Fácil de aprender |
-| Eficiencia de uso | 4.3/5.0 | 0.5 | Eficiente |
-| Memorabilidad | 3.9/5.0 | 0.7 | Moderadamente memorable |
-| Bajo error | 4.2/5.0 | 0.5 | Baja tasa de errores |
-| Satisfacción | 4.4/5.0 | 0.4 | Alta satisfacción |
+| Facilidad de aprendizaje | **[dato real del piloto]** | **[dato real del piloto]** | Fácil de aprender |
+| Eficiencia de uso | **[dato real del piloto]** | **[dato real del piloto]** | Eficiente |
+| Memorabilidad | **[dato real del piloto]** | **[dato real del piloto]** | Moderadamente memorable |
+| Bajo error | **[dato real del piloto]** | **[dato real del piloto]** | Baja tasa de errores |
+| Satisfacción | **[dato real del piloto]** | **[dato real del piloto]** | Alta satisfacción |
 
 **Comparación pre/post implementación:**
 
 | Aspecto | Pre | Post | Mejora | Significancia |
 |---------|-----|------|--------|--------------|
-| Satisfacción general | 2.8/5.0 | 4.4/5.0 | +57% | p < 0.001 |
-| Percepción de eficiencia | 2.5/5.0 | 4.3/5.0 | +72% | p < 0.001 |
-| Facilidad de uso | 3.0/5.0 | 4.1/5.0 | +37% | p < 0.01 |
-| Utilidad percibida | 3.2/5.0 | 4.5/5.0 | +41% | p < 0.001 |
+| Satisfacción general | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Percepción de eficiencia | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Facilidad de uso | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Utilidad percibida | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
 
-Todas las mejoras son estadísticamente significativas (p < 0.05).
+**Análisis estadístico:** Las pruebas estadísticas descritas en el Capítulo III (sección 3.6.1.2: prueba t pareada, chi-cuadrado, ANOVA y Wilcoxon, α = 0.05) se aplicarán a los datos recopilados para determinar la significancia de las mejoras observadas. Los resultados se registrarán aquí al completarse la recolección de datos del piloto.
 
 ## 4.5 RESULTADOS DE IMPLEMENTACIÓN PILOTO
 
+> **Sección de validación empírica:** La descripción de las instituciones, las métricas cuantitativas de impacto y los resultados cualitativos deben completarse con los datos reales recopilados durante la implementación piloto, siguiendo el procedimiento de recolección del Capítulo III (sección 3.5) y los instrumentos de los Anexos 1, 2, 3, 8 y 9.
+
 ### 4.5.1 Descripción de Instituciones Piloto
 
-**Institución A:** Colegio privado urbano, 120 empleados
+**Institución 1:** [Nombre real o código de la institución] — **[dato real del piloto]** empleados — **[dato real del piloto]**
 
-**Institución B:** Instituto público suburbano, 45 empleados
+**Institución 2:** [Nombre real o código de la institución] — **[dato real del piloto]** empleados — **[dato real del piloto]**
 
-**Institución C:** Universidad privada, 250 empleados
+**Institución 3:** [Nombre real o código de la institución] — **[dato real del piloto]** empleados — **[dato real del piloto]**
 
-**Institución D:** Colegio público rural, 25 empleados
+*(Agregar o eliminar filas según el número real de instituciones participantes: entre 3 y 5, conforme a la muestra definida en el Capítulo III.)*
 
 ### 4.5.2 Métricas de Impacto Cuantitativo
 
 #### 4.5.2.1 Tiempos de Procesamiento
 
-**Comparación de tiempos promedio por tarea:**
+**Comparación de tiempos promedio por tarea (completar con las mediciones pre/post reales):**
 
 | Tarea | Antes (min) | Después (min) | Reducción | % Reducción |
 |-------|-------------|---------------|-----------|-------------|
-| Registro empleado | 15.0 | 3.5 | 11.5 | 77% |
-| Búsqueda empleado | 8.0 | 0.3 | 7.7 | 96% |
-| Cálculo nómina (50 emp) | 240.0 | 5.0 | 235.0 | 98% |
-| Generación recibo | 20.0 | 0.5 | 19.5 | 98% |
-| Control documentos | 12.0 | 2.0 | 10.0 | 83% |
-| Gestión incidencias | 25.0 | 3.0 | 22.0 | 88% |
+| Registro empleado | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Búsqueda empleado | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Cálculo nómina | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Generación recibo | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Control documentos | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Gestión incidencias | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
 
-**Análisis estadístico:**
-- Prueba t pareada: t(41) = 15.67, p < 0.001
-- Diferencia altamente significativa en reducción de tiempos
+**Análisis estadístico:** Se aplicará la prueba t pareada (sección 3.6.1.2) a las mediciones pre/post de cada tarea; los resultados (estadístico t, grados de libertad y valor p) se registrarán aquí.
 
 #### 4.5.2.2 Tasas de Error
 
-**Comparación de tasas de error por proceso:**
+**Comparación de tasas de error por proceso (completar con los datos reales):**
 
 | Proceso | Antes (%) | Después (%) | Reducción | % Reducción |
 |---------|-----------|-------------|-----------|-------------|
-| Cálculo de nómina | 12.5 | 0.8 | 11.7 | 94% |
-| Registro de datos | 8.3 | 1.2 | 7.1 | 86% |
-| Control de documentos | 15.0 | 2.5 | 12.5 | 83% |
-| Seguimiento de incidencias | 22.0 | 3.0 | 19.0 | 86% |
+| Cálculo de nómina | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Registro de datos | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Control de documentos | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
+| Seguimiento de incidencias | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]**% |
 
-**Impacto estimado:**
-- Ahorro anual estimado por errores evitados: $12,500 por institución
-- Reducción de reclamos laborales: 78%
-- Mejora en cumplimiento normativo: 92%
+**Impacto estimado (completar con cálculos sobre los datos reales):**
+- Ahorro anual estimado por errores evitados: **[dato real del piloto]** por institución
+- Reducción de reclamos laborales: **[dato real del piloto]**%
+- Mejora en cumplimiento normativo: **[dato real del piloto]**%
 
 #### 4.5.2.3 Satisfacción Laboral
 
-**Indicadores de satisfacción laboral:**
+**Indicadores de satisfacción laboral (completar con las encuestas reales):**
 
 | Indicador | Antes | Después | Mejora |
 |-----------|-------|---------|--------|
-| Satisfacción con pagos | 3.2/5.0 | 4.1/5.0 | +28% |
-| Percepción de justicia en pagos | 2.8/5.0 | 4.0/5.0 | +43% |
-| Satisfacción con comunicación | 3.0/5.0 | 3.8/5.0 | +27% |
-| Satisfacción general laboral | 3.1/5.0 | 3.9/5.0 | +26% |
+| Satisfacción con pagos | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Percepción de justicia en pagos | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Satisfacción con comunicación | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Satisfacción general laboral | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
 
 ### 4.5.3 Resultados Cualitativos
 
+> **Instrucción:** Documentar aquí los hallazgos cualitativos reales (comentarios textuales de usuarios, observaciones de comportamiento y lecciones aprendidas) recopilados durante el piloto mediante entrevistas, observación directa y análisis de contenido (sección 3.6.2).
+
 #### 4.5.3.1 Feedback de Usuarios
 
-**Comentarios positivos más frecuentes:**
+**Comentarios positivos más frecuentes (completar con citas reales de las sesiones):**
 
-- "El sistema es mucho más rápido que los procesos manuales"
-- "Los reportes son muy útiles para la toma de decisiones"
-- "La interfaz es intuitiva y fácil de aprender"
-- "El cálculo automático de nómina elimina muchos errores"
-- "La búsqueda de información es instantánea"
+- **[dato real del piloto]**
+- **[dato real del piloto]**
+- **[dato real del piloto]**
 
-**Áreas de mejora identificadas:**
+**Áreas de mejora identificadas (completar con las solicitudes reales):**
 
-- Necesidad de más funciones de reportes personalizados
-- Deseo de integración con otros sistemas (contabilidad, asistencia)
-- Solicitudes de capacitación más profunda
-- Interés en versión móvil del sistema
+- **[dato real del piloto]**
+- **[dato real del piloto]**
+- **[dato real del piloto]**
 
 #### 4.5.3.2 Observaciones de Comportamiento
 
-**Cambios observados en patrones de trabajo:**
+**Cambios observados en patrones de trabajo (completar con las observaciones reales):**
 
-1. **Mayor autonomía:** Los usuarios pueden realizar tareas sin depender de otros departamentos.
-2. **Mejora en comunicación:** La disponibilidad de información facilita la comunicación entre departamentos.
-3. **Proactividad:** Los usuarios reportan ser más proactivos en la gestión de sus tareas.
-4. **Transparencia:** Mayor claridad en procesos administrativos y financieros.
+1. **[dato real del piloto]**
+2. **[dato real del piloto]**
+3. **[dato real del piloto]**
+4. **[dato real del piloto]**
 
 #### 4.5.3.3 Lecciones Aprendidas
 
 **Lecciones técnicas:**
 
-1. La arquitectura modular facilitó significativamente el mantenimiento y expansión
-2. Las pruebas continuas con usuarios evitaron desarrollos en direcciones incorrectas
-3. La documentación completa fue crítica para la adopción exitosa
-4. La capacitación personalizada fue más efectiva que la capacitación genérica
+1. **[dato real del piloto]**
+2. **[dato real del piloto]**
 
 **Lecciones organizacionales:**
 
-1. El apoyo de la dirección fue crítico para la adopción exitosa
-2. La identificación de "champions" internos facilitó la diseminación
-3. La comunicación clara sobre beneficios esperados redujo la resistencia
-4. El enfoque por fases permitió una transición suave
+1. **[dato real del piloto]**
+2. **[dato real del piloto]**
 
 ## 4.6 ANÁLISIS COMPARATIVO
 

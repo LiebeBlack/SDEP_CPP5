@@ -42,7 +42,7 @@ El cálculo y procesamiento de nóminas representa uno de los procesos más crí
 
 #### 1.2.2.3 Control Documental Deficiente
 
-La gestión de documentos de empleados (cedulas, títulos, certificados, reposos médicos) presenta múltiples deficiencias:
+La gestión de documentos de empleados (cédulas, títulos, certificados, reposos médicos) presenta múltiples deficiencias:
 
 - **Almacenamiento físico:** Los documentos se almacenan físicamente, ocupando espacio y siendo susceptibles a pérdida o deterioro.
 - **Falta de control de vencimientos:** No existen sistemas automatizados para alertar sobre documentos próximos a vencer o vencidos.
@@ -79,7 +79,7 @@ La situación descrita anteriormente tiene impactos significativos en múltiples
 
 #### Impacto en la Calidad Educativa
 
-El tiempo excesivo dedicado a procesos administrativos manuales representa una oportunidad costo para las instituciones educativas. Personal administrativo que podría dedicarse a actividades de apoyo académico y pedagógico se encuentra consumido en tareas rutinarias que podrían automatizarse.
+El tiempo excesivo dedicado a procesos administrativos manuales representa un costo de oportunidad para las instituciones educativas. Personal administrativo que podría dedicarse a actividades de apoyo académico y pedagógico se encuentra consumido en tareas rutinarias que podrían automatizarse.
 
 #### Impacto en Condiciones Laborales
 
@@ -97,7 +97,7 @@ La ineficiencia administrativa genera costos operativos adicionales que podrían
 
 ### 1.3.1 Problema General
 
-¿Cómo diseñar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas que optimice los procesos administrativos, garantice la precisión en el cálculo de nóminas, facilite el control documental y proporcione herramientas para la toma de decisiones basada en datos, utilizando tecnologías de información accesibles y sostenibles?
+¿Cómo desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas que optimice los procesos administrativos, garantice la precisión en el cálculo de nóminas, facilite el control documental y proporcione herramientas para la toma de decisiones basada en datos, utilizando tecnologías de información accesibles y sostenibles?
 
 ### 1.3.2 Problemas Específicos
 
@@ -129,11 +129,9 @@ Diseñar, desarrollar e implementar un sistema integral de gestión de personal 
 
 4. **Desarrollar funcionalidades de reportes** estadísticos y generación de documentos oficiales en formato PDF para facilitar la toma de decisiones administrativas y cumplimiento de requisitos legales.
 
-5. **Validar el sistema** mediante pruebas funcionales automatizadas, pruebas de usabilidad con usuarios reales y validación en instituciones educativas piloto, asegurando calidad y efectividad.
+5. **Validar el sistema** mediante pruebas funcionales automatizadas, pruebas de usabilidad con usuarios reales y validación en instituciones educativas piloto, evaluando el impacto cuantitativo y cualitativo de la implementación en la eficiencia administrativa, asegurando calidad y efectividad.
 
 6. **Documentar completamente el sistema** incluyendo documentación técnica, manual de usuario, guías de implementación y manuales de mantenimiento, garantizando sostenibilidad y posibilidad de expansión.
-
-7. **Evaluar el impacto** de la implementación del sistema mediante análisis cuantitativo (tiempos de procesamiento, tasas de error) y cualitativo (satisfacción de usuarios, percepción de mejora).
 
 ## 1.5 JUSTIFICACIÓN DE LA INVESTIGACIÓN
 
@@ -162,7 +160,7 @@ La implementación piloto en instituciones educativas permitirá validar la util
 
 ### 1.5.3 Justificación Metodológica
 
-La investigación aplicará metodologías de desarrollo de software combinadas con técnicas de investigación-acción, contribuyendo al desarrollo de enfoques híbricos para proyectos de tecnología social:
+La investigación aplicará metodologías de desarrollo de software combinadas con técnicas de investigación-acción, contribuyendo al desarrollo de enfoques híbridos para proyectos de tecnología social:
 
 - **Integración de metodologías:** Combinación de metodologías ágiles de desarrollo con técnicas de investigación social.
 - **Prototipado evolutivo:** Desarrollo iterativo con retroalimentación continua de usuarios reales.
@@ -252,17 +250,17 @@ La investigación presenta las siguientes limitaciones:
 - **Muestra limitada:** El número de instituciones piloto (3-5) puede no ser representativo de todas las instituciones educativas.
 - **Contexto específico:** El sistema se desarrolla considerando el contexto educativo de la región, lo que puede limitar su aplicabilidad directa en otros contextos.
 - **Tecnologías específicas:** El uso de tecnologías específicas (Python, CustomTkinter) puede limitar la adopción por instituciones con diferentes infraestructuras tecnológicas.
-- **Tiempo limitado:** El cronogramo de 8 meses puede limitar la profundidad de ciertas funcionalidades o el alcance de la validación.
+- **Tiempo limitado:** El cronograma de 8 meses puede limitar la profundidad de ciertas funcionalidades o el alcance de la validación.
 - **Recursos propios:** La dependencia de recursos personales del investigador puede limitar la escala del proyecto.
 
 Estas limitaciones se reconocen y se documentarán como consideraciones para futuras investigaciones y expansiones del proyecto.
 
 ## 1.8 CONCLUSIONES DEL CAPÍTULO
 
-Este capítulo ha presentado de manera comprehensiva el problema de investigación que motiva el desarrollo del Sistema de Gestión de Personal y Nómina para instituciones educativas. La realidad problemática descrita evidencia la necesidad urgente de soluciones tecnológicas que optimicen los procesos administrativos en el sector educativo.
+Este capítulo ha presentado de manera comprensiva el problema de investigación que motiva el desarrollo del Sistema de Gestión de Personal y Nómina para instituciones educativas. La realidad problemática descrita evidencia la necesidad urgente de soluciones tecnológicas que optimicen los procesos administrativos en el sector educativo.
 
 La formulación clara de los problemas de investigación y los objetivos correspondientes proporcionan una dirección precisa para el desarrollo del proyecto. La justificación múltiple (teórica, práctica, metodológica, social y económica) demuestra la relevancia y viabilidad de la investigación.
 
-El análisis de viabilidad confirma que el proyecto es técnicamente, operativa, económica y temporalmente factible, mientras que la definición de alcances y limitaciones establece expectativas realistas sobre el alcance de la investigación.
+El análisis de viabilidad confirma que el proyecto es técnica, operativa, económica y temporalmente viable, mientras que la definición de alcances y limitaciones establece expectativas realistas sobre el alcance de la investigación.
 
 Con esta fundamentación sólida, el siguiente capítulo presentará el marco teórico que sustenta el desarrollo del sistema, proporcionando la base conceptual y técnica necesaria para la fase de diseño e implementación.

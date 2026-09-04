@@ -161,7 +161,7 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 #### 5.4.2.1 Funcionalidades Futuras Prioritarias
 
-*Nota: La autenticación de usuarios con roles y permisos (administrador, gerente, usuario, consulta) ya está implementada en el sistema (v1.0.4); las prioridades siguientes corresponden a expansiones aún pendientes.*
+*Nota: La autenticación de usuarios con roles y permisos (administrador, gerente, usuario, consulta) ya está implementada en el sistema (v2.79); las prioridades siguientes corresponden a expansiones aún pendientes.*
 
 **Prioridad Alta:**
 

@@ -285,7 +285,7 @@ Además de las cuatro capas principales, el sistema incorpora módulos transvers
 
 ### 4.3.1 Pruebas Automatizadas
 
-**Resultados medidos directamente sobre el repositorio del proyecto (v1.0.4):**
+**Resultados medidos directamente sobre el repositorio del proyecto (v2.79):**
 
 - **Total de pruebas:** 281 (89 de la suite original + 192 incorporadas durante el desarrollo)
 - **Pruebas exitosas:** 281 (100%)

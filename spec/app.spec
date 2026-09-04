@@ -31,19 +31,10 @@ IS_WINDOWS = sys.platform.startswith("win")
 # junto al código; se recolectan explícitamente.
 datas = collect_data_files("customtkinter")
 
-# python-build-standalone (el Python portable que instala uv en Linux)
-# trae Tcl/Tk 9.0 como librerías dinámicas en <prefijo>/lib
-# (libtcl9.0.so y libtcl9tk9.0.so). PyInstaller no las resuelve
-# automáticamente (bindepend no busca en ese directorio), por lo que se
-# empaquetan explícitamente junto al ejecutable. Son compatibles con
-# glibc 2.17, igual que el resto del intérprete. En Windows no existen
-# (tkinter va dentro del propio Python) y el glob no encuentra nada.
+# El binario de Linux se compila dentro de Ubuntu 22.04 (el sistema
+# objetivo más antiguo), de modo que todo lo que PyInstaller empaqueta
+# (libpython, Tcl/Tk 8.6, libstdc++, etc.) exige como máximo glibc 2.35.
 binaries = []
-if not IS_WINDOWS:
-    _prefix_lib = Path(sys.base_prefix) / "lib"
-    if _prefix_lib.is_dir():
-        for _so in sorted(_prefix_lib.glob("libtcl*.so*")) + sorted(_prefix_lib.glob("libtk*.so*")):
-            binaries.append((str(_so), "."))
 
 # Importaciones dinámicas/opcionales que conviene garantizar
 hiddenimports = [

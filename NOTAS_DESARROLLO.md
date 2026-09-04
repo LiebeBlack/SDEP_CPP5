@@ -235,9 +235,11 @@ pylint src/
 ### Distribución y CI/CD
 
 - **Versión portable de Linux** generada automáticamente en GitHub Actions:
-  el workflow `build.yml` ahora compila la aplicación con PyInstaller en
-  `ubuntu-latest` (el mismo `spec/app.spec` que Windows) y publica un
-  `tar.gz` portable en los artefactos y Releases de cada push.
+  el workflow `build.yml` compila la aplicación con PyInstaller dentro de
+  un contenedor **Ubuntu 22.04** (glibc 2.35, el mismo `spec/app.spec` que
+  Windows) y publica un `tar.gz` portable en los artefactos y Releases de
+  cada push. Funciona en Ubuntu 22.04, Debian 12 y Debian 13 (verificado en
+  CI con selftests en contenedores `ubuntu:22.04`, `debian:12` y `debian:13`).
 - El spec de PyInstaller es ahora multiplataforma: el icono y el recurso
   de versión (`version_info.txt`) solo se aplican en Windows.
 - La versión del sistema pasa a **2.79** (archivo `VERSION`, `pyproject.toml`,

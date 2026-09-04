@@ -142,13 +142,13 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 ### 5.2 Bases Teóricas
 
 **Ingeniería de Software:**
-- Ciclo de vida del desarrollo de software (Pressman, 2022)
-- Patrones de diseño arquitectónicos (Gamma et al., 2021)
-- Metodologías ágiles de desarrollo (Beck et al., 2020)
+- Ciclo de vida del desarrollo de software (Pressman & Maxim, 2019)
+- Patrones de diseño arquitectónicos (Gamma et al., 1994)
+- Metodologías ágiles de desarrollo (Beck et al., 2001)
 
 **Sistemas de Información:**
-- Sistemas de gestión de recursos humanos (Kavanagh & Thite, 2021)
-- Sistemas de información educativa (Picciano, 2019)
+- Sistemas de información de recursos humanos (Johnson et al., 2021)
+- Sistemas de información educativa (Picciano, 2011)
 - Arquitectura de sistemas empresariales (Laudon & Laudon, 2020)
 
 **Desarrollo de Software:**
@@ -333,17 +333,17 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 
 ### Libros
 
-- Pressman, R. S. (2022). *Ingeniería de Software: Un Enfoque Práctico*. McGraw-Hill.
-- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (2021). *Patrones de Diseño*. Addison-Wesley.
-- Sommerville, I. (2021). *Ingeniería de Software*. Pearson Educación.
-- Kavanagh, M. J., & Thite, M. (2021). *Human Resource Management*. Pearson.
-- Date, C. J. (2020). *Introducción a los Sistemas de Bases de Datos*. Pearson.
+- Pressman, R. S., & Maxim, B. R. (2019). *Software Engineering: A Practitioner's Approach* (9na ed.). McGraw-Hill.
+- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley.
+- Sommerville, I. (2015). *Software Engineering* (10ma ed.). Pearson.
+- Johnson, R. D., Carlson, K. D., & Kavanagh, M. J. (Eds.). (2021). *Human Resource Information Systems: Basics, Applications, and Future Directions* (5ta ed.). SAGE Publications.
+- Date, C. J. (2003). *An Introduction to Database Systems* (8va ed.). Addison-Wesley.
 
 ### Artículos Científicos
 
-- Smith, J., & Johnson, A. (2020). "HR Management Systems in Educational Institutions". *Journal of Educational Technology*, 15(3), 45-60.
-- García, M., & Martínez, P. (2019). "Digital Transformation in Education Administration". *International Journal of Educational Management*, 33(2), 234-250.
-- Rodríguez, L. (2021). "Information Systems for Educational Management in Developing Countries". *Computers & Education*, 167, 104-120.
+- Bondarouk, T. V., & Ruël, H. J. M. (2009). "Electronic Human Resource Management: Challenges in the Digital Era". *The International Journal of Human Resource Management*, 20(3), 505-514. https://doi.org/10.1080/09585190802707235
+- Pollock, N., & Cornford, J. (2004). "ERP Systems and the University as a 'Unique' Organisation". *Information Technology & People*, 17(1), 31-52.
+- Benavides, L. M. C., Tamayo Arias, J. A., Arango Serna, M. D., Branch Bedoya, J. W., & Burgos, D. (2020). "Digital Transformation in Higher Education Institutions: A Systematic Literature Review". *Sensors*, 20(11), 3291. https://doi.org/10.3390/s20113291
 
 ### Recursos Web
 
@@ -355,11 +355,16 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 
 ## 11. ANEXOS PROPUESTOS
 
-### Anexo 1: Guía de Entrevista para Análisis de Requerimientos
-### Anexo 2: Cuestionario de Satisfacción de Usuarios
-### Anexo 3: Protocolo de Pruebas de Usabilidad
-### Anexo 4: Diagramas de Diseño del Sistema
-### Anexo 5: Manual de Usuario Preliminar
+1. **Anexo 1:** Guía de Entrevista para Análisis de Requerimientos
+2. **Anexo 2:** Cuestionario de Satisfacción de Usuarios
+3. **Anexo 3:** Protocolo de Pruebas de Usabilidad
+4. **Anexo 4:** Diagramas de Diseño del Sistema
+5. **Anexo 5:** Manual de Usuario Preliminar
+6. **Anexo 6:** Código Fuente del Sistema
+7. **Anexo 7:** Resultados de Pruebas Técnicas
+8. **Anexo 8:** Resultados de Encuestas de Satisfacción
+9. **Anexo 9:** Cronograma Detallado de Actividades
+10. **Anexo 10:** Presupuesto Detallado
 
 ---
 

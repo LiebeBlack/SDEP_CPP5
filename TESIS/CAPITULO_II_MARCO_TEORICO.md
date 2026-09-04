@@ -335,16 +335,21 @@ El Sistema de Gestión de Personal y Nómina se basa en el siguiente modelo conc
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    INTERFAZ DE USUARIO                    │
-│              (CustomTkinter - GUI Moderna)                │
+│  (CustomTkinter - GUI Moderna: Login, Dashboard, Empleados,  │
+│   Documentos, Incidencias, Nómina, Configuración)          │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
 │                  CAPA DE SERVICIOS                       │
 │         (Lógica de Negocio - Reglas del Dominio)         │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Empleado  │  │Documento │  │Incidencia│  │ Nómina   ││
-│  │ Service  │  │ Service  │  │ Service  │  │ Service  ││
+│  │Auth      │  │Empleado  │  │Documento │  │Incidencia││
+│  │Service   │  │ Service  │  │ Service  │  │ Service  ││
 │  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │Pago      │  │Config.   │  │Auditoría │              │
+│  │Service   │  │ Service  │  │(transv.) │              │
+│  └──────────┘  └──────────┘  └──────────┘              │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
@@ -354,6 +359,10 @@ El Sistema de Gestión de Personal y Nómina se basa en el siguiente modelo conc
 │  │Empleado  │  │Documento │  │Incidencia│  │ Pago    ││
 │  │Repository│  │Repository│  │Repository│  │Repository││
 │  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │Config.   │  │Usuario   │  │(Base     │              │
+│  │Repository│  │Repository│  │Repository)│              │
+│  └──────────┘  └──────────┘  └──────────┘              │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
@@ -363,6 +372,16 @@ El Sistema de Gestión de Personal y Nómina se basa en el siguiente modelo conc
 │  │Empleado  │  │Documento │  │Incidencia│  │  Pago   ││
 │  │  Model   │  │  Model   │  │  Model   │  │  Model  ││
 │  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
+│  ┌──────────┐  ┌──────────┐                              │
+│  │Config.   │  │ Usuario  │                              │
+│  │  Model   │  │  Model   │                              │
+│  └──────────┘  └──────────┘                              │
+└────────────────────┬──────────────────────────────────────┘
+                     │
+┌────────────────────▼──────────────────────────────────────┐
+│      CAPA DE UTILIDADES Y SERVICIOS TRANSVERSALES        │
+│   (security, audit_logger, backup_manager, exporter,     │
+│    pdf_generator, document_manager, validators, helpers) │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐

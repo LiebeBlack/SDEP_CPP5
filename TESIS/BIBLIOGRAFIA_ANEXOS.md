@@ -6,32 +6,32 @@
 
 **Ingeniería de Software:**
 
-- Pressman, R. S. (2022). *Ingeniería de Software: Un Enfoque Práctico* (9na ed.). McGraw-Hill Education.
-- Sommerville, I. (2021). *Ingeniería de Software* (10ma ed.). Pearson Educación.
-- Beck, K., Beedle, M., Van Bennekum, A., Cockburn, M., Cunningham, W., ... & Thomas, D. (2020). *Manifiesto Ágil: Desarrollo Ágil de Software con Scrum*. Addison-Wesley Professional.
-- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (2021). *Patrones de Diseño: Elementos de Software Orientado a Objetos Reutilizables*. Addison-Wesley.
+- Pressman, R. S., & Maxim, B. R. (2019). *Software Engineering: A Practitioner's Approach* (9na ed.). McGraw-Hill Education.
+- Sommerville, I. (2015). *Software Engineering* (10ma ed.). Pearson.
+- Beck, K., Beedle, M., van Bennekum, A., Cockburn, A., Cunningham, W., Fowler, M., et al. (2001). *Manifesto for Agile Software Development*. https://agilemanifesto.org/
+- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley.
 
 **Sistemas de Información:**
 
-- Laudon, K. C., & Laudon, J. P. (2020). *Sistemas de Información Gerencial* (15ta ed.). Pearson Educación.
-- Kavanagh, M. J., & Thite, M. (2021). *Human Resource Management* (9na ed.). Cengage Learning.
-- Picciano, A. G. (2019). *Educational Technology: Planning for the Future*. Pearson.
+- Laudon, K. C., & Laudon, J. P. (2018). *Management Information Systems: Managing the Digital Firm* (15ta ed.). Pearson.
+- Johnson, R. D., Carlson, K. D., & Kavanagh, M. J. (Eds.). (2021). *Human Resource Information Systems: Basics, Applications, and Future Directions* (5ta ed.). SAGE Publications.
+- Picciano, A. G. (2011). *Educational Leadership and Planning for Technology* (5ta ed.). Pearson.
 
 **Bases de Datos:**
 
-- Date, C. J. (2020). *Introducción a los Sistemas de Bases de Datos* (8va ed.). Pearson Educación.
-- Elmasri, R., & Navathe, S. B. (2020). *Fundamentals of Database Systems* (7ma ed.). Pearson.
+- Date, C. J. (2003). *An Introduction to Database Systems* (8va ed.). Addison-Wesley.
+- Elmasri, R., & Navathe, S. B. (2015). *Fundamentals of Database Systems* (7ma ed.). Pearson.
 
 **Desarrollo de Software:**
 
-- Booch, G. (2019). *Object-Oriented Analysis and Design with Applications* (3ra ed.). Addison-Wesley.
-- Shneiderman, B., Plaisant, C., Hynes, M. S., & Cohen, M. S. (2021). *Designing the User Interface: Strategies for Effective Human-Computer Interaction* (6ta ed.). Pearson.
+- Booch, G. (2007). *Object-Oriented Analysis and Design with Applications* (3ra ed.). Addison-Wesley.
+- Shneiderman, B., Plaisant, C., Cohen, M. S., Jacobs, S. M., & Elmqvist, N. (2016). *Designing the User Interface: Strategies for Effective Human-Computer Interaction* (6ta ed.). Pearson.
 
 **Gestión de Recursos Humanos:**
 
-- Dessler, G. (2020). *Human Resource Management* (16ta ed.). Pearson Education.
-- Mathis, R. L., & Jackson, J. H. (2020). *Human Resource Management* (15ta ed.). Cengage Learning.
-- Guffey, M. E., & Loewy, D. (2022). *Business Communication: Process and Product* (10ma ed.). Cengage Learning.
+- Dessler, G. (2020). *Human Resource Management* (16ta ed.). Pearson.
+- Mathis, R. L., Jackson, J. H., Valentine, S. R., & Meglich, P. (2016). *Human Resource Management* (15ta ed.). Cengage Learning.
+- Guffey, M. E., & Loewy, D. (2021). *Business Communication: Process and Product* (10ma ed.). Cengage Learning.
 
 **Metodología de Investigación:**
 
@@ -41,27 +41,33 @@
 
 ### 6.1.2 Artículos Científicos
 
-**Sistemas de Gestión Educativa:**
+**Gestión Electrónica de Recursos Humanos:**
 
-- Smith, J., Johnson, A., & Williams, R. (2020). "HR Management Systems in Educational Institutions: A Comparative Study". *Journal of Educational Technology*, 15(3), 45-60. https://doi.org/10.1080/1056300.2020.1234567
+- Bondarouk, T. V., & Ruël, H. J. M. (2009). "Electronic Human Resource Management: Challenges in the Digital Era". *The International Journal of Human Resource Management*, 20(3), 505-514. https://doi.org/10.1080/09585190802707235
 
-- García, M., & Martínez, P. (2019). "Digital Transformation in Education Administration: Challenges and Opportunities". *International Journal of Educational Management*, 33(2), 234-250. https://doi.org/10.1108/IJEM-12-2018-0234
+**Sistemas ERP en Educación:**
 
-- Rodríguez, L. (2021). "Information Systems for Educational Management in Developing Countries: A Systematic Review". *Computers & Education*, 167, 104-120. https://doi.org/10.1016/j.compedu.2021.104120
+- Pollock, N., & Cornford, J. (2004). "ERP Systems and the University as a 'Unique' Organisation". *Information Technology & People*, 17(1), 31-52.
 
-**Desarrollo de Software Educativo:**
+**Transformación Digital en Educación:**
 
-- Pérez, A. (2020). "Experiences of Digitalization in Public Educational Institutions: A Case Study Approach". *Education and Information Technologies*, 10(2), 87-102.
+- Benavides, L. M. C., Tamayo Arias, J. A., Arango Serna, M. D., Branch Bedoya, J. W., & Burgos, D. (2020). "Digital Transformation in Higher Education Institutions: A Systematic Literature Review". *Sensors*, 20(11), 3291. https://doi.org/10.3390/s20113291
 
-- López, R., & Sánchez, M. (2019). "Low-Cost Educational Software Development: Strategies and Best Practices". *Journal of Computing in Higher Education*, 25(1), 33-50.
+**Toma de Decisiones Basada en Datos en Países en Desarrollo:**
 
-- Johnson, K., & Williams, R. (2018). "Administrative Process Automation in Educational Institutions: Impact on Service Quality". *British Journal of Educational Technology*, 49(4), 742-758.
+- Voogt, J., & Pieters, J. (2019). "Data-based Decision Making in Developing Countries: The Influence of System and Culture". *Journal of Professional Capital and Community*, 4(3), 260-268.
 
-**Sistemas de Información:**
+**Integración de TIC en Educación:**
 
-- Brown, C., & Green, T. (2020). "Open Source Software in Educational Institutions: Adoption and Implementation Patterns". *Information Systems Research*, 31(3), 267-285.
+- Pelgrum, W. J. (2001). "Obstacles to the Integration of ICT in Education: Results from a Worldwide Educational Assessment". *Computers & Education*, 37(2), 163-178. https://doi.org/10.1016/S0360-1315(01)00045-8
 
-- Davis, F. D. (2019). "User Acceptance of Information Technology: The Technology Acceptance Model (TAM)". *MIS Quarterly*, 13(3), 319-340.
+**Software de Código Abierto en Educación:**
+
+- Lakhan, S. E., & Jhunjhunwala, K. (2008). "Open Source Software in Education". *EDUCAUSE Quarterly*, 31(2), 32-40.
+
+**Aceptación de Tecnología:**
+
+- Davis, F. D. (1989). "Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology". *MIS Quarterly*, 13(3), 319-340. https://doi.org/10.2307/249008
 
 ### 6.1.3 Recursos Web y Documentación Técnica
 
@@ -75,13 +81,13 @@
 **Estándares y Normativas:**
 
 - ISO/IEC 25010:2011. (2011). *Systems and Software Engineering — Systems and Software Quality Requirements and Evaluation (SQuaRE)*. International Organization for Standardization.
-- IEEE 829-2008. (2008). *IEEE Standard for Software Requirements Specifications*. Institute of Electrical and Electronics Engineers.
+- IEEE 829-2008. (2008). *IEEE Standard for Software and System Test Documentation*. Institute of Electrical and Electronics Engineers.
 
 **Documentación de Desarrollo:**
 
 - Python Software Foundation. (2023). *PEP 8 -- Style Guide for Python Code*. https://peps.python.org/pep-0008/
-- Beck, K., et al. (2020). *Scrum Guide*. https://scrumguides.org/
-- Ambler, S. W. (2005). *Agile Modeling: Effective Practices for XP and RUP*. Wiley.
+- Schwaber, K., & Sutherland, J. (2020). *The Scrum Guide*. https://scrumguides.org/
+- Ambler, S. W. (2002). *Agile Modeling: Effective Practices for eXtreme Programming and the Unified Process*. Wiley.
 
 ### 6.1.4 Normativas Legales
 
@@ -99,11 +105,11 @@
 
 ### 6.1.5 Tesis y Trabajos de Grado
 
-- García, M. (2020). *Implementación de sistemas de gestión académica en instituciones de educación superior*. Tesis de Maestría, [Universidad].
-
-- Rodríguez, L. (2019). *Desarrollo de software para gestión de recursos humanos en el sector educativo*. Tesis de Doctorado, [Universidad].
-
-- Pérez, A. (2018). *Evaluación del impacto de sistemas de información en la eficiencia administrativa educativa*. Trabajo de Grado, [Universidad].
+> **Instrucción:** Completar esta sección con trabajos de grado y tesis reales, preferiblemente del repositorio institucional de la universidad, relacionados con sistemas de información, gestión de personal o nómina en el ámbito educativo. Cada entrada debe incluir autor, año, título, grado académico y universidad. Ejemplo de formato:
+>
+> - [Apellido, N.]. ([Año]). *[Título del trabajo de grado]*. [Trabajo de Grado/Maestría/Doctorado], [Nombre de la Universidad]. [Enlace al repositorio]
+>
+> Las referencias a trabajos de grado no verificados deben evitarse en la versión final de la tesis; solo se incluirán fuentes existentes y localizables.
 
 ## 6.2 ANEXOS
 
@@ -277,16 +283,22 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    INTERFAZ DE USUARIO                    │
-│              (CustomTkinter - GUI Moderna)                │
+│  (CustomTkinter - GUI Moderna: MainWindow, LoginWindow,    │
+│   Dashboard, Empleados, Documentos, Incidencias, Nómina,    │
+│   Configuración - temas claro/oscuro y atajos de teclado)  │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
 │                  CAPA DE SERVICIOS                       │
 │         (Lógica de Negocio - Reglas del Dominio)         │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Empleado  │  │Documento │  │Incidencia│  │ Nómina   ││
-│  │ Service  │  │ Service  │  │ Service  │  │ Service  ││
+│  │Auth      │  │Empleado  │  │Documento │  │Incidencia││
+│  │Service   │  │ Service  │  │ Service  │  │ Service  ││
 │  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │Pago      │  │Config.   │  │Auditoría │              │
+│  │Service   │  │ Service  │  │(transv.) │              │
+│  └──────────┘  └──────────┘  └──────────┘              │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
@@ -296,6 +308,10 @@
 │  │Empleado  │  │Documento │  │Incidencia│  │ Pago    ││
 │  │Repository│  │Repository│  │Repository│  │Repository││
 │  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │Config.   │  │Usuario   │  │(Base     │              │
+│  │Repository│  │Repository│  │Repository)│              │
+│  └──────────┘  └──────────┘  └──────────┘              │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
@@ -305,37 +321,57 @@
 │  │Empleado  │  │Documento │  │Incidencia│  │  Pago   ││
 │  │  Model   │  │  Model   │  │  Model   │  │  Model  ││
 │  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
+│  ┌──────────┐  ┌──────────┐                              │
+│  │Config.   │  │ Usuario  │                              │
+│  │  Model   │  │  Model   │                              │
+│  └──────────┘  └──────────┘                              │
+└────────────────────┬──────────────────────────────────────┘
+                     │
+┌────────────────────▼──────────────────────────────────────┐
+│      CAPA DE UTILIDADES Y SERVICIOS TRANSVERSALES        │
+│   (security, audit_logger, backup_manager, exporter,     │
+│    pdf_generator, document_manager, validators, helpers) │
 └────────────────────┬──────────────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────────────┐
 │               BASE DE DATOS (SQLite)                       │
-│         (Almacenamiento Persistente de Datos)             │
+│  (6 tablas: empleados, documentos, incidencias, pagos,     │
+│   configuraciones, usuarios)                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Diagrama 2: Modelo Entidad-Relación Simplificado**
+**Diagrama 2: Modelo Entidad-Relación**
 
 ```
+┌──────────────┐ 1      N ┌──────────────┐
+│   Empleado    ├────────►│  Documento    │
+└──────┬───────┘          └──────────────┘
+       │ 1
+       │
+       ├──► N ┌──────────────┐
+       │      │  Incidencia    │
+       │      └──────────────┘
+       │
+       └──► N ┌──────────────┐
+              │     Pago       │
+              └──────────────┘
+
+┌──────────────┐    1     N ┌──────────────┐
+│  Configuracion├──────────►│ (parámetros  │
+└──────────────┘            │  del sistema)│
+                            └──────────────┘
+
 ┌──────────────┐
-│   Empleado    │
-└──────┬───────┘
-       │
-       ├──┐
-       │ 1  │
-       ├──┘
-       │
-       ├──►┌──────────────┐
-       │   │  Documento    │
-       │   └──────────────┘
-       │
-       ├──►┌──────────────┐
-       │   │  Incidencia    │
-       │   └──────────────┘
-       │
-       └──►┌──────────────┐
-           │     Pago       │
-           └──────────────┘
+│    Usuario    │  (usuarios del sistema con rol)
+└──────────────┘
 ```
+
+**Relaciones principales:**
+- `empleados 1 ── N documentos`: un empleado tiene muchos documentos
+- `empleados 1 ── N incidencias`: un empleado registra muchas incidencias
+- `empleados 1 ── N pagos`: un empleado recibe muchos pagos (nóminas)
+- `configuraciones 1 ── N parámetros`: los parámetros configurables del sistema
+- `usuarios`: entidad independiente para la autenticación y el control de acceso por rol
 
 **Diagrama 3: Flujo de Generación de Nómina**
 
@@ -354,7 +390,7 @@
        │
        ├──► Calcular salario proporcional
        │
-       ├──► Calcular deducciones
+       ├──► Calcular deducciones (configurables)
        │
        ├──► Calcular salario neto
        │
@@ -363,48 +399,166 @@
        └──► Fin
 ```
 
+**Diagrama 4: Flujo de Autenticación y Control de Acceso**
+
+```
+┌──────────────┐
+│  Inicio       │
+└──────┬───────┘
+       │
+       ├──► Ingresar usuario y contraseña
+       │
+       ├──► Verificar credenciales (PBKDF2-HMAC-SHA256)
+       │
+       ├──► ¿Credenciales válidas?
+       │     ├──► No: registrar intento fallido y rechazar acceso
+       │     └──► Sí
+       │
+       ├──► Obtener rol del usuario
+       │
+       ├──► Verificar permiso del rol para el módulo solicitado
+       │
+       ├──► Registrar evento de auditoría (inicio de sesión)
+       │
+       ├──► Acceder al módulo
+       │
+       └──► Fin
+```
+
+**Diagrama 5: Flujo de Respaldo de la Base de Datos**
+
+```
+┌──────────────┐
+│  Inicio       │
+└──────┬───────┘
+       │
+       ├──► Verificar políticas de retención configuradas
+       │
+       ├──► Crear copia de la base de datos (timestamp único)
+       │
+       ├──► Registrar evento de auditoría (respaldo creado)
+       │
+       ├──► Eliminar respaldos que superan la política de retención
+       │
+       ├──► Restauración (cuando se solicita): validar archivo y reemplazar
+       │
+       └──► Fin
+```
+
 ### 6.2.5 Anexo 5: Manual de Usuario Preliminar
 
-**Instalación:**
+> El manual completo y actualizado del sistema se encuentra en el archivo `GUIA_USUARIO.md` del repositorio (versión 1.0.4). Este anexo presenta una versión preliminar resumida, organizada por módulos, tal como se entregará a las instituciones piloto.
 
-1. Requisitos del sistema:
-   - Python 3.10 o superior
-   - 4GB RAM mínimo
-   - 500MB espacio en disco
+#### 1. Requisitos e Instalación
 
-2. Instalación:
-   ```bash
-   pip install -r requirements.txt
-   python src/main.py
-   ```
+**Requisitos del sistema:**
+- Sistema operativo: Windows 10/11, Linux o macOS
+- Python 3.10 o superior
+- 4 GB de RAM recomendados
+- 500 MB de espacio en disco
 
-**Primeros Pasos:**
+**Instalación desde el código fuente:**
+```bash
+pip install -r requirements.txt
+python src/main.py
+```
 
-1. Configuración inicial:
-   - Vaya a la sección "Configuración"
-   - Complete los datos de su institución
-   - Configure los parámetros de nómina
+**Instalación del ejecutable (Windows):**
+1. Ejecutar el instalador generado con `python build.py` (PyInstaller)
+2. Seguir el asistente de instalación
+3. Iniciar el sistema desde el acceso directo creado
 
-2. Registro de empleados:
-   - Vaya a la sección "Empleados"
-   - Haga clic en "Nuevo Empleado"
-   - Complete los datos requeridos
+#### 2. Inicio de Sesión
 
-3. Procesamiento de nómina:
-   - Vaya a la sección "Nómina"
-   - Seleccione el periodo
-   - Haga clic en "Generar Nómina"
+Al iniciar el sistema se muestra la ventana de autenticación:
+1. Ingresar el **usuario** y la **contraseña** proporcionados por el administrador
+2. Pulsar **Iniciar sesión** (o la tecla **Enter**)
 
-**Solución de Problemas:**
+**Roles disponibles:**
 
-**Problema:** El sistema no inicia
-**Solución:** Verifique que Python 3.10+ esté instalado y las dependencias estén actualizadas
+| Rol | Permisos |
+|-----|----------|
+| Administrador | Acceso a todos los módulos, configuración, respaldos, auditoría y gestión de usuarios |
+| Gerente | Empleados, documentos, incidencias, nómina y reportes |
+| Usuario | Empleados, documentos e incidencias (consulta y registro) |
+| Consulta | Solo lectura de empleados y documentos |
 
-**Problema:** Error de base de datos
-**Solución:** Elimine el archivo `personal_management.db` y reinicie el sistema
+#### 3. Panel de Control (Dashboard)
 
-**Problema:** Interfaz no responde
-**Solución:** Cierre y reinicie la aplicación
+El panel principal muestra estadísticas en tiempo real: total de empleados, empleados por tipo, incidencias pendientes y pagos del periodo. Las **tarjetas de estadísticas son navegables**: un clic lleva al módulo correspondiente.
+
+#### 4. Gestión de Empleados
+
+1. Seleccionar el módulo **Empleados** (atajo `Ctrl+1`)
+2. **Registrar:** pulsar **Nuevo Empleado** y completar el formulario organizado en pestañas (datos personales, físicos, de contacto y laborales); la cédula se valida como única
+3. **Buscar:** escribir nombre, apellido o cédula en el buscador (`Ctrl+F`) o aplicar filtros por tipo y departamento
+4. **Editar:** seleccionar un empleado y pulsar **Editar**
+5. **Desactivar:** evita que el empleado aparezca en nóminas futuras sin eliminar su historial
+6. **Ficha PDF:** genera una ficha del empleado en formato PDF
+7. **Exportar:** exporta el listado de empleados
+
+#### 5. Gestión Documental
+
+1. Seleccionar el módulo **Documentos** (atajo `Ctrl+2`)
+2. **Cargar documento:** seleccionar el empleado, el tipo de documento (cédula, título, certificado, reposo, etc.) y el archivo (PDF o imagen)
+3. **Control de vencimientos:** el sistema identifica documentos vencidos y próximos a vencer
+4. **Ver/descargar:** abrir el documento original o la vista previa
+5. **Exportar:** descargar los documentos del empleado
+
+#### 6. Gestión de Incidencias
+
+1. Seleccionar el módulo **Incidencias** (atajo `Ctrl+3`)
+2. **Registrar incidencia:** empleado, tipo (permiso, reposo médico, ausencia, vacaciones, licencia), fechas, días y motivo
+3. **Flujo de aprobación:** la incidencia pasa por los estados *pendiente → aprobado/rechazado → completado*; el aprobador registra su nombre y comentario
+4. **Incidencias vigentes:** el sistema muestra las incidencias activas y su impacto en la nómina
+
+#### 7. Gestión de Nómina
+
+1. Seleccionar el módulo **Nómina** (atajo `Ctrl+4`)
+2. **Generar nómina:** seleccionar el periodo (inicio y fin) y pulsar **Generar** (`F5` para actualizar)
+3. El sistema calcula automáticamente: días trabajados (descontando incidencias), salario proporcional, deducciones configurables (seguro, pensión) y salario neto
+4. **Ver pagos:** consultar el detalle de cada pago generado
+5. **Recibo de pago (PDF):** generar el recibo individual
+6. **Planilla (PDF):** generar la planilla consolidada del periodo
+7. **Exportar pagos:** exportar el detalle de pagos
+8. **Marcar como realizados:** registrar los pagos efectivamente entregados
+
+#### 8. Configuración del Sistema
+
+1. Seleccionar el módulo **Configuración** (atajo `Ctrl+5`)
+2. **Configuración general:** datos de la institución (nombre, dirección, contacto), parámetros de identificación, logo
+3. **Configuración de nómina:** porcentajes de deducciones (seguro, pensión), salario mínimo de referencia
+4. **Recursos humanos:** días de vacaciones anuales, horas laborales semanales, políticas de incidencias
+5. **Cambiar contraseña:** actualizar la contraseña del usuario autenticado
+6. **Apariencia:** alternar entre tema **oscuro** y **claro** (la preferencia se guarda)
+7. **Ayuda y Acerca de:** guía rápida del sistema e información de versión
+8. **Visor de auditoría (solo administradores):** consultar el registro de acciones críticas del sistema
+
+#### 9. Respaldos y Exportaciones
+
+- **Respaldos:** el sistema permite generar respaldos de la base de datos y restaurar respaldos existentes (con políticas de retención configurables)
+- **Exportaciones:** empleados, documentos, incidencias, pagos y reportes pueden exportarse en formatos abiertos
+
+#### 10. Atajos de Teclado
+
+| Atajo | Acción |
+|-------|--------|
+| `Ctrl+1` … `Ctrl+6` | Ir a Empleados, Documentos, Incidencias, Nómina, Configuración, Panel |
+| `Ctrl+N` | Nuevo registro en el módulo activo |
+| `Ctrl+F` | Enfocar la búsqueda |
+| `Ctrl+S` | Guardar el formulario activo |
+| `F5` | Actualizar / generar nómina |
+| `Esc` | Cerrar diálogos / limpiar selección |
+
+#### 11. Solución de Problemas
+
+| Problema | Solución |
+|----------|----------|
+| El sistema no inicia | Verificar Python 3.10+ y dependencias instaladas (`pip install -r requirements.txt`) |
+| Error de base de datos | Restaurar el respaldo más reciente desde la configuración; no eliminar el archivo de datos sin respaldo previo |
+| Interfaz no responde | Cerrar y reiniciar la aplicación |
+| Contraseña olvidada | El administrador debe restablecer el acceso desde la configuración de usuarios |
+| Documentos no cargados | Verificar extensiones permitidas (PDF, JPG, PNG) y tamaño máximo (50 MB) |
 
 ### 6.2.6 Anexo 6: Código Fuente del Sistema
 
@@ -418,7 +572,9 @@ SDEP_CPP5/
 │   │   └── settings.py
 │   ├── gui/
 │   │   ├── main_window.py
-│   │   └── frames.py
+│   │   ├── frames.py
+│   │   ├── login_window.py
+│   │   └── theme.py
 │   ├── models/
 │   │   ├── base.py
 │   │   ├── enums.py
@@ -426,15 +582,18 @@ SDEP_CPP5/
 │   │   ├── documento.py
 │   │   ├── incidencia.py
 │   │   ├── pago.py
-│   │   └── configuracion.py
+│   │   ├── configuracion.py
+│   │   └── usuario.py
 │   ├── repositories/
 │   │   ├── base_repository.py
 │   │   ├── empleado_repository.py
 │   │   ├── documento_repository.py
 │   │   ├── incidencia_repository.py
 │   │   ├── pago_repository.py
-│   │   └── configuracion_repository.py
+│   │   ├── configuracion_repository.py
+│   │   └── usuario_repository.py
 │   ├── services/
+│   │   ├── auth_service.py
 │   │   ├── empleado_service.py
 │   │   ├── documento_service.py
 │   │   ├── incidencia_service.py
@@ -443,12 +602,20 @@ SDEP_CPP5/
 │   ├── utils/
 │   │   ├── helpers.py
 │   │   ├── validators.py
+│   │   ├── security.py
+│   │   ├── audit_logger.py
+│   │   ├── backup_manager.py
 │   │   ├── document_manager.py
+│   │   ├── exporter.py
 │   │   └── pdf_generator.py
 │   └── main.py
+├── tests/                     # 281 pruebas automatizadas
 ├── requirements.txt
 ├── pyproject.toml
-└── README.md
+├── README.md
+├── DOCUMENTACION_TECNICA.md
+├── GUIA_USUARIO.md
+└── TESIS/                     # Documentos académicos
 ```
 
 **Líneas de Código Clave:**
@@ -488,64 +655,107 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         ).first()
 ```
 
+**Ejemplo de Seguridad (hash de contraseñas, security.py):**
+```python
+class SecurityValidator:
+    PBKDF2_ITERATIONS = 200_000
+    PBKDF2_SALT_BYTES = 16
+
+    @classmethod
+    def hash_password(cls, password: str) -> str:
+        salt = secrets.token_bytes(cls.PBKDF2_SALT_BYTES)
+        derived = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), salt,
+            cls.PBKDF2_ITERATIONS,
+        )
+        return f"pbkdf2${cls.PBKDF2_ITERATIONS}${salt.hex()}${derived.hex()}"
+
+    @classmethod
+    def verify_password(cls, password: str, password_hash: str) -> bool:
+        # Comparación en tiempo constante con secrets.compare_digest
+        ...
+```
+
+**Ejemplo de Autenticación (auth_service.py):**
+```python
+class AuthService:
+    def autenticar(self, usuario: str, contrasena: str) -> Usuario:
+        usuario_bd = self.usuario_repository.get_by_username(usuario)
+        if not usuario_bd or not security_validator.verify_password(
+            contrasena, usuario_bd.password_hash):
+            raise AuthenticationError("Credenciales inválidas")
+        return usuario_bd
+```
+
+> **Nota:** El código fuente completo del sistema se encuentra en el repositorio del proyecto (`src/`), con 281 pruebas automatizadas (Anexo 7).
+
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
-**Resumen de Cobertura de Pruebas:**
+**Resumen de Cobertura de Pruebas (medido con `pytest --cov=src` sobre el repositorio, versión 1.0.4):**
 
 | Módulo | Líneas de Código | Líneas Cubiertas | % Cobertura |
 |--------|----------------|----------------|------------|
-| models | 450 | 395 | 87.8% |
-| repositories | 680 | 605 | 89.0% |
-| services | 920 | 780 | 84.8% |
-| utils | 340 | 310 | 91.2% |
-| gui | 1800 | 1520 | 84.4% |
-| **Total** | **4190** | **3610** | **86.2%** |
+| models | 393 | 363 | 92% |
+| repositories | 678 | 326 | 48% |
+| services | 815 | 608 | 75% |
+| utils | 1442 | 1167 | 81% |
+| config | 265 | 154 | 58% |
+| gui | 3025 | 330 | 11% |
+| main.py | 220 | 0 | 0% |
+| **Total** | **6841** | **2951** | **43%** |
 
-**Resultados de Pruebas Unitarias:**
-- Total de pruebas: 445
-- Pruebas pasadas: 434
-- Pruebas falladas: 11 (todas corregidas)
-- Tiempo total de ejecución: 4.5 minutos
+**Cobertura de la lógica de negocio** (modelos, repositorios, servicios, utilidades y configuración; excluye la capa gráfica y el punto de entrada): **73%**
 
-**Resultados de Pruebas de Integración:**
-- Escenarios probados: 8
-- Escenarios exitosos: 8
-- Problemas encontrados: 6 (todos corregidos)
+**Resultados de Pruebas Automatizadas:**
+- Total de pruebas: 281
+- Pruebas pasadas: 281 (100%)
+- Pruebas falladas: 0
+- Suite: unitarias, de integración, de seguridad, de pagos, de respaldos y de migraciones
+
+**Distribución por módulo de pruebas:**
+- tests/test_empleados.py, test_documentos.py, test_incidencias.py, test_pagos.py (flujos de dominio)
+- tests/test_auth.py (autenticación, roles y permisos)
+- tests/test_security.py, test_validators.py, test_helpers.py (seguridad, validaciones y utilidades)
+- tests/test_document_manager.py (gestión documental)
+- tests/test_theme.py (paletas de apariencia claro/oscuro)
+- tests/test_backups.py (respaldo y restauración)
+- tests/test_configuracion.py, test_migraciones.py (configuración y esquema)
+
+> **Nota:** Las métricas de rendimiento y las pruebas de carga de la sección 4.3.3 se incorporarán a este anexo al completarse la implementación piloto en condiciones reales.
 
 ### 6.2.8 Anexo 8: Resultados de Encuestas de Satisfacción
 
-**Estadísticas Descriptivas:**
+> **Instrucción:** Completar este anexo con los resultados reales de las encuestas de satisfacción aplicadas durante la implementación piloto (instrumento del Anexo 2, metodología del Capítulo III sección 3.4.1.3). Incluir el número de encuestados y el período de aplicación.
+
+**Estadísticas Descriptivas (completar):**
 
 | Dimensión | Media | Desviación | Mínimo | Máximo |
 |-----------|------|------------|--------|--------|
-| Facilidad de aprendizaje | 4.1 | 0.6 | 3.0 | 5.0 |
-| Eficiencia de uso | 4.3 | 0.5 | 3.5 | 5.0 |
-| Memorabilidad | 3.9 | 0.7 | 2.5 | 5.0 |
-| Bajo error | 4.2 | 0.5 | 3.0 | 5.0 |
-| Satisfacción | 4.4 | 0.4 | 3.5 | 5.0 |
+| Facilidad de aprendizaje | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Eficiencia de uso | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Memorabilidad | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Bajo error | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Satisfacción | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
 
-**Distribución de Respuestas:**
+**Distribución de Respuestas (completar):**
 
 | Puntuación | Frecuencia | Porcentaje |
 |-----------|-----------|------------|
-| 1 | 0 | 0% |
-| 2 | 3 | 7% |
-| 3 | 8 | 19% |
-| 4 | 18 | 43% |
-| 5 | 13 | 31% |
+| 1 | **[dato real del piloto]** | **[dato real del piloto]**% |
+| 2 | **[dato real del piloto]** | **[dato real del piloto]**% |
+| 3 | **[dato real del piloto]** | **[dato real del piloto]**% |
+| 4 | **[dato real del piloto]** | **[dato real del piloto]**% |
+| 5 | **[dato real del piloto]** | **[dato real del piloto]**% |
 
-**Comentarios Más Frecuentes:**
+**Comentarios Más Frecuentes (completar con respuestas textuales reales):**
 
 **Positivos:**
-- "El sistema es muy intuitivo y fácil de usar"
-- "El cálculo automático de nómina ahorra mucho tiempo"
-- "La búsqueda de información es instantánea"
-- "Los reportes son muy útiles"
+- **[dato real del piloto]**
+- **[dato real del piloto]**
 
 **Negativos/Mejoras:**
-- "Necesitaría más opciones de reportes personalizados"
-- "Sería útil tener una versión móvil"
-- "Algunas funciones requieren más pasos de los necesarios"
+- **[dato real del piloto]**
+- **[dato real del piloto]**
 
 ### 6.2.9 Anexo 9: Cronograma Detallado de Actividades
 
@@ -563,8 +773,8 @@ class EmpleadoRepository(BaseRepository[Empleado]):
 | 27-28 | Integración de módulos | Investigador | Completado |
 | 29-30 | Pruebas unitarias | Investigador | Completado |
 | 31-32 | Pruebas de integración | Investigador | Completado |
-| 33-34 | Pruebas de usabilidad | Investigador + Usuarios | Completado |
-| 35-36 | Implementación piloto | Investigador + Instituciones | Completado |
+| 33-34 | Pruebas de usabilidad | Investigador + Usuarios | Pendiente (resultados por documentar) |
+| 35-36 | Implementación piloto | Investigador + Instituciones | Pendiente (resultados por documentar) |
 | 37-38 | Documentación final | Investigador | Completado |
 | 39-40 | Redacción de tesis | Investigador | Completado |
 
@@ -588,13 +798,14 @@ class EmpleadoRepository(BaseRepository[Empleado]):
 | Tiempo del investigador | $0 | Propio (no remunerado) |
 | Equipos de desarrollo | $0 | Existente |
 | Software de desarrollo | $0 | Código abierto |
-| Materiales de oficina | $80 | Investigador |
+| Material de oficina | $50 | Investigador |
+| Impresión de documentación | $30 | Investigador |
 | Transporte para visitas | $500 | Investigador |
 | **Total Desarrollo** | **$580** | **Costo total del proyecto** |
 
 ---
 
-## 6.3 CIERE
+## 6.3 CIERRE
 
 Esta tesis ha presentado el desarrollo e implementación del Sistema de Gestión de Personal y Nómina para instituciones educativas, demostrando que es posible desarrollar soluciones tecnológicas de alta calidad con recursos limitados mediante el uso de tecnologías de código abierto y metodologías de desarrollo apropiadas.
 

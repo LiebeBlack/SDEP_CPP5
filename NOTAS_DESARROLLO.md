@@ -258,18 +258,24 @@ pylint src/
 ### Técnicas
 
 1. **Base de Datos**
-   - Soporte para PostgreSQL/MySQL
-   - Migraciones automáticas con Alembic
+   - SQLite como motor persistente (con directorio de datos configurable)
+   - Migraciones ligeras e idempotentes de esquema (`migrar_columnas`),
+     cubiertas por `tests/test_migraciones.py`
+   - PostgreSQL/MySQL y migraciones con Alembic quedan como trabajo
+     futuro para despliegues multi-usuario
 
 2. **Performance**
-   - Caching de consultas
-   - Indexación optimizada
-   - Lazy loading mejorado
+   - Índices en las consultas frecuentes (búsqueda por cédula, nombre y periodo)
+   - Caching de consultas y lazy loading quedan como mejoras pendientes
+     para grandes volúmenes de datos
 
 3. **Testing**
-   - Pruebas de integración
-   - Pruebas E2E
-   - Cobertura aumentada
+   - **281 pruebas automatizadas** (unitarias y de integración), todas
+     exitosas
+   - Cobertura de código: **43% total** y **73% en la lógica de negocio**
+     (modelos, repositorios, servicios y utilidades)
+   - Pruebas E2E de la interfaz gráfica quedan como trabajo futuro
+     (requieren entorno con pantalla)
 
 ## Mantenimiento
 
@@ -300,9 +306,10 @@ pylint src/
    - Verificar permisos
 
 2. **Error de base de datos**
-   - Eliminar archivo .db
+   - Restaurar el respaldo más reciente desde la configuración
    - Reiniciar aplicación
    - Verificar espacio en disco
+   - Solo como último recurso (y tras respaldar), eliminar el archivo .db
 
 3. **Problemas con GUI**
    - Verificar CustomTkinter instalado

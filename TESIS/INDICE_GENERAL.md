@@ -2,6 +2,30 @@
 
 ## TESIS COMPLETA: SISTEMA DE GESTIÓN DE PERSONAL Y NÓMINA PARA INSTITUCIONES EDUCATIVAS
 
+---
+
+## RESUMEN
+
+La presente investigación tuvo como objetivo diseñar, desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas, orientado a optimizar los procesos administrativos, garantizar la precisión en los cálculos financieros, facilitar el control documental y proporcionar herramientas para la toma de decisiones basada en datos, utilizando tecnologías de información accesibles y sostenibles.
+
+El sistema fue desarrollado con una arquitectura de capas modular (presentación, servicios, repositorios, modelos y utilidades transversales) utilizando Python, SQLAlchemy y CustomTkinter, con licencia de código abierto. Incorpora módulos funcionales de empleados, documentos, incidencias, nómina y configuración, así como autenticación con roles, auditoría, respaldos, exportación y generación de documentos oficiales en PDF. La calidad del software está respaldada por una suite de **281 pruebas automatizadas** que se ejecutan exitosamente, con una cobertura de código del **43%** total y del **73% en la lógica de negocio** (modelos, repositorios, servicios y utilidades).
+
+La metodología combinó la investigación aplicada con el desarrollo ágil y la investigación-acción, empleando instrumentos de recolección de datos definidos y validados (entrevistas, observación directa, cuestionarios de satisfacción y protocolos de usabilidad). El impacto cuantitativo y cualitativo del sistema en la eficiencia administrativa se evaluará mediante una implementación piloto en 3-5 instituciones educativas, cuyos resultados se incorporarán al capítulo de resultados conforme a la metodología establecida.
+
+**Palabras clave:** sistema de gestión de personal, nómina, instituciones educativas, ingeniería de software, arquitectura modular, tecnologías de código abierto, eficiencia administrativa.
+
+## ABSTRACT
+
+The present research aimed to design, develop and implement a comprehensive personnel and payroll management system for educational institutions, oriented to optimize administrative processes, ensure accuracy in financial calculations, facilitate document control and provide tools for data-driven decision making, using accessible and sustainable information technologies.
+
+The system was developed with a modular layered architecture (presentation, services, repositories, models and cross-cutting utilities) using Python, SQLAlchemy and CustomTkinter, under an open-source license. It includes functional modules for employees, documents, incidents, payroll and configuration, as well as role-based authentication, auditing, backups, export and official PDF document generation. Software quality is supported by a suite of **281 automated tests** that run successfully, with **43%** total code coverage and **73%** coverage of the business logic (models, repositories, services and utilities).
+
+The methodology combined applied research with agile development and action research, using defined and validated data collection instruments (interviews, direct observation, satisfaction questionnaires and usability protocols). The quantitative and qualitative impact of the system on administrative efficiency will be assessed through a pilot implementation in 3-5 educational institutions, whose results will be incorporated into the results chapter according to the established methodology.
+
+**Keywords:** personnel management system, payroll, educational institutions, software engineering, modular architecture, open-source technologies, administrative efficiency.
+
+---
+
 ## DOCUMENTOS CREADOS
 
 ### 1. PROYECTO SOCIAL TECNOLÓGICO
@@ -229,14 +253,14 @@ El código fuente del sistema está ubicado en la raíz del proyecto:
 ```
 SDEP_CPP5/
 ├── src/                          # Código fuente principal
-│   ├── config/                   # Configuración
-│   ├── gui/                     # Interfaz gráfica
-│   ├── models/                  # Modelos de datos
+│   ├── config/                   # Configuración (settings, database)
+│   ├── gui/                     # Interfaz gráfica (main_window, frames, login_window, theme)
+│   ├── models/                  # Modelos de datos (empleado, documento, incidencia, pago, configuracion, usuario)
 │   ├── repositories/            # Acceso a datos
-│   ├── services/                # Lógica de negocio
-│   ├── utils/                   # Utilidades
+│   ├── services/                # Lógica de negocio (incluye auth_service)
+│   ├── utils/                   # Utilidades (security, audit_logger, backup_manager, exporter, pdf_generator)
 │   └── main.py                 # Punto de entrada
-├── tests/                       # Pruebas unitarias
+├── tests/                       # 281 pruebas automatizadas
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias de desarrollo
 ├── pyproject.toml             # Configuración del proyecto
@@ -285,9 +309,9 @@ SDEP_CPP5/
 
 Esta tesis presenta el desarrollo e implementación de un Sistema de Gestión de Personal y Nómina para instituciones educativas utilizando tecnologías de código abierto. El proyecto surgió como respuesta a la ineficiencia en los procesos administrativos manuales que enfrentan muchas instituciones educativas, particularmente aquellas con recursos limitados.
 
-El sistema desarrollado implementa módulos completos para gestión de empleados, documentos, incidencias y nómina, con interfaz gráfica moderna y funcionalidades de reportes y generación de documentos. La implementación piloto en 4 instituciones educativas demostró mejoras significativas: reducción del 85% en tiempos de procesamiento, reducción del 88% en tasas de error, y mejora del 57% en satisfacción de usuarios.
+El sistema desarrollado implementa módulos completos para gestión de empleados, documentos, incidencias y nómina, además de autenticación con roles, auditoría, respaldos, exportación y generación de documentos oficiales en PDF, con interfaz gráfica moderna (temas claro y oscuro) y atajos de teclado. La calidad del software está verificada por una suite de **281 pruebas automatizadas** que se ejecutan exitosamente, con **43% de cobertura total** y **73% de cobertura en la lógica de negocio** (modelos, servicios, repositorios y utilidades).
 
-La metodología combinó desarrollo de software ágil con investigación-acción, permitiendo un desarrollo iterativo con retroalimentación continua de usuarios. Todas las hipótesis planteadas fueron validadas con evidencia empírica, y el sistema se evaluó como técnicamente sólido, altamente usable, y efectivo para mejorar la eficiencia administrativa.
+La metodología combinó desarrollo de software ágil con investigación-acción, permitiendo un desarrollo iterativo con retroalimentación continua de usuarios. El impacto en eficiencia administrativa (reducción de tiempos de procesamiento, tasas de error y satisfacción de usuarios) se evaluará con las mediciones pre/post de la implementación piloto en 3-5 instituciones educativas, siguiendo la metodología del Capítulo III; las tablas correspondientes del Capítulo IV están definidas para incorporar esa evidencia empírica real.
 
 El proyecto contribuye al campo de los sistemas de información educativa, proporcionando evidencia empírica sobre el impacto de sistemas de gestión, identificando factores de éxito para implementación tecnológica en contextos educativos, y desarrollando una solución tecnológica que puede servir como modelo para futuros proyectos similares.
 
@@ -297,3 +321,43 @@ El proyecto contribuye al campo de los sistemas de información educativa, propo
 **Autor:** [Nombre del estudiante]
 **Institución:** [Nombre de la institución]
 **Versión:** 1.0
+
+## LISTA DE VERIFICACIÓN: DATOS PENDIENTES DE PERSONALIZACIÓN
+
+Antes de la presentación final, completar los siguientes datos personales e institucionales en los documentos de la tesis (todos están marcados con corchetes `[...]` en los archivos):
+
+### Datos del autor y del tutor (ANTEPROYECTO_TESIS.md, PROYECTO_SOCIAL_TECNOLOGICO.md, CAPITULO_V_CONCLUSIONES.md, BIBLIOGRAFIA_ANEXOS.md, INDICE_GENERAL.md)
+
+- [ ] Nombre completo del estudiante
+- [ ] Número de cédula de identidad
+- [ ] Carrera e institución educativa
+- [ ] Semestre y correo electrónico
+- [ ] Nombre, título y especialidad del tutor académico
+- [ ] Facultad, sede y línea de investigación
+- [ ] Firmas del autor, tutor, coordinador de carrera y director de facultad
+
+### Datos institucionales y geográficos
+
+- [ ] Nombre de la institución y de la universidad
+- [ ] Ciudad y país (usados en las referencias a normativas legales de `[País]`)
+- [ ] Fechas (inicio, finalización, presentación y aprobación)
+- [ ] Lugar de presentación
+
+### Antecedentes y referencias
+
+- [ ] Completar los antecedentes locales del Capítulo II (sección 2.2.3) con casos reales de la región
+- [ ] Completar la sección de tesis y trabajos de grado de BIBLIOGRAFIA_ANEXOS.md (sección 6.1.5) con trabajos reales del repositorio institucional
+- [ ] Verificar las normativas legales específicas del país (protección de datos, código del trabajo, ley orgánica de educación)
+
+### Datos de la implementación piloto (Capítulo IV, secciones 4.4 a 4.7, y Anexos 8 y 9)
+
+- [ ] Instituciones participantes (3-5) y su descripción
+- [ ] Número de usuarios participantes y distribución por rol
+- [ ] Resultados de pruebas de usabilidad (tiempos, tasas de éxito, satisfacción)
+- [ ] Resultados de encuestas de satisfacción (Anexo 8)
+- [ ] Métricas de impacto pre/post (tiempos, tasas de error, satisfacción laboral)
+- [ ] Resultados de pruebas de rendimiento (sección 4.3.3)
+- [ ] Análisis estadístico de las mejoras observadas (Capítulo III, sección 3.6.1.2)
+- [ ] Resultados cualitativos (feedback de usuarios, observaciones, lecciones aprendidas)
+
+Todos los marcadores `[dato real del piloto]` del Capítulo IV y los Anexos deben reemplazarse por los valores medidos en la implementación real.

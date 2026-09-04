@@ -306,13 +306,54 @@ def silenciar_errores_fondo(root) -> None:
         pass
 
 
+def configurar_report_callback_exception(root) -> None:
+    """
+    Muestra y registra los errores que ocurren dentro de callbacks Tk.
+
+    Sin este manejador, una excepción dentro de un callback (botón, after,
+    evento) solo se imprime en la consola y la ventana puede quedar en
+    negro o congelada sin explicación. Con él, el error se registra en la
+    auditoría, se imprime y se muestra al usuario, de modo que nunca hay
+    un fallo silencioso.
+    """
+    try:
+        def _manejador(tipo, valor, tb):
+            try:
+                from src.utils.audit_logger import get_audit_logger
+                audit = get_audit_logger()
+                if audit:
+                    audit.log_error(valor, context={"operation": "callback_interfaz"})
+            except Exception:
+                pass
+            try:
+                import traceback
+                traceback.print_exception(tipo, valor, tb)
+            except Exception:
+                pass
+            try:
+                from tkinter import messagebox
+                messagebox.showerror(
+                    "Error de interfaz",
+                    f"Ocurrió un error en la interfaz:\n{valor}\n\n"
+                    "El error quedó registrado en la auditoría del sistema.",
+                )
+            except Exception:
+                pass
+
+        root.report_callback_exception = _manejador
+    except Exception:
+        pass
+
+
 def setup_ui_raiz(root) -> None:
     """
     Aplicación completa de apariencia al crear una ventana raíz:
-    estilos ttk, listbox de combos, escalado de CustomTkinter y
-    limpieza de errores de fondo de Tcl.
+    estilos ttk, listbox de combos, escalado de CustomTkinter,
+    limpieza de errores de fondo de Tcl y manejador de errores de
+    callbacks (nunca congelar en silencio).
     """
     enable_windows_dpi_awareness()
     configure_ttk_styles(root)
     aplicar_escalado_customtkinter(root)
     silenciar_errores_fondo(root)
+    configurar_report_callback_exception(root)

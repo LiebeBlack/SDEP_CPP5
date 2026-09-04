@@ -71,6 +71,8 @@ jobs:
             -v "$PWD:/work" -w /work \
             ubuntu:22.04 bash -c "
               set -e
+              # Sin esto, apt-get se cuelga en el prompt interactivo de tzdata
+              export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
               apt-get install -y -qq python3 python3-tk python3-pip
               python3 -m pip install -q -r requirements.txt pyinstaller
@@ -93,6 +95,8 @@ jobs:
             -v "$PWD/dist:/app" \
             ubuntu:22.04 bash -c "
               set -e
+              # Sin esto, apt-get se cuelga en el prompt interactivo de tzdata
+              export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
               apt-get install -y -qq xvfb xauth fonts-dejavu-core >/dev/null 2>&1
               SGP_BASE_DIR=/tmp/sgp_selftest xvfb-run -a /app/SistemaGestionPersonal/SistemaGestionPersonal --selftest
@@ -127,6 +131,8 @@ jobs:
             -v "$PWD/dist:/app" \
             debian:12-slim bash -c "
               set -e
+              # Sin esto, apt-get se cuelga en el prompt interactivo de tzdata
+              export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
               apt-get install -y -qq xvfb xauth fonts-dejavu-core >/dev/null 2>&1
               SGP_BASE_DIR=/tmp/sgp_selftest xvfb-run -a /app/SistemaGestionPersonal/SistemaGestionPersonal --selftest
@@ -139,6 +145,8 @@ jobs:
             -v "$PWD/dist:/app" \
             debian:13-slim bash -c "
               set -e
+              # Sin esto, apt-get se cuelga en el prompt interactivo de tzdata
+              export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
               apt-get install -y -qq xvfb xauth fonts-dejavu-core >/dev/null 2>&1
               SGP_BASE_DIR=/tmp/sgp_selftest xvfb-run -a /app/SistemaGestionPersonal/SistemaGestionPersonal --selftest

@@ -214,14 +214,19 @@ def configure_ttk_styles(root=None) -> None:
             darkcolor=COLORES["campo"],
         )
 
-        # Lista desplegable del Combobox (es un Listbox interno de Tk)
+        # Lista desplegable del Combobox (es un Listbox interno de Tk).
+        # IMPORTANTE: NO se configura la opción de fuente de esa lista
+        # (*TCombobox*Listbox.font): en Tk 8.6 la creación del desplegable
+        # falla con "expected integer but got UI" cuando la familia tiene
+        # un nombre compuesto como "Segoe UI", y el menú no llega a
+        # desplegarse nunca. El listbox hereda la fuente por defecto del
+        # tema, que es legible en ambos modos.
         for clave, valor in (
             ("*TCombobox*Listbox.background", COLORES["campo"]),
             ("*TCombobox*Listbox.foreground", COLORES["texto"]),
             ("*TCombobox*Listbox.selectBackground", COLORES["acento"]),
             ("*TCombobox*Listbox.selectForeground", "white"),
             ("*TCombobox*Listbox.borderWidth", "1"),
-            ("*TCombobox*Listbox.font", "Segoe UI 10"),
         ):
             try:
                 root.option_add(clave, valor)

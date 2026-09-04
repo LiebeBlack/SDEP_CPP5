@@ -11,6 +11,7 @@ import sys
 import webbrowser
 from typing import Optional, List
 from datetime import date
+import json
 
 from src.models import Empleado, EstadoIncidencia
 from src.utils.helpers import (
@@ -35,6 +36,105 @@ def _id_fila_seleccionada(tree) -> Optional[int]:
         return int(tags[0])
     except (TypeError, ValueError, IndexError):
         return None
+
+
+def _seleccionar_fila_click(tree, event) -> bool:
+    """
+    Selecciona la fila de un Treeview que está bajo el cursor.
+
+    El doble clic no siempre deja la fila seleccionada según la plataforma,
+    y el clic derecho tampoco. Esta función garantiza que la fila clicada
+    quede seleccionada para que los manejadores basados en tree.selection()
+    (detalles, edición, menú contextual) funcionen siempre.
+
+    Returns:
+        True si había una fila bajo el cursor
+    """
+    try:
+        item = tree.identify_row(event.y)
+    except Exception:
+        item = None
+    if not item:
+        return False
+    try:
+        tree.selection_set(item)
+    except Exception:
+        return False
+    return True
+
+
+def _clave_orden(valor) -> tuple:
+    """
+    Clave de ordenación inteligente para un valor de celda.
+
+    Si el valor es numérico (cédulas, salarios, fechas numéricas) se
+    ordena como número; en caso contrario se ordena como texto sin
+    distinguir mayúsculas.
+    """
+    texto = str(valor or "").strip()
+    limpio = texto.replace("$", "").replace(",", "").replace(".", "").replace(" ", "")
+    if limpio and limpio.lstrip("-").isdigit():
+        try:
+            return (0, float(limpio))
+        except ValueError:
+            pass
+    return (1, texto.lower())
+
+
+def _marcar_encabezado_orden(tree, columna, ascendente: bool) -> None:
+    """Marca con ▲/▼ la columna por la que se está ordenando"""
+    try:
+        textos = getattr(tree, "_orden_textos", {})
+        for c in tree.cget("columns") or ():
+            base = textos.get(c) or ""
+            if c == columna:
+                tree.heading(c, text=base + (" ▲" if ascendente else " ▼"))
+            else:
+                tree.heading(c, text=base)
+    except Exception:
+        pass
+
+
+def _ordenar_por_columna(tree, columna) -> None:
+    """
+    Ordena las filas visibles de un Treeview por una columna.
+
+    El primer clic ordena ascendente; los siguientes alternan el sentido.
+    Conserva los items (y sus tags con el id de la fila), de modo que la
+    selección y las acciones posteriores siguen funcionando.
+    """
+    try:
+        ascendente = tree._orden_asc.get(columna, True)
+        filas = [(tree.set(item, columna), item)
+                 for item in tree.get_children("")]
+        filas.sort(key=lambda par: _clave_orden(par[0]), reverse=not ascendente)
+        for indice, (_, item) in enumerate(filas):
+            tree.move(item, "", indice)
+        tree._orden_asc[columna] = not ascendente
+        tree._orden_columna = columna
+        _marcar_encabezado_orden(tree, columna, ascendente)
+    except Exception:
+        pass
+
+
+def _habilitar_orden_columnas(tree) -> None:
+    """
+    Habilita el ordenamiento por clic en los encabezados de un Treeview.
+
+    Idempotente: solo configura el orden la primera vez por árbol.
+    """
+    if getattr(tree, "_orden_configurado", False):
+        return
+    tree._orden_configurado = True
+    tree._orden_asc = {}
+    tree._orden_columna = None
+    columnas = tree.cget("columns") or ()
+    tree._orden_textos = {c: (tree.heading(c, "text") or "") for c in columnas}
+    for columna in columnas:
+        tree.heading(
+            columna,
+            command=lambda c=columna: _ordenar_por_columna(tree, c),
+        )
 
 
 def _estado_documento(documento) -> str:
@@ -324,6 +424,9 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.tree)
+        
         # Doble clic para ver detalles (un clic solo selecciona)
         self.tree.bind("<Double-1>", self._on_double_click)
         
@@ -420,14 +523,13 @@ class EmpleadosFrame(ctk.CTkFrame):
             ), tags=(str(emp.id),))
     
     def _on_double_click(self, event):
-        """Maneja doble clic en un empleado"""
+        """Doble clic: selecciona la fila bajo el cursor y abre los detalles"""
+        _seleccionar_fila_click(self.tree, event)
         self._on_view_details()
     
     def _show_context_menu(self, event):
-        """Muestra el menú contextual"""
-        item = self.tree.identify_row(event.y)
-        if item:
-            self.tree.selection_set(item)
+        """Muestra el menú contextual sobre la fila bajo el cursor"""
+        if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
     
     def _get_selected_empleado(self) -> Optional[Empleado]:
@@ -1336,6 +1438,9 @@ class DocumentosFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.tree)
+        
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Documento", command=self._on_view_documento)
@@ -1348,7 +1453,7 @@ class DocumentosFrame(ctk.CTkFrame):
             self.context_menu.add_command(label="Eliminar", command=self._on_delete_documento)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
-        self.tree.bind("<Double-1>", lambda e: self._on_view_documento())
+        self.tree.bind("<Double-1>", self._on_double_click)
         
         # Cargar empleados
         self._load_empleados()
@@ -1484,12 +1589,15 @@ class DocumentosFrame(ctk.CTkFrame):
             messagebox.showerror("Error", f"Error al cargar documentos: {str(e)}")
     
     def _show_context_menu(self, event):
-        """Muestra el menú contextual"""
-        item = self.tree.identify_row(event.y)
-        if item:
-            self.tree.selection_set(item)
+        """Muestra el menú contextual sobre la fila bajo el cursor"""
+        if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
     
+    def _on_double_click(self, event):
+        """Doble clic: selecciona la fila bajo el cursor y abre el documento"""
+        _seleccionar_fila_click(self.tree, event)
+        self._on_view_documento()
+
     def _get_selected_documento(self):
         """Obtiene el documento seleccionado o None si la fila no tiene datos"""
         documento_id = _id_fila_seleccionada(self.tree)
@@ -1826,6 +1934,9 @@ class IncidenciasFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.tree)
+        
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_incidencia)
@@ -1838,7 +1949,7 @@ class IncidenciasFrame(ctk.CTkFrame):
             self.context_menu.add_command(label="Eliminar", command=self._on_delete_incidencia)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
-        self.tree.bind("<Double-1>", lambda e: self._on_view_incidencia())
+        self.tree.bind("<Double-1>", self._on_double_click)
     
     def _load_data(self):
         """Carga los datos iniciales"""
@@ -1981,12 +2092,15 @@ class IncidenciasFrame(ctk.CTkFrame):
             messagebox.showerror("Error", f"Error al cargar incidencias: {str(e)}")
     
     def _show_context_menu(self, event):
-        """Muestra el menú contextual"""
-        item = self.tree.identify_row(event.y)
-        if item:
-            self.tree.selection_set(item)
+        """Muestra el menú contextual sobre la fila bajo el cursor"""
+        if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
     
+    def _on_double_click(self, event):
+        """Doble clic: selecciona la fila bajo el cursor y abre la incidencia"""
+        _seleccionar_fila_click(self.tree, event)
+        self._on_view_incidencia()
+
     def _get_selected_incidencia(self):
         """Obtiene la incidencia seleccionada o None si la fila no tiene datos"""
         incidencia_id = _id_fila_seleccionada(self.tree)
@@ -2447,6 +2561,9 @@ class NominaFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
         
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.tree)
+        
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_pago)
@@ -2462,7 +2579,7 @@ class NominaFrame(ctk.CTkFrame):
             self.context_menu.add_command(label="Eliminar", command=self._on_delete_pago)
         
         self.tree.bind("<Button-3>", self._show_context_menu)
-        self.tree.bind("<Double-1>", lambda e: self._on_view_pago())
+        self.tree.bind("<Double-1>", self._on_double_click)
     
     def _obtener_pagos_filtrados(self):
         """Pagos según el filtro de estado seleccionado"""
@@ -2546,12 +2663,15 @@ class NominaFrame(ctk.CTkFrame):
             messagebox.showerror("Error", f"Error al generar nómina: {str(e)}")
     
     def _show_context_menu(self, event):
-        """Muestra el menú contextual"""
-        item = self.tree.identify_row(event.y)
-        if item:
-            self.tree.selection_set(item)
+        """Muestra el menú contextual sobre la fila bajo el cursor"""
+        if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
     
+    def _on_double_click(self, event):
+        """Doble clic: selecciona la fila bajo el cursor y abre el pago"""
+        _seleccionar_fila_click(self.tree, event)
+        self._on_view_pago()
+
     def _get_selected_pago(self):
         """Obtiene el pago seleccionado o None si la fila no tiene datos"""
         pago_id = _id_fila_seleccionada(self.tree)
@@ -2883,6 +3003,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=5)
         export_btn = ctk.CTkButton(filtro_frame, text="Exportar", command=self._on_exportar_auditoria)
         export_btn.pack(side="left", padx=5)
+        manual_btn = ctk.CTkButton(filtro_frame, text="Manual", command=self._on_manual_auditoria)
+        manual_btn.pack(side="left", padx=5)
         
         table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=5)
@@ -2904,6 +3026,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.audit_tree.column("detalle", width=400, minwidth=250)
         self.audit_tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.audit_tree.yview)
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.audit_tree)
+        # Doble clic: ver el detalle completo del evento
+        self.audit_tree.bind("<Double-1>", self._on_view_auditoria_detail)
         self._load_auditoria()
     
     def _load_auditoria(self):
@@ -2915,21 +3041,76 @@ class ConfiguracionFrame(ctk.CTkFrame):
             eventos = audit_logger.get_recent_events(200)
             if tipo != "Todos":
                 eventos = [e for e in eventos if e.get("event_type") == tipo]
-            for ev in eventos:
+            self._audit_eventos = eventos
+            for i, ev in enumerate(eventos):
                 detalle = ""
                 detalles = ev.get("details") or {}
                 if isinstance(detalles, dict) and "operation" in detalles:
                     detalle = str(detalles["operation"])
-                self.audit_tree.insert("", "end", values=(
+                self.audit_tree.insert("", "end", iid=f"ev_{i}", values=(
                     ev.get("timestamp", ""),
                     ev.get("event_type", ""),
                     ev.get("user", ""),
                     "Sí" if ev.get("success") else "No",
                     detalle,
-                ))
+                ), tags=(str(i),))
         except Exception as e:
+            self._audit_eventos = []
             messagebox.showerror("Error", f"Error al cargar auditoría: {str(e)}")
     
+    def _on_view_auditoria_detail(self, event):
+        """Muestra el detalle completo del evento de auditoría bajo el cursor"""
+        _seleccionar_fila_click(self.audit_tree, event)
+        indice = _id_fila_seleccionada(self.audit_tree)
+        eventos = getattr(self, "_audit_eventos", None)
+        if indice is None or not eventos or indice >= len(eventos):
+            return
+        ev = eventos[indice]
+        detalles = ev.get("details") or {}
+        try:
+            detalles_txt = json.dumps(detalles, ensure_ascii=False, indent=2)
+        except Exception:
+            detalles_txt = str(detalles)
+        texto = (
+            "DETALLE DEL EVENTO\n"
+            "==================\n\n"
+            f"Fecha: {ev.get('timestamp', '')}\n"
+            f"Tipo: {ev.get('event_type', '')}\n"
+            f"Usuario: {ev.get('user', '')}\n"
+            f"Entidad: {ev.get('entity_type', '')} (id: {ev.get('entity_id')})\n"
+            f"Éxito: {'Sí' if ev.get('success') else 'No'}\n"
+            f"IP: {ev.get('ip_address') or '—'}\n"
+            f"Error: {ev.get('error_message') or '—'}\n\n"
+            f"Detalles:\n{detalles_txt}"
+        )
+        InfoDialog(self, "Detalle de Auditoría", texto)
+
+    def _on_manual_auditoria(self):
+        """Muestra el manual de uso de la sección de auditoría"""
+        texto = (
+            "MANUAL DE AUDITORÍA\n"
+            "===================\n\n"
+            "¿Qué registra el sistema?\n"
+            "Toda acción relevante: inicios y cierres de sesión, creación,\n"
+            "edición y eliminación de registros, cambios de contraseña,\n"
+            "respaldos y restauraciones, y eventos del sistema.\n\n"
+            "Cómo usar esta sección:\n"
+            "1. Filtre por tipo de evento con el selector superior.\n"
+            "2. Haga doble clic en una fila para ver el detalle completo.\n"
+            "3. 'Exportar' guarda los eventos recientes en Excel o CSV.\n\n"
+            "Lectura de columnas:\n"
+            "- Fecha: momento exacto del evento (hora local).\n"
+            "- Tipo: categoría (login, data_create, data_update, backup...).\n"
+            "- Usuario: quién ejecutó la acción.\n"
+            "- Éxito: Sí/No según terminara correctamente.\n"
+            "- Detalle: operación específica.\n\n"
+            "Recomendaciones:\n"
+            "- Revise periódicamente los eventos con 'Éxito: No'.\n"
+            "- Exporte la auditoría antes de restaurar un respaldo.\n"
+            "- Puede desactivarse en 'Seguridad y Respaldo'.\n"
+        )
+        InfoDialog(self, "Manual de Auditoría", texto)
+
     def _on_exportar_auditoria(self):
         """Exporta los eventos de auditoría recientes a Excel o CSV"""
         eventos = audit_logger.get_recent_events(200)
@@ -3020,6 +3201,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.backup_tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.backup_tree.yview)
         
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.backup_tree)
+        
         # Acciones sobre respaldos
         actions = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         actions.pack(fill="x", padx=10, pady=(5, 10))
@@ -3055,6 +3239,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.usuarios_tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.usuarios_tree.yview)
         
+        # Clic en los encabezados para ordenar la lista
+        _habilitar_orden_columnas(self.usuarios_tree)
+        
         actions = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         actions.pack(fill="x", padx=10, pady=(0, 10))
         
@@ -3066,8 +3253,13 @@ class ConfiguracionFrame(ctk.CTkFrame):
             actions, text="Activar / Desactivar", command=self._on_toggle_usuario)
         toggle_btn.pack(side="left", padx=5, pady=6)
         
-        self.usuarios_tree.bind("<Double-1>", lambda e: self._on_edit_usuario())
+        self.usuarios_tree.bind("<Double-1>", self._on_usuarios_double_click)
     
+    def _on_usuarios_double_click(self, event):
+        """Doble clic: selecciona el usuario bajo el cursor y abre la edición"""
+        _seleccionar_fila_click(self.usuarios_tree, event)
+        self._on_edit_usuario()
+
     def _create_general_tab(self, parent):
         """Crea la pestaña de configuración general"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])

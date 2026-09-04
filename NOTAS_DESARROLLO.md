@@ -270,12 +270,31 @@ pylint src/
      para grandes volúmenes de datos
 
 3. **Testing**
-   - **281 pruebas automatizadas** (unitarias y de integración), todas
-     exitosas
-   - Cobertura de código: **43% total** y **73% en la lógica de negocio**
-     (modelos, repositorios, servicios y utilidades)
-   - Pruebas E2E de la interfaz gráfica quedan como trabajo futuro
-     (requieren entorno con pantalla)
+   - **295 pruebas automatizadas** (unitarias, de integración y de humo
+     GUI), todas exitosas
+   - Cobertura de código: **57% total**; en la lógica de negocio (modelos,
+     repositorios, servicios y utilidades) la cobertura supera el 70%
+   - **Pruebas de humo GUI** (`tests/test_gui_smoke.py`) instancian la
+     ventana principal, el login y los marcos de cada módulo con Tk real;
+     se omiten automáticamente en entornos sin pantalla
+
+### Robustería (fallbacks y anti-fugas)
+
+- **Manejador global de excepciones** (`sys.excepthook` y
+  `threading.excepthook`): cualquier error no capturado se registra en el
+  log y en la auditoría y se muestra al usuario con un mensaje amigable,
+  en lugar de terminar en silencio.
+- **Limpieza garantizada de sesión**: la sesión de la ventana principal se
+  cierra siempre (`try/finally`), incluso si la construcción o la
+  ejecución fallan; si la construcción falla a mitad de camino se libera
+  la sesión scoped del hilo.
+- **Selección de filas corregida**: el doble clic y el clic derecho ahora
+  seleccionan la fila bajo el cursor (`_seleccionar_fila_click`) en todos
+  los módulos, de modo que "Ver detalles", "Editar" y el menú contextual
+  funcionan siempre.
+- **Sección de auditoría ampliada**: botón **Manual** con la guía de uso
+  y doble clic sobre un evento para ver su detalle completo (datos
+  técnicos, IP, errores).
 
 ## Mantenimiento
 

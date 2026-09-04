@@ -332,6 +332,10 @@ La pestaña **Auditoría** muestra los eventos recientes del sistema:
 - Filtre por tipo de evento (inicio de sesión, respaldos, cambios, errores)
 - Use **Actualizar** para recargar y **Exportar** para guardar el listado
   en Excel (.xlsx) o CSV
+- **Doble clic** en una fila abre el detalle completo del evento (datos
+  técnicos, dirección IP y errores asociados)
+- El botón **Manual** abre la guía de uso de la sección: qué se registra,
+  cómo leer cada columna y recomendaciones de revisión periódica
 
 ## Panel de Control (Dashboard)
 

@@ -486,5 +486,5 @@ Este sistema ha sido diseñado para ser intuitivo y eficiente. Con la práctica,
 
 ---
 
-**Versión del Sistema**: 1.0.4  
+**Versión del Sistema**: 2.79  
 **Última Actualización**: 2026

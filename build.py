@@ -27,7 +27,7 @@ def leer_version() -> str:
     """Lee la versión desde VERSION (fuente única junto a pyproject)"""
     archivo = RAIZ / "VERSION"
     version = archivo.read_text(encoding="utf-8").strip()
-    return version or "1.0.4"
+    return version or "2.79"
 
 
 def localizar_iscc():

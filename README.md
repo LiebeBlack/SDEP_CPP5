@@ -84,15 +84,19 @@ El sistema sigue una arquitectura en capas separando la lógica de negocio, acce
 El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
 
 1. **Pruebas**: ejecuta la suite completa de pytest (aislada) en cada push.
-2. **Compilación**: en `windows-latest`, empaqueta la app con PyInstaller
-   (directorio `onedir` + icono + metadatos de versión).
+2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
+   PyInstaller (directorio `onedir` + icono + metadatos de versión).
 3. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
    Inno Setup (asistente en español/inglés, accesos directos, desinstalador).
-4. **Artefactos**: instala Setup.exe y ZIP portable como artefactos del run.
-5. **Release continua**: cada push a `main` publica automáticamente un
-   Release de GitHub con el instalador y la versión portable (sin
-   necesidad de crear etiquetas). Un push con etiqueta `vX.Y.Z` genera
-   una release versionada con ese nombre.
+4. **Compilación Linux**: en `ubuntu-latest`, compila el mismo `spec/app.spec`
+   y empaqueta la versión portable de Linux en un `tar.gz` (autoverificada
+   con `--selftest` bajo `xvfb-run`).
+5. **Artefactos**: sube Setup.exe, ZIP portable (Windows) y tar.gz (Linux)
+   como artefactos del run.
+6. **Release continua**: cada push a `main` publica automáticamente un
+   Release de GitHub con el instalador y las versiones portables de Windows
+   y Linux (sin necesidad de crear etiquetas). Un push con etiqueta `vX.Y.Z`
+   genera una release versionada con ese nombre.
 
 Cada cambio publicado genera su Release automáticamente:
 ```bash
@@ -101,8 +105,8 @@ git push origin main
 
 Para una release versionada (opcional):
 ```bash
-git tag v1.0.4
-git push origin v1.0.3
+git tag v2.79
+git push origin v2.79
 ```
 
 ## 🔧 Instalación
@@ -113,6 +117,19 @@ Descargue `SistemaGestionPersonal-Setup-<versión>.exe` desde el Release o
 los artefactos del workflow y ejecútelo. Los datos de la aplicación
 (base de datos, documentos, respaldos) se guardan en
 `%LOCALAPPDATA%\SistemaGestionPersonal`, independientes de la instalación.
+
+### Versión portable para Linux
+
+Descargue `SistemaGestionPersonal-Linux-<versión>.tar.gz` desde el Release,
+descomprímalo y ejecute el binario:
+
+```bash
+tar -xzf SistemaGestionPersonal-Linux-<versión>.tar.gz
+cd SistemaGestionPersonal
+./SistemaGestionPersonal
+```
+
+Los datos de la aplicación se guardan junto al ejecutable.
 
 ### Entorno de Desarrollo
 
@@ -348,5 +365,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 1.0.4  
+**Versión**: 2.79  
 **Última actualización**: 2026

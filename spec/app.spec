@@ -11,6 +11,7 @@ El modo onedir evita la extracción a TEMP de cada arranque (onefile),
 reduce falsos positivos antivirus y acelera el inicio.
 """
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
@@ -21,6 +22,10 @@ project_root = spec_root.parent
 app_name = "SistemaGestionPersonal"
 icono = str(project_root / "assets" / "app.ico")
 version_resource = str(project_root / "spec" / "version_info.txt")
+
+# Los recursos de icono y versión (version_info.txt) solo existen en
+# Windows; en Linux se omiten para que el mismo spec compile en ambos.
+IS_WINDOWS = sys.platform.startswith("win")
 
 # customtkinter incluye temas y recursos JSON que deben empaquetarse
 # junto al código; se recolectan explícitamente.
@@ -63,8 +68,7 @@ exe = EXE(
     upx=False,
     console=False,
     disable_windowed_traceback=False,
-    icon=icono,
-    version=version_resource,
+    **({"icon": icono, "version": version_resource} if IS_WINDOWS else {}),
 )
 
 coll = COLLECT(

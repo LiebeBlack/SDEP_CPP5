@@ -230,6 +230,19 @@ pylint src/
    - Responsividad mejorada en pantallas pequeñas
    - Más temas y acentos de color
 
+## Novedades de la Versión 2.79
+
+### Distribución y CI/CD
+
+- **Versión portable de Linux** generada automáticamente en GitHub Actions:
+  el workflow `build.yml` ahora compila la aplicación con PyInstaller en
+  `ubuntu-latest` (el mismo `spec/app.spec` que Windows) y publica un
+  `tar.gz` portable en los artefactos y Releases de cada push.
+- El spec de PyInstaller es ahora multiplataforma: el icono y el recurso
+  de versión (`version_info.txt`) solo se aplican en Windows.
+- La versión del sistema pasa a **2.79** (archivo `VERSION`, `pyproject.toml`,
+  instalador Inno Setup y `APP_VERSION_DEFAULT`).
+
 ## Novedades de la Versión 1.0.4
 
 ### Interfaz y Usabilidad
@@ -346,6 +359,6 @@ Para más información, consulte:
 
 ---
 
-**Versión**: 1.0.4  
+**Versión**: 2.79  
 **Estado**: Estable  
 **Última actualización**: 2026

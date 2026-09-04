@@ -1,4 +1,4 @@
-name: Compilar e Instalar (Windows)
+name: Compilar e Instalar (Windows + Linux)
 
 on:
   push:
@@ -43,9 +43,69 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+  build-linux:
+    name: Compilar ejecutable (Linux)
+    needs: tests
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v5
+
+      - name: Configurar Python (Linux)
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Instalar xvfb (pantalla virtual para el selftest GUI)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Leer versión
+        run: |
+          ver=$(cat VERSION)
+          echo "APP_VERSION=$ver" >> $GITHUB_ENV
+          echo "Versión detectada: $ver"
+
+      - name: Verificar importación de módulos
+        run: python -c "import sys; sys.path.insert(0, '.'); import src.main; print('imports OK')"
+
+      - name: Compilar ejecutable (PyInstaller onedir)
+        run: python -m PyInstaller --noconfirm --clean spec/app.spec
+
+      - name: Verificar ejecutable
+        run: |
+          binario="dist/SistemaGestionPersonal/SistemaGestionPersonal"
+          if [ ! -f "$binario" ]; then
+            echo "ERROR: El ejecutable no fue generado: $binario"
+            exit 1
+          fi
+          ls -lh "$binario"
+
+      - name: Autoverificar ejecutable (selftest)
+        run: xvfb-run -a ./dist/SistemaGestionPersonal/SistemaGestionPersonal --selftest
+
+      - name: Crear paquete portable (tar.gz)
+        run: |
+          tar -czf "SistemaGestionPersonal-Linux-$APP_VERSION.tar.gz" -C dist SistemaGestionPersonal
+          ls -lh "SistemaGestionPersonal-Linux-$APP_VERSION.tar.gz"
+
+      - name: Subir versión portable Linux (tar.gz)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ejecutable-portable-linux
+          path: SistemaGestionPersonal-Linux-${{ env.APP_VERSION }}.tar.gz
+          retention-days: 30
+
   build:
     name: Compilar e instalar (Windows)
-    needs: tests
+    needs: [tests, build-linux]
     runs-on: windows-latest
     env:
       PYTHONUNBUFFERED: "1"
@@ -132,6 +192,12 @@ jobs:
             -DestinationPath "SistemaGestionPersonal-Windows-$env:APP_VERSION.zip" -Force
           Write-Host "OK zip portable"
 
+      - name: Descargar versión Linux (para el release)
+        uses: actions/download-artifact@v4
+        with:
+          name: ejecutable-portable-linux
+          path: linux-artifact
+
       - name: Definir etiqueta y nombre del release
         shell: pwsh
         run: |
@@ -173,10 +239,12 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           body: |
             Compilación automática del commit `${{ github.sha }}` en `${{ github.ref_name }}`.
-            Descarga el instalador (**Setup.exe**) o la versión portable (ZIP).
+            Descarga el instalador (**Setup.exe**), la versión portable de Windows (ZIP)
+            o la versión portable de Linux (tar.gz).
           files: |
             dist_installer/SistemaGestionPersonal-Setup-${{ env.APP_VERSION }}.exe
             SistemaGestionPersonal-Windows-${{ env.APP_VERSION }}.zip
+            linux-artifact/SistemaGestionPersonal-Linux-${{ env.APP_VERSION }}.tar.gz
           generate_release_notes: true
           draft: false
           prerelease: false

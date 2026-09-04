@@ -14,6 +14,7 @@ from src.models import Usuario
 from src.services.auth_service import (
     AuthService,
     DEFAULT_ADMIN_PASSWORD,
+    LONGITUD_MINIMA_PASSWORD,
 )
 from src.utils.helpers import mantener_ventana_al_frente
 from src.utils.security import SecurityValidator
@@ -37,7 +38,9 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.cambiado = False
 
         self.title("Cambiar Contraseña")
-        self.geometry("480x330")
+        # Altura suficiente para que el contenido (títulos, etiquetas,
+        # campos y botones Guardar/Cancelar) quepa sin recortarse.
+        self.geometry("500x460")
         self.resizable(False, False)
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
@@ -83,7 +86,15 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         ).pack(fill="x", padx=5)
         self.confirm_pass = ctk.CTkEntry(
             container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"])
-        self.confirm_pass.pack(fill="x", padx=5, pady=(2, 12))
+        self.confirm_pass.pack(fill="x", padx=5, pady=(2, 6))
+
+        ctk.CTkLabel(
+            container,
+            text=f"La contraseña debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres.",
+            text_color=COLORES["texto_suave"],
+            font=ctk.CTkFont(size=11),
+            anchor="w",
+        ).pack(fill="x", padx=5, pady=(0, 8))
 
         btn_frame = ctk.CTkFrame(container, fg_color="transparent")
         btn_frame.pack(fill="x", pady=(10, 0))
@@ -277,6 +288,19 @@ class LoginWindow(ctk.CTk):
             # Primer acceso: obligar a cambiar la contraseña inicial
             if usuario.debe_cambiar_password:
                 dialog = CambiarPasswordDialog(self, auth, usuario)
+
+                # Fallback anti-congelamiento: si el diálogo no llega a
+                # mostrarse (escalado o pantalla problemáticos), se cierra
+                # solo y la sesión se aborta en lugar de quedar la ventana
+                # negra sin responder.
+                def _cerrar_si_no_visible():
+                    try:
+                        if dialog.winfo_exists() and not dialog.winfo_viewable():
+                            dialog.destroy()
+                    except Exception:
+                        pass
+
+                self.after(8000, _cerrar_si_no_visible)
                 self.wait_window(dialog)
                 if not dialog.cambiado:
                     messagebox.showwarning(
@@ -288,8 +312,15 @@ class LoginWindow(ctk.CTk):
 
             self.user = usuario
             self._session_activa = session
+            # Transición a la ventana principal: la ventana de login se
+            # OCULTA (no se destruye) y se sale del mainloop. Destruir la
+            # raíz aquí, justo antes de crear la raíz de MainWindow, es un
+            # patrón que en algunos equipos deja la segunda ventana en
+            # negro sin responder; la destrucción se difiere a main.py,
+            # después de que MainWindow haya arrancado y renderizado.
             cancelar_after_pendientes(self)
-            self.destroy()
+            self.withdraw()
+            self.quit()
         except ValueError as e:
             messagebox.showerror("Error de Autenticación", str(e))
             self.password_entry.delete(0, tk.END)

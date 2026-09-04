@@ -1,284 +1,601 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gestión de Personal y Nómina</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>SDEP - Sistema de Gestión de Personal y Nómina | Documentación Centralizada</title>
+    <meta name="description" content="Plataforma de documentación centralizada y ultra-minimalista para el Sistema de Gestión de Personal y Nómina. Lector integrado de Markdown, tesis académica y documentación técnica.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>">
+    
+    <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <span class="logo-icon">◆</span>
-                    <span class="logo-text">SDEP</span>
+
+    <!-- ======================================================================
+         GLOBAL HEADER / NAVIGATION
+         ====================================================================== -->
+    <header class="header">
+        <div class="container header-inner">
+            <a href="#inicio" class="brand" aria-label="SDEP Inicio">
+                <span class="brand-icon">◆</span>
+                <span class="brand-name">SDEP</span>
+                <span class="brand-badge">v1.0.4</span>
+            </a>
+
+            <nav class="nav-menu" id="nav-menu">
+                <a href="#inicio" class="nav-link">Inicio</a>
+                <a href="#software" class="nav-link">Software</a>
+                <a href="#arquitectura" class="nav-link">Arquitectura</a>
+                <a href="#catalogo" class="nav-link">Documentos</a>
+                <a href="#quickstart" class="nav-link">Quickstart</a>
+            </nav>
+
+            <div class="header-actions">
+                <button class="search-trigger-btn" id="open-search-btn" title="Buscar documentación (Ctrl+K)">
+                    <span class="search-icon">🔍</span>
+                    <span>Buscar...</span>
+                    <kbd class="kbd-shortcut">Ctrl K</kbd>
+                </button>
+
+                <button class="icon-btn theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
+                    <span class="theme-icon">◐</span>
+                </button>
+
+                <a href="https://github.com/LiebeBlack/SDEP_CPP5" target="_blank" rel="noopener noreferrer" class="github-btn" title="Ver repositorio en GitHub">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ======================================================================
+         MAIN HUB VIEW
+         ====================================================================== -->
+    <main id="home-view">
+        <div class="container">
+            <!-- Hero Section -->
+            <section id="inicio" class="hero">
+                <a href="#catalogo" class="hero-pill-link">
+                    <span class="hero-pill-dot"></span>
+                    <span>Versión 1.0.4 • 281 Tests Passing • 17 Documentos Indexados</span>
+                </a>
+
+                <h1 class="hero-title">
+                    Sistema Integral de <br>
+                    <span class="gradient-text">Gestión de Personal y Nómina</span>
+                </h1>
+
+                <p class="hero-description">
+                    Solución de alto rendimiento para instituciones educativas. Arquitectura modular en capas desacopladas, interfaz CustomTkinter, control documental automatizado e investigación académica formal.
+                </p>
+
+                <div class="hero-cta-group">
+                    <a href="#catalogo" class="btn btn-primary">
+                        <span>Explorar Catálogo</span>
+                        <span>↓</span>
+                    </a>
+                    <button class="btn btn-secondary" id="hero-open-reader-btn" data-doc="readme">
+                        <span>📖 Abrir Lector Web</span>
+                    </button>
+                    <button class="btn btn-secondary" id="hero-search-btn">
+                        <span>🔍 Búsqueda Rápida</span>
+                        <kbd class="kbd-shortcut">Ctrl K</kbd>
+                    </button>
                 </div>
-                <nav class="nav">
-                    <a href="#inicio" class="nav-link">Inicio</a>
-                    <a href="#software" class="nav-link">Software</a>
-                    <a href="#tesis" class="nav-link">Tesis</a>
-                    <a href="#documentacion" class="nav-link">Documentación</a>
-                </nav>
-                <button class="theme-toggle" aria-label="Cambiar tema">
+
+                <!-- Interactive Code / Architecture Preview Box -->
+                <div class="hero-code-wrapper">
+                    <div class="hero-code-header">
+                        <div class="window-dots">
+                            <span class="window-dot red"></span>
+                            <span class="window-dot yellow"></span>
+                            <span class="window-dot green"></span>
+                        </div>
+                        <div class="hero-code-tabs">
+                            <button class="code-tab-btn active" data-tab="service">EmpleadoService.py</button>
+                            <button class="code-tab-btn" data-tab="model">Empleado.py (ORM)</button>
+                            <button class="code-tab-btn" data-tab="quickstart">Quickstart.sh</button>
+                        </div>
+                        <button class="code-copy-btn" id="hero-code-copy" title="Copiar al portapapeles">
+                            <span class="copy-icon">📋</span>
+                            <span class="copy-text">Copiar</span>
+                        </button>
+                    </div>
+
+                    <div class="hero-code-body">
+                        <!-- Tab 1: Service -->
+                        <pre class="hero-code-snippet active" id="snippet-service"><code class="language-python">from src.services.empleado_service import EmpleadoService
+from src.repositories.empleado_repository import EmpleadoRepository
+
+# Inicialización de la capa de servicio con inyección de dependencias
+repo = EmpleadoRepository()
+service = EmpleadoService(empleado_repo=repo)
+
+# Registro y cálculo automático de ficha técnica
+nuevo_empleado = service.crear_empleado({
+    "cedula": "V-20123456",
+    "nombres": "María Elena",
+    "apellidos": "Rodríguez Santos",
+    "departamento": "Docencia e Investigación",
+    "cargo": "Profesora Titular",
+    "salario_base": 850.00
+})
+
+print(f"Empleado registrado: {nuevo_empleado.codigo} | Estado: ACTIVO")</code></pre>
+
+                        <!-- Tab 2: Model -->
+                        <pre class="hero-code-snippet" id="snippet-model"><code class="language-python">from sqlalchemy import Column, Integer, String, Float, Date, Enum
+from src.models.base import Base
+
+class Empleado(Base):
+    __tablename__ = "empleados"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cedula = Column(String(20), unique=True, nullable=False, index=True)
+    nombres = Column(String(100), nullable=False)
+    apellidos = Column(String(100), nullable=False)
+    cargo = Column(String(100), nullable=False)
+    departamento = Column(String(100), nullable=False)
+    salario_base = Column(Float, nullable=False, default=0.0)
+    fecha_ingreso = Column(Date, nullable=False)</code></pre>
+
+                        <!-- Tab 3: CLI Quickstart -->
+                        <pre class="hero-code-snippet" id="snippet-quickstart"><code class="language-bash"># Clonar repositorio oficial
+git clone https://github.com/LiebeBlack/SDEP_CPP5.git
+cd SDEP_CPP5
+
+# Configurar entorno virtual e instalar dependencias
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+# Ejecutar el sistema de escritorio
+python -m src.gui.main_window</code></pre>
+                <!-- GitHub Direct URL Live Reader Box -->
+                <div class="github-url-box">
+                    <div class="github-url-head">
+                        <div class="github-url-title">
+                            <span>⚡</span>
+                            <span>Lector en Vivo desde GitHub (Repositorio Oficial)</span>
+                        </div>
+                        <span class="github-url-sub">Pega cualquier enlace del repositorio o archivo Markdown para renderizarlo con el tema ultra-minimalista</span>
+                    </div>
+                    <form class="github-url-form" id="gh-url-form">
+                        <input type="url" id="gh-url-input" class="github-url-input" placeholder="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md" value="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md" required>
+                        <button type="submit" class="github-url-submit">
+                            <span>Renderizar en Web</span>
+                            <span>→</span>
+                        </button>
+                    </form>
+                    <div class="github-quick-chips">
+                        <span>Acceso rápido:</span>
+                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md">GUIA_USUARIO.md</button>
+                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/DOCUMENTACION_TECNICA.md">DOCUMENTACION_TECNICA.md</button>
+                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/README.md">README.md</button>
+                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/TESIS/CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md">CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md</button>
+                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/TESIS/CAPITULO_IV_RESULTADOS.md">CAPITULO_IV_RESULTADOS.md</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Metrics Section -->
+            <div class="stats-strip">
+                <div class="stat-box">
+                    <div class="stat-val">281</div>
+                    <div class="stat-lbl">Pruebas Automatizadas</div>
+                    <div class="stat-sub">100% pasando en suite pytest</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val">73%</div>
+                    <div class="stat-lbl">Cobertura de Negocio</div>
+                    <div class="stat-sub">Servicios, modelos y repositorios</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val">17</div>
+                    <div class="stat-lbl">Documentos Indexados</div>
+                    <div class="stat-sub">10 Tesis + 7 Guías Técnicas</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val">10</div>
+                    <div class="stat-lbl">Anexos Metodológicos</div>
+                    <div class="stat-sub">Formatos oficiales e instrumentos</div>
+                </div>
+            </div>
+
+            <!-- Software Features Section -->
+            <section id="software" class="section">
+                <div class="section-head">
+                    <span class="section-tag">Capacidades del Sistema</span>
+                    <h2 class="section-heading">Módulos Funcionales Completos</h2>
+                    <p class="section-subtext">Diseñado para cubrir todo el ciclo de vida del personal administrativo, obrero y docente con precisión normativa.</p>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">👥</div>
+                        <h3 class="feature-h3">Gestión de Personal</h3>
+                        <p class="feature-p">Ficha integral del empleado con datos personales, laborales, bancarios, médicos y carga fotográfica de perfil.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="guia-usuario">Ver en Guía de Usuario →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">📄</div>
+                        <h3 class="feature-h3">Gestión Documental</h3>
+                        <p class="feature-p">Digitalización de expedientes en PDF/imágenes con alertas preventivas de vencimiento y reportes de control.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver arquitectura documental →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">📋</div>
+                        <h3 class="feature-h3">Incidencias y Permisos</h3>
+                        <p class="feature-p">Control de ausencias, permisos remunerados y reposos médicos con cálculo automático de días hábiles y flujo de aprobación.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="guia-usuario">Ver flujo de incidencias →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">💰</div>
+                        <h3 class="feature-h3">Nómina y Deducciones</h3>
+                        <p class="feature-p">Cálculo automatizado de pagos periódicos, retenciones legales (seguro, pensión, impuestos), bonos y recibos de pago.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="readme">Ver detalle de nómina →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">📊</div>
+                        <h3 class="feature-h3">Generación de Reportes</h3>
+                        <p class="feature-p">Emisión en PDF de constancias oficiales, recibos de pago, planillas salariales y exportación completa a Excel (.xlsx) y CSV.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver generación PDF →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">🔒</div>
+                        <h3 class="feature-h3">Seguridad y Auditoría</h3>
+                        <p class="feature-p">Cifrado de credenciales con PBKDF2, control de acceso basado en roles (RBAC), registro de auditoría y respaldo de bases de datos.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver modelo de seguridad →</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Clean Architecture Section -->
+            <section id="arquitectura" class="section">
+                <div class="section-head">
+                    <span class="section-tag">Ingeniería de Software</span>
+                    <h2 class="section-heading">Arquitectura Limpia en Capas</h2>
+                    <p class="section-subtext">Separación estricta de responsabilidades, alta cohesión y bajo acoplamiento para facilitar el mantenimiento y la extensibilidad.</p>
+                </div>
+
+                <div class="arch-card">
+                    <div class="arch-flow">
+                        <div class="arch-layer">
+                            <div class="arch-layer-num">CAPA 01</div>
+                            <div class="arch-layer-title">Presentación (GUI)</div>
+                            <div class="arch-layer-desc">CustomTkinter, navegación modular, temas claro/oscuro y soporte de alta resolución.</div>
+                        </div>
+
+                        <div class="arch-layer">
+                            <div class="arch-layer-num">CAPA 02</div>
+                            <div class="arch-layer-title">Servicios</div>
+                            <div class="arch-layer-desc">Lógica de negocio pura: cálculos salariales, validaciones y orquestación de procesos.</div>
+                        </div>
+
+                        <div class="arch-layer">
+                            <div class="arch-layer-num">CAPA 03</div>
+                            <div class="arch-layer-title">Repositorios</div>
+                            <div class="arch-layer-desc">Abstracción de acceso a datos mediante el patrón Repository independiente del motor.</div>
+                        </div>
+
+                        <div class="arch-layer">
+                            <div class="arch-layer-num">CAPA 04</div>
+                            <div class="arch-layer-title">Modelos ORM</div>
+                            <div class="arch-layer-desc">Entidades relacionales declarativas con SQLAlchemy, tipos estrictos y relaciones.</div>
+                        </div>
+
+                        <div class="arch-layer">
+                            <div class="arch-layer-num">CAPA 05</div>
+                            <div class="arch-layer-title">Persistencia</div>
+                            <div class="arch-layer-desc">SQLite con transacciones ACID, registro de auditoría y respaldos automáticos.</div>
+                        </div>
+                    </div>
+
+                    <div class="tech-pills">
+                        <span class="tech-pill">Python 3.10+</span>
+                        <span class="tech-pill">CustomTkinter 5.2</span>
+                        <span class="tech-pill">SQLAlchemy 2.0</span>
+                        <span class="tech-pill">SQLite 3</span>
+                        <span class="tech-pill">ReportLab (PDF)</span>
+                        <span class="tech-pill">openpyxl (Excel)</span>
+                        <span class="tech-pill">pytest (281 tests)</span>
+                        <span class="tech-pill">PBKDF2 SHA-256</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Centralized Catalog Section -->
+            <section id="catalogo" class="section">
+                <div class="section-head">
+                    <span class="section-tag">Corpus Centralizado</span>
+                    <h2 class="section-heading">Catálogo de Documentación</h2>
+                    <p class="section-subtext">Selecciona cualquier documento para leerlo inmediatamente dentro del visor web con formato moderno y navegación interactiva.</p>
+                </div>
+
+                <div class="catalog-controls">
+                    <div class="catalog-tabs">
+                        <button class="catalog-tab active" data-filter="all">Todos (17)</button>
+                        <button class="catalog-tab" data-filter="tesis">🎓 Tesis Académica (10)</button>
+                        <button class="catalog-tab" data-filter="tecnica">💻 Documentación Técnica (7)</button>
+                    </div>
+
+                    <div class="catalog-search-wrap">
+                        <span class="catalog-search-icon">🔍</span>
+                        <input type="text" id="catalog-filter-input" class="catalog-search-input" placeholder="Filtrar por título o tema..." autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- Dynamic Documents Grid (populated by JS / fallback rendered) -->
+                <div class="docs-grid" id="docs-grid">
+                    <!-- Javascript populates cards here from SDEP_DOCS_DATA -->
+                </div>
+            </section>
+
+            <!-- Quickstart Section -->
+            <section id="quickstart" class="section">
+                <div class="section-head">
+                    <span class="section-tag">Despliegue y Ejecución</span>
+                    <h2 class="section-heading">Inicio Rápido</h2>
+                    <p class="section-subtext">Configura el entorno de desarrollo y ejecuta la aplicación en tres sencillos pasos.</p>
+                </div>
+
+                <div class="code-block-wrapper">
+                    <div class="code-block-header">
+                        <span class="code-lang-label">bash (comandos de inicio)</span>
+                        <button class="code-btn-copy" id="copy-quickstart-btn">
+                            <span>📋</span> Copiar comandos
+                        </button>
+                    </div>
+                    <pre><code class="language-bash" id="quickstart-text"># 1. Clonar el repositorio
+git clone https://github.com/LiebeBlack/SDEP_CPP5.git
+cd SDEP_CPP5
+
+# 2. Crear y activar entorno virtual Python 3.10+
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Linux/macOS:
+# source venv/bin/activate
+
+# 3. Instalar requerimientos y ejecutar la suite de pruebas
+pip install -r requirements.txt
+pytest -v
+
+# 4. Lanzar la aplicación
+python -m src.gui.main_window</code></pre>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ======================================================================
+         IN-WEB MARKDOWN READER (Full Experience)
+         ====================================================================== -->
+    <div id="reader-view" role="dialog" aria-label="Visor de Documentos">
+        <!-- Top Navbar of Reader -->
+        <div class="reader-navbar">
+            <div class="reader-nav-left">
+                <button class="reader-back-btn" id="reader-close-btn" title="Volver a la página principal">
+                    <span>←</span>
+                    <span>Volver al Portal</span>
+                </button>
+                <div class="reader-breadcrumbs" id="reader-breadcrumbs">
+                    <span>SDEP</span>
+                    <span class="sep">/</span>
+                    <span id="breadcrumb-category">Tesis</span>
+                    <span class="sep">/</span>
+                    <span class="current" id="breadcrumb-title">Documento</span>
+                </div>
+            </div>
+
+            <div class="reader-nav-right">
+                <span id="reader-sync-badge" class="sync-badge local" title="Estado de sincronización">
+                    <span class="sync-dot"></span>
+                    <span id="reader-sync-text">Sincronizado</span>
+                </span>
+                <button class="icon-btn" id="reader-load-url-btn" title="Cargar archivo Markdown desde URL de GitHub">
+                    <span>🔗</span>
+                </button>
+                <button class="icon-btn" id="reader-search-btn" title="Buscar en documentos (Ctrl+K)">
+                    <span>🔍</span>
+                </button>
+                <button class="icon-btn" id="reader-copy-md-btn" title="Copiar Markdown sin procesar">
+                    <span>📋</span>
+                </button>
+                <button class="icon-btn" id="reader-print-btn" title="Imprimir o exportar a PDF">
+                    <span>🖨️</span>
+                </button>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="icon-btn" id="reader-gh-link" title="Ver archivo fuente en GitHub">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                </a>
+                <button class="icon-btn theme-toggle-btn" id="reader-theme-toggle" title="Cambiar tema">
                     <span class="theme-icon">◐</span>
                 </button>
             </div>
-        </header>
 
-        <!-- Hero Section -->
-        <section id="inicio" class="hero">
-            <div class="hero-content">
-                <h1 class="hero-title">Sistema de Gestión de Personal y Nómina</h1>
-                <p class="hero-subtitle">Solución integral para instituciones educativas</p>
-                <div class="hero-actions">
-                    <a href="#software" class="btn btn-primary">Ver Software</a>
-                    <a href="#tesis" class="btn btn-secondary">Leer Tesis</a>
+            <!-- Reading Progress Bar -->
+            <div class="reading-progress-bar" id="reader-progress-bar"></div>
+        </div>
+
+        <!-- Reader Container (Sidebar + Article + TOC) -->
+        <div class="reader-container">
+            <!-- Left Sidebar: Document Tree -->
+            <aside class="reader-sidebar" id="reader-sidebar">
+                <div class="reader-sidebar-search">
+                    <span class="sidebar-search-icon">🔍</span>
+                    <input type="text" id="reader-sidebar-filter" class="sidebar-search-input" placeholder="Filtrar temas..." autocomplete="off">
                 </div>
-            </div>
-            <div class="hero-visual">
-                <div class="code-preview">
-                    <div class="code-header">
-                        <span class="code-dot"></span>
-                        <span class="code-dot"></span>
-                        <span class="code-dot"></span>
+                <div class="reader-sidebar-nav" id="reader-sidebar-nav">
+                    <!-- Populated by JS with categories and document items -->
+                </div>
+            </aside>
+
+            <!-- Center: Rendered Markdown Content -->
+            <main class="reader-main" id="reader-scroll-container">
+                <article class="reader-article">
+                    <!-- Article Meta Header -->
+                    <div class="article-meta-header">
+                        <div class="article-tags-row">
+                            <span class="article-category-badge" id="article-badge">Tesis Académica</span>
+                            <span class="article-stat-pill" id="article-readtime">⏱️ 10 min de lectura</span>
+                            <span class="article-stat-pill" id="article-words">1,500 palabras</span>
+                        </div>
+                        <h1 class="article-main-title" id="article-title">Título del Documento</h1>
+                        <p class="article-subtitle" id="article-subtitle">Resumen o descripción del documento.</p>
                     </div>
-                    <div class="code-content">
-                        <code class="code-line">from services import EmpleadoService</code>
-                        <code class="code-line">service = EmpleadoService()</code>
-                        <code class="code-line">empleado = service.crear_empleado({</code>
-                        <code class="code-line">    "nombres": "Juan",</code>
-                        <code class="code-line">    "apellidos": "Pérez",</code>
-                        <code class="code-line">    "cedula": "12345678"</code>
-                        <code class="code-line">})</code>
+
+                    <!-- Markdown Content Rendered Target -->
+                    <div class="markdown-body" id="markdown-render-target">
+                        <!-- Rendered HTML will be injected here -->
                     </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Software Section -->
-        <section id="software" class="section">
-            <div class="section-header">
-                <h2 class="section-title">Software</h2>
-                <p class="section-subtitle">Sistema completo desarrollado en Python</p>
-            </div>
-            
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">👥</div>
-                    <h3 class="feature-title">Gestión de Empleados</h3>
-                    <p class="feature-description">Registro completo con datos personales, laborales y académicos</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">📄</div>
-                    <h3 class="feature-title">Gestión Documental</h3>
-                    <p class="feature-description">Digitalización y control de documentos con alertas de vencimiento</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">📋</div>
-                    <h3 class="feature-title">Incidencias</h3>
-                    <p class="feature-description">Control de permisos, reposos y ausencias con flujo de aprobación</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">💰</div>
-                    <h3 class="feature-title">Nómina</h3>
-                    <p class="feature-description">Cálculo automático de pagos con deducciones y bonificaciones</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3 class="feature-title">Reportes</h3>
-                    <p class="feature-description">Generación de estadísticas y documentos en PDF</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">⚙️</div>
-                    <h3 class="feature-title">Configuración</h3>
-                    <p class="feature-description">Personalización completa según necesidades institucionales</p>
-                </div>
-            </div>
-
-            <div class="tech-stack">
-                <h3 class="tech-title">Tecnologías</h3>
-                <div class="tech-tags">
-                    <span class="tech-tag">Python 3.10+</span>
-                    <span class="tech-tag">SQLAlchemy</span>
-                    <span class="tech-tag">CustomTkinter</span>
-                    <span class="tech-tag">SQLite</span>
-                    <span class="tech-tag">ReportLab</span>
-                    <span class="tech-tag">PyPDF2</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Tesis Section -->
-        <section id="tesis" class="section">
-            <div class="section-header">
-                <h2 class="section-title">Tesis Académica</h2>
-                <p class="section-subtitle">Investigación completa sobre el sistema</p>
-            </div>
-
-            <div class="thesis-grid">
-                <div class="thesis-card">
-                    <div class="thesis-number">01</div>
-                    <h3 class="thesis-title">Proyecto Social Tecnológico</h3>
-                    <p class="thesis-description">Descripción del proyecto social, justificación y metodología</p>
-                    <a href="../TESIS/PROYECTO_SOCIAL_TECNOLOGICO.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">02</div>
-                    <h3 class="thesis-title">Anteproyecto de Tesis</h3>
-                    <p class="thesis-description">Planteamiento inicial, objetivos y metodología propuesta</p>
-                    <a href="../TESIS/ANTEPROYECTO_TESIS.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">03</div>
-                    <h3 class="thesis-title">Capítulo I: Planteamiento del Problema</h3>
-                    <p class="thesis-description">Realidad problemática, formulación y justificación</p>
-                    <a href="../TESIS/CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">04</div>
-                    <h3 class="thesis-title">Capítulo II: Marco Teórico</h3>
-                    <p class="thesis-description">Antecedentes, bases teóricas y legales</p>
-                    <a href="../TESIS/CAPITULO_II_MARCO_TEORICO.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">05</div>
-                    <h3 class="thesis-title">Capítulo III: Metodología</h3>
-                    <p class="thesis-description">Diseño de investigación, técnicas e instrumentos</p>
-                    <a href="../TESIS/CAPITULO_III_METODOLOGIA.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">06</div>
-                    <h3 class="thesis-title">Capítulo IV: Resultados</h3>
-                    <p class="thesis-description">Descripción del sistema, pruebas y validación</p>
-                    <a href="../TESIS/CAPITULO_IV_RESULTADOS.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">07</div>
-                    <h3 class="thesis-title">Capítulo V: Conclusiones</h3>
-                    <p class="thesis-description">Conclusiones, recomendaciones y contribuciones</p>
-                    <a href="../TESIS/CAPITULO_V_CONCLUSIONES.md" class="thesis-link">Ver documento →</a>
-                </div>
-
-                <div class="thesis-card">
-                    <div class="thesis-number">08</div>
-                    <h3 class="thesis-title">Bibliografía y Anexos</h3>
-                    <p class="thesis-description">Referencias completas y 10 anexos detallados</p>
-                    <a href="../TESIS/BIBLIOGRAFIA_ANEXOS.md" class="thesis-link">Ver documento →</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- Documentation Section -->
-        <section id="documentacion" class="section">
-            <div class="section-header">
-                <h2 class="section-title">Documentación Técnica</h2>
-                <p class="section-subtitle">Guías completas para desarrollo y uso</p>
-            </div>
-
-            <div class="docs-list">
-                <a href="../README.md" class="doc-item">
-                    <div class="doc-icon">📖</div>
-                    <div class="doc-content">
-                        <h4 class="doc-title">README</h4>
-                        <p class="doc-description">Documentación general del proyecto</p>
+                    <!-- Prev / Next Navigation Footer -->
+                    <div class="article-nav-footer">
+                        <button class="nav-card prev" id="nav-prev-btn">
+                            <span class="nav-card-sub">← Documento Anterior</span>
+                            <span class="nav-card-title" id="nav-prev-title">Capítulo anterior</span>
+                        </button>
+                        <button class="nav-card next" id="nav-next-btn">
+                            <span class="nav-card-sub">Siguiente Documento →</span>
+                            <span class="nav-card-title" id="nav-next-title">Siguiente capítulo</span>
+                        </button>
                     </div>
-                    <span class="doc-arrow">→</span>
-                </a>
+                </article>
+            </main>
 
-                <a href="../DOCUMENTACION_TECNICA.md" class="doc-item">
-                    <div class="doc-icon">🔧</div>
-                    <div class="doc-content">
-                        <h4 class="doc-title">Documentación Técnica</h4>
-                        <p class="doc-description">Arquitectura y detalles técnicos</p>
-                    </div>
-                    <span class="doc-arrow">→</span>
-                </a>
-
-                <a href="../GUIA_USUARIO.md" class="doc-item">
-                    <div class="doc-icon">👤</div>
-                    <div class="doc-content">
-                        <h4 class="doc-title">Guía de Usuario</h4>
-                        <p class="doc-description">Instrucciones de uso del sistema</p>
-                    </div>
-                    <span class="doc-arrow">→</span>
-                </a>
-
-                <a href="../NOTAS_DESARROLLO.md" class="doc-item">
-                    <div class="doc-icon">📝</div>
-                    <div class="doc-content">
-                        <h4 class="doc-title">Notas de Desarrollo</h4>
-                        <p class="doc-description">Notas y decisiones de desarrollo</p>
-                    </div>
-                    <span class="doc-arrow">→</span>
-                </a>
-
-                <a href="../CONTRIBUTING.md" class="doc-item">
-                    <div class="doc-icon">🤝</div>
-                    <div class="doc-content">
-                        <h4 class="doc-title">Guía de Contribución</h4>
-                        <p class="doc-description">Cómo contribuir al proyecto</p>
-                    </div>
-                    <span class="doc-arrow">→</span>
-                </a>
-
-                <a href="../QUICKSTART_CICD.md" class="doc-item">
-                    <div class="doc-icon">⚡</div>
-                    <div class="doc-content">
-                        <h4 class="doc-title">Quickstart CI/CD</h4>
-                        <p class="doc-description">Configuración rápida de CI/CD</p>
-                    </div>
-                    <span class="doc-arrow">→</span>
-                </a>
-            </div>
-        </section>
-
-        <!-- Stats Section -->
-        <section class="stats-section">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-number">32</div>
-                    <div class="stat-label">Archivos Python</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">9</div>
-                    <div class="stat-label">Documentos de Tesis</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">7</div>
-                    <div class="stat-label">Documentos Técnicos</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">10</div>
-                    <div class="stat-label">Anexos</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <p class="footer-text">Sistema de Gestión de Personal y Nómina</p>
-                <p class="footer-copyright">© 2026. Documentación ultra minimalista.</p>
-            </div>
-        </footer>
+            <!-- Right Sidebar: Dynamic Table of Contents (TOC) -->
+            <aside class="reader-toc-sidebar" id="reader-toc">
+                <div class="toc-title">En esta página</div>
+                <ul class="toc-list" id="toc-list">
+                    <!-- Dynamic H2/H3 anchors injected here -->
+                </ul>
+            </aside>
+        </div>
     </div>
 
+    <!-- ======================================================================
+         COMMAND PALETTE / MODAL SEARCH (Ctrl + K)
+         ====================================================================== -->
+    <div class="palette-overlay" id="palette-overlay" role="dialog" aria-modal="true">
+        <div class="palette-box">
+            <div class="palette-input-wrap">
+                <span class="palette-icon">🔍</span>
+                <input type="text" id="palette-input" class="palette-input" placeholder="Buscar en todos los documentos (ej: nómina, sqlite, metodología)..." autocomplete="off">
+            </div>
+
+            <div class="palette-results" id="palette-results">
+                <!-- Results populated live -->
+            </div>
+
+            <div class="palette-footer">
+                <div class="palette-shortcuts">
+                    <span><kbd class="kbd-shortcut">↑</kbd> <kbd class="kbd-shortcut">↓</kbd> Navegar</span>
+                    <span><kbd class="kbd-shortcut">↵</kbd> Seleccionar</span>
+                    <span><kbd class="kbd-shortcut">ESC</kbd> Cerrar</span>
+                </div>
+                <span>SDEP Search Engine</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================
+         TOAST FEEDBACK MESSAGE
+         ====================================================================== -->
+    <div class="toast-msg" id="toast-msg">Enlace copiado al portapapeles</div>
+
+    <!-- ======================================================================
+         GLOBAL FOOTER
+         ====================================================================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="brand">
+                        <span class="brand-icon">◆</span>
+                        <span>SDEP</span>
+                    </div>
+                    <p>
+                        Sistema de Gestión de Personal y Nómina para instituciones educativas. Desarrollado con Python, SQLAlchemy y CustomTkinter bajo principios de arquitectura modular y código abierto.
+                    </p>
+                </div>
+
+                <div>
+                    <div class="footer-col-title">Tesis Académica</div>
+                    <ul class="footer-links">
+                        <li><a href="#doc=tesis-indice-general" class="open-doc-trigger" data-doc="tesis-indice-general">Índice General</a></li>
+                        <li><a href="#doc=tesis-proyecto-social" class="open-doc-trigger" data-doc="tesis-proyecto-social">Proyecto Social</a></li>
+                        <li><a href="#doc=tesis-capitulo-1" class="open-doc-trigger" data-doc="tesis-capitulo-1">Capítulo I: Problema</a></li>
+                        <li><a href="#doc=tesis-capitulo-2" class="open-doc-trigger" data-doc="tesis-capitulo-2">Capítulo II: Marco Teórico</a></li>
+                        <li><a href="#doc=tesis-capitulo-3" class="open-doc-trigger" data-doc="tesis-capitulo-3">Capítulo III: Metodología</a></li>
+                        <li><a href="#doc=tesis-capitulo-4" class="open-doc-trigger" data-doc="tesis-capitulo-4">Capítulo IV: Resultados</a></li>
+                        <li><a href="#doc=tesis-capitulo-5" class="open-doc-trigger" data-doc="tesis-capitulo-5">Capítulo V: Conclusiones</a></li>
+                        <li><a href="#doc=tesis-bibliografia-anexos" class="open-doc-trigger" data-doc="tesis-bibliografia-anexos">Bibliografía y Anexos</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="footer-col-title">Documentación</div>
+                    <ul class="footer-links">
+                        <li><a href="#doc=readme" class="open-doc-trigger" data-doc="readme">README Principal</a></li>
+                        <li><a href="#doc=doc-tecnica" class="open-doc-trigger" data-doc="doc-tecnica">Documentación Técnica</a></li>
+                        <li><a href="#doc=guia-usuario" class="open-doc-trigger" data-doc="guia-usuario">Guía de Usuario</a></li>
+                        <li><a href="#doc=estructura-proyecto" class="open-doc-trigger" data-doc="estructura-proyecto">Estructura del Proyecto</a></li>
+                        <li><a href="#doc=notas-desarrollo" class="open-doc-trigger" data-doc="notas-desarrollo">Notas de Desarrollo</a></li>
+                        <li><a href="#doc=contributing" class="open-doc-trigger" data-doc="contributing">Guía de Contribución</a></li>
+                        <li><a href="#doc=quickstart-cicd" class="open-doc-trigger" data-doc="quickstart-cicd">Quickstart CI/CD</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="footer-col-title">Proyecto & Código</div>
+                    <ul class="footer-links">
+                        <li><a href="https://github.com/LiebeBlack/SDEP_CPP5" target="_blank" rel="noopener noreferrer">Repositorio GitHub ↗</a></li>
+                        <li><a href="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Licencia MIT ↗</a></li>
+                        <li><a href="https://github.com/LiebeBlack/SDEP_CPP5/releases" target="_blank" rel="noopener noreferrer">Versiones y Releases ↗</a></li>
+                        <li><a href="https://github.com/LiebeBlack/SDEP_CPP5/issues" target="_blank" rel="noopener noreferrer">Reportar un Error ↗</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div>© 2026 SDEP • Sistema de Gestión de Personal y Nómina. Documentación ultra-minimalista.</div>
+                <div>Licencia de Código Abierto • Python 3.10+</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ======================================================================
+         SCRIPTS: Vendor Markdown + Prism Highlighter + Data Bundle + App Logic
+         ====================================================================== -->
+    <!-- Local Vendor Scripts (works 100% offline via file://) with CDN fallback -->
+    <script src="vendor/marked.min.js"></script>
+    <script src="vendor/prism.min.js"></script>
+    <script src="vendor/prism-python.min.js"></script>
+    <script src="vendor/prism-bash.min.js"></script>
+    <script src="vendor/prism-sql.min.js"></script>
+    <script src="vendor/prism-json.min.js"></script>
+    <script src="vendor/prism-markdown.min.js"></script>
+
+    <!-- Centralized Document Corpus Data Bundle -->
+    <script src="docs_data.js"></script>
+
+    <!-- Application Controller -->
     <script src="script.js"></script>
 </body>
 </html>

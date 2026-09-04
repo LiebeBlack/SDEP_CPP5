@@ -209,13 +209,12 @@ def run_application():
             # 1. Inicio de sesión
             login = LoginWindow()
             user = login.run()
-            # La ventana de login ya se destruye a sí misma al autenticar
-            # (o al cerrar); destruirla de nuevo lanza TclError.
-            try:
-                login.destroy()
-            except Exception:
-                pass
             if user is None:
+                # Sesión cancelada: la ventana sigue existiendo y se cierra
+                try:
+                    login.destroy()
+                except Exception:
+                    pass
                 logger.info("Sesión cancelada por el usuario")
                 break
 
@@ -226,10 +225,19 @@ def run_application():
             rol = user.rol_valor
             logger.info(f"Sesión iniciada: {username} ({rol})")
 
-            # 2. Ventana principal (con limpieza garantizada ante fallos)
+            # 2. Ventana principal (con limpieza garantizada ante fallos).
+            # La ventana de login se OCULTÓ al autenticar (no se destruyó):
+            # se destruye aquí, DESPUÉS de que la ventana principal haya
+            # arrancado, para evitar el patrón "destruir la raíz antigua
+            # justo antes de crear la raíz nueva", que en algunos equipos
+            # deja la segunda ventana en negro sin responder.
             app = None
             try:
                 app = MainWindow(current_user=user)
+                try:
+                    app.update()
+                except Exception:
+                    pass
             except Exception:
                 # Fallback: si la construcción falló a mitad de camino,
                 # liberar la sesión scoped del hilo antes de propagar.
@@ -238,7 +246,15 @@ def run_application():
                     db_config.SessionLocal.remove()
                 except Exception:
                     pass
+                try:
+                    login.destroy()
+                except Exception:
+                    pass
                 raise
+            try:
+                login.destroy()
+            except Exception:
+                pass
             application_instance = app
             try:
                 status = app.run()

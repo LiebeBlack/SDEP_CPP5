@@ -15,9 +15,9 @@
     "name": "auto_shutdown",
     "filename": "auto_shutdown.db.gz",
     "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\auto_shutdown.db.gz",
-    "timestamp": "20260904_045706",
-    "size_bytes": 4980,
-    "checksum": "e177bca45b358393a8bd0e843cb3ed137a17705f8a7d62fb3e850e540d4e6642",
+    "timestamp": "20260904_051801",
+    "size_bytes": 4982,
+    "checksum": "16e60314bf95f75e4e0472ec3a6345ddb890fe7b821a159e3573950245f994b3",
     "compressed": true,
     "version": 2
   },

@@ -55,7 +55,9 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Configurar uv
-        uses: astral-sh/setup-uv@v10
+        # Las releases de setup-uv son inmutables desde v8: usar la versión
+        # completa (v10.0.1), no la etiqueta major "v10" (no existe).
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 

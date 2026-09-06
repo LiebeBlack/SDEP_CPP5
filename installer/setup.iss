@@ -4,7 +4,7 @@
 ;   ISCC.exe /DMyAppVersion=2.79 installer\setup.iss
 ;
 ; Compilación firmada (GitHub Actions - .github/workflows/release.yml):
-;   ISCC.exe /DMyAppVersion=1.0.0 /DMyAppName=SDEP_CPP5 ^
+;   ISCC.exe /DMyAppVersion=1.0.0 /DMyVersionInfo=1.0.0 /DMyAppName=SDEP_CPP5 ^
 ;           /DMyAppExeName=SDEP_CPP5.exe /DMyOutputBaseFilename=Instalador_SDEP_CPP5 ^
 ;           /DSignToolPath="C:\...\signtool.exe" /DCertPath="C:\...\cert.pfx" ^
 ;           /DCertPassword="..." installer\setup.iss
@@ -24,9 +24,14 @@
 
 ; VersionInfoVersion requiere formato #.#.# o #.#.#.# (Inno Setup).
 ; MyAppVersion puede ser "X.Y" (2 partes, desde el archivo VERSION).
-; MyAppVersionInfo siempre tiene al menos 3 partes para VersionInfoVersion.
-#ifndef MyAppVersionInfo
-  #define MyAppVersionInfo MyAppVersion ".0.0"
+; El workflow de Release Firmada puede pasar MyVersionInfo ya normalizado.
+; Sin él, MyAppVersion se rellena hasta un formato valido (min. 3 partes).
+#ifndef MyVersionInfo
+  #if Pos(".", MyAppVersion) == 0
+    #define MyVersionInfo MyAppVersion + ".0.0"
+  #else
+    #define MyVersionInfo MyAppVersion + ".0"
+  #endif
 #endif
 
 #ifndef MyAppName
@@ -74,7 +79,7 @@ MinVersion=10.0
 ; La importación al almacén Cert:\LocalMachine\Root exige elevación:
 ; el instalador siempre pide privilegios de administrador.
 PrivilegesRequired=admin
-VersionInfoVersion={#MyAppVersionInfo}
+VersionInfoVersion={#MyVersionInfo}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName}
 VersionInfoProductName={#MyAppName}

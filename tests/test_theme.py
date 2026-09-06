@@ -7,8 +7,6 @@ que necesitan un widget Tk se prueban con objetos simulados (mocks).
 
 import re
 
-import pytest
-
 from src.gui import theme
 
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -49,9 +47,15 @@ def test_aplicar_modo_dark_restaura_paleta():
     assert theme.COLORES == theme.PALETA_OSCURA
 
 
-def test_aplicar_modo_invalido_usa_oscuro():
+def test_aplicar_modo_invalido_usa_claro():
+    """Un valor corrupto/desconocido cae al tema claro (por defecto en el
+    login), nunca debe romper la configuración visual de la aplicación"""
     theme.aplicar_modo_apariencia("Raro")
-    assert theme.COLORES == theme.PALETA_OSCURA
+    try:
+        assert theme.COLORES == theme.PALETA_CLARA
+    finally:
+        # Restaurar el estado global para no afectar a otras pruebas
+        theme.aplicar_modo_apariencia("Dark")
 
 
 def test_centrar_ventana_mock():

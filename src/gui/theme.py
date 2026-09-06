@@ -137,17 +137,6 @@ def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial") ->
         return fallback
 
 
-def fuente_ui(tamano: int = 10) -> tuple:
-    """
-    Tupla de fuente (familia, tamaño) garantizada por el sistema
-
-    Reemplaza los nombres fijos como "Arial"/"Segoe UI" por la familia
-    real por defecto de Tk, que siempre existe, evitando errores de
-    renderizado o sustitución silenciosa de fuentes.
-    """
-    return (familia_fuente_tk("TkDefaultFont"), tamano)
-
-
 def configure_ttk_styles(root=None) -> None:
     """
     Aplica la paleta activa a Treeview y Combobox (ttk).

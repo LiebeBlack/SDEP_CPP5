@@ -42,8 +42,11 @@
   #define MyAppExeName "SistemaGestionPersonal.exe"
 #endif
 
+; OJO: la sintaxis {#...} NO se expande dentro del valor de un #define
+; (quedaría literal en el nombre, p.ej. "...-Setup-{#MyAppVersion}.exe").
+; Se usa concatenación ISPP para incrustar la versión en el nombre.
 #ifndef MyOutputBaseFilename
-  #define MyOutputBaseFilename "SistemaGestionPersonal-Setup-{#MyAppVersion}"
+  #define MyOutputBaseFilename "SistemaGestionPersonal-Setup-" + MyAppVersion
 #endif
 
 ; Nombre de la carpeta de salida de PyInstaller (spec/app.spec)

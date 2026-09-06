@@ -126,8 +126,10 @@ def setup_environment():
             settings.documents_path,
             settings.photos_path,
             settings.exports_path,
-            str(Path(settings.base_dir) / "logs"),
-            str(Path(settings.base_dir) / "backups")
+            settings.logs_dir,
+            settings.backups_dir,
+            settings.cache_dir,
+            settings.temp_dir,
         ]
         
         for directory in directories:

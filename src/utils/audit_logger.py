@@ -59,11 +59,16 @@ class AuditLogger:
         # Importar settings aquí para evitar problemas de inicialización
         from src.config import settings
         
-        self.audit_dir = Path(settings.base_dir) / "logs" / "audit"
-        self.audit_dir.mkdir(parents=True, exist_ok=True)
+        self.audit_dir = Path(settings.logs_dir) / "audit"
+        self.error_dir = Path(settings.logs_dir) / "errors"
         
-        self.error_dir = Path(settings.base_dir) / "logs" / "errors"
-        self.error_dir.mkdir(parents=True, exist_ok=True)
+        # La creación de directorios NUNCA debe impedir el arranque
+        # (permisos denegados, unidad de solo lectura, etc.)
+        try:
+            self.audit_dir.mkdir(parents=True, exist_ok=True)
+            self.error_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            pass
         
         # Configurar loggers
         self._setup_loggers()
@@ -88,7 +93,17 @@ class AuditLogger:
                 self._audit_enabled = True
                 from src.config import db_config
                 from src.models.configuracion import Configuracion
-                session = db_config.get_session()
+                # Sesión propia e independiente del registry scoped. Esta
+                # consulta se ejecuta dentro de log_event(), que a su vez
+                # se invoca desde operaciones que están usando la sesión
+                # scoped del hilo (login, repositorios CRUD, auditoría de
+                # AuthService...). Cerrar la sesión scoped aquí
+                # (close_session -> SessionLocal.remove) invalidaba la
+                # sesión del llamador: el primer evento auditado dejaba la
+                # sesión del login cerrada y el cambio de contraseña
+                # inicial fallaba con "session is in 'closed' state",
+                # quedando la pantalla de inicio colgada.
+                session = db_config.new_session()
                 try:
                     config = session.query(Configuracion).filter(
                         Configuracion.clave == "audit_enabled").first()
@@ -96,52 +111,55 @@ class AuditLogger:
                         self._audit_enabled = str(config.valor).strip().lower() in (
                             "true", "1", "yes", "on", "si", "verdadero")
                 finally:
-                    db_config.close_session(session)
+                    try:
+                        session.close()
+                    except Exception:
+                        pass
         except Exception:
             # Si no se puede consultar, se mantiene el último valor conocido
             pass
         return self._audit_enabled
     
     def _setup_loggers(self):
-        """Configura los diferentes loggers"""
+        """Configura los diferentes loggers (a prueba de fallos)"""
+        # Si un archivo de log está bloqueado (abierto por otro proceso,
+        # permisos denegados, disco lleno), se usa NullHandler y la app
+        # sigue funcionando sin errores de importación ni cierres.
+        def _crear_handler(ruta, nivel):
+            try:
+                handler = logging.FileHandler(ruta, encoding='utf-8')
+                handler.setFormatter(logging.Formatter(
+                    '%(asctime)s - %(levelname)s - %(message)s'
+                ))
+                return handler
+            except (OSError, PermissionError, ValueError):
+                return logging.NullHandler()
+
+        fecha = datetime.now().strftime('%Y%m%d')
+
         # Logger de auditoría
         self.audit_logger = logging.getLogger("audit")
         self.audit_logger.setLevel(logging.INFO)
-        
-        audit_handler = logging.FileHandler(
-            self.audit_dir / f"audit_{datetime.now().strftime('%Y%m%d')}.log",
-            encoding='utf-8'
-        )
-        audit_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s'
-        ))
-        self.audit_logger.addHandler(audit_handler)
-        
+        self.audit_logger.propagate = False
+        if not self.audit_logger.handlers:
+            self.audit_logger.addHandler(
+                _crear_handler(self.audit_dir / f"audit_{fecha}.log", logging.INFO))
+
         # Logger de errores
         self.error_logger = logging.getLogger("errors")
         self.error_logger.setLevel(logging.ERROR)
-        
-        error_handler = logging.FileHandler(
-            self.error_dir / f"errors_{datetime.now().strftime('%Y%m%d')}.log",
-            encoding='utf-8'
-        )
-        error_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s'
-        ))
-        self.error_logger.addHandler(error_handler)
-        
+        self.error_logger.propagate = False
+        if not self.error_logger.handlers:
+            self.error_logger.addHandler(
+                _crear_handler(self.error_dir / f"errors_{fecha}.log", logging.ERROR))
+
         # Logger de seguridad
         self.security_logger = logging.getLogger("security")
         self.security_logger.setLevel(logging.WARNING)
-        
-        security_handler = logging.FileHandler(
-            self.audit_dir / f"security_{datetime.now().strftime('%Y%m%d')}.log",
-            encoding='utf-8'
-        )
-        security_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s'
-        ))
-        self.security_logger.addHandler(security_handler)
+        self.security_logger.propagate = False
+        if not self.security_logger.handlers:
+            self.security_logger.addHandler(
+                _crear_handler(self.audit_dir / f"security_{fecha}.log", logging.WARNING))
     
     def log_event(self, event_type: AuditEventType, 
                   entity_type: str, 

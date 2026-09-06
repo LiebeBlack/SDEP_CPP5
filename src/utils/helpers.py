@@ -8,6 +8,7 @@ el sistema para formateo, validación y manipulación de datos.
 
 import os
 import sys
+import time
 from pathlib import Path
 from datetime import datetime, date
 from typing import Optional, Union
@@ -16,12 +17,17 @@ from typing import Optional, Union
 def get_resource_path(relative_path: str) -> str:
     """
     Obtiene la ruta absoluta a un recurso, funcionando tanto en desarrollo como en EXE
+
+    En desarrollo los recursos viven en la raíz del proyecto (no en el
+    directorio de trabajo), por lo que la ruta se resuelve siempre desde
+    la ubicación real de este módulo.
     """
     try:
         # PyInstaller crea una carpeta temporal en _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
-        base_path = os.path.abspath(".")
+        # src/utils/helpers.py -> raíz del proyecto
+        base_path = str(Path(__file__).resolve().parent.parent.parent)
     
     return os.path.join(base_path, relative_path)
 
@@ -377,6 +383,54 @@ def ensure_directory_exists(directory_path: str) -> bool:
     except Exception as e:
         print(f"Error inesperado creando directorio {directory_path}: {e}")
         return False
+
+
+def escribir_archivo_seguro(ruta: str, contenido: bytes, reintentos: int = 3) -> bool:
+    """
+    Escribe bytes en un archivo reintentando ante errores transitorios
+
+    En Windows un archivo puede estar momentáneamente bloqueado por otro
+    proceso (antivirus, visor, respaldo en curso); se reintenta con un
+    pequeño backoff antes de declarar el fallo.
+
+    Args:
+        ruta: Ruta del archivo a escribir
+        contenido: Bytes a guardar
+        reintentos: Cantidad de intentos (por defecto 3)
+
+    Returns:
+        bool: True si se escribió correctamente
+    """
+    for intento in range(reintentos):
+        try:
+            with open(ruta, "wb") as f:
+                f.write(contenido)
+            return True
+        except (PermissionError, OSError):
+            if intento < reintentos - 1:
+                time.sleep(0.2 * (intento + 1))
+    return False
+
+
+def leer_archivo_seguro(ruta: str, reintentos: int = 3):
+    """
+    Lee un archivo binario reintentando ante bloqueos transitorios
+
+    Args:
+        ruta: Ruta del archivo a leer
+        reintentos: Cantidad de intentos
+
+    Returns:
+        bytes del contenido o None si no se pudo leer
+    """
+    for intento in range(reintentos):
+        try:
+            with open(ruta, "rb") as f:
+                return f.read()
+        except (PermissionError, OSError, FileNotFoundError):
+            if intento < reintentos - 1:
+                time.sleep(0.2 * (intento + 1))
+    return None
 
 
 def get_timestamp() -> str:

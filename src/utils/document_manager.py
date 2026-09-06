@@ -13,7 +13,8 @@ import mimetypes
 from src.config import settings
 from src.utils.helpers import (
     get_file_extension, is_valid_image_file, is_valid_pdf_file,
-    generate_unique_filename, ensure_directory_exists, format_file_size
+    generate_unique_filename, ensure_directory_exists, format_file_size,
+    escribir_archivo_seguro, leer_archivo_seguro
 )
 
 
@@ -51,9 +52,9 @@ class DocumentManager:
         unique_filename = generate_unique_filename(original_filename)
         file_path = os.path.join(category_dir, unique_filename)
         
-        # Guardar archivo
-        with open(file_path, 'wb') as f:
-            f.write(file_content)
+        # Guardar archivo (con reintentos ante bloqueos transitorios)
+        if not escribir_archivo_seguro(file_path, file_content):
+            raise OSError(f"No se pudo escribir el documento: {file_path}")
         
         return file_path, unique_filename
     
@@ -78,9 +79,9 @@ class DocumentManager:
         unique_filename = generate_unique_filename(original_filename)
         file_path = os.path.join(employee_dir, unique_filename)
         
-        # Guardar archivo
-        with open(file_path, 'wb') as f:
-            f.write(file_content)
+        # Guardar archivo (con reintentos ante bloqueos transitorios)
+        if not escribir_archivo_seguro(file_path, file_content):
+            raise OSError(f"No se pudo escribir la foto: {file_path}")
         
         return file_path, unique_filename
     
@@ -95,8 +96,7 @@ class DocumentManager:
             Contenido binario del archivo o None si no existe
         """
         if os.path.exists(file_path):
-            with open(file_path, 'rb') as f:
-                return f.read()
+            return leer_archivo_seguro(file_path)
         return None
     
     def delete_document(self, file_path: str) -> bool:
@@ -296,8 +296,8 @@ class DocumentManager:
         unique_filename = generate_unique_filename(filename)
         file_path = os.path.join(category_dir, unique_filename)
         
-        with open(file_path, 'wb') as f:
-            f.write(file_content)
+        if not escribir_archivo_seguro(file_path, file_content):
+            raise OSError(f"No se pudo exportar el archivo: {file_path}")
         
         return file_path, unique_filename
     

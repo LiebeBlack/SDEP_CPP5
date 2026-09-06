@@ -55,13 +55,28 @@ def migrar_columnas(engine) -> int:
             if not existe:
                 return 0
             existentes = {row[1] for row in conn.execute(text("PRAGMA table_info(empleados)"))}
-            agregadas = 0
-            for columna, tipo in MIGRACIONES_EMPLEADOS.items():
-                if columna not in existentes:
-                    conn.execute(text(f"ALTER TABLE empleados ADD COLUMN {columna} {tipo}"))
-                    logger.info(f"Migración: columna empleados.{columna} agregada")
-                    agregadas += 1
-            return agregadas
+            faltantes = [
+                (columna, tipo)
+                for columna, tipo in MIGRACIONES_EMPLEADOS.items()
+                if columna not in existentes
+            ]
+            if not faltantes:
+                return 0
+            
+            # Respaldo automático ANTES de modificar el esquema: si la
+            # migración falla a mitad de camino (disco lleno, corte de
+            # energía, archivo bloqueado), la base nunca queda en un
+            # estado a medio migrar sin recuperación posible.
+            try:
+                from src.utils.backup_manager import get_backup_manager
+                get_backup_manager().create_backup("pre_migracion", compress=True)
+            except Exception as e:
+                logger.warning(f"No se pudo crear backup antes de migrar el esquema: {e}")
+            
+            for columna, tipo in faltantes:
+                conn.execute(text(f"ALTER TABLE empleados ADD COLUMN {columna} {tipo}"))
+                logger.info(f"Migración: columna empleados.{columna} agregada")
+            return len(faltantes)
     except SQLAlchemyError as e:
         logger.warning(f"No se pudo migrar el esquema de la base de datos: {e}")
         return 0

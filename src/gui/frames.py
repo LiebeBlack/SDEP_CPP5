@@ -24,6 +24,27 @@ from src.services.auth_service import AuthService
 from src.gui.theme import COLORES
 
 
+_FUENTE_FAMILIA_CACHE = [None]
+
+
+def _familia_fuente() -> str:
+    """
+    Familia de fuente por defecto del sistema (resuelta una sola vez)
+
+    Reemplaza nombres fijos como "Arial" por la familia real por defecto
+    de Tk, que existe siempre: si la fuente no está instalada, el sistema
+    operativo la sustituye sin errores de renderizado ni cierres.
+    """
+    if _FUENTE_FAMILIA_CACHE[0] is None:
+        try:
+            from src.gui.theme import familia_fuente_tk
+            _FUENTE_FAMILIA_CACHE[0] = familia_fuente_tk(
+                "TkDefaultFont", "Arial")
+        except Exception:
+            _FUENTE_FAMILIA_CACHE[0] = "Arial"
+    return _FUENTE_FAMILIA_CACHE[0]
+
+
 def _id_fila_seleccionada(tree) -> Optional[int]:
     """ID numérico de la fila seleccionada en un Treeview o None"""
     seleccion = tree.selection()
@@ -352,7 +373,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         search_frame.pack(fill="x", padx=10, pady=10)
         
         # Campo de búsqueda
-        search_label = tk.Label(search_frame, text="Buscar:", bg=COLORES["panel"], fg=COLORES["texto"], font=("Arial", 10))
+        search_label = tk.Label(search_frame, text="Buscar:", bg=COLORES["panel"], fg=COLORES["texto"], font=(_familia_fuente(), 10))
         search_label.pack(side="left", padx=5)
         
         self.search_entry = tk.Entry(search_frame, width=40, bg=COLORES["campo"], fg=COLORES["texto"], insertbackground=COLORES["texto"])
@@ -360,7 +381,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.search_entry.bind("<KeyRelease>", self._on_search)
         
         # Filtro por tipo
-        tipo_label = tk.Label(search_frame, text="Tipo:", bg=COLORES["panel"], fg=COLORES["texto"], font=("Arial", 10))
+        tipo_label = tk.Label(search_frame, text="Tipo:", bg=COLORES["panel"], fg=COLORES["texto"], font=(_familia_fuente(), 10))
         tipo_label.pack(side="left", padx=5)
         
         self.tipo_combo = ttk.Combobox(
@@ -368,7 +389,7 @@ class EmpleadosFrame(ctk.CTkFrame):
             values=["Todos", "docente", "administrativo", "mantenimiento"],
             width=18,
             state="readonly",
-            font=("Arial", 9)
+            font=(_familia_fuente(), 9)
         )
         self.tipo_combo.pack(side="left", padx=5)
         self.tipo_combo.set("Todos")
@@ -1096,7 +1117,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         ctk.CTkLabel(
             form_frame,
             text="Ej.: María López (10 años, C.I. 12345678); Juan López (5 años, C.I. 87654321)",
-            text_color="#888888", font=("Arial", 9)
+            text_color="#888888", font=(_familia_fuente(), 9)
         ).grid(row=1, column=1, columnspan=3, padx=5, pady=2, sticky="w")
     
     def _create_text_field(self, parent, label: str, row: int, col: int, height: int = 80) -> ctk.CTkTextbox:
@@ -1121,7 +1142,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
     def _create_combo_field(self, parent, label: str, row: int, col: int, values: List[str]) -> ttk.Combobox:
         """Crea un campo de combo"""
         ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
-        combo = ttk.Combobox(parent, values=values, width=25, state="readonly", font=("Arial", 9))
+        combo = ttk.Combobox(parent, values=values, width=25, state="readonly", font=(_familia_fuente(), 9))
         combo.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
         if values:
             combo.set(values[0])  # Establecer primer valor por defecto
@@ -1390,7 +1411,7 @@ class DocumentosFrame(ctk.CTkFrame):
         
         ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
         
-        self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=("Arial", 9))
+        self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=(_familia_fuente(), 9))
         self.empleado_combo.pack(side="left", padx=5)
         self.empleado_combo.bind("<<ComboboxSelected>>", self._on_empleado_selected)
         
@@ -1748,7 +1769,7 @@ class DocumentoDialog(ctk.CTkToplevel):
             values=["cedula", "titulo", "reposo", "certificado", "expediente", "otro"],
             width=25,
             state="readonly",
-            font=("Arial", 9)
+            font=(_familia_fuente(), 9)
         )
         self.tipo_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.tipo_combo.set("cedula")  # Valor por defecto
@@ -1884,7 +1905,7 @@ class IncidenciasFrame(ctk.CTkFrame):
         
         ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
         
-        self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=("Arial", 9))
+        self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=(_familia_fuente(), 9))
         self.empleado_combo.pack(side="left", padx=5)
         self.empleado_combo.bind("<<ComboboxSelected>>", self._on_empleado_selected)
         
@@ -2269,7 +2290,7 @@ class IncidenciaDialog(ctk.CTkToplevel):
             values=["reposo_medico", "ausencia", "permiso", "vacaciones", "licencia"],
             width=25,
             state="readonly",
-            font=("Arial", 9)
+            font=(_familia_fuente(), 9)
         )
         self.tipo_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.tipo_combo.set("reposo_medico")  # Valor por defecto
@@ -2511,7 +2532,7 @@ class NominaFrame(ctk.CTkFrame):
         filter_frame.pack(fill="x", padx=10, pady=5)
         
         ctk.CTkLabel(filter_frame, text="Estado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
-        self.estado_combo = ttk.Combobox(filter_frame, values=["Todos", "Pendientes", "Pagados"], width=18, state="readonly", font=("Arial", 9))
+        self.estado_combo = ttk.Combobox(filter_frame, values=["Todos", "Pendientes", "Pagados"], width=18, state="readonly", font=(_familia_fuente(), 9))
         self.estado_combo.pack(side="left", padx=5)
         self.estado_combo.set("Todos")
         self.estado_combo.bind("<<ComboboxSelected>>", self._on_filter)
@@ -2994,7 +3015,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.audit_tipo_combo = ttk.Combobox(
             filtro_frame,
             values=["Todos"] + [t.value for t in AuditEventType],
-            width=22, state="readonly", font=("Arial", 9))
+            width=22, state="readonly", font=(_familia_fuente(), 9))
         self.audit_tipo_combo.pack(side="left", padx=5)
         self.audit_tipo_combo.set("Todos")
         self.audit_tipo_combo.bind("<<ComboboxSelected>>", lambda e: self._load_auditoria())
@@ -3635,9 +3656,18 @@ class InfoDialog(ctk.CTkToplevel):
         container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         container.pack(fill="both", expand=True, padx=10, pady=10)
         
+        # Fuente monoespaciada resuelta desde TkFixedFont: "Consolas" no
+        # existe en todos los sistemas y CustomTkinter emite un aviso de
+        # "fuente no encontrada" (y en algunos entornos falla el render).
+        try:
+            import tkinter.font as tkfont
+            familia_mono = tkfont.nametofont("TkFixedFont").actual("family")
+        except Exception:
+            familia_mono = "Courier New"
+
         textbox = ctk.CTkTextbox(
             container, fg_color=COLORES["campo"], text_color=COLORES["texto"],
-            font=ctk.CTkFont(family="Consolas", size=12), wrap="word")
+            font=ctk.CTkFont(family=familia_mono, size=12), wrap="word")
         textbox.pack(fill="both", expand=True, padx=8, pady=8)
         textbox.insert("1.0", text)
         textbox.configure(state="disabled")
@@ -3683,7 +3713,7 @@ class PagoDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Empleado:", text_color=COLORES["texto"]).grid(
             row=0, column=0, padx=8, pady=6, sticky="e")
         self.empleado_combo = ttk.Combobox(
-            form, width=38, state="readonly", font=("Arial", 9))
+            form, width=38, state="readonly", font=(_familia_fuente(), 9))
         self.empleado_combo.grid(row=0, column=1, columnspan=3, padx=8, pady=6, sticky="w")
         self._load_empleados()
         
@@ -3691,7 +3721,7 @@ class PagoDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Tipo de Pago:", text_color=COLORES["texto"]).grid(
             row=1, column=0, padx=8, pady=6, sticky="e")
         self.tipo_combo = ttk.Combobox(
-            form, width=30, state="readonly", font=("Arial", 9))
+            form, width=30, state="readonly", font=(_familia_fuente(), 9))
         self.tipo_combo['values'] = [etiqueta for _, etiqueta in self.TIPOS]
         self.tipo_combo.grid(row=1, column=1, padx=8, pady=6, sticky="w")
         self.tipo_combo.current(0)
@@ -3699,7 +3729,7 @@ class PagoDialog(ctk.CTkToplevel):
         ctk.CTkLabel(form, text="Método:", text_color=COLORES["texto"]).grid(
             row=1, column=2, padx=8, pady=6, sticky="e")
         self.metodo_combo = ttk.Combobox(
-            form, width=20, values=self.METODOS, state="readonly", font=("Arial", 9))
+            form, width=20, values=self.METODOS, state="readonly", font=(_familia_fuente(), 9))
         self.metodo_combo.grid(row=1, column=3, padx=8, pady=6, sticky="w")
         self.metodo_combo.set("transferencia")
         
@@ -3930,7 +3960,7 @@ class UsuarioDialog(ctk.CTkToplevel):
             row=2, column=0, padx=8, pady=6, sticky="e")
         self.rol_combo = ttk.Combobox(
             form, values=["admin", "manager", "user", "viewer"],
-            width=20, state="readonly", font=("Arial", 9))
+            width=20, state="readonly", font=(_familia_fuente(), 9))
         self.rol_combo.grid(row=2, column=1, padx=8, pady=6, sticky="w")
         self.rol_combo.set("user")
         
@@ -4058,7 +4088,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         
         ctk.CTkLabel(
             form, text="La contraseña debe tener al menos 8 caracteres.",
-            text_color=COLORES["texto_suave"], font=("Arial", 9)).grid(
+            text_color=COLORES["texto_suave"], font=(_familia_fuente(), 9)).grid(
             row=3, column=0, columnspan=2, pady=(4, 8))
         
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")

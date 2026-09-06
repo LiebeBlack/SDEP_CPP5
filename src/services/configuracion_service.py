@@ -87,14 +87,28 @@ class ConfiguracionService:
         return self.repository.get_by_clave(clave)
     
     def obtener_valor(self, clave: str, default=None):
-        """Obtiene el valor de una configuración"""
+        """
+        Obtiene el valor de una configuración
+
+        config.json (carpeta del usuario) actúa como caché local rápida:
+        si la clave existe ahí, se devuelve sin tocar la base de datos. La
+        base de datos sigue siendo la fuente de verdad y cubre las claves
+        sembradas que nunca se escribieron localmente.
+        """
+        try:
+            from src.config import settings
+            local = settings.get_config_value(clave)
+            if local is not None:
+                return local
+        except Exception:
+            pass
         return self.repository.get_valor(clave, default)
     
     def establecer_valor(self, clave: str, valor: Union[str, int, float, bool]) -> bool:
         """Establece el valor de una configuración, creándola si no existe"""
         config = self.repository.get_by_clave(clave)
         if config:
-            return self.repository.set_valor(clave, valor)
+            resultado = self.repository.set_valor(clave, valor)
         else:
             tipo = "string"
             if isinstance(valor, bool):
@@ -110,7 +124,18 @@ class ConfiguracionService:
             )
             nueva.set_valor(valor)
             self.repository.create(nueva)
-            return True
+            resultado = True
+        
+        # Espejo local en config.json (escritura atómica): la preferencia
+        # queda disponible para la pantalla de inicio sin depender de la
+        # base de datos, y sobrevive incluso si el archivo .db se pierde.
+        if resultado:
+            try:
+                from src.config import settings
+                settings.set_config_value(clave, valor)
+            except Exception:
+                pass
+        return resultado
     
     def listar_por_categoria(self, categoria: str) -> List[Configuracion]:
         """Lista configuraciones por categoría"""

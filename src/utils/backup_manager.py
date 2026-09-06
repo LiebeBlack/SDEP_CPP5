@@ -17,6 +17,8 @@ import sqlite3
 import gzip
 import hashlib
 import json
+import tempfile
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
@@ -33,10 +35,23 @@ class BackupManager:
         # Importar settings aquí para evitar problemas de inicialización
         from src.config import settings
         
-        self.backup_dir = Path(settings.base_dir) / "backups"
-        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.backup_dir = Path(settings.backups_dir)
+        try:
+            self.backup_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            # Fallback: nunca impedir el arranque por permisos
+            self.backup_dir = Path(tempfile.gettempdir()) / "SistemaGestionPersonal_backups"
+            try:
+                self.backup_dir.mkdir(parents=True, exist_ok=True)
+            except (OSError, PermissionError):
+                pass
         
-        self.db_path = Path(settings.base_dir) / settings.database_path
+        # settings.database_path ya es una ruta absoluta y única (se
+        # resuelve contra base_dir dentro de settings). Concatenarla otra
+        # vez con base_dir producía una ruta anidada inexistente y TODOS
+        # los respaldos fallaban con "Base de datos no encontrada" (y con
+        # ello la restauración, los respaldos automáticos y el inicial).
+        self.db_path = Path(settings.database_path)
         self.metadata_file = self.backup_dir / "backup_metadata.json"
         
         # Configuración de rotación
@@ -78,33 +93,44 @@ class BackupManager:
             return ""
     
     @staticmethod
-    def _online_copy(source: Path, destination: Path) -> None:
+    def _online_copy(source: Path, destination: Path, reintentos: int = 3) -> None:
         """
         Copia una base de datos SQLite de forma consistente
 
         Usa la API sqlite3 .backup() que produce una copia correcta
-        aunque existan conexiones activas al archivo origen.
+        aunque existan conexiones activas al archivo origen. Reintenta
+        ante bloqueos temporales (base de datos ocupada, antivirus,
+        permisos transitorios).
         """
         import sqlite3
 
         temp_path = destination.with_name(destination.name + ".tmp")
-        try:
-            src_conn = sqlite3.connect(str(source))
+        ultimo_error = None
+        for intento in range(reintentos):
             try:
-                dst_conn = sqlite3.connect(str(temp_path))
+                src_conn = sqlite3.connect(str(source), timeout=30)
                 try:
-                    src_conn.backup(dst_conn)
+                    dst_conn = sqlite3.connect(str(temp_path))
+                    try:
+                        src_conn.backup(dst_conn)
+                    finally:
+                        dst_conn.close()
                 finally:
-                    dst_conn.close()
-            finally:
-                src_conn.close()
-            shutil.move(str(temp_path), str(destination))
-        finally:
-            if temp_path.exists():
-                try:
-                    temp_path.unlink()
-                except OSError:
-                    pass
+                    src_conn.close()
+                shutil.move(str(temp_path), str(destination))
+                return
+            except (sqlite3.OperationalError, OSError, PermissionError) as e:
+                ultimo_error = e
+                if temp_path.exists():
+                    try:
+                        temp_path.unlink()
+                    except OSError:
+                        pass
+                if intento < reintentos - 1:
+                    time.sleep(0.3 * (intento + 1))
+        if ultimo_error:
+            raise ultimo_error
+        raise RuntimeError(f"No se pudo copiar la base de datos: {destination}")
 
     def _compress_file(self, source: Path, destination: Path) -> bool:
         """Comprime un archivo usando gzip"""
@@ -204,6 +230,12 @@ class BackupManager:
             
             self.metadata[backup_name] = backup_info
             self._save_metadata()
+
+            # Rotación automática: no acumular respaldos sin límite
+            try:
+                self.rotate_backups()
+            except Exception:
+                pass
             
             logger.info(f"Backup creado exitosamente: {backup_name}")
             return backup_info
@@ -301,10 +333,18 @@ class BackupManager:
         """
         backups = []
         for name, info in self.metadata.items():
-            backup_path = Path(info["path"])
+            try:
+                backup_path = Path(info["path"])
+            except (KeyError, TypeError):
+                continue
             exists = backup_path.exists()
             info["exists"] = exists
-            info["age_days"] = (datetime.now() - datetime.strptime(info["timestamp"], "%Y%m%d_%H%M%S")).days
+            try:
+                info["age_days"] = (datetime.now() - datetime.strptime(
+                    info["timestamp"], "%Y%m%d_%H%M%S")).days
+            except (ValueError, KeyError, TypeError):
+                # Metadatos corruptos o de un formato antiguo: no romper la lista
+                info["age_days"] = 0
             backups.append(info)
         
         # Ordenar por timestamp (más reciente primero)

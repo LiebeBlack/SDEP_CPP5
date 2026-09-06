@@ -46,7 +46,38 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.bind("<Escape>", lambda e: self.destroy())
         self.transient(parent)
 
+        # Modalidad estricta: el login no puede quedar por delante y el
+        # diálogo no se pierde detrás de otras ventanas (una causa común
+        # de "pantalla colgada" tras el cambio de contraseña).
+        try:
+            self.grab_set()
+        except Exception:
+            pass
+
+        # Fallback anti-congelamiento: si el diálogo no llega a mostrarse
+        # (escalado o pantalla problemáticos), se cierra solo en lugar de
+        # dejar el login esperándolo para siempre.
+        self.after(8000, self._cerrar_si_no_visible)
+
         self._create_widgets()
+
+        # Forzar el mapeo y el foco antes de wait_window: garantiza que el
+        # diálogo sea visible y operativo en pantallas con escalado alto.
+        try:
+            self.update_idletasks()
+            self.deiconify()
+            self.lift()
+            self.focus_force()
+        except Exception:
+            pass
+
+    def _cerrar_si_no_visible(self):
+        """Cierra el diálogo si nunca llegó a mostrarse (anti-bloqueo)"""
+        try:
+            if self.winfo_exists() and not self.winfo_viewable():
+                self.destroy()
+        except Exception:
+            pass
 
     def _create_widgets(self):
         container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
@@ -123,6 +154,11 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             self.destroy()
         except ValueError as e:
             messagebox.showerror("Error", str(e))
+        except Exception as e:
+            # Nunca dejar el diálogo abierto en silencio ante un error
+            # inesperado (base de datos bloqueada, sesión inválida, etc.)
+            messagebox.showerror(
+                "Error", f"No se pudo cambiar la contraseña: {str(e)}")
 
     def _on_cancel(self):
         self.destroy()
@@ -133,7 +169,10 @@ class LoginWindow(ctk.CTk):
 
     def __init__(self):
         enable_windows_dpi_awareness()
-        ctk.set_appearance_mode("Dark")
+        # Tema claro por defecto en el inicio de sesión; a continuación se
+        # lee la preferencia guardada (apariencia_modo) y, si existe, se
+        # aplica la del usuario para mantener la estabilidad visual.
+        ctk.set_appearance_mode("Light")
         ctk.set_default_color_theme("blue")
 
         super().__init__()
@@ -148,12 +187,12 @@ class LoginWindow(ctk.CTk):
             session = db_config.get_session()
             try:
                 modo = ConfiguracionService(session).obtener_valor(
-                    "apariencia_modo", "Dark") or "Dark"
+                    "apariencia_modo", "Light") or "Light"
             finally:
                 db_config.close_session(session)
             aplicar_modo_apariencia(modo)
         except Exception:
-            aplicar_modo_apariencia("Dark")
+            aplicar_modo_apariencia("Light")
 
         self.title("Iniciar Sesión — Sistema de Gestión de Personal")
         self.resizable(False, False)
@@ -285,22 +324,12 @@ class LoginWindow(ctk.CTk):
                 messagebox.showerror("Error", "No se pudo iniciar sesión")
                 return
 
-            # Primer acceso: obligar a cambiar la contraseña inicial
+            # Primer acceso: obligar a cambiar la contraseña inicial.
+            # El propio diálogo gestiona su visibilidad (grab, foco) y se
+            # cierra solo si no llega a mostrarse; wait_window solo espera
+            # a que termine.
             if usuario.debe_cambiar_password:
                 dialog = CambiarPasswordDialog(self, auth, usuario)
-
-                # Fallback anti-congelamiento: si el diálogo no llega a
-                # mostrarse (escalado o pantalla problemáticos), se cierra
-                # solo y la sesión se aborta en lugar de quedar la ventana
-                # negra sin responder.
-                def _cerrar_si_no_visible():
-                    try:
-                        if dialog.winfo_exists() and not dialog.winfo_viewable():
-                            dialog.destroy()
-                    except Exception:
-                        pass
-
-                self.after(8000, _cerrar_si_no_visible)
                 self.wait_window(dialog)
                 if not dialog.cambiado:
                     messagebox.showwarning(

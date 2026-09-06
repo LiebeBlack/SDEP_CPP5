@@ -141,5 +141,11 @@ Thumbs.db
 data/
 config_local.yaml
 
+# Certificados PRIVADOS: nunca subir a GitHub (el PFX solo viaja como
+# secreto CODE_SIGN_CERT_BASE64 y se decodifica en el runner del CI).
+# El .cer público SÍ se puede y debe versionar (lo empaqueta el instalador).
+*.pfx
+*.p12
+
 # Allow important spec files
 !spec/app.spec

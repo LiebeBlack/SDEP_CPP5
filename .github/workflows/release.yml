@@ -1,0 +1,182 @@
+# Release Firmada (Windows)
+#
+# Se ejecuta al PUBLICAR una Release en GitHub (o manualmente) y:
+#   1. Compila el ejecutable con PyInstaller (spec/app.spec).
+#   2. Recupera el certificado PFX desde el secreto CODE_SIGN_CERT_BASE64.
+#   3. Firma el ejecutable principal con signtool (SHA256 + timestamp DigiCert).
+#   4. Compila installer/setup.iss con ISCC pasando los parámetros de firma
+#      por línea de comandos, firmando también el instalador final.
+#   5. Elimina cert.pfx del runner por seguridad.
+#   6. Adjunta el instalador firmado (Instalador_SDEP_CPP5.exe) a la Release.
+#
+# Secretos requeridos (Settings -> Secrets and variables -> Actions):
+#   CODE_SIGN_CERT_BASE64   : PFX en Base64. Generarlo con:
+#       [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\tools\MiCertificadoPrivado.pfx"))
+#   CODE_SIGN_CERT_PASSWORD : contraseña del PFX
+
+name: Release Firmada (Windows)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar, firmar y adjuntar instalador
+    runs-on: windows-latest
+    env:
+      PYTHONUNBUFFERED: "1"
+      CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
+      CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v5
+
+      - name: Configurar Python (Windows)
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compilar ejecutable (PyInstaller onedir)
+        run: python -m PyInstaller --noconfirm --clean spec/app.spec
+
+      - name: Renombrar ejecutable principal a SDEP_CPP5.exe
+        shell: pwsh
+        run: |
+          $exe = "dist\SistemaGestionPersonal\SistemaGestionPersonal.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "El ejecutable no fue generado: $exe"
+            exit 1
+          }
+          Rename-Item -Path $exe -NewName "SDEP_CPP5.exe"
+          Write-Host "OK: dist\SistemaGestionPersonal\SDEP_CPP5.exe"
+
+      - name: Determinar versión (etiqueta de la Release o archivo VERSION)
+        shell: pwsh
+        env:
+          RELEASE_TAG_FROM_EVENT: ${{ github.event.release.tag_name }}
+        run: |
+          if ($env:RELEASE_TAG_FROM_EVENT) {
+            # Publicación de Release: la versión sale de la etiqueta (v1.0.0 -> 1.0.0)
+            $ver = $env:RELEASE_TAG_FROM_EVENT.TrimStart('v')
+            $tagFinal = $env:RELEASE_TAG_FROM_EVENT
+          } else {
+            # Ejecución manual: versión del archivo VERSION y release continua
+            $ver = (Get-Content -Path VERSION).Trim()
+            $tagFinal = "v$ver.ci.$env:GITHUB_RUN_NUMBER"
+          }
+          Write-Output "APP_VERSION=$ver" >> $env:GITHUB_ENV
+          Write-Output "RELEASE_TAG=$tagFinal" >> $env:GITHUB_ENV
+          Write-Host "Versión: $ver | Etiqueta: $tagFinal"
+
+      - name: Recuperar certificado PFX desde el secreto
+        shell: pwsh
+        run: |
+          if (-not $env:CODE_SIGN_CERT_BASE64) {
+            Write-Error "Falta el secreto CODE_SIGN_CERT_BASE64 (PFX en Base64)"
+            exit 1
+          }
+          $cert = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($cert, [Convert]::FromBase64String($env:CODE_SIGN_CERT_BASE64))
+          Write-Output "CERT_PFX=$cert" >> $env:GITHUB_ENV
+          Write-Host "PFX recuperado: $cert"
+
+      - name: Localizar signtool.exe (Windows SDK)
+        shell: pwsh
+        run: |
+          $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+          if (-not $signtool) {
+            $raices = @(
+              "C:\Program Files (x86)\Windows Kits\10\bin",
+              "C:\Program Files\Windows Kits\10\bin"
+            )
+            $signtool = Get-ChildItem $raices -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $signtool) {
+            Write-Error "signtool.exe no encontrado (¿falta el Windows SDK?)"
+            exit 1
+          }
+          Write-Output "SIGNTOOL=$signtool" >> $env:GITHUB_ENV
+          Write-Host "signtool: $signtool"
+
+      - name: Firmar ejecutable principal (SHA256 + timestamp DigiCert)
+        shell: pwsh
+        run: |
+          & $env:SIGNTOOL sign /f "$env:CERT_PFX" /p "$env:CODE_SIGN_CERT_PASSWORD" `
+            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v `
+            "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Instalar Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compilar instalador firmado (ISCC con parámetros de firma)
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            Write-Error "ISCC.exe (Inno Setup 6) no encontrado"
+            exit 1
+          }
+          Write-Host "ISCC: $iscc"
+          & $iscc `
+            "/DMyAppVersion=$env:APP_VERSION" `
+            "/DMyAppName=SDEP_CPP5" `
+            "/DMyAppExeName=SDEP_CPP5.exe" `
+            "/DMyOutputBaseFilename=Instalador_SDEP_CPP5" `
+            "/DSignToolPath=$env:SIGNTOOL" `
+            "/DCertPath=$env:CERT_PFX" `
+            "/DCertPassword=$env:CODE_SIGN_CERT_PASSWORD" `
+            "installer\setup.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verificar instalador firmado
+        shell: pwsh
+        run: |
+          $setup = "dist_installer\Instalador_SDEP_CPP5.exe"
+          if (-not (Test-Path $setup)) {
+            Write-Error "El instalador no fue generado: $setup"
+            exit 1
+          }
+          $sig = Get-AuthenticodeSignature $setup
+          $sig | Select-Object Status, @{n='Firmante';e={$_.SignerCertificate.Subject}} | Format-List
+          if ($sig.Status -ne 'Valid') {
+            Write-Warning "Firma del instalador no válida (Status: $($sig.Status))"
+          }
+
+      - name: Eliminar cert.pfx del runner (seguridad)
+        if: always()
+        shell: pwsh
+        run: |
+          $cert = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          if (Test-Path $cert) {
+            Remove-Item $cert -Force
+            Write-Host "cert.pfx eliminado del runner"
+          }
+
+      - name: Adjuntar instalador firmado a la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: dist_installer/Instalador_SDEP_CPP5.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

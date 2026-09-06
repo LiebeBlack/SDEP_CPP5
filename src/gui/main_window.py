@@ -79,7 +79,10 @@ class MainWindow(ctk.CTk):
 
     def __init__(self, current_user: Optional[Usuario] = None):
         enable_windows_dpi_awareness()
-        ctk.set_appearance_mode("Dark")
+        # Tema claro por defecto (coherente con el login). La preferencia
+        # guardada del usuario se aplica más abajo, antes de crear la
+        # interfaz, de modo que la ventana nunca parpadea en un tema ajeno.
+        ctk.set_appearance_mode("Light")
         ctk.set_default_color_theme("blue")
 
         super().__init__()
@@ -130,10 +133,11 @@ class MainWindow(ctk.CTk):
 
         # Aplicar el modo de apariencia guardado antes de crear la interfaz
         try:
-            modo = self.config_service.obtener_valor("apariencia_modo", "Dark") or "Dark"
+            modo = self.config_service.obtener_valor(
+                "apariencia_modo", "Light") or "Light"
             aplicar_modo_apariencia(modo)
         except Exception:
-            aplicar_modo_apariencia("Dark")
+            aplicar_modo_apariencia("Light")
 
         self._create_ui()
 

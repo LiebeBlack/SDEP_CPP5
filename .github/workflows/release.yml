@@ -140,6 +140,7 @@ jobs:
           Write-Host "ISCC: $iscc"
           & $iscc `
             "/DMyAppVersion=$env:APP_VERSION" `
+            "/DMyVersionInfo=$env:APP_VERSION" `
             "/DMyAppName=SDEP_CPP5" `
             "/DMyAppExeName=SDEP_CPP5.exe" `
             "/DMyOutputBaseFilename=Instalador_SDEP_CPP5" `

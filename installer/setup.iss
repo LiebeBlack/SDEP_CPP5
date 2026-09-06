@@ -22,6 +22,13 @@
   #define MyAppVersion "2.79"
 #endif
 
+; VersionInfoVersion requiere formato #.#.# o #.#.#.# (Inno Setup).
+; MyAppVersion puede ser "X.Y" (2 partes, desde el archivo VERSION).
+; MyAppVersionInfo siempre tiene al menos 3 partes para VersionInfoVersion.
+#ifndef MyAppVersionInfo
+  #define MyAppVersionInfo MyAppVersion ".0.0"
+#endif
+
 #ifndef MyAppName
   #define MyAppName "Sistema de Gestión de Personal"
 #endif
@@ -67,7 +74,7 @@ MinVersion=10.0
 ; La importación al almacén Cert:\LocalMachine\Root exige elevación:
 ; el instalador siempre pide privilegios de administrador.
 PrivilegesRequired=admin
-VersionInfoVersion={#MyAppVersion}
+VersionInfoVersion={#MyAppVersionInfo}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName}
 VersionInfoProductName={#MyAppName}

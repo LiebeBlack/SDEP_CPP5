@@ -119,15 +119,21 @@
         // el HTML del contenido inline se obtiene con this.parser.parseInline.
         renderer.heading = function (token) {
             const html = this.parser.parseInline(token.tokens);
-            // Clean text for slug
-            const plainText = html.replace(/<[^>]*>/g, '').trim();
+            // Clean text for slug: keep letters, numbers, spaces and hyphens only.
+            const plainText = html.replace(/<[^>]*>/g, '')
+                .replace(/&[^;]+;/g, '')
+                .trim();
             const slug = plainText.toLowerCase()
                 .replace(/[^\w\s-]/g, '')
-                .replace(/\s+/g, '-');
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            const safeSlug = slug || 'seccion';
 
             return `
-                <h${token.depth} id="${slug}">
-                    <a class="header-anchor" href="#${slug}" aria-hidden="true">#</a>
+                <h${token.depth} id="${safeSlug}">
+                    <a class="header-anchor" href="#${safeSlug}" aria-hidden="true">#</a>
                     <span>${html}</span>
                 </h${token.depth}>
             `;
@@ -136,13 +142,16 @@
         // Custom Code Block Renderer
         // Nota: marked v13+ pasa un token (objeto) en lugar de (code, lang).
         renderer.code = function (token) {
+            const raw = token.text || '';
+            const trimmed = raw.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
             const validLang = token.lang && token.lang.trim() ? token.lang.trim().toLowerCase() : 'text';
-            const codeHtml = token.escaped ? token.text : escapeHtml(token.text);
+            const displayText = trimmed || raw;
+            const codeHtml = token.escaped ? displayText : escapeHtml(displayText);
             return `
                 <div class="code-block-wrapper">
                     <div class="code-block-header">
                         <span class="code-lang-label">${validLang}</span>
-                        <button class="code-btn-copy" type="button" data-code="${encodeURIComponent(token.text)}">
+                        <button class="code-btn-copy" type="button" data-code="${encodeURIComponent(trimmed)}">
                             <span>📋</span> Copiar
                         </button>
                     </div>
@@ -155,20 +164,21 @@
         // Nota: marked v13+ pasa un token (objeto); el HTML se obtiene con this.parser.parse.
         renderer.blockquote = function (token) {
             const quote = this.parser.parse(token.tokens);
-            const alertRegex = /^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br>)?([\s\S]*?)<\/p>/i;
+            const alertRegex = /^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|INFO)\]\s*(?:\s*(?:<br>\s*)?([\s\S]*?))?<\/p>\s*$/i;
             const match = quote.match(alertRegex);
 
             if (match) {
                 const type = match[1].toUpperCase();
-                const remainder = match[2];
-                const restOfQuote = quote.replace(alertRegex, remainder ? `<p>${remainder}</p>` : '');
+                const remainder = (match[2] || '').trim();
+                const restOfQuote = quote.replace(alertRegex, '');
 
                 const typeIcons = {
                     'NOTE': 'ℹ️',
                     'TIP': '💡',
                     'IMPORTANT': '📌',
                     'WARNING': '⚠️',
-                    'CAUTION': '🛑'
+                    'CAUTION': '🛑',
+                    'INFO': 'ℹ️'
                 };
 
                 const typeLabels = {
@@ -176,7 +186,8 @@
                     'TIP': 'Sugerencia',
                     'IMPORTANT': 'Importante',
                     'WARNING': 'Advertencia',
-                    'CAUTION': 'Precaución'
+                    'CAUTION': 'Precaución',
+                    'INFO': 'Nota'
                 };
 
                 const icon = typeIcons[type] || 'ℹ️';
@@ -190,7 +201,7 @@
                             <span>${label}</span>
                         </div>
                         <div class="gh-alert-content">
-                            ${restOfQuote}
+                            ${restOfQuote || remainder}
                         </div>
                     </div>
                 `;
@@ -290,6 +301,7 @@
             return;
         }
 
+        const isRefresh = docId === currentDocId;
         currentDocId = docId;
 
         // Update Breadcrumbs & Meta Header
@@ -311,45 +323,47 @@
         if (articleSubtitle) articleSubtitle.textContent = doc.subtitle;
         if (readerGhLink) readerGhLink.href = doc.githubUrl;
 
-        // Render Markdown content
-        if (typeof marked !== 'undefined') {
-            configureMarkedRenderer();
-            markdownRenderTarget.innerHTML = marked.parse(doc.content);
-        } else {
-            // Fallback plain text if marked is not ready
-            markdownRenderTarget.innerHTML = `<pre>${escapeHtml(doc.content)}</pre>`;
-        }
+        // Render Markdown content once per document load
+        if (!isRefresh) {
+            if (typeof marked !== 'undefined') {
+                configureMarkedRenderer();
+                markdownRenderTarget.innerHTML = marked.parse(doc.content);
+            } else {
+                markdownRenderTarget.innerHTML = `<pre>${escapeHtml(doc.content)}</pre>`;
+            }
 
-        // Apply syntax highlighting with Prism
-        if (typeof Prism !== 'undefined') {
-            Prism.highlightAllUnder(markdownRenderTarget);
-        }
+            // Apply syntax highlighting with Prism
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightAllUnder(markdownRenderTarget);
+            }
 
-        // Attach copy buttons inside rendered code blocks
-        markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const codeText = decodeURIComponent(btn.getAttribute('data-code') || '');
-                copyTextToClipboard(codeText, 'Código copiado al portapapeles');
+            // Attach copy buttons inside rendered code blocks
+            markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
+                // Avoid duplicate listeners if a block is re-rendered later
+                if (!btn.dataset.readerBound) {
+                    btn.dataset.readerBound = '1';
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const codeText = decodeURIComponent(btn.getAttribute('data-code') || '');
+                        copyTextToClipboard(codeText, 'Código copiado al portapapeles');
+                    });
+                }
             });
-        });
 
-        // Generate Table of Contents (TOC)
-        generateTableOfContents();
-
-        // Update Sidebar items
-        populateReaderSidebar();
-
-        // Update Prev / Next Buttons
-        updateReaderNavigation(doc);
+            generateTableOfContents();
+            populateReaderSidebar();
+            updateReaderNavigation(doc);
+        }
 
         // Show Reader Modal/View
         readerView.classList.add('active');
         document.body.style.overflow = 'hidden';
         document.title = `${doc.title} | SDEP`;
 
-        // Update URL Hash
-        window.location.hash = `doc=${doc.id}`;
+        // Update URL Hash only on first open or explicit navigation
+        if (!isRefresh) {
+            window.location.hash = `doc=${doc.id}`;
+        }
 
         // Reset scroll position or jump to target heading
         if (targetHeadingId) {
@@ -363,8 +377,10 @@
 
         updateReadingProgress();
 
-        // Check and fetch live updates from GitHub or content/
-        fetchLiveDocument(doc);
+        // Fetch live document only on first open, not on every navigation inside the reader
+        if (!isRefresh) {
+            fetchLiveDocument(doc);
+        }
     }
 
     function setSyncBadgeStatus(isLive, labelText) {
@@ -373,6 +389,26 @@
         if (!badge || !text) return;
         badge.className = `sync-badge ${isLive ? 'live' : 'local'}`;
         text.textContent = labelText || (isLive ? 'GitHub En Vivo' : 'Sincronizado');
+    }
+
+    function setReaderMetaForDoc(doc, categoryOverride, badgeOverride) {
+        const breadcrumbCat = document.getElementById('breadcrumb-category');
+        const breadcrumbTitle = document.getElementById('breadcrumb-title');
+        const articleBadge = document.getElementById('article-badge');
+        const articleReadTime = document.getElementById('article-readtime');
+        const articleWords = document.getElementById('article-words');
+        const articleTitle = document.getElementById('article-title');
+        const articleSubtitle = document.getElementById('article-subtitle');
+        const readerGhLink = document.getElementById('reader-gh-link');
+
+        if (breadcrumbCat) breadcrumbCat.textContent = categoryOverride || doc.category;
+        if (breadcrumbTitle) breadcrumbTitle.textContent = doc.title;
+        if (articleBadge) articleBadge.textContent = `${badgeOverride || doc.badge} • ${categoryOverride || doc.category}`;
+        if (articleReadTime) articleReadTime.textContent = `⏱️ ~${doc.readingTime} min de lectura`;
+        if (articleWords) articleWords.textContent = `${doc.wordCount.toLocaleString()} palabras`;
+        if (articleTitle) articleTitle.textContent = `${doc.icon ? doc.icon + ' ' : ''}${doc.title}`;
+        if (articleSubtitle) articleSubtitle.textContent = doc.subtitle;
+        if (readerGhLink) readerGhLink.href = doc.githubUrl || '';
     }
 
     function convertGitHubUrlToRaw(url) {
@@ -388,29 +424,52 @@
         const contentUrl = `./content/${doc.filename}`;
         const rawGhUrl = `https://raw.githubusercontent.com/LiebeBlack/SDEP_CPP5/main/${doc.filename}`;
 
-        // Attempt same-origin first (GitHub Pages or local web server)
+        // Attempt same-origin first (GitHub Pages or local web server).
+        // Keep status changes minimal: only report when the source is clearly live or clearly unavailable.
         fetch(contentUrl)
             .then(res => {
                 if (res.ok) return res.text();
                 return fetch(rawGhUrl).then(r => r.ok ? r.text() : Promise.reject('GitHub raw not available'));
             })
             .then(remoteMarkdown => {
-                if (remoteMarkdown && remoteMarkdown.trim().length > 50 && currentDocId === doc.id) {
-                    if (remoteMarkdown !== doc.content) {
-                        doc.content = remoteMarkdown;
-                        if (typeof marked !== 'undefined') {
-                            markdownRenderTarget.innerHTML = marked.parse(doc.content);
-                            if (typeof Prism !== 'undefined') {
-                                Prism.highlightAllUnder(markdownRenderTarget);
-                            }
-                            generateTableOfContents();
-                        }
-                    }
-                    setSyncBadgeStatus(true, 'GitHub En Vivo (main)');
+                if (!remoteMarkdown || remoteMarkdown.trim().length <= 50 || currentDocId !== doc.id) {
+                    return;
                 }
+
+                if (remoteMarkdown !== doc.content) {
+                    doc.content = remoteMarkdown;
+                    if (typeof marked !== 'undefined') {
+                        configureMarkedRenderer();
+                        markdownRenderTarget.innerHTML = marked.parse(doc.content);
+                        if (typeof Prism !== 'undefined') {
+                            Prism.highlightAllUnder(markdownRenderTarget);
+                        }
+                        markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
+                            if (!btn.dataset.readerBound) {
+                                btn.dataset.readerBound = '1';
+                                btn.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    const codeText = decodeURIComponent(btn.getAttribute('data-code') || '');
+                                    copyTextToClipboard(codeText, 'Código copiado al portapapeles');
+                                });
+                            }
+                        });
+                        generateTableOfContents();
+                    }
+                }
+
+                setSyncBadgeStatus(true, 'GitHub En Vivo (main)');
             })
             .catch(() => {
-                setSyncBadgeStatus(false, 'Copia Local');
+                // Quiet fallback: only show local status if it differs from the current one.
+                const badge = document.getElementById('reader-sync-badge');
+                const text = document.getElementById('reader-sync-text');
+                const isAlreadyLocal =
+                    badge && badge.classList.contains('local') &&
+                    text && text.textContent === 'Copia Local';
+                if (!isAlreadyLocal) {
+                    setSyncBadgeStatus(false, 'Copia Local');
+                }
             });
     }
 
@@ -454,35 +513,30 @@
 
                 // Render document in reader
                 currentDocId = customDoc.id;
-                const breadcrumbCat = document.getElementById('breadcrumb-category');
-                const breadcrumbTitle = document.getElementById('breadcrumb-title');
-                const articleBadge = document.getElementById('article-badge');
-                const articleReadTime = document.getElementById('article-readtime');
-                const articleWords = document.getElementById('article-words');
-                const articleTitle = document.getElementById('article-title');
-                const articleSubtitle = document.getElementById('article-subtitle');
-                const readerGhLink = document.getElementById('reader-gh-link');
-
-                if (breadcrumbCat) breadcrumbCat.textContent = 'GitHub';
-                if (breadcrumbTitle) breadcrumbTitle.textContent = customDoc.title;
-                if (articleBadge) articleBadge.textContent = 'En Vivo • GitHub';
-                if (articleReadTime) articleReadTime.textContent = `⏱️ ~${customDoc.readingTime} min`;
-                if (articleWords) articleWords.textContent = `${customDoc.wordCount.toLocaleString()} palabras`;
-                if (articleTitle) articleTitle.textContent = `⚡ ${customDoc.title}`;
-                if (articleSubtitle) articleSubtitle.textContent = customDoc.subtitle;
-                if (readerGhLink) readerGhLink.href = customDoc.githubUrl;
-
                 if (typeof marked !== 'undefined') {
                     configureMarkedRenderer();
                     markdownRenderTarget.innerHTML = marked.parse(customDoc.content);
                     if (typeof Prism !== 'undefined') {
                         Prism.highlightAllUnder(markdownRenderTarget);
                     }
+                    markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
+                        if (!btn.dataset.readerBound) {
+                            btn.dataset.readerBound = '1';
+                            btn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const codeText = decodeURIComponent(btn.getAttribute('data-code') || '');
+                                copyTextToClipboard(codeText, 'Código copiado al portapapeles');
+                            });
+                        }
+                    });
+                    generateTableOfContents();
                 } else {
                     markdownRenderTarget.innerHTML = `<pre>${escapeHtml(customDoc.content)}</pre>`;
+                    generateTableOfContents();
                 }
 
-                generateTableOfContents();
+                setReaderMetaForDoc(customDoc, 'GitHub', 'En Vivo • GitHub');
+
                 readerView.classList.add('active');
                 document.body.style.overflow = 'hidden';
                 document.title = `${customDoc.title} | SDEP`;
@@ -957,8 +1011,17 @@
             const docId = parts[0];
             const targetHeading = parts[1] || null;
 
-            if (docId) {
+            if (docId && docId !== currentDocId) {
                 openDocument(docId, targetHeading);
+            } else if (docId && docId === currentDocId && targetHeading) {
+                // Same document, different heading anchor: update the reading position only.
+                const targetEl = document.getElementById(targetHeading);
+                if (targetEl) {
+                    readerScrollContainer.scrollTop = 0;
+                    setTimeout(() => {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                }
             }
         }
     }

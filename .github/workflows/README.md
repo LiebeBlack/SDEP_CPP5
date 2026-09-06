@@ -8,6 +8,7 @@ ejecutable, instalador de Windows (Inno Setup) y publicación de releases.
 | Workflow | Propósito | Trigger |
 |----------|-----------|---------|
 | [build.yml](build.yml) | Pruebas + ejecutable Windows (instalador) + ejecutable Linux + release | Push a main/develop, etiquetas `v*`, manual |
+| [release.yml](release.yml) | Compila, firma (signtool SHA256 + timestamp DigiCert) y adjunta el instalador firmado (`Instalador_SDEP_CPP5.exe`) a la Release | Publicación de una Release, manual |
 
 ## 🎯 Uso Simple
 
@@ -70,7 +71,8 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow.
 
 ## 📝 Notas
 
-- **Versionado**: la versión se lee de `VERSION` (actualmente 2.79).
+- **Firma de código (release.yml)**: requiere los secretos `CODE_SIGN_CERT_BASE64` (PFX en Base64) y `CODE_SIGN_CERT_PASSWORD`. El PFX se elimina del runner al finalizar y nunca viaja dentro del instalador.
+- **Versionado**: la versión se lee de `VERSION` (actualmente 2.79). En `release.yml` se toma de la etiqueta de la Release publicada (p. ej. `v1.0.0` → instalador v1.0.0).
 - **Etiquetas de release continua**: `v2.79-ci.<run_number>` (únicas por
   compilación, no requieren gestión manual).
 - **Artefactos por release**: `Setup.exe` + ZIP portable (Windows) y

@@ -10,7 +10,7 @@
     <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -116,49 +116,34 @@
                         <pre class="hero-code-snippet active" id="snippet-service"><code class="language-python">from src.services.empleado_service import EmpleadoService
 from src.repositories.empleado_repository import EmpleadoRepository
 
-# Inicialización de la capa de servicio con inyección de dependencias
 repo = EmpleadoRepository()
 service = EmpleadoService(empleado_repo=repo)
 
-# Registro y cálculo automático de ficha técnica
 nuevo_empleado = service.crear_empleado({
     "cedula": "V-20123456",
     "nombres": "María Elena",
-    "apellidos": "Rodríguez Santos",
-    "departamento": "Docencia e Investigación",
     "cargo": "Profesora Titular",
     "salario_base": 850.00
 })
 
-print(f"Empleado registrado: {nuevo_empleado.codigo} | Estado: ACTIVO")</code></pre>
+print(f"Registrado: {nuevo_empleado.codigo} | ACTIVO")</code></pre>
 
                         <!-- Tab 2: Model -->
-                        <pre class="hero-code-snippet" id="snippet-model"><code class="language-python">from sqlalchemy import Column, Integer, String, Float, Date, Enum
-from src.models.base import Base
-
-class Empleado(Base):
+                        <pre class="hero-code-snippet" id="snippet-model"><code class="language-python">class Empleado(Base):
     __tablename__ = "empleados"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     cedula = Column(String(20), unique=True, nullable=False, index=True)
     nombres = Column(String(100), nullable=False)
-    apellidos = Column(String(100), nullable=False)
     cargo = Column(String(100), nullable=False)
-    departamento = Column(String(100), nullable=False)
-    salario_base = Column(Float, nullable=False, default=0.0)
-    fecha_ingreso = Column(Date, nullable=False)</code></pre>
+    salario_base = Column(Float, nullable=False, default=0.0)</code></pre>
 
                         <!-- Tab 3: CLI Quickstart -->
-                        <pre class="hero-code-snippet" id="snippet-quickstart"><code class="language-bash"># Clonar repositorio oficial
-git clone https://github.com/LiebeBlack/SDEP_CPP5.git
+                        <pre class="hero-code-snippet" id="snippet-quickstart"><code class="language-bash">git clone https://github.com/LiebeBlack/SDEP_CPP5.git
 cd SDEP_CPP5
-
-# Configurar entorno virtual e instalar dependencias
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-
-# Ejecutar el sistema de escritorio
 python -m src.gui.main_window</code></pre>
                 <!-- GitHub Direct URL Live Reader Box -->
                 <div class="github-url-box">
@@ -167,7 +152,7 @@ python -m src.gui.main_window</code></pre>
                             <span>⚡</span>
                             <span>Lector en Vivo desde GitHub (Repositorio Oficial)</span>
                         </div>
-                        <span class="github-url-sub">Pega cualquier enlace del repositorio o archivo Markdown para renderizarlo con el tema ultra-minimalista</span>
+                        <span class="github-url-sub">Abrir cualquier Markdown del repositorio en el visor web, con el mismo tema del portal.</span>
                     </div>
                     <form class="github-url-form" id="gh-url-form">
                         <input type="url" id="gh-url-input" class="github-url-input" placeholder="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md" value="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md" required>
@@ -223,42 +208,42 @@ python -m src.gui.main_window</code></pre>
                     <div class="feature-item">
                         <div class="feature-icon-wrap">👥</div>
                         <h3 class="feature-h3">Gestión de Personal</h3>
-                        <p class="feature-p">Ficha integral del empleado con datos personales, laborales, bancarios, médicos y carga fotográfica de perfil.</p>
+                        <p class="feature-p">Ficha completa del empleado: datos personales, laborales, bancarios, médicos y avatar de perfil.</p>
                         <button class="feature-link open-doc-trigger" data-doc="guia-usuario">Ver en Guía de Usuario →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">📄</div>
                         <h3 class="feature-h3">Gestión Documental</h3>
-                        <p class="feature-p">Digitalización de expedientes en PDF/imágenes con alertas preventivas de vencimiento y reportes de control.</p>
+                        <p class="feature-p">Digitalización de expedientes en PDF y imágenes, con alertas de vencimiento y reportes de control.</p>
                         <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver arquitectura documental →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">📋</div>
                         <h3 class="feature-h3">Incidencias y Permisos</h3>
-                        <p class="feature-p">Control de ausencias, permisos remunerados y reposos médicos con cálculo automático de días hábiles y flujo de aprobación.</p>
+                        <p class="feature-p">Control de ausencias, permisos remunerados y reposos médicos con cálculo automático de días hábiles.</p>
                         <button class="feature-link open-doc-trigger" data-doc="guia-usuario">Ver flujo de incidencias →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">💰</div>
                         <h3 class="feature-h3">Nómina y Deducciones</h3>
-                        <p class="feature-p">Cálculo automatizado de pagos periódicos, retenciones legales (seguro, pensión, impuestos), bonos y recibos de pago.</p>
+                        <p class="feature-p">Cálculo automático de pagos periódicos, retenciones legales (seguro, pensión, impuestos), bonos y recibos.</p>
                         <button class="feature-link open-doc-trigger" data-doc="readme">Ver detalle de nómina →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">📊</div>
                         <h3 class="feature-h3">Generación de Reportes</h3>
-                        <p class="feature-p">Emisión en PDF de constancias oficiales, recibos de pago, planillas salariales y exportación completa a Excel (.xlsx) y CSV.</p>
+                        <p class="feature-p">Constancias oficiales, recibos, planillas salariales y exportación a Excel (.xlsx) y CSV.</p>
                         <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver generación PDF →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">🔒</div>
                         <h3 class="feature-h3">Seguridad y Auditoría</h3>
-                        <p class="feature-p">Cifrado de credenciales con PBKDF2, control de acceso basado en roles (RBAC), registro de auditoría y respaldo de bases de datos.</p>
+                        <p class="feature-p">Cifrado PBKDF2 de credenciales, RBAC, registro de auditoría y respaldos automatizados de base de datos.</p>
                         <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver modelo de seguridad →</button>
                     </div>
                 </div>
@@ -322,20 +307,20 @@ python -m src.gui.main_window</code></pre>
             <section id="catalogo" class="section">
                 <div class="section-head">
                     <span class="section-tag">Corpus Centralizado</span>
-                    <h2 class="section-heading">Catálogo de Documentación</h2>
-                    <p class="section-subtext">Selecciona cualquier documento para leerlo inmediatamente dentro del visor web con formato moderno y navegación interactiva.</p>
+                    <h2 class="section-heading">Documentación Centralizada</h2>
+                    <p class="section-subtext">Un mismo visor reúne la normativa, los manuales de uso y la tesis en un formato coherente, listo para leerse sin cambiar de contexto.</p>
                 </div>
 
                 <div class="catalog-controls">
-                    <div class="catalog-tabs">
+                    <div class="catalog-tabs" role="tablist" aria-label="Filtrar catálogo">
                         <button class="catalog-tab active" data-filter="all">Todos (17)</button>
-                        <button class="catalog-tab" data-filter="tesis">🎓 Tesis Académica (10)</button>
-                        <button class="catalog-tab" data-filter="tecnica">💻 Documentación Técnica (7)</button>
+                        <button class="catalog-tab" data-filter="tesis">🎓 Tesis (10)</button>
+                        <button class="catalog-tab" data-filter="tecnica">💻 Técnica (7)</button>
                     </div>
 
                     <div class="catalog-search-wrap">
-                        <span class="catalog-search-icon">🔍</span>
-                        <input type="text" id="catalog-filter-input" class="catalog-search-input" placeholder="Filtrar por título o tema..." autocomplete="off">
+                        <span class="catalog-search-icon" aria-hidden="true">🔍</span>
+                        <input type="search" id="catalog-filter-input" class="catalog-search-input" placeholder="Buscar título o tema..." autocomplete="off">
                     </div>
                 </div>
 
@@ -584,18 +569,18 @@ python -m src.gui.main_window</code></pre>
          SCRIPTS: Vendor Markdown + Prism Highlighter + Data Bundle + App Logic
          ====================================================================== -->
     <!-- Local Vendor Scripts (works 100% offline via file://) with CDN fallback -->
-    <script src="vendor/marked.min.js"></script>
-    <script src="vendor/prism.min.js"></script>
-    <script src="vendor/prism-python.min.js"></script>
-    <script src="vendor/prism-bash.min.js"></script>
-    <script src="vendor/prism-sql.min.js"></script>
-    <script src="vendor/prism-json.min.js"></script>
-    <script src="vendor/prism-markdown.min.js"></script>
+    <script src="vendor/marked.min.js" defer></script>
+    <script src="vendor/prism.min.js" defer></script>
+    <script src="vendor/prism-python.min.js" defer></script>
+    <script src="vendor/prism-bash.min.js" defer></script>
+    <script src="vendor/prism-sql.min.js" defer></script>
+    <script src="vendor/prism-json.min.js" defer></script>
+    <script src="vendor/prism-markdown.min.js" defer></script>
 
     <!-- Centralized Document Corpus Data Bundle -->
-    <script src="docs_data.js"></script>
+    <script src="docs_data.js" defer></script>
 
     <!-- Application Controller -->
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 </body>
 </html>

@@ -47,7 +47,7 @@ PALETA_CLARA = {
 COLORES = dict(PALETA_OSCURA)
 
 
-def aplicar_modo_apariencia(modo: str = "Dark") -> None:
+def aplicar_modo_apariencia(modo: str = "Light") -> None:
     """
     Aplica un modo de apariencia ("Dark" o "Light") a toda la aplicación.
 
@@ -62,7 +62,9 @@ def aplicar_modo_apariencia(modo: str = "Dark") -> None:
     """
     if not _CTK_DISPONIBLE:
         return
-    modo = modo if modo in ("Dark", "Light", "System") else "Dark"
+    # Un valor inválido o corrupto cae al tema claro (el de la pantalla
+    # de inicio por defecto) en lugar de romper la configuración visual.
+    modo = modo if modo in ("Dark", "Light", "System") else "Light"
     ctk.set_appearance_mode(modo)
     if modo == "Light":
         paleta = PALETA_CLARA
@@ -120,6 +122,32 @@ def enable_windows_dpi_awareness() -> bool:
         return False
 
 
+def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial") -> str:
+    """
+    Resuelve la familia real de una fuente nombrada de Tk
+
+    Si la fuente no existe o Tk aún no tiene raíz, devuelve el fallback
+    del sistema operativo en lugar de lanzar un error de renderizado.
+    """
+    try:
+        import tkinter.font as tkfont
+        familia = tkfont.nametofont(nombre).actual("family")
+        return familia or fallback
+    except Exception:
+        return fallback
+
+
+def fuente_ui(tamano: int = 10) -> tuple:
+    """
+    Tupla de fuente (familia, tamaño) garantizada por el sistema
+
+    Reemplaza los nombres fijos como "Arial"/"Segoe UI" por la familia
+    real por defecto de Tk, que siempre existe, evitando errores de
+    renderizado o sustitución silenciosa de fuentes.
+    """
+    return (familia_fuente_tk("TkDefaultFont"), tamano)
+
+
 def configure_ttk_styles(root=None) -> None:
     """
     Aplica la paleta activa a Treeview y Combobox (ttk).
@@ -146,6 +174,25 @@ def configure_ttk_styles(root=None) -> None:
             pass
 
         # --- Treeview (tablas) ---
+        # La familia de fuente se resuelve desde la fuente por defecto de
+        # Tk en lugar de fijar "Segoe UI": en equipos donde esa familia no
+        # está instalada, Tk la sustituye silenciosamente y el renderizado
+        # se degrada; en Tk 8.6 un nombre compuesto ("Segoe UI") en ciertos
+        # contextos de fuente dispara el error "expected integer but got UI"
+        # al desplegar los combos. Con la familia resuelta se garantiza que
+        # la fuente exista siempre en cualquier sistema.
+        try:
+            from tkinter import font as tkfont
+            _fuente_familia = tkfont.nametofont(
+                "TkDefaultFont", root).actual("family")
+            _fuente_tamano = tkfont.nametofont(
+                "TkDefaultFont", root).actual("size")
+            _fuente_tabla = (_fuente_familia, _fuente_tamano)
+            _fuente_encabezado = (_fuente_familia, _fuente_tamano, "bold")
+        except Exception:
+            _fuente_tabla = None
+            _fuente_encabezado = None
+
         style.configure(
             "Treeview",
             background=COLORES["panel"],
@@ -153,16 +200,19 @@ def configure_ttk_styles(root=None) -> None:
             fieldbackground=COLORES["panel"],
             rowheight=28,
             borderwidth=0,
-            font=("Segoe UI", 10),
         )
+        if _fuente_tabla is not None:
+            style.configure("Treeview", font=_fuente_tabla)
+
         style.configure(
             "Treeview.Heading",
             background=COLORES["campo"],
             foreground=COLORES["texto"],
             relief="flat",
             borderwidth=0,
-            font=("Segoe UI", 10, "bold"),
         )
+        if _fuente_encabezado is not None:
+            style.configure("Treeview.Heading", font=_fuente_encabezado)
         style.map(
             "Treeview",
             background=[("selected", COLORES["acento"])],

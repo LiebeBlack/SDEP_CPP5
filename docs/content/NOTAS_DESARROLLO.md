@@ -76,6 +76,21 @@ El proyecto se encuentra en un estado estable y funcional con todas las funciona
    - Implementada carga diferida de frames
    - Reorganizados imports en main_window
 
+6. **Permisos en atajos de teclado**: Ctrl+N y Ctrl+S ahora verifican el
+   permiso del rol antes de crear/guardar registros (cierre del bypass de
+   permisos por atajos).
+7. **Restauración de respaldos**: se cierra la sesión de forma segura al
+   restaurar, sin doble confirmación ni estado roto.
+8. **Longitud de contraseña**: los diálogos usan la constante
+   `LONGITUD_MINIMA_PASSWORD` (6) en lugar de textos fijos incoherentes.
+9. **Empaquetado**: se añadió `openpyxl` a las dependencias y se corrigió
+   `packages` en `pyproject.toml` para que `pip install .` funcione.
+10. **Estado de respaldos**: `get_backup_status` ahora lee
+    `backup_enabled` de la configuración en lugar de devolver siempre True.
+11. **Cédula numérica**: el servicio valida que la cédula sea numérica.
+12. **Limpieza**: eliminado código muerto y unificada la carga de la lista
+    de empleados.
+
 ## Estructura de Archivos
 
 ```
@@ -86,7 +101,9 @@ SDEP_CPP5/
 │   │   └── settings.py          # Configuración general
 │   ├── gui/                     # Interfaz gráfica
 │   │   ├── main_window.py      # Ventana principal
-│   │   └── frames.py           # Frames de módulos
+│   │   ├── frames.py           # Frames de módulos
+│   │   ├── login_window.py     # Inicio de sesión
+│   │   └── theme.py            # Tema claro/oscuro
 │   ├── models/                  # Modelos de datos
 │   │   ├── base.py             # Modelo base
 │   │   ├── enums.py            # Enumeraciones
@@ -94,31 +111,43 @@ SDEP_CPP5/
 │   │   ├── documento.py       # Modelo documento
 │   │   ├── incidencia.py      # Modelo incidencia
 │   │   ├── pago.py           # Modelo pago
-│   │   └── configuracion.py   # Modelo configuración
+│   │   ├── configuracion.py   # Modelo configuración
+│   │   └── usuario.py        # Modelo usuario
 │   ├── repositories/            # Acceso a datos
 │   │   ├── base_repository.py # Repositorio base
 │   │   ├── empleado_repository.py
 │   │   ├── documento_repository.py
 │   │   ├── incidencia_repository.py
 │   │   ├── pago_repository.py
-│   │   └── configuracion_repository.py
+│   │   ├── configuracion_repository.py
+│   │   └── usuario_repository.py
 │   ├── services/                # Lógica de negocio
 │   │   ├── empleado_service.py
 │   │   ├── documento_service.py
 │   │   ├── incidencia_service.py
 │   │   ├── pago_service.py
-│   │   └── configuracion_service.py
+│   │   ├── configuracion_service.py
+│   │   └── auth_service.py
 │   ├── utils/                   # Utilidades
 │   │   ├── helpers.py          # Funciones auxiliares
 │   │   ├── validators.py      # Validadores
 │   │   ├── document_manager.py # Gestión documentos
-│   │   └── pdf_generator.py    # Generación PDF
+│   │   ├── pdf_generator.py    # Generación PDF
+│   │   ├── security.py        # Hash de contraseñas y permisos
+│   │   ├── audit_logger.py    # Registro de auditoría
+│   │   ├── backup_manager.py  # Copias de seguridad
+│   │   └── exporter.py        # Exportación Excel/CSV
 │   └── main.py                 # Punto de entrada
 ├── tests/                       # Pruebas unitarias
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto
 ├── build.py                   # Script construcción
+├── updater/                   # Actualizador automático (cada 2 días)
+│   ├── auto_updater.py        # Lógica principal
+│   ├── updater_gui.py         # Ventana de estado (tkinter)
+│   ├── tray_icon.py           # Bandeja del sistema (ctypes)
+│   └── updater.spec           # Spec de PyInstaller
 ├── README.md                  # Documentación general
 ├── DOCUMENTACION_TECNICA.md   # Documentación técnica
 ├── GUIA_USUARIO.md            # Guía de usuario
@@ -231,6 +260,23 @@ pylint src/
    - Más temas y acentos de color
 
 ## Novedades de la Versión 2.79
+
+### Actualización automática (cada 2 días)
+
+- El actualizador (`updater/`) queda **incluido en el instalador** y se
+  programa en el Programador de tareas de Windows para ejecutarse
+  **cada 2 días a las 09:00** (antes: cada 6 horas + al iniciar sesión).
+- Nueva **ventana de estado** (`updater/updater_gui.py`) que informa de
+  cada etapa (comprobando, descargando con porcentaje, instalando,
+  resultado) y se cierra sola al terminar.
+- Nuevo **ícono en la bandeja del sistema** (`updater/tray_icon.py`,
+  Windows) implementado solo con ctypes: menú contextual con buscar
+  ahora, mostrar ventana y salir.
+- El instalador lo registra al instalar (`--register-only`) y lo
+  desprograma al desinstalar (`--unregister`); se elimina también la
+  tarea antigua.
+- Modo de ejecución con `--check` (texto) o con ventana (`--gui`); el
+  UAC de registro no duplica ventanas.
 
 ### Distribución y CI/CD
 

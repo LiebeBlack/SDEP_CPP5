@@ -478,6 +478,29 @@ El sistema puede recibir actualizaciones que incluyan:
 - Corrección de errores
 - Optimizaciones de rendimiento
 
+### Actualización automática (cada 2 días)
+
+Si instaló el sistema con el instalador de Windows, el **actualizador
+automático** ya viene incluido y programado:
+
+- **Frecuencia**: comprueba novedades **cada 2 días a las 09:00** (a
+  través del Programador de tareas de Windows).
+- **Ventana de estado**: al comprobar muestra una ventana que informa
+  todo lo que hace: *comprobando actualizaciones*, *descargando* (con
+  porcentaje y tamaño), *instalando* y el resultado final (*ya está
+  actualizado* o *actualización completada*). Si hay un error, lo
+  muestra claramente.
+- **Bandeja del sistema**: mientras trabaja aparece un ícono en la
+  barra inferior derecha de Windows (junto al reloj). Con clic derecho
+  ofrece las opciones *Buscar actualizaciones ahora*, *Mostrar ventana*
+  y *Salir*.
+- **Instalación automática**: si hay una versión más nueva, se descarga
+  e instala en silencio; si la aplicación está abierta, se cierra con un
+  aviso antes de actualizar.
+
+También puede ejecutar el actualizador manualmente haciendo doble clic en
+`SDEP_CPP5_AutoUpdater.exe` (ubicado en la carpeta de instalación).
+
 Se recomienda mantener el sistema actualizado para aprovechar las mejoras.
 
 ## Conclusión

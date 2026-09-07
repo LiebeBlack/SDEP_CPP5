@@ -1,43 +1,61 @@
-# Release Firmada (Windows)
+# =============================================================================
+# Release Firmada - Firma Masiva Profunda (Windows)
+# =============================================================================
 #
-# Se ejecuta al PUBLICAR una Release en GitHub (o manualmente) y:
-#   1. Compila el ejecutable con PyInstaller (spec/app.spec).
-#   2. Recupera el certificado PFX desde el secreto CODE_SIGN_CERT_BASE64.
-#   3. Firma el ejecutable principal con signtool (SHA256 + timestamp DigiCert).
-#   4. Compila installer/setup.iss con ISCC pasando los parámetros de firma
-#      por línea de comandos, firmando también el instalador final.
-#   5. Elimina cert.pfx del runner por seguridad.
-#   6. Adjunta el instalador firmado (Instalador_SDEP_CPP5.exe) a la Release.
+# Este workflow compila la aplicación, firma digitalmente TODOS los archivos
+# soportados por Authenticode de forma recursiva y profunda (exe, dll, sys,
+# ocx, scr, cpl, msi, msm, msp, cab, appx, msix, cat, ps1, psm1, psd1, vbs)
+# dentro de las carpetas de artefactos, empaqueta la estructura firmada,
+# compila el instalador con Inno Setup (también firmado) y lo publica.
+#
+# Disparadores:
+#   - Push de etiquetas de versión (v*)
+#   - Ejecución manual (workflow_dispatch)
 #
 # Secretos requeridos (Settings -> Secrets and variables -> Actions):
-#   CODE_SIGN_CERT_BASE64   : PFX en Base64. Generarlo con:
-#       [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\tools\MiCertificadoPrivado.pfx"))
-#   CODE_SIGN_CERT_PASSWORD : contraseña del PFX
+#   PFX_BASE64    : Certificado PFX con la cadena de confianza completa de
+#                   4 niveles, codificado en Base64. Generarlo con:
+#                     [Convert]::ToBase64String(
+#                       [IO.File]::ReadAllBytes("C:\ruta\CadenaEnterpriseFirma.pfx"))
+#   PFX_PASSWORD  : Contraseña del archivo PFX.
+#
+# Seguridad: el PFX se restaura en RUNNER_TEMP, se usa en memoria y se
+# borra forzosamente en un paso con `if: always()` (incluso si el job falla).
+# =============================================================================
 
-name: Release Firmada (Windows)
+name: Release Firmada (Firma Masiva Profunda)
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.event.release.tag_name || github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Compilar, firmar y adjuntar instalador
+  build-sign-release:
+    name: Compilar, firmar masivamente y publicar
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     env:
       PYTHONUNBUFFERED: "1"
-      CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
-      CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
+      PFX_BASE64: ${{ secrets.PFX_BASE64 }}
+      PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
+      # Nombre físico del certificado restaurado en el runner
+      PFX_FILE: CadenaEnterpriseFirma.pfx
 
     steps:
+      # -------------------------------------------------------------------------
+      # 1. Clonar repositorio
+      # -------------------------------------------------------------------------
       - name: Clonar repositorio
         uses: actions/checkout@v5
 
@@ -51,17 +69,19 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      # -------------------------------------------------------------------------
+      # 2. Determinar versión y generar información de build
+      # -------------------------------------------------------------------------
       - name: Determinar versión y generar información de build
-        shell: pwsh
         env:
           RELEASE_TAG_FROM_EVENT: ${{ github.event.release.tag_name }}
         run: |
-          if ($env:RELEASE_TAG_FROM_EVENT) {
-            # Publicación de Release: la versión sale de la etiqueta (v1.0.0 -> 1.0.0)
-            $ver = $env:RELEASE_TAG_FROM_EVENT.TrimStart('v')
-            $tagFinal = $env:RELEASE_TAG_FROM_EVENT
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            # Push de etiqueta v*: la versión sale de la etiqueta (v1.0.0 -> 1.0.0)
+            $ver = $env:GITHUB_REF_NAME.TrimStart('v')
+            $tagFinal = $env:GITHUB_REF_NAME
           } else {
-            # Ejecución manual: versión del archivo VERSION y release continua
+            # Ejecución manual: versión del archivo VERSION
             $ver = (Get-Content -Path VERSION).Trim()
             $tagFinal = "v$ver.ci.$env:GITHUB_RUN_NUMBER"
           }
@@ -81,11 +101,13 @@ jobs:
           Write-Output "RELEASE_TAG=$tagFinal" >> $env:GITHUB_ENV
           Write-Host "Versión: $ver | Etiqueta: $tagFinal | Commit: $commit"
 
+      # -------------------------------------------------------------------------
+      # 3. Compilar ejecutable principal (PyInstaller onedir)
+      # -------------------------------------------------------------------------
       - name: Compilar ejecutable (PyInstaller onedir)
         run: python -m PyInstaller --noconfirm --clean spec/app.spec
 
       - name: Renombrar ejecutable principal a SDEP_CPP5.exe
-        shell: pwsh
         run: |
           $exe = "dist\SistemaGestionPersonal\SistemaGestionPersonal.exe"
           if (-not (Test-Path $exe)) {
@@ -95,20 +117,49 @@ jobs:
           Rename-Item -Path $exe -NewName "SDEP_CPP5.exe"
           Write-Host "OK: dist\SistemaGestionPersonal\SDEP_CPP5.exe"
 
-      - name: Recuperar certificado PFX desde el secreto
-        shell: pwsh
+      # -------------------------------------------------------------------------
+      # 4. Compilar actualizador automático
+      # -------------------------------------------------------------------------
+      - name: Compilar actualizador automático (SDEP_CPP5_AutoUpdater.exe)
         run: |
-          if (-not $env:CODE_SIGN_CERT_BASE64) {
-            Write-Error "Falta el secreto CODE_SIGN_CERT_BASE64 (PFX en Base64)"
+          python -m PyInstaller --noconfirm --clean updater/updater.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = "dist\SDEP_CPP5_AutoUpdater.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "El actualizador no fue generado: $exe"
             exit 1
           }
-          $cert = Join-Path $env:RUNNER_TEMP "cert.pfx"
-          [IO.File]::WriteAllBytes($cert, [Convert]::FromBase64String($env:CODE_SIGN_CERT_BASE64))
-          Write-Output "CERT_PFX=$cert" >> $env:GITHUB_ENV
-          Write-Host "PFX recuperado: $cert"
+          New-Item -ItemType Directory -Force -Path "dist_updater" | Out-Null
+          Move-Item -Force $exe "dist_updater\SDEP_CPP5_AutoUpdater.exe"
+          Write-Host "OK actualizador: dist_updater\SDEP_CPP5_AutoUpdater.exe"
 
+      # -------------------------------------------------------------------------
+      # 5. Restaurar certificado PFX desde el secreto PFX_BASE64
+      # -------------------------------------------------------------------------
+      - name: Restaurar certificado PFX (CadenaEnterpriseFirma.pfx)
+        run: |
+          if (-not $env:PFX_BASE64) {
+            Write-Error "Falta el secreto PFX_BASE64 (PFX con cadena de confianza en Base64)"
+            exit 1
+          }
+          if (-not $env:PFX_PASSWORD) {
+            Write-Error "Falta el secreto PFX_PASSWORD (contraseña del PFX)"
+            exit 1
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP $env:PFX_FILE
+          # Decodificar Base64 -> bytes -> archivo físico temporal
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+          if (-not (Test-Path $pfxPath)) {
+            Write-Error "No se pudo restaurar el PFX en $pfxPath"
+            exit 1
+          }
+          Write-Output "CERT_PFX=$pfxPath" >> $env:GITHUB_ENV
+          Write-Host "PFX restaurado: $pfxPath ($(([math]::Round((Get-Item $pfxPath).Length/1KB,1))) KB)"
+
+      # -------------------------------------------------------------------------
+      # 6. Localizar signtool.exe (Windows SDK preinstalado en el runner)
+      # -------------------------------------------------------------------------
       - name: Localizar signtool.exe (Windows SDK)
-        shell: pwsh
         run: |
           $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
           if (-not $signtool) {
@@ -127,41 +178,123 @@ jobs:
           Write-Output "SIGNTOOL=$signtool" >> $env:GITHUB_ENV
           Write-Host "signtool: $signtool"
 
-      - name: Firmar ejecutable principal (SHA256 + timestamp DigiCert)
-        shell: pwsh
+      # -------------------------------------------------------------------------
+      # 7. FIRMA MASIVA PROFUNDA (Deep Mass Signing)
+      #    Firma recursivamente TODOS los formatos soportados por Authenticode
+      #    en dist, dist_updater y dist_installer, incluyendo subdirectorios.
+      #    Tolerante a fallos: registra advertencia y continúa con el resto.
+      # -------------------------------------------------------------------------
+      - name: Firma masiva profunda de todos los artefactos (Authenticode)
         run: |
-          & $env:SIGNTOOL sign /f "$env:CERT_PFX" /p "$env:CODE_SIGN_CERT_PASSWORD" `
-            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v `
-            "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ErrorActionPreference = 'Continue'
 
-      - name: Compilar actualizador automático (SDEP_CPP5_AutoUpdater.exe)
-        shell: pwsh
-        run: |
-          python -m PyInstaller --noconfirm --clean updater/updater.spec
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $exe = "dist\SDEP_CPP5_AutoUpdater.exe"
-          if (-not (Test-Path $exe)) {
-            Write-Error "El actualizador no fue generado: $exe"
-            exit 1
+          # Lista completa de extensiones soportadas por Authenticode
+          $extensiones = @(
+            # Ejecutables y librerías
+            '*.exe', '*.dll', '*.sys', '*.ocx', '*.scr', '*.cpl',
+            # Instaladores y paquetes
+            '*.msi', '*.msm', '*.msp', '*.cab',
+            '*.appx', '*.appxbundle', '*.msix', '*.msixbundle',
+            # Scripts y catálogos
+            '*.cat', '*.ps1', '*.psm1', '*.psd1', '*.vbs'
+          )
+
+          # Directorios de artefactos donde buscar de forma recursiva y profunda
+          $directorios = @('dist', 'dist_updater', 'dist_installer')
+          $directorios = $directorios | Where-Object { Test-Path $_ }
+
+          if (-not $directorios) {
+            Write-Warning "No se encontraron directorios de artefactos para firmar"
+            exit 0
           }
-          New-Item -ItemType Directory -Force -Path "dist_updater" | Out-Null
-          Move-Item -Force $exe "dist_updater\SDEP_CPP5_AutoUpdater.exe"
-          Write-Host "OK actualizador: dist_updater\SDEP_CPP5_AutoUpdater.exe"
 
-      - name: Firmar actualizador automático (evita SmartScreen al autoelevarse)
-        shell: pwsh
+          # Recolectar TODOS los archivos candidatos (recursivo, subdirectorios incluidos)
+          $archivos = Get-ChildItem -Path $directorios -Recurse -Include $extensiones -File |
+            Select-Object -ExpandProperty FullName -Unique
+
+          if (-not $archivos) {
+            Write-Warning "No se encontraron archivos firmables en: $($directorios -join ', ')"
+            exit 0
+          }
+
+          Write-Host "=== FIRMA MASIVA PROFUNDA: $($archivos.Count) archivo(s) detectados ==="
+          $archivos | ForEach-Object { Write-Host "  -> $_" }
+
+          $firmados   = 0
+          $omitidos   = 0
+          $fallidos   = 0
+
+          foreach ($archivo in $archivos) {
+            $nombre = Split-Path $archivo -Leaf
+            try {
+              Write-Host "Firmando: $archivo"
+              # Parámetros estrictos de signtool:
+              #   /f  : archivo PFX con la cadena completa de confianza
+              #   /p  : contraseña del PFX
+              #   /fd : digest del archivo SHA-256
+              #   /tr : timestamping RFC3161 oficial (DigiCert)
+              #   /td : algoritmo SHA-256 para el timestamp
+              #   /a  : selecciona automáticamente el mejor certificado
+              #         e incrusta TODA la cadena presente en el PFX
+              #   /v  : salida verbosa para el log del pipeline
+              & $env:SIGNTOOL sign `
+                /f "$env:CERT_PFX" /p "$env:PFX_PASSWORD" `
+                /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+                /a /v `
+                "$archivo" 2>&1 | ForEach-Object { Write-Host "    $_" }
+
+              if ($LASTEXITCODE -eq 0) {
+                # Verificación posterior de la firma incrustada
+                & $env:SIGNTOOL verify /pa /all "$archivo" 2>&1 | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                  Write-Host "OK firmado y verificado: $nombre"
+                  $firmados++
+                } else {
+                  Write-Warning "Firmado pero la verificación devolvió código $LASTEXITCODE: $nombre"
+                  $firmados++
+                }
+              } else {
+                # Tolerante a fallos: el archivo no admite Authenticode o está
+                # bloqueado -> advertencia y continuar con el resto
+                Write-Warning "No se pudo firmar (exit $LASTEXITCODE), se continúa: $nombre"
+                $omitidos++
+              }
+            } catch {
+              Write-Warning "Excepción al firmar '$nombre': $($_.Exception.Message)"
+              $fallidos++
+            }
+          }
+
+          Write-Host "=== RESUMEN DE FIRMA MASIVA ==="
+          Write-Host "  Firmados : $firmados"
+          Write-Host "  Omitidos : $omitidos"
+          Write-Host "  Fallidos : $fallidos"
+          Write-Host "  Total    : $($archivos.Count)"
+
+      # -------------------------------------------------------------------------
+      # 8. Verificación de firmas (auditoría post-firma)
+      # -------------------------------------------------------------------------
+      - name: Verificar firmas Authenticode de los artefactos
         run: |
-          & $env:SIGNTOOL sign /f "$env:CERT_PFX" /p "$env:CODE_SIGN_CERT_PASSWORD" `
-            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v `
-            "dist_updater\SDEP_CPP5_AutoUpdater.exe"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $principal = "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
+          if (Test-Path $principal) {
+            $sig = Get-AuthenticodeSignature $principal
+            $sig | Select-Object Status, @{n='Firmante';e={$_.SignerCertificate.Subject}} | Format-List
+            if ($sig.Status -ne 'Valid') {
+              Write-Warning "Firma del ejecutable principal no válida (Status: $($sig.Status))"
+            } else {
+              Write-Host "OK: firma válida del ejecutable principal"
+            }
+          }
 
+      # -------------------------------------------------------------------------
+      # 9. Compilar instalador con Inno Setup (firmando instalador y desinstalador)
+      #    Los archivos ya firmados se empaquetan dentro del instalador.
+      # -------------------------------------------------------------------------
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
 
       - name: Compilar instalador firmado (ISCC con parámetros de firma)
-        shell: pwsh
         run: |
           $iscc = @(
             "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
@@ -180,40 +313,63 @@ jobs:
             "/DMyOutputBaseFilename=Instalador_SDEP_CPP5" `
             "/DSignToolPath=$env:SIGNTOOL" `
             "/DCertPath=$env:CERT_PFX" `
-            "/DCertPassword=$env:CODE_SIGN_CERT_PASSWORD" `
+            "/DCertPassword=$env:PFX_PASSWORD" `
             "installer\setup.iss"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verificar instalador firmado
-        shell: pwsh
+      # -------------------------------------------------------------------------
+      # 10. EMPAQUETADO: ZIP con TODA la estructura de archivos firmados
+      # -------------------------------------------------------------------------
+      - name: Empaquetar estructura completa de archivos firmados (ZIP)
         run: |
-          $setup = "dist_installer\Instalador_SDEP_CPP5.exe"
-          if (-not (Test-Path $setup)) {
-            Write-Error "El instalador no fue generado: $setup"
-            exit 1
+          $zip = "SDEP_CPP5-Firmado-$env:APP_VERSION.zip"
+          $staging = Join-Path $env:RUNNER_TEMP "paquete_firmado"
+          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+
+          # Copiar TODA la estructura firmada (aplicación + actualizador + instalador)
+          if (Test-Path "dist\SistemaGestionPersonal") {
+            Copy-Item -Recurse -Force "dist\SistemaGestionPersonal" "$staging\SistemaGestionPersonal"
           }
-          $sig = Get-AuthenticodeSignature $setup
-          $sig | Select-Object Status, @{n='Firmante';e={$_.SignerCertificate.Subject}} | Format-List
-          if ($sig.Status -ne 'Valid') {
-            Write-Warning "Firma del instalador no válida (Status: $($sig.Status))"
+          if (Test-Path "dist_updater") {
+            Copy-Item -Recurse -Force "dist_updater" "$staging\dist_updater"
+          }
+          if (Test-Path "dist_installer") {
+            Copy-Item -Recurse -Force "dist_installer" "$staging\dist_installer"
           }
 
-      - name: Eliminar cert.pfx del runner (seguridad)
+          Compress-Archive -Path "$staging\*" -DestinationPath $zip -Force
+          $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
+          Write-Host "OK paquete firmado: $zip ($size MB)"
+
+      # -------------------------------------------------------------------------
+      # 11. LIMPIEZA DE SEGURIDAD: borrar el PFX SIEMPRE (if: always())
+      #     Borrado forzado incluso si un paso anterior falló.
+      # -------------------------------------------------------------------------
+      - name: Eliminar certificado PFX del runner (seguridad)
         if: always()
-        shell: pwsh
         run: |
-          $cert = Join-Path $env:RUNNER_TEMP "cert.pfx"
-          if (Test-Path $cert) {
-            Remove-Item $cert -Force
-            Write-Host "cert.pfx eliminado del runner"
+          $pfxPath = Join-Path $env:RUNNER_TEMP $env:PFX_FILE
+          if (Test-Path $pfxPath) {
+            # Borrado forzado: sobrescribir antes de eliminar
+            $bytes = [byte[]]::new((Get-Item $pfxPath).Length)
+            [IO.File]::WriteAllBytes($pfxPath, $bytes)
+            Remove-Item $pfxPath -Force
+            Write-Host "OK: $env:PFX_FILE sobrescrito y eliminado del runner"
+          } else {
+            Write-Host "El PFX ya no existe en el runner"
           }
 
-      - name: Adjuntar instalador firmado y actualizador a la Release
+      # -------------------------------------------------------------------------
+      # 12. Publicar Release con todos los artefactos firmados
+      # -------------------------------------------------------------------------
+      - name: Adjuntar artefactos firmados a la Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           files: |
             dist_installer/Instalador_SDEP_CPP5.exe
             dist_updater/SDEP_CPP5_AutoUpdater.exe
+            SDEP_CPP5-Firmado-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

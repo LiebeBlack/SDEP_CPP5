@@ -8,7 +8,7 @@
 
 La presente investigación tuvo como objetivo diseñar, desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas, orientado a optimizar los procesos administrativos, garantizar la precisión en los cálculos financieros, facilitar el control documental y proporcionar herramientas para la toma de decisiones basada en datos, utilizando tecnologías de información accesibles y sostenibles.
 
-El sistema fue desarrollado con una arquitectura de capas modular (presentación, servicios, repositorios, modelos y utilidades transversales) utilizando Python, SQLAlchemy y CustomTkinter, con licencia de código abierto. Incorpora módulos funcionales de empleados, documentos, incidencias, nómina y configuración, así como autenticación con roles, auditoría, respaldos, exportación y generación de documentos oficiales en PDF. La calidad del software está respaldada por una suite de **281 pruebas automatizadas** que se ejecutan exitosamente, con una cobertura de código del **43%** total y del **73% en la lógica de negocio** (modelos, repositorios, servicios y utilidades).
+El sistema fue desarrollado con una arquitectura de capas modular (presentación, servicios, repositorios, modelos y utilidades transversales) utilizando Python, SQLAlchemy y CustomTkinter, con licencia de código abierto. Incorpora módulos funcionales de empleados, documentos, incidencias, nómina y configuración, así como autenticación con roles, auditoría, respaldos, exportación y generación de documentos oficiales en PDF. La calidad del software está respaldada por una suite de **323 pruebas automatizadas** que se ejecutan exitosamente, con una cobertura de código del **43%** total y del **73% en la lógica de negocio** (modelos, repositorios, servicios y utilidades).
 
 La metodología combinó la investigación aplicada con el desarrollo ágil y la investigación-acción, empleando instrumentos de recolección de datos definidos y validados (entrevistas, observación directa, cuestionarios de satisfacción y protocolos de usabilidad). El impacto cuantitativo y cualitativo del sistema en la eficiencia administrativa se evaluará mediante una implementación piloto en 3-5 instituciones educativas, cuyos resultados se incorporarán al capítulo de resultados conforme a la metodología establecida.
 
@@ -18,7 +18,7 @@ La metodología combinó la investigación aplicada con el desarrollo ágil y la
 
 The present research aimed to design, develop and implement a comprehensive personnel and payroll management system for educational institutions, oriented to optimize administrative processes, ensure accuracy in financial calculations, facilitate document control and provide tools for data-driven decision making, using accessible and sustainable information technologies.
 
-The system was developed with a modular layered architecture (presentation, services, repositories, models and cross-cutting utilities) using Python, SQLAlchemy and CustomTkinter, under an open-source license. It includes functional modules for employees, documents, incidents, payroll and configuration, as well as role-based authentication, auditing, backups, export and official PDF document generation. Software quality is supported by a suite of **281 automated tests** that run successfully, with **43%** total code coverage and **73%** coverage of the business logic (models, repositories, services and utilities).
+The system was developed with a modular layered architecture (presentation, services, repositories, models and cross-cutting utilities) using Python, SQLAlchemy and CustomTkinter, under an open-source license. It includes functional modules for employees, documents, incidents, payroll and configuration, as well as role-based authentication, auditing, backups, export and official PDF document generation. Software quality is supported by a suite of **323 automated tests** that run successfully, with **43%** total code coverage and **73%** coverage of the business logic (models, repositories, services and utilities).
 
 The methodology combined applied research with agile development and action research, using defined and validated data collection instruments (interviews, direct observation, satisfaction questionnaires and usability protocols). The quantitative and qualitative impact of the system on administrative efficiency will be assessed through a pilot implementation in 3-5 educational institutions, whose results will be incorporated into the results chapter according to the established methodology.
 
@@ -260,7 +260,7 @@ SDEP_CPP5/
 │   ├── services/                # Lógica de negocio (incluye auth_service)
 │   ├── utils/                   # Utilidades (security, audit_logger, backup_manager, exporter, pdf_generator)
 │   └── main.py                 # Punto de entrada
-├── tests/                       # 281 pruebas automatizadas
+├── tests/                       # 323 pruebas automatizadas
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias de desarrollo
 ├── pyproject.toml             # Configuración del proyecto
@@ -309,7 +309,7 @@ SDEP_CPP5/
 
 Esta tesis presenta el desarrollo e implementación de un Sistema de Gestión de Personal y Nómina para instituciones educativas utilizando tecnologías de código abierto. El proyecto surgió como respuesta a la ineficiencia en los procesos administrativos manuales que enfrentan muchas instituciones educativas, particularmente aquellas con recursos limitados.
 
-El sistema desarrollado implementa módulos completos para gestión de empleados, documentos, incidencias y nómina, además de autenticación con roles, auditoría, respaldos, exportación y generación de documentos oficiales en PDF, con interfaz gráfica moderna (temas claro y oscuro) y atajos de teclado. La calidad del software está verificada por una suite de **281 pruebas automatizadas** que se ejecutan exitosamente, con **43% de cobertura total** y **73% de cobertura en la lógica de negocio** (modelos, servicios, repositorios y utilidades).
+El sistema desarrollado implementa módulos completos para gestión de empleados, documentos, incidencias y nómina, además de autenticación con roles, auditoría, respaldos, exportación y generación de documentos oficiales en PDF, con interfaz gráfica moderna (temas claro y oscuro) y atajos de teclado. La calidad del software está verificada por una suite de **323 pruebas automatizadas** que se ejecutan exitosamente, con **43% de cobertura total** y **73% de cobertura en la lógica de negocio** (modelos, servicios, repositorios y utilidades).
 
 La metodología combinó desarrollo de software ágil con investigación-acción, permitiendo un desarrollo iterativo con retroalimentación continua de usuarios. El impacto en eficiencia administrativa (reducción de tiempos de procesamiento, tasas de error y satisfacción de usuarios) se evaluará con las mediciones pre/post de la implementación piloto en 3-5 instituciones educativas, siguiendo la metodología del Capítulo III; las tablas correspondientes del Capítulo IV están definidas para incorporar esa evidencia empírica real.
 

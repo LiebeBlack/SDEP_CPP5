@@ -190,7 +190,7 @@ isort --check-only src/
 ### Test Structure
 
 ```python
-def test_employee_creation():
+def test_crear_empleado():
     # Arrange
     employee_data = {
         "name": "John Doe",
@@ -212,13 +212,13 @@ def test_employee_creation():
 pytest tests/
 
 # Run specific test file
-pytest tests/test_employee.py
+pytest tests/test_empleados.py
 
 # Run with coverage
 pytest tests/ --cov=src --cov-report=html
 
 # Run specific test
-pytest tests/test_employee.py::test_employee_creation
+pytest tests/test_empleados.py::test_crear_empleado
 ```
 
 ### Test Categories

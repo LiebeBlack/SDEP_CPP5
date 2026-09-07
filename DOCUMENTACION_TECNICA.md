@@ -295,7 +295,8 @@ acoplar la ventana principal a cada módulo.
 
 ### Medidas de Seguridad
 
-- Almacenamiento local de datos (sin conexión a internet requerida)
+- Almacenamiento local de datos (sin conexión a internet requerida; la
+  actualización automática consulta GitHub de forma opcional)
 - Validación de entradas de usuario
 - Control de acceso por tipo de usuario y por módulo
 - Contraseñas con hash **PBKDF2-HMAC-SHA256** (200.000 iteraciones,
@@ -355,6 +356,63 @@ Se puede extender para incluir:
 - Integración con sistemas de nómina externos
 - Conexión con sistemas de asistencia
 - Integración con sistemas de facturación
+
+## Actualización Automática (AutoUpdater)
+
+El proyecto incluye un componente independiente de **actualización
+automática** (`updater/`), empaquetado como ejecutable propio
+(`SDEP_CPP5_AutoUpdater.exe`, PyInstaller onefile, sin consola) e
+integrado en el instalador de Windows.
+
+### Arquitectura
+
+- `updater/auto_updater.py` — Lógica principal (solo biblioteca
+  estándar): consulta la última Release de GitHub, descarga el
+  instalador `Setup.exe`, lo instala en silencio y administra la tarea
+  programada.
+- `updater/updater_gui.py` — Ventana de estado en tkinter que muestra el
+  progreso (comprobando, descargando con porcentaje, instalando,
+  resultado) mediante los ganchos `on_progress` / `on_download`.
+- `updater/tray_icon.py` — Ícono de la **bandeja del sistema** (Windows)
+  implementado con `ctypes` (`Shell_NotifyIconW`), ventana oculta
+  message-only y menú contextual (buscar ahora / mostrar ventana /
+  salir). Es un no-op en sistemas que no sean Windows.
+- `updater/updater.spec` — Spec de PyInstaller (onefile, tkinter, ícono).
+
+### Programación (cada 2 días)
+
+El actualizador crea una tarea en el Programador de tareas de Windows
+(`schtasks /SC DAILY /MO 2 /ST 09:00`): comprueba novedades **cada 2
+días a las 09:00** con privilegios elevados. El instalador la registra
+al instalar (`--register-only`) y la elimina al desinstalar
+(`--unregister`); la tarea antigua "al iniciar sesión" se elimina
+automáticamente.
+
+### Flujo de actualización
+
+1. Consulta `releases/latest` de GitHub (3 intentos con espera creciente).
+2. Compara la versión de la Release con la última instalada registrada
+   (`%LOCALAPPDATA%\SDEP_CPP5uto_updater.json`).
+3. Si hay versión nueva: cierra la aplicación si está abierta, descarga
+   el instalador con reintentos y verificación de tamaño, y lo ejecuta en
+   silencio (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`).
+4. Registra la versión instalada y termina.
+
+### Modos de ejecución
+
+| Argumento         | Efecto |
+|-------------------|--------|
+| *(sin argumentos)*| Registra la tarea (si falta) y actualiza con ventana + bandeja |
+| `--check`         | Solo consulta e informa (modo texto) |
+| `--check --gui`   | Consulta con ventana de estado |
+| `--register`      | Registra las tareas y actualiza |
+| `--register-only` | Solo registra la tarea (lo usa el instalador) |
+| `--unregister`    | Elimina las tareas (lo usa el desinstalador) |
+| `--no-gui`        | Fuerza modo texto |
+
+Variables de entorno: `SDEP_UPDATE_API_URL`, `SDEP_UPDATE_STATE_DIR`,
+`SDEP_UPDATE_INSTALL_DIR`, `SDEP_UPDATE_INSTALL_IF_MISSING` (ver
+`updater/README.md`).
 
 ## Mantenimiento
 

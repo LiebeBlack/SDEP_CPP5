@@ -111,7 +111,7 @@ DOCUMENTS_MANIFEST = [
         "id": "tesis-completado",
         "file": "TESIS/COMPLETADO.md",
         "title": "Estado Final y Validación del Proyecto",
-        "subtitle": "Certificación de cumplimiento del software (281 tests, arquitectura y cobertura).",
+        "subtitle": "Certificación de cumplimiento del software (323 tests, arquitectura y cobertura).",
         "category": "Tesis Académica",
         "order": 10,
         "badge": "Validación",

@@ -199,11 +199,11 @@ jobs:
           }
           $commit = $env:GITHUB_SHA.Substring(0, [Math]::Min(7, $env:GITHUB_SHA.Length))
           $contenido = @"
-"""Generado automáticamente por CI. No editar."""
-BUILD_VERSION = "$buildVersion"
-BUILD_COMMIT = "$commit"
-BUILD_DATE = "$(Get-Date -Format o)"
-"@
+          """Generado automáticamente por CI. No editar."""
+          BUILD_VERSION = "$buildVersion"
+          BUILD_COMMIT = "$commit"
+          BUILD_DATE = "$(Get-Date -Format o)"
+          "@
           [IO.File]::WriteAllText(
             (Join-Path (Get-Location) "src\config\build_info.py"),
             $contenido,

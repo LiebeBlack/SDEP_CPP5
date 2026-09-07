@@ -2,7 +2,8 @@
 """
 Spec de PyInstaller para el "Actualizador automático de SDEP_CPP5".
 
-Genera un ejecutable único (onefile) sin consola:
+Genera un ejecutable único (onefile) sin consola, con ventana de estado
+(tkinter) y el ícono de la bandeja del sistema:
 
     python -m PyInstaller --noconfirm --clean updater/updater.spec
 
@@ -26,12 +27,12 @@ a = Analysis(
     [str(spec_root / "auto_updater.py")],
     pathex=[str(project_root)],
     binaries=[],
-    datas=[],
-    hiddenimports=[],
+    datas=[(icono, "assets")],  # ícono para la ventana y la bandeja del sistema
+    hiddenimports=["tkinter", "tkinter.ttk"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "customtkinter", "sqlalchemy", "PIL", "reportlab"],
+    excludes=["customtkinter", "sqlalchemy", "PIL", "reportlab"],
     noarchive=False,
 )
 

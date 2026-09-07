@@ -135,6 +135,28 @@ jobs:
             "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Compilar actualizador automático (SDEP_CPP5_AutoUpdater.exe)
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean updater/updater.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = "dist\SDEP_CPP5_AutoUpdater.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "El actualizador no fue generado: $exe"
+            exit 1
+          }
+          New-Item -ItemType Directory -Force -Path "dist_updater" | Out-Null
+          Move-Item -Force $exe "dist_updater\SDEP_CPP5_AutoUpdater.exe"
+          Write-Host "OK actualizador: dist_updater\SDEP_CPP5_AutoUpdater.exe"
+
+      - name: Firmar actualizador automático (evita SmartScreen al autoelevarse)
+        shell: pwsh
+        run: |
+          & $env:SIGNTOOL sign /f "$env:CERT_PFX" /p "$env:CODE_SIGN_CERT_PASSWORD" `
+            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v `
+            "dist_updater\SDEP_CPP5_AutoUpdater.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
 
@@ -186,10 +208,12 @@ jobs:
             Write-Host "cert.pfx eliminado del runner"
           }
 
-      - name: Adjuntar instalador firmado a la Release
+      - name: Adjuntar instalador firmado y actualizador a la Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          files: dist_installer/Instalador_SDEP_CPP5.exe
+          files: |
+            dist_installer/Instalador_SDEP_CPP5.exe
+            dist_updater/SDEP_CPP5_AutoUpdater.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

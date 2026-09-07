@@ -2,17 +2,21 @@
 Script de construcción para Windows
 
 Pasos:
-  1. pyinstaller --noconfirm --clean spec/app.spec   -> dist/SistemaGestionPersonal/
-  2. Inno Setup (ISCC.exe)  installer/setup.iss      -> dist_installer/SistemaGestionPersonal-Setup-*.exe
+  1. pyinstaller --noconfirm --clean spec/app.spec     -> dist/SistemaGestionPersonal/
+  2. pyinstaller --noconfirm --clean updater/updater.spec -> dist_updater/SDEP_CPP5_AutoUpdater.exe
+  3. Inno Setup (ISCC.exe)  installer/setup.iss        -> dist_installer/SistemaGestionPersonal-Setup-*.exe
+     (el instalador incluye y programa el actualizador automático)
 
-El instalador es opcional en local: si ISCC.exe no está instalado, el
-script termina con el ejecutable listo y explica cómo generar el setup.
+El actualizador se compila SIEMPRE ANTES del instalador porque el
+instalador lo empaqueta en su interior. El instalador es opcional en
+local: si ISCC.exe no está instalado, el script termina con los
+ejecutables listos y explica cómo generar el setup.
 
 Uso:
-    python build.py            # todo
+    python build.py            # ejecutable + actualizador + instalador
     python build.py --exe      # solo el ejecutable
     python build.py --updater  # solo el actualizador automático
-    python build.py --all      # ejecutable + instalador + actualizador
+    python build.py --all      # ejecutable + actualizador + instalador
 """
 
 import argparse
@@ -86,7 +90,7 @@ def localizar_iscc():
 
 def build_exe() -> bool:
     """Empaqueta la aplicación con PyInstaller usando spec/app.spec"""
-    print("=== [1/2] Ejecutable con PyInstaller ===")
+    print("=== [1/3] Ejecutable con PyInstaller ===")
     generar_build_info()
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -111,7 +115,7 @@ def build_exe() -> bool:
 
 def build_updater() -> bool:
     """Empaqueta el actualizador automático (updater/auto_updater.py)"""
-    print("=== Actualizador automático (PyInstaller onefile) ===")
+    print("=== [2/3] Actualizador automático (PyInstaller onefile) ===")
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconfirm", "--clean",
@@ -142,7 +146,7 @@ def build_installer() -> bool:
     iscc = localizar_iscc()
     if iscc is None:
         print(
-            "=== [2/2] Instalador omitido ===\n"
+            "=== [3/3] Instalador omitido ===\n"
             "Inno Setup 6 no está instalado. Instálelo desde "
             "https://jrsoftware.org/isdl.php o con: choco install innosetup -y\n"
             "Luego ejecute: python build.py"
@@ -150,7 +154,7 @@ def build_installer() -> bool:
         return True
 
     version = leer_version()
-    print("=== [2/2] Instalador con Inno Setup ===")
+    print("=== [3/3] Instalador con Inno Setup ===")
     cmd = [
         str(iscc),
         f"/DMyAppVersion={version}",
@@ -174,22 +178,20 @@ def main():
     parser = argparse.ArgumentParser(description="Construcción de la app para Windows")
     parser.add_argument("--exe", action="store_true", help="Solo ejecutable (sin instalador)")
     parser.add_argument("--updater", action="store_true", help="Solo actualizador automático")
-    parser.add_argument("--all", action="store_true", help="Ejecutable + instalador + actualizador")
+    parser.add_argument("--all", action="store_true", help="Ejecutable + actualizador + instalador")
     args = parser.parse_args()
 
     os.chdir(RAIZ)
     print(f"Versión: {leer_version()}")
     if args.updater:
         ok = build_updater()
-    elif args.all:
-        ok = build_exe()
-        if ok:
-            ok = build_installer()
-        if ok:
-            ok = build_updater()
     else:
         ok = build_exe()
-        if ok and not args.exe:
+        # El instalador necesita el actualizador compilado antes, porque
+        # lo empaqueta en su interior (y lo programa cada 2 días).
+        if ok and (args.all or not args.exe):
+            ok = build_updater()
+        if ok and (args.all or not args.exe):
             ok = build_installer()
     if not ok:
         sys.exit(1)

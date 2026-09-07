@@ -3,12 +3,14 @@ Actualizador automático de "Sistema de Gestión de Personal" (SDEP_CPP5).
 
 Qué hace:
   1. Se registra en el Programador de tareas de Windows para ejecutarse
-     cada 6 horas (y al iniciar sesión), con privilegios elevados.
+     CADA 2 DÍAS a las 09:00, con privilegios elevados.
   2. En cada ejecución consulta la última Release de GitHub
      (https://github.com/LiebeBlack/SDEP_CPP5/releases).
   3. Si hay una versión más nueva que la última instalada registrada,
      descarga el instalador (Setup.exe) y lo instala en modo silencioso.
-  4. Se cierra solo al terminar (no queda residente).
+  4. Mientras trabaja muestra una VENTANA de estado (comprobando,
+     descargando, instalando, resultado) y un ícono en la BANDEJA del
+     sistema (barra inferior derecha, Windows). Al terminar se cierra.
 
 El estado se guarda en %LOCALAPPDATA%\\SDEP_CPP5\\auto_updater.json
 y el registro de actividad en %LOCALAPPDATA%\\SDEP_CPP5\\updater.log.
@@ -23,9 +25,13 @@ Solo usa la biblioteca estándar: el .exe compilado es pequeño y no
 depende del entorno virtual de la aplicación.
 
 Uso:
-    python updater/auto_updater.py            # flujo normal (registra + actualiza)
-    python updater/auto_updater.py --check    # solo consulta y muestra el estado
-    python updater/auto_updater.py --register # registra las tareas y actualiza
+    python updater/auto_updater.py                 # flujo normal (ventana + bandeja)
+    python updater/auto_updater.py --check         # solo consulta (sin instalar)
+    python updater/auto_updater.py --check --gui   # consulta con ventana
+    python updater/auto_updater.py --register      # registra las tareas y actualiza
+    python updater/auto_updater.py --register-only # SOLO registra la tarea (instalador)
+    python updater/auto_updater.py --unregister    # quita las tareas (desinstalador)
+    python updater/auto_updater.py --no-gui        # fuerza modo texto
 """
 
 from __future__ import annotations
@@ -63,8 +69,9 @@ UNINSTALL_KEY_WOW64 = (
 )
 
 TASK_NAME = "SDEP_CPP5 AutoUpdater"
-TASK_NAME_LOGON = "SDEP_CPP5 AutoUpdater (Logon)"
-CHECK_INTERVAL_HOURS = 6
+TASK_NAME_LOGON = "SDEP_CPP5 AutoUpdater (Logon)"  # tarea antigua (solo para limpieza)
+CHECK_INTERVAL_DAYS = 2
+CHECK_START_TIME = "09:00"
 INSTALL_IF_MISSING = os.environ.get("SDEP_UPDATE_INSTALL_IF_MISSING", "1") == "1"
 LOCK_MAX_AGE_SECONDS = 30 * 60  # una ejecución no debería durar más de 30 min
 LOG_MAX_BYTES = 1024 * 1024     # rotación simple del log (1 MB)
@@ -75,6 +82,11 @@ USER_AGENT = (
 )
 
 _VERSION_RE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
+
+# Ganchos opcionales que la GUI (updater/updater_gui.py) engancha para
+# mostrar el progreso en su ventana y en la bandeja del sistema.
+on_progress = None  # Callable[[str], None]  -> mensaje de etapa
+on_download = None  # Callable[[int, int], None] -> (bytes descargados, total o 0)
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +149,11 @@ def log(message: str) -> None:
             fh.write(f"[{now_utc()}] {message}\n")
     except OSError:
         pass
+    if on_progress is not None:
+        try:
+            on_progress(message)
+        except Exception:
+            pass
     print(message, flush=True)
 
 
@@ -213,8 +230,23 @@ def download(url: str, destination: Path, expected_size: int = 0) -> Path:
         try:
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(request, timeout=60) as response:
+                try:
+                    total = int(response.headers.get("Content-Length") or 0)
+                except (TypeError, ValueError):
+                    total = 0
+                done = 0
                 with tmp.open("wb") as fh:
-                    shutil.copyfileobj(response, fh, length=256 * 1024)
+                    while True:
+                        chunk = response.read(256 * 1024)
+                        if not chunk:
+                            break
+                        fh.write(chunk)
+                        done += len(chunk)
+                        if on_download is not None:
+                            try:
+                                on_download(done, total)
+                            except Exception:
+                                pass
             if expected_size and tmp.stat().st_size != expected_size:
                 raise RuntimeError(
                     f"Tamaño inesperado: {tmp.stat().st_size} bytes "
@@ -347,48 +379,71 @@ def install_setup(setup_path: Path) -> int:
 def tasks_registered() -> bool:
     if sys.platform != "win32":
         return True
-    for task in (TASK_NAME, TASK_NAME_LOGON):
-        try:
-            result = subprocess.run(
-                ["schtasks", "/Query", "/TN", task],
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
-            if result.returncode != 0:
-                return False
-        except (OSError, subprocess.SubprocessError):
-            return False
-    return True
+    try:
+        result = subprocess.run(
+            ["schtasks", "/Query", "/TN", TASK_NAME],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def register_tasks() -> None:
-    """Crea (o actualiza) las tareas: cada 6 horas y al iniciar sesión."""
+    """Crea (o actualiza) la tarea programada: cada 2 días a las 09:00.
+
+    También elimina la tarea antigua "al iniciar sesión" de versiones
+    previas del actualizador, que ya no se usa.
+    """
     if sys.platform != "win32":
         return
     exe = self_exe()
     tr_value = f'"{exe}"'
-    commands = [
-        (
-            "cada 6 horas",
-            ["schtasks", "/Create", "/F", "/TN", TASK_NAME, "/SC", "HOURLY",
-             "/MO", str(CHECK_INTERVAL_HOURS), "/TR", tr_value, "/RL", "HIGHEST"],
-        ),
-        (
-            "al iniciar sesión",
-            ["schtasks", "/Create", "/F", "/TN", TASK_NAME_LOGON, "/SC",
-             "ONLOGON", "/TR", tr_value, "/RL", "HIGHEST"],
-        ),
+    command = [
+        "schtasks", "/Create", "/F", "/TN", TASK_NAME, "/SC", "DAILY",
+        "/MO", str(CHECK_INTERVAL_DAYS), "/ST", CHECK_START_TIME,
+        "/TR", tr_value, "/RL", "HIGHEST",
     ]
-    for description, command in commands:
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=30
+        )
+        status = "OK" if result.returncode == 0 else f"ERROR ({result.returncode})"
+        log(f"Tarea '{TASK_NAME}' (cada {CHECK_INTERVAL_DAYS} días a las "
+            f"{CHECK_START_TIME}): {status}")
+    except (OSError, subprocess.SubprocessError) as exc:
+        log(f"No se pudo crear la tarea '{TASK_NAME}': {exc}")
+    # Limpieza: quitar la tarea antigua "al iniciar sesión" (si existe)
+    try:
+        result = subprocess.run(
+            ["schtasks", "/Delete", "/TN", TASK_NAME_LOGON, "/F"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            log(f"Tarea antigua '{TASK_NAME_LOGON}' eliminada (ya no se usa)")
+    except (OSError, subprocess.SubprocessError) as exc:
+        log(f"No se pudo eliminar la tarea antigua '{TASK_NAME_LOGON}': {exc}")
+
+
+def unregister_tasks() -> None:
+    """Elimina las tareas programadas del actualizador (desinstalación)."""
+    if sys.platform != "win32":
+        return
+    for task in (TASK_NAME, TASK_NAME_LOGON):
         try:
             result = subprocess.run(
-                command, capture_output=True, text=True, timeout=30
+                ["schtasks", "/Delete", "/TN", task, "/F"],
+                capture_output=True, text=True, timeout=30,
             )
-            status = "OK" if result.returncode == 0 else f"ERROR ({result.returncode})"
-            log(f"Tarea '{command[4]}' ({description}): {status}")
+            if result.returncode == 0:
+                log(f"Tarea '{task}' eliminada")
+            else:
+                log(f"Tarea '{task}' no existía o no se pudo eliminar "
+                    f"({result.returncode})")
         except (OSError, subprocess.SubprocessError) as exc:
-            log(f"No se pudo crear la tarea '{command[4]}': {exc}")
+            log(f"No se pudo eliminar la tarea '{task}': {exc}")
 
 
 def relaunch_elevated_register() -> bool:
@@ -525,6 +580,34 @@ def run_check(install: bool) -> int:
     return 1
 
 
+def _gui_enabled(args: list[str]) -> bool:
+    """¿Debe mostrarse la ventana de estado + bandeja del sistema?"""
+    if "--no-gui" in args:
+        return False
+    if "--gui" in args:
+        return True
+    # Por defecto: ventana en los flujos interactivos; --check va en texto
+    return not any(
+        flag in args
+        for flag in ("--check", "--register-only", "--unregister")
+    )
+
+
+def _run_with_gui(install: bool) -> int:
+    """Ejecuta la comprobación/actualización mostrando la ventana de estado
+    y el ícono de bandeja. Si la GUI no puede abrirse, vuelve a modo texto."""
+    try:
+        from updater.updater_gui import UpdaterGui
+    except Exception as exc:
+        log(f"No se pudo abrir la ventana del actualizador ({exc}); modo texto")
+        return run_check(install=install)
+    try:
+        return UpdaterGui(install=install).run()
+    except Exception as exc:
+        log(f"La ventana del actualizador terminó con un error ({exc}); modo texto")
+        return run_check(install=install)
+
+
 def main() -> int:
     args = sys.argv[1:]
 
@@ -532,11 +615,23 @@ def main() -> int:
         print("SDEP_CPP5 AutoUpdater 2.79")
         return 0
 
+    if "--unregister" in args:
+        unregister_tasks()
+        return 0
+
+    if "--register-only" in args:
+        register_tasks()
+        return 0
+
     if "--check" in args:
+        if _gui_enabled(args):
+            return _run_with_gui(install=False)
         return run_check(install=False)
 
     if "--register" in args:
         register_tasks()
+        if _gui_enabled(args):
+            return _run_with_gui(install=True)
         return run_check(install=True)
 
     # Flujo normal: garantiza la programación y ejecuta la comprobación.
@@ -548,9 +643,12 @@ def main() -> int:
                 register_tasks()
         elif not tasks_registered():
             # Sin privilegios y sin tareas: se relanza elevado una sola vez.
-            log("Registrando el actualizador cada 6 horas (confirmación UAC)...")
+            log(f"Registrando el actualizador (cada {CHECK_INTERVAL_DAYS} días; "
+                "confirmación UAC)...")
             if relaunch_elevated_register():
                 return 0  # el proceso elevado completa el trabajo
+        if _gui_enabled(args):
+            return _run_with_gui(install=True)
         return run_check(install=True)
     finally:
         release_lock()

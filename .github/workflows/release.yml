@@ -264,6 +264,23 @@ jobs:
           # Cert:\CurrentUser\My).
           $huellas = ($cadena | ForEach-Object { $_.Thumbprint }) -join ','
           Write-Output "PFX_THUMBPRINTS=$huellas" >> $env:GITHUB_ENV
+          # ----------------------------------------------------------------
+          # EXPORTAR la RAÍZ de la cadena como certificado público para el
+          # instalador. tools/MiCertificadoPublico.cer puede estar
+          # DESACTUALIZADO (p. ej. de una CA anterior): si el instalador
+          # importara un certificado que NO es la raíz real de esta cadena,
+          # las firmas NUNCA serían de confianza en los equipos cliente.
+          # La raíz es el certificado autofirmado (Subject == Issuer).
+          # El instalador la importa en Cert:\LocalMachine\Root.
+          # ----------------------------------------------------------------
+          $raiz = $cadena | Where-Object { $_.Subject -eq $_.Issuer } | Select-Object -First 1
+          if ($raiz) {
+            $destinoCer = Join-Path (Get-Location) "tools\MiCertificadoPublico.cer"
+            [IO.File]::WriteAllBytes($destinoCer, $raiz.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+            Write-Host ("CERTIFICADO PÚBLICO RAÍZ exportado a tools/MiCertificadoPublico.cer: {0} (huella {1})" -f $raiz.Subject, $raiz.Thumbprint)
+          } else {
+            Write-Warning "No se encontró raíz autofirmada en el PFX; el instalador usará el .cer versionado"
+          }
 
       # -------------------------------------------------------------------------
       # 6. Localizar signtool.exe (Windows SDK preinstalado en el runner)
@@ -608,6 +625,28 @@ jobs:
       # -------------------------------------------------------------------------
       # 14. Publicar Release con el instalador firmado
       # -------------------------------------------------------------------------
+      - name: Limpiar release/etiqueta previa con el mismo nombre (auto-sanado)
+        run: |
+          # Si YA existe una release/etiqueta con este nombre (p. ej. creada
+          # antes por el workflow antiguo con archivos SIN FIRMAR), se elimina
+          # para que la release firmada no choque con ella ni herede sus
+          # archivos viejos (softprops salta los assets con nombre duplicado:
+          # sin este paso, el Setup firmado NUNCA se subiría).
+          $env:GH_TOKEN = $env:GITHUB_TOKEN
+          gh release view "$env:RELEASE_TAG" -R "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete "$env:RELEASE_TAG" -R "$env:GITHUB_REPOSITORY" --yes --cleanup-tag
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Eliminada release/etiqueta previa: $env:RELEASE_TAG"
+            } else {
+              Write-Warning "No se pudo eliminar la release previa (se continúa)"
+            }
+          } else {
+            Write-Host "No hay release previa con la etiqueta $env:RELEASE_TAG"
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Adjuntar artefactos firmados a la Release
         uses: softprops/action-gh-release@v2
         with:

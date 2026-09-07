@@ -51,21 +51,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Compilar ejecutable (PyInstaller onedir)
-        run: python -m PyInstaller --noconfirm --clean spec/app.spec
-
-      - name: Renombrar ejecutable principal a SDEP_CPP5.exe
-        shell: pwsh
-        run: |
-          $exe = "dist\SistemaGestionPersonal\SistemaGestionPersonal.exe"
-          if (-not (Test-Path $exe)) {
-            Write-Error "El ejecutable no fue generado: $exe"
-            exit 1
-          }
-          Rename-Item -Path $exe -NewName "SDEP_CPP5.exe"
-          Write-Host "OK: dist\SistemaGestionPersonal\SDEP_CPP5.exe"
-
-      - name: Determinar versión (etiqueta de la Release o archivo VERSION)
+      - name: Determinar versión y generar información de build
         shell: pwsh
         env:
           RELEASE_TAG_FROM_EVENT: ${{ github.event.release.tag_name }}
@@ -79,9 +65,35 @@ jobs:
             $ver = (Get-Content -Path VERSION).Trim()
             $tagFinal = "v$ver.ci.$env:GITHUB_RUN_NUMBER"
           }
+          $commit = $env:GITHUB_SHA.Substring(0, [Math]::Min(7, $env:GITHUB_SHA.Length))
+          $contenido = @"
+"""Generado automáticamente por CI. No editar."""
+BUILD_VERSION = "$ver"
+BUILD_COMMIT = "$commit"
+BUILD_DATE = "$(Get-Date -Format o)"
+"@
+          [IO.File]::WriteAllText(
+            (Join-Path (Get-Location) "src\config\build_info.py"),
+            $contenido,
+            [Text.UTF8Encoding]::new($false)
+          )
           Write-Output "APP_VERSION=$ver" >> $env:GITHUB_ENV
           Write-Output "RELEASE_TAG=$tagFinal" >> $env:GITHUB_ENV
-          Write-Host "Versión: $ver | Etiqueta: $tagFinal"
+          Write-Host "Versión: $ver | Etiqueta: $tagFinal | Commit: $commit"
+
+      - name: Compilar ejecutable (PyInstaller onedir)
+        run: python -m PyInstaller --noconfirm --clean spec/app.spec
+
+      - name: Renombrar ejecutable principal a SDEP_CPP5.exe
+        shell: pwsh
+        run: |
+          $exe = "dist\SistemaGestionPersonal\SistemaGestionPersonal.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "El ejecutable no fue generado: $exe"
+            exit 1
+          }
+          Rename-Item -Path $exe -NewName "SDEP_CPP5.exe"
+          Write-Host "OK: dist\SistemaGestionPersonal\SDEP_CPP5.exe"
 
       - name: Recuperar certificado PFX desde el secreto
         shell: pwsh

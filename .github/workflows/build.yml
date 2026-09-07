@@ -186,12 +186,32 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Leer versión
+      - name: Leer versión y generar información de build
         shell: pwsh
         run: |
           $ver = (Get-Content -Path VERSION).Trim()
+          # Releases continuas: la versión visible incluye el número de build
+          # (2.79.55). En etiquetas v* se usa solo la versión del VERSION.
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $buildVersion = $ver
+          } else {
+            $buildVersion = "$ver.$env:GITHUB_RUN_NUMBER"
+          }
+          $commit = $env:GITHUB_SHA.Substring(0, [Math]::Min(7, $env:GITHUB_SHA.Length))
+          $contenido = @"
+"""Generado automáticamente por CI. No editar."""
+BUILD_VERSION = "$buildVersion"
+BUILD_COMMIT = "$commit"
+BUILD_DATE = "$(Get-Date -Format o)"
+"@
+          [IO.File]::WriteAllText(
+            (Join-Path (Get-Location) "src\config\build_info.py"),
+            $contenido,
+            [Text.UTF8Encoding]::new($false)
+          )
           Write-Output "APP_VERSION=$ver" >> $env:GITHUB_ENV
-          Write-Host "Versión detectada: $ver"
+          Write-Output "BUILD_VERSION=$buildVersion" >> $env:GITHUB_ENV
+          Write-Host "Versión: $ver | Build: $buildVersion | Commit: $commit"
 
       - name: Verificar importación de módulos
         run: python -c "import sys; sys.path.insert(0, '.'); import src.main; print('imports OK')"
@@ -254,6 +274,21 @@ jobs:
             -DestinationPath "SistemaGestionPersonal-Windows-$env:APP_VERSION.zip" -Force
           Write-Host "OK zip portable"
 
+      - name: Compilar actualizador automático (SDEP_CPP5_AutoUpdater.exe)
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean updater/updater.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = "dist\SDEP_CPP5_AutoUpdater.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "El actualizador no fue generado: $exe"
+            exit 1
+          }
+          New-Item -ItemType Directory -Force -Path "dist_updater" | Out-Null
+          Move-Item -Force $exe "dist_updater\SDEP_CPP5_AutoUpdater.exe"
+          $size = [math]::Round((Get-Item "dist_updater\SDEP_CPP5_AutoUpdater.exe").Length / 1MB, 1)
+          Write-Host "OK actualizador: $size MB"
+
       - name: Descargar versión Linux (para el release)
         uses: actions/download-artifact@v4
         with:
@@ -303,10 +338,14 @@ jobs:
             Compilación automática del commit `${{ github.sha }}` en `${{ github.ref_name }}`.
             Descarga el instalador (**Setup.exe**), la versión portable de Windows (ZIP)
             o la versión portable de Linux (tar.gz).
+            También se publica el **actualizador automático** (SDEP_CPP5_AutoUpdater.exe):
+            ejecútalo una vez para que revise GitHub cada 6 horas, descargue e instale
+            las nuevas versiones en silencio.
           files: |
             dist_installer/SistemaGestionPersonal-Setup-${{ env.APP_VERSION }}.exe
             SistemaGestionPersonal-Windows-${{ env.APP_VERSION }}.zip
             linux-artifact/SistemaGestionPersonal-Linux-${{ env.APP_VERSION }}.tar.gz
+            dist_updater/SDEP_CPP5_AutoUpdater.exe
           generate_release_notes: true
           draft: false
           prerelease: false

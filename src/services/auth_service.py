@@ -241,8 +241,8 @@ class AuthService:
         return self.repository.get_by_username(username)
 
     def _now(self):
-        from datetime import datetime
-        return datetime.utcnow()
+        from src.utils.helpers import utcnow
+        return utcnow()
 
     def _audit_exitoso(self, event_type, username, entity_id=None, details=None):
         try:

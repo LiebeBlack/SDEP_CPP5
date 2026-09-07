@@ -10,7 +10,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, Union
 
 
@@ -431,6 +431,18 @@ def leer_archivo_seguro(ruta: str, reintentos: int = 3):
             if intento < reintentos - 1:
                 time.sleep(0.2 * (intento + 1))
     return None
+
+
+def utcnow() -> datetime:
+    """
+    Fecha/hora UTC actual SIN zona horaria (naive), igual que el antiguo
+    datetime.utcnow() pero sin la deprecación de Python 3.12+. La base de
+    datos guarda fechas naive, así que el resultado no debe llevar tzinfo.
+
+    Returns:
+        datetime: Fecha/hora UTC actual naive
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def get_timestamp() -> str:

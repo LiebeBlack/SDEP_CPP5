@@ -12,6 +12,7 @@ build/
 develop-eggs/
 dist/
 dist_installer/
+dist_updater/
 downloads/
 eggs/
 .eggs/
@@ -135,6 +136,7 @@ dmypy.json
 Thumbs.db
 
 # Project specific
+src/config/build_info.py
 *.db
 *.sqlite
 *.sqlite3

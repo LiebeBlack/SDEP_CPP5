@@ -535,11 +535,18 @@ class MainWindow(ctk.CTk):
     def _on_acerca_de(self):
         """Muestra la información de la aplicación"""
         from src.gui.frames import InfoDialog
+        detalle_build = ""
+        if getattr(settings, "build_commit", ""):
+            detalle_build = f"Build: {settings.build_commit}"
+            if getattr(settings, "build_date", ""):
+                detalle_build += f" ({settings.build_date})"
         texto = (
             "ACERCA DE\n"
             "=========\n\n"
             f"Sistema: {settings.app_name}\n"
-            f"Versión: v{settings.app_version}\n\n"
+            f"Versión: v{settings.app_version}\n"
+            + (f"{detalle_build}\n" if detalle_build else "")
+            + "\n"
             "Sistema de gestión de personal y nómina para instituciones\n"
             "educativas. Desarrollado en Python con CustomTkinter y\n"
             "SQLAlchemy (SQLite).\n\n"

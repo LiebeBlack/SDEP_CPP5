@@ -374,7 +374,7 @@ class SecurityValidator:
         # Validar tamaño
         if not cls.validate_file_size(file_size):
             result['safe'] = False
-            result['errors'].append(f"Tamaño de archivo excede el máximo permitido")
+            result['errors'].append("Tamaño de archivo excede el máximo permitido")
         
         # Validar tipo MIME si se proporciona
         if content_type:

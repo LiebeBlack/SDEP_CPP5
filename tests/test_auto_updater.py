@@ -188,3 +188,24 @@ def test_run_check_consulta_fallida(release_file, isolated_state, monkeypatch):
     monkeypatch.setattr(updater.time, "sleep", lambda segundos: None)
     assert updater.run_check(install=True) == 1
     assert updater.load_state().get("last_error")
+
+
+# ---------------------------------------------------------------------------
+# Elevación del instalador (regresión del crash por str.format)
+# ---------------------------------------------------------------------------
+def test_script_instalador_powershell_no_usa_format():
+    """El script contiene llaves literales de PowerShell: construirlo con
+    str.format lanzaba ValueError en tiempo de ejecución."""
+    script = updater._script_instalador_powershell(
+        Path(r"C:\Program Files\Sistema de Gestión de Personal\Setup.exe")
+    )
+    assert "Setup.exe" in script
+    assert "/VERYSILENT" in script
+    assert "-Verb RunAs -Wait -PassThru" in script
+    # Debe seguir siendo un script PowerShell válido (comillas equilibradas)
+    assert script.count("'") % 2 == 0
+
+
+def test_script_instalador_escapa_comillas_simples():
+    script = updater._script_instalador_powershell(Path(r"C:\O'Brien\Setup.exe"))
+    assert "O''Brien" in script

@@ -1,7 +1,7 @@
-from typing import List, Optional, Union
+from typing import List, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 import logging
 
 from src.models import Documento, TipoDocumento

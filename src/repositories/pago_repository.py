@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
-from datetime import date, datetime
+from datetime import date
 import logging
 
 from src.models import Pago, TipoPago, MetodoPago

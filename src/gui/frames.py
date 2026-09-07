@@ -325,7 +325,7 @@ class DashboardFrame(ctk.CTkFrame):
                 stats = self.main_window.empleado_service.obtener_estadisticas()
                 self.stats_cards["empleados"].configure(text=str(stats.get("total", 0)))
                 self.stats_cards["activos"].configure(text=str(stats.get("activos", 0)))
-            except Exception as e:
+            except Exception:
                 self.stats_cards["empleados"].configure(text="0")
                 self.stats_cards["activos"].configure(text="0")
             
@@ -333,24 +333,24 @@ class DashboardFrame(ctk.CTkFrame):
             try:
                 doc_stats = self.main_window.documento_service.obtener_estadisticas()
                 self.stats_cards["documentos"].configure(text=str(doc_stats.get("total", 0)))
-            except Exception as e:
+            except Exception:
                 self.stats_cards["documentos"].configure(text="0")
             
             # Estadísticas de incidencias
             try:
                 incidencia_stats = self.main_window.incidencia_service.obtener_estadisticas()
                 self.stats_cards["incidencias"].configure(text=str(incidencia_stats.get("pendientes", 0)))
-            except Exception as e:
+            except Exception:
                 self.stats_cards["incidencias"].configure(text="0")
             
             # Estadísticas de pagos
             try:
                 pago_stats = self.main_window.pago_service.obtener_estadisticas()
                 self.stats_cards["pagos"].configure(text=str(pago_stats.get("pendientes", 0)))
-            except Exception as e:
+            except Exception:
                 self.stats_cards["pagos"].configure(text="0")
             
-        except Exception as e:
+        except Exception:
             # Error general, establecer todos en 0
             for key in self.stats_cards:
                 self.stats_cards[key].configure(text="0")
@@ -491,11 +491,11 @@ class EmpleadosFrame(ctk.CTkFrame):
                         tipo_emp_val,
                         format_currency(emp.salario_base)
                     ), tags=(str(emp.id),))
-                except Exception as e:
+                except Exception:
                     # Continuar con el siguiente empleado si hay error
                     continue
                 
-        except Exception as e:
+        except Exception:
             # Mostrar error pero no bloquear la UI
             self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
     
@@ -2647,7 +2647,7 @@ class NominaFrame(ctk.CTkFrame):
                         format_currency(float(pago.monto_neto)),
                         estado_pago
                     ), tags=(str(pago.id),))
-                except Exception as e:
+                except Exception:
                     continue
                 
         except Exception as e:

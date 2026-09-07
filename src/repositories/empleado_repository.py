@@ -5,7 +5,7 @@ Repositorio para operaciones de datos de empleados con manejo de errores mejorad
 
 from typing import List, Optional, Union
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_, func
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 

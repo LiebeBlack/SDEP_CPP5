@@ -31,10 +31,9 @@
 #   CERTIFICADO FIRMANTE incrustado (SignerCertificate), no en el estado de
 #   confianza.
 #
-#   La Release publicada contiene EXACTAMENTE los 3 archivos de siempre:
-#     - SistemaGestionPersonal-Setup-<versión>.exe   (instalador firmado)
-#     - SistemaGestionPersonal-Windows-<versión>.zip (portable firmado)
-#     - SDEP_CPP5_AutoUpdater.exe                    (actualizador firmado)
+#   La Release publicada contiene UN SOLO archivo:
+#     - SistemaGestionPersonal-Setup-<versión>.exe (instalador firmado; el
+#       actualizador ya va incluido DENTRO del instalador).
 #
 # Disparadores:
 #   - Push a main (release continua firmada, etiqueta continuous-vX.Y.N)
@@ -572,19 +571,7 @@ jobs:
           Write-Host "OK: TODOS los archivos firmables llevan firma Authenticode incrustada"
 
       # -------------------------------------------------------------------------
-      # 13. EMPAQUETADO: ZIP con TODA la estructura de archivos firmados
-      # -------------------------------------------------------------------------
-      - name: Empaquetar versión portable firmada (ZIP)
-        run: |
-          # ZIP portable con el MISMO nombre/estructura del release de siempre:
-          # solo la carpeta de la aplicación (todos sus archivos ya van firmados).
-          $zip = "SistemaGestionPersonal-Windows-$env:APP_VERSION.zip"
-          Compress-Archive -Path "dist\SistemaGestionPersonal" -DestinationPath $zip -Force
-          $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
-          Write-Host "OK paquete firmado: $zip ($size MB)"
-
-      # -------------------------------------------------------------------------
-      # 14. LIMPIEZA DE SEGURIDAD: borrar el PFX SIEMPRE (if: always())
+      # 13. LIMPIEZA DE SEGURIDAD: borrar el PFX SIEMPRE (if: always())
       #     Borrado forzado (sobrescribir con ceros + Remove-Item -Force),
       #     se ejecute o no el resto del pipeline con éxito.
       # -------------------------------------------------------------------------
@@ -619,7 +606,7 @@ jobs:
           }
 
       # -------------------------------------------------------------------------
-      # 15. Publicar Release con todos los artefactos firmados
+      # 14. Publicar Release con el instalador firmado
       # -------------------------------------------------------------------------
       - name: Adjuntar artefactos firmados a la Release
         uses: softprops/action-gh-release@v2
@@ -628,7 +615,5 @@ jobs:
           generate_release_notes: true
           files: |
             dist_installer/SistemaGestionPersonal-Setup-*.exe
-            SistemaGestionPersonal-Windows-*.zip
-            dist_updater/SDEP_CPP5_AutoUpdater.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

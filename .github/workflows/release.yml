@@ -23,6 +23,14 @@
 #   Auditoría final: si queda UN solo archivo firmable sin firma, el pipeline
 #   FALLA (no se publica nada sin firmar).
 #
+#   Nota de verificación: al ser una CA PRIVADA, en el runner el estado de
+#   WinVerifyTrust suele ser 'NotTrusted' o 'UnknownError' (la raíz no está
+#   instalada y no hay servidores de revocación) AUNQUE la firma esté
+#   perfectamente incrustada (signtool reporta "Successfully signed" con 0
+#   errores). Por eso TODAS las verificaciones del pipeline se basan en el
+#   CERTIFICADO FIRMANTE incrustado (SignerCertificate), no en el estado de
+#   confianza.
+#
 #   La Release publicada contiene EXACTAMENTE los 3 archivos de siempre:
 #     - SistemaGestionPersonal-Setup-<versión>.exe   (instalador firmado)
 #     - SistemaGestionPersonal-Windows-<versión>.zip (portable firmado)
@@ -361,15 +369,29 @@ jobs:
               continue
             }
 
-            # Verificación de la firma incrustada. 'Valid' = cadena de confianza
-            # completa; 'NotTrusted' = firma correcta con CA privada/autofirmada
-            # (normal con certificados empresariales propios): también es válido.
-            $estado = (Get-AuthenticodeSignature -FilePath $archivo).Status
-            if ($estado -in @('Valid', 'NotTrusted')) {
-              Write-Host "  OK firmado (estado: $estado): $(Split-Path $archivo -Leaf)"
+            # VERIFICACIÓN de la firma incrustada.
+            # IMPORTANTE: el certificado es de una CA PRIVADA; en el runner esa
+            # raíz no está instalada y no hay CRL/OCSP, así que WinVerifyTrust
+            # suele devolver 'NotTrusted' o 'UnknownError' AUNQUE la firma esté
+            # perfectamente incrustada (signtool ya reportó "Successfully
+            # signed" con 0 errores). El criterio fiable es el CERTIFICADO
+            # FIRMANTE incrustado:
+            #   - Debe existir (SignerCertificate != null).
+            #   - Debe ser EXACTAMENTE el certificado hoja detectado (si hay
+            #     huella esperada en -LeafSha1).
+            #   - HashMismatch = firma corrupta -> fallo.
+            $sig = Get-AuthenticodeSignature -FilePath $archivo
+            $estado = $sig.Status
+            $firmante = $sig.SignerCertificate
+            $firmanteOk = ($null -ne $firmante) -and ((-not $LeafSha1) -or ($firmante.Thumbprint -eq $LeafSha1))
+            if ($firmanteOk -and $estado -ne 'HashMismatch') {
+              Write-Host "  OK firmado (estado WinVerifyTrust: $estado | firmante: $($firmante.Thumbprint)): $(Split-Path $archivo -Leaf)"
               $firmados++
+            } elseif ($null -eq $firmante) {
+              Write-Warning "  [$Etiqueta] SIN FIRMA incrustada (estado: $estado): $archivo"
+              $fallidos++
             } else {
-              Write-Warning "  [$Etiqueta] Firmado pero estado inesperado '$estado': $archivo"
+              Write-Warning "  [$Etiqueta] Firma no válida (estado: $estado, firmante: $($firmante.Thumbprint), esperado: $LeafSha1): $archivo"
               $fallidos++
             }
           }
@@ -405,12 +427,28 @@ jobs:
         run: |
           $principal = "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
           $sig = Get-AuthenticodeSignature -FilePath $principal
-          $sig | Select-Object Status, @{n = 'Firmante'; e = { $_.SignerCertificate.Subject } } | Format-List
-          if ($sig.Status -notin @('Valid', 'NotTrusted')) {
+          # Con una CA privada, el estado de WinVerifyTrust en el runner suele
+          # ser NotTrusted/UnknownError aunque la firma esté bien: el criterio
+          # fiable es el certificado firmante incrustado.
+          [PSCustomObject]@{
+            Estado          = $sig.Status
+            EstadoDetallado = $sig.StatusMessage
+            Firmante        = $sig.SignerCertificate.Subject
+            Huella          = $sig.SignerCertificate.Thumbprint
+          } | Format-List
+          if ($null -eq $sig.SignerCertificate) {
             Write-Error "El ejecutable principal NO quedó firmado (Status: $($sig.Status))"
             exit 1
           }
-          Write-Host "OK: ejecutable principal firmado ($($sig.Status))"
+          if ($sig.Status -eq 'HashMismatch') {
+            Write-Error "El ejecutable principal tiene la firma CORRUPTA (HashMismatch)"
+            exit 1
+          }
+          if ($env:SIGN_CERT_SHA1 -and $sig.SignerCertificate.Thumbprint -ne $env:SIGN_CERT_SHA1) {
+            Write-Error "El ejecutable principal fue firmado con un certificado inesperado: $($sig.SignerCertificate.Thumbprint) (esperado: $env:SIGN_CERT_SHA1)"
+            exit 1
+          }
+          Write-Host "OK: ejecutable principal firmado por '$($sig.SignerCertificate.Subject)' (estado WinVerifyTrust en el runner: $($sig.Status))"
 
       # -------------------------------------------------------------------------
       # 10. Compilar instalador con Inno Setup
@@ -477,8 +515,10 @@ jobs:
           }
 
       # -------------------------------------------------------------------------
-      # 12. AUDITORÍA FINAL: cero archivos firmables sin firma.
-      #     Si queda alguno sin firmar, el pipeline FALLA y no se publica.
+      # 12. AUDITORÍA FINAL: cero problemas de firma.
+      #     Falla si algún archivo firmable quedó SIN FIRMA, con la firma
+      #     corrupta (HashMismatch) o firmado con un certificado distinto al
+      #     hoja detectado. No se publica nada con problemas.
       # -------------------------------------------------------------------------
       - name: Auditoría final (ningún archivo sin firmar)
         run: |
@@ -488,20 +528,35 @@ jobs:
             '*.appx', '*.appxbundle', '*.msix', '*.msixbundle',
             '*.cat', '*.ps1', '*.psm1', '*.psd1', '*.vbs'
           )
-          $sinFirmar = Get-ChildItem -Path 'dist', 'dist_updater', 'dist_installer' `
-            -Recurse -Include $extensiones -File -ErrorAction SilentlyContinue |
-            Where-Object { (Get-AuthenticodeSignature -FilePath $_.FullName).Status -eq 'NotSigned' }
+          # Criterio de auditoría: el CERTIFICADO FIRMANTE incrustado, no el
+          # estado de WinVerifyTrust (con una CA privada, en el runner ese
+          # estado suele ser NotTrusted/UnknownError aunque la firma esté bien).
+          $esperada = $env:SIGN_CERT_SHA1
+          $problemas = @()
+          $total = 0
+          $archivosAuditoria = @(Get-ChildItem -Path 'dist', 'dist_updater', 'dist_installer' `
+            -Recurse -Include $extensiones -File -ErrorAction SilentlyContinue)
+          foreach ($archivo in $archivosAuditoria) {
+            $total++
+            $sig = Get-AuthenticodeSignature -FilePath $archivo.FullName
+            if ($null -eq $sig.SignerCertificate) {
+              Write-Warning "SIN FIRMAR: $($archivo.FullName)"
+              $problemas += "SIN FIRMAR: $($archivo.FullName)"
+            } elseif ($sig.Status -eq 'HashMismatch') {
+              Write-Warning "FIRMA CORRUPTA (HashMismatch): $($archivo.FullName)"
+              $problemas += "FIRMA CORRUPTA (HashMismatch): $($archivo.FullName)"
+            } elseif ($esperada -and $sig.SignerCertificate.Thumbprint -ne $esperada) {
+              Write-Warning "FIRMADO CON OTRO CERTIFICADO ($($sig.SignerCertificate.Thumbprint)): $($archivo.FullName)"
+              $problemas += "FIRMADO CON OTRO CERTIFICADO: $($archivo.FullName)"
+            }
+          }
 
-          $total = Get-ChildItem -Path 'dist', 'dist_updater', 'dist_installer' `
-            -Recurse -Include $extensiones -File -ErrorAction SilentlyContinue
-
-          Write-Host "Auditoría: $($total.Count) archivo(s) firmables, $($sinFirmar.Count) sin firma"
-          if ($sinFirmar) {
-            $sinFirmar | ForEach-Object { Write-Warning "SIN FIRMAR: $($_.FullName)" }
-            Write-Error "Quedan $($sinFirmar.Count) archivo(s) sin firmar: NO se publica la release"
+          Write-Host "Auditoría: $total archivo(s) firmables, $($problemas.Count) problema(s)"
+          if ($problemas.Count -gt 0) {
+            Write-Error "Quedan $($problemas.Count) problema(s) de firma: NO se publica la release"
             exit 1
           }
-          Write-Host "OK: TODOS los archivos firmables llevan firma Authenticode"
+          Write-Host "OK: TODOS los archivos firmables llevan firma Authenticode incrustada"
 
       # -------------------------------------------------------------------------
       # 13. EMPAQUETADO: ZIP con TODA la estructura de archivos firmados

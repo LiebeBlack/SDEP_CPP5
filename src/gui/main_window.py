@@ -453,6 +453,10 @@ class MainWindow(ctk.CTk):
 
     def _atajo_nuevo(self):
         """Ctrl+N: abre el diálogo de nuevo registro del módulo activo"""
+        if not self.tiene_permiso("create"):
+            self.status_label.configure(
+                text="Su rol no tiene permiso para crear registros (Ctrl+N)")
+            return
         nombre_clase = type(self.current_frame).__name__ if self.current_frame else ""
         metodo = self.METODOS_NUEVO.get(nombre_clase)
         if metodo:
@@ -463,6 +467,10 @@ class MainWindow(ctk.CTk):
 
     def _atajo_guardar(self):
         """Ctrl+S: guarda los cambios del módulo activo (si lo soporta)"""
+        if not self.tiene_permiso("update"):
+            self.status_label.configure(
+                text="Su rol no tiene permiso para guardar cambios (Ctrl+S)")
+            return
         nombre_clase = type(self.current_frame).__name__ if self.current_frame else ""
         metodo = self.METODOS_GUARDAR.get(nombre_clase)
         if metodo:

@@ -272,6 +272,11 @@ class EmpleadoService:
         if "cedula" in datos:
             if len(datos["cedula"]) < 5:
                 errores.append("La cédula debe tener al menos 5 caracteres")
+            # Coherente con los validadores (src/utils/validators.py): la
+            # cédula debe ser numérica (se ignoran guiones y espacios).
+            ced_limpia = str(datos["cedula"]).replace("-", "").replace(" ", "")
+            if not ced_limpia.isdigit():
+                errores.append("La cédula debe contener solo números")
         
         if "salario_base" in datos:
             try:

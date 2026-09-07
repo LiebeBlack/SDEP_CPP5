@@ -92,8 +92,20 @@ VersionInfoProductName={#MyAppName}
 ; local genera un instalador sin firmar sin ningún cambio.
 ;   $f = ruta del instalador generado (entre comillas)
 ;   $q = carácter de comilla
+;
+; IMPORTANTE: el PFX lleva la cadena completa (raíz + intermedios + hoja) y
+; varios de sus certificados resultan "aptos para firmar" a ojos de signtool;
+; sin selección explícita falla con "Multiple certificates were found that
+; meet all the given criteria". Por eso:
+;   - Con LeafSha1 (huella del certificado hoja, la pasa el CI) se firma con
+;     /sha1: selección DETERMINISTA del certificado.
+;   - Sin LeafSha1 se usa /a: signtool elige el certificado automáticamente.
 #ifdef SignToolPath
-SignTool=GitHubSign $q{#SignToolPath}$q sign /f $q{#CertPath}$q /p $q{#CertPassword}$q /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
+#ifdef LeafSha1
+SignTool=GitHubSign $q{#SignToolPath}$q sign /sha1 $q{#LeafSha1}$q /f $q{#CertPath}$q /p $q{#CertPassword}$q /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
+#else
+SignTool=GitHubSign $q{#SignToolPath}$q sign /a /f $q{#CertPath}$q /p $q{#CertPassword}$q /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
+#endif
 SignedUninstaller=yes
 #endif
 

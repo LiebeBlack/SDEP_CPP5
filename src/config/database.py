@@ -211,6 +211,21 @@ class DatabaseConfig:
         except Exception as e:
             logger.warning(f"Error removiendo sesión: {e}")
 
+    def dispose(self):
+        """Libera TODAS las conexiones del pool y el registry de sesiones.
+
+        Se invoca al cerrar la aplicación para no dejar conexiones a la
+        base de datos ni sesiones scoped pendientes (anti-fugas).
+        """
+        try:
+            self.SessionLocal.remove()
+        except Exception as e:
+            logger.warning(f"Error removiendo sesiones al liberar: {e}")
+        try:
+            self.engine.dispose()
+        except Exception as e:
+            logger.warning(f"Error liberando el pool de conexiones: {e}")
+
     def init_db(self):
         """Inicializa la base de datos: tablas, verificación y datos semilla"""
         try:

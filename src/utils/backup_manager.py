@@ -11,9 +11,7 @@ Este módulo proporciona funcionalidades para:
 - Verificación de integridad de backups
 """
 
-import os
 import shutil
-import sqlite3
 import gzip
 import hashlib
 import json
@@ -385,8 +383,10 @@ class BackupManager:
         """
         Rotación automática de backups antiguos
         
-        Elimina backups que exceden los límites de retención
-        según la configuración
+        Política (en este orden):
+          1. Se eliminan los backups más antiguos que backup_retention_days.
+          2. Si aún quedan más de max_backups, se eliminan los más antiguos
+             hasta respetar el límite (se conservan SIEMPRE los más recientes).
         
         Returns:
             Dict con estadísticas de la rotación
@@ -399,23 +399,37 @@ class BackupManager:
         }
         
         try:
-            backups = self.list_backups()
-            
-            # Eliminar backups por antigüedad (iterar sobre una copia)
+            backups = self.list_backups()  # más reciente primero
+            restantes = list(backups)
             cutoff_date = datetime.now() - timedelta(days=self.backup_retention_days)
-            pendientes = list(backups)
-            
-            for backup in pendientes:
-                backup_date = datetime.strptime(backup["timestamp"], "%Y%m%d_%H%M%S")
-                excede_maximo = len(pendientes) > self.max_backups
-                
-                if backup_date < cutoff_date or excede_maximo:
+
+            def _fecha(backup: Dict) -> Optional[datetime]:
+                """Timestamp del backup o None si los metadatos están corruptos"""
+                try:
+                    return datetime.strptime(backup["timestamp"], "%Y%m%d_%H%M%S")
+                except (ValueError, KeyError, TypeError):
+                    return None
+
+            # 1) Retención por antigüedad: se recorren de MÁS ANTIGUO a más
+            #    reciente sobre una copia (nunca se muta la lista en iteración).
+            for backup in list(reversed(restantes)):
+                fecha = _fecha(backup)
+                if fecha is not None and fecha < cutoff_date:
                     if self.delete_backup(backup["name"]):
                         stats["deleted_count"] += 1
                         stats["deleted_backups"].append(backup["name"])
-                        pendientes.remove(backup)
-            
-            stats["total_after"] = len(pendientes)
+                        restantes = [b for b in restantes if b["name"] != backup["name"]]
+
+            # 2) Límite máximo: descartar los más antiguos hasta ajustarse.
+            while len(restantes) > self.max_backups:
+                objetivo = restantes[-1]  # el más antiguo (lista: nuevo -> viejo)
+                if not self.delete_backup(objetivo["name"]):
+                    break  # no se pudo eliminar: evitar bucle infinito
+                stats["deleted_count"] += 1
+                stats["deleted_backups"].append(objetivo["name"])
+                restantes = restantes[:-1]
+
+            stats["total_after"] = len(restantes)
             logger.info(f"Rotación de backups completada: {stats['deleted_count']} eliminados")
             
         except Exception as e:

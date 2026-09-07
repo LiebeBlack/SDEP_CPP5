@@ -305,6 +305,20 @@ def close_app_if_running() -> None:
         pass
 
 
+def _script_instalador_powershell(setup_path: Path) -> str:
+    """Comando PowerShell que ejecuta el instalador elevado y espera.
+
+    Se construye por concatenación (NUNCA con str.format): el script
+    contiene llaves literales de PowerShell y .format lanzaría ValueError.
+    """
+    quoted = str(setup_path).replace("'", "''")
+    return (
+        "& { $p = Start-Process -FilePath '" + quoted + "' "
+        "-ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') "
+        "-Verb RunAs -Wait -PassThru; exit $p.ExitCode }"
+    )
+
+
 def install_setup(setup_path: Path) -> int:
     """Ejecuta el instalador de Inno en silencio y devuelve su código de salida.
 
@@ -320,12 +334,7 @@ def install_setup(setup_path: Path) -> int:
             timeout=30 * 60,
         )
         return proc.returncode
-    quoted = str(setup_path).replace("'", "''")
-    script = (
-        "& { $p = Start-Process -FilePath '{path}' "
-        "-ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') "
-        "-Verb RunAs -Wait -PassThru; exit $p.ExitCode }"
-    ).format(path=quoted)
+    script = _script_instalador_powershell(setup_path)
     proc = subprocess.run(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
         capture_output=True,

@@ -6,7 +6,7 @@ Este servicio gestiona la configuración del sistema, permitiendo
 almacenar y recuperar parámetros configurables por categoría.
 """
 
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Union
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion

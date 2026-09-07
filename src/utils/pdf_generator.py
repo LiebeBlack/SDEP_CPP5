@@ -4,20 +4,15 @@ Módulo de generación de documentos PDF
 """
 
 from reportlab.lib.pagesizes import letter, A4, landscape
-from reportlab.lib.units import inch, cm
+from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
-from reportlab.platypus import PageBreak
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 from datetime import date
 from typing import Optional, Dict, List, Tuple
-import os
 from xml.sax.saxutils import escape
 
-from src.config import settings
 from src.models import Empleado
 from src.utils.helpers import format_date, format_currency
 

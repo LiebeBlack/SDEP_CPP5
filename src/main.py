@@ -299,7 +299,6 @@ def run_application():
 
 def cleanup_application():
     """Limpieza segura de recursos antes de cerrar"""
-    global application_instance
     try:
         from src.config import db_config
         
@@ -343,6 +342,15 @@ def cleanup_application():
                                        details={"operation": "cleanup_application"})
         except Exception:
             pass
+
+        # Liberar TODAS las conexiones del pool de la base de datos y el
+        # registry de sesiones (anti-fugas de conexiones/archivos).
+        try:
+            db_config.dispose()
+            logger.info("Pool de conexiones de base de datos liberado")
+        except Exception as e:
+            logger.warning(f"Error liberando recursos de base de datos: {e}")
+
         logger.info("Limpieza de recursos completada")
         
     except Exception as e:
@@ -433,6 +441,13 @@ def main():
         logger.error(f"Error fatal en la aplicación: {str(e)}")
         cleanup_application()
         sys.exit(1)
+    finally:
+        # Cierra los archivos de log al terminar (anti-fuga de descriptores).
+        # Va al final porque después de esto ya no se debe escribir logs.
+        try:
+            logging.shutdown()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

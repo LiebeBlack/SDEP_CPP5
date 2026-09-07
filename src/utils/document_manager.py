@@ -5,7 +5,6 @@ Módulo de gestión documental
 
 import os
 import shutil
-from pathlib import Path
 from typing import Optional, List, Tuple
 from datetime import datetime
 import mimetypes

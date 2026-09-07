@@ -377,10 +377,22 @@ class DatabaseConfig:
             from src.utils.backup_manager import get_backup_manager
             backup_mgr = get_backup_manager()
             backups = backup_mgr.list_backups()
+            # Leer la preferencia real de configuración; ante cualquier
+            # error se conserva el valor por defecto (habilitado).
+            try:
+                from src.repositories import ConfiguracionRepository
+                session = self.get_session()
+                try:
+                    habilitado = ConfiguracionRepository(session).get_valor(
+                        "backup_enabled", True)
+                finally:
+                    self.close_session(session)
+            except Exception:
+                habilitado = True
             return {
                 "total_backups": len(backups),
                 "latest_backup": backups[0] if backups else None,
-                "backup_enabled": True,
+                "backup_enabled": bool(habilitado),
                 "database_path": str(Path(self.database_path).absolute()),
                 "backup_directory": str(backup_mgr.backup_dir.absolute()),
             }

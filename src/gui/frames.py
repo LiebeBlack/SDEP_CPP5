@@ -20,7 +20,7 @@ from src.utils.helpers import (
 from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
 from src.utils.audit_logger import audit_logger, AuditEventType
-from src.services.auth_service import AuthService
+from src.services.auth_service import AuthService, LONGITUD_MINIMA_PASSWORD
 from src.gui.theme import COLORES
 
 
@@ -471,30 +471,10 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.tree.bind("<Button-3>", self._show_context_menu)
     
     def _load_empleados(self):
-        """Carga la lista de empleados"""
+        """Carga la lista de empleados (todos los activos)"""
         try:
-            # Limpiar tabla
-            for item in self.tree.get_children():
-                self.tree.delete(item)
-            
-            # Cargar empleados
-            empleados = self.main_window.empleado_service.listar_empleados_activos()
-            
-            for emp in empleados:
-                try:
-                    tipo_emp_val = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or '')
-                    self.tree.insert("", "end", values=(
-                        emp.cedula,
-                        emp.nombre_completo,
-                        emp.cargo,
-                        emp.departamento,
-                        tipo_emp_val,
-                        format_currency(emp.salario_base)
-                    ), tags=(str(emp.id),))
-                except Exception:
-                    # Continuar con el siguiente empleado si hay error
-                    continue
-                
+            self._update_tree(
+                self.main_window.empleado_service.listar_empleados_activos())
         except Exception:
             # Mostrar error pero no bloquear la UI
             self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
@@ -533,15 +513,19 @@ class EmpleadosFrame(ctk.CTkFrame):
             self.tree.delete(item)
         
         for emp in empleados:
-            tipo_emp_val = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or '')
-            self.tree.insert("", "end", values=(
-                emp.cedula,
-                emp.nombre_completo,
-                emp.cargo,
-                emp.departamento,
-                tipo_emp_val,
-                format_currency(emp.salario_base)
-            ), tags=(str(emp.id),))
+            try:
+                tipo_emp_val = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or '')
+                self.tree.insert("", "end", values=(
+                    emp.cedula,
+                    emp.nombre_completo,
+                    emp.cargo,
+                    emp.departamento,
+                    tipo_emp_val,
+                    format_currency(emp.salario_base)
+                ), tags=(str(emp.id),))
+            except Exception:
+                # Continuar con el siguiente empleado si hay error
+                continue
     
     def _on_double_click(self, event):
         """Doble clic: selecciona la fila bajo el cursor y abre los detalles"""
@@ -562,6 +546,12 @@ class EmpleadosFrame(ctk.CTkFrame):
     
     def _on_new_empleado(self):
         """Maneja la creación de nuevo empleado"""
+        if not self.main_window.tiene_permiso("create"):
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permiso para crear empleados",
+            )
+            return
         self._show_empleado_dialog()
     
     def _on_view_details(self):
@@ -744,9 +734,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         
         self._create_widgets()
         self._load_empleado_data()
-    
 
-    
     def _create_widgets(self):
         """Crea los widgets del diálogo de detalles"""
         # Notebook para pestañas
@@ -973,9 +961,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         # En modo edición precargar los datos del empleado
         if self.empleado and self.edit_mode:
             self._load_empleado_data()
-    
 
-    
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
         # Notebook para pestañas
@@ -1637,6 +1623,12 @@ class DocumentosFrame(ctk.CTkFrame):
     
     def _on_new_documento(self):
         """Maneja la creación de nuevo documento"""
+        if not self.main_window.tiene_permiso("create"):
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permiso para crear documentos",
+            )
+            return
         if not self.current_empleado_id:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
@@ -2147,6 +2139,12 @@ class IncidenciasFrame(ctk.CTkFrame):
     
     def _on_new_incidencia(self):
         """Maneja la creación de nueva incidencia"""
+        if not self.main_window.tiene_permiso("create"):
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permiso para crear incidencias",
+            )
+            return
         if not self.current_empleado_id:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
@@ -2424,9 +2422,7 @@ class ApprovalDialog(ctk.CTkToplevel):
         self.bind("<Escape>", lambda e: self.destroy())
         
         self._create_widgets(title, action, incidencia)
-    
 
-    
     def _create_widgets(self, title: str, action: str, incidencia):
         """Crea los widgets del diálogo"""
         form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
@@ -2443,8 +2439,6 @@ class ApprovalDialog(ctk.CTkToplevel):
             form_frame, width=300, fg_color=COLORES["campo"],
             text_color=COLORES["texto"], placeholder_text=placeholder_actor)
         self.approved_by_entry.pack(padx=5, pady=5)
-        if hasattr(self, 'approved_by') and self.approved_by:
-            self.approved_by_entry.insert(0, self.approved_by)
         
         # Días aprobados (solo para aprobación)
         if action == "Aprobar":
@@ -2702,6 +2696,12 @@ class NominaFrame(ctk.CTkFrame):
     
     def _on_new_pago(self):
         """Abre el diálogo para registrar un pago manual"""
+        if not self.main_window.tiene_permiso("create"):
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permiso para registrar pagos",
+            )
+            return
         dialog = PagoDialog(self, self.main_window)
         self.wait_window(dialog)
         if dialog.result:
@@ -3529,7 +3529,14 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 "Restauración exitosa",
                 "Base de datos restaurada. La aplicación se reiniciará.",
             )
-            self.main_window._on_logout()
+            # Cerrar la ventana principal SIN volver a preguntar: el bucle de
+            # main.py vuelve a la pantalla de inicio de sesión. Llamar a
+            # _on_logout() aquí mostraría un segundo cuadro de confirmación y,
+            # si el usuario lo cancela, la ventana quedaría viva con la sesión
+            # ya cerrada (session = None) y todas las operaciones fallarían.
+            self.main_window._cleanup()
+            self.main_window._exit_status = "logout"
+            self.main_window.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Error al restaurar el respaldo: {str(e)}")
     
@@ -3590,6 +3597,12 @@ class ConfiguracionFrame(ctk.CTkFrame):
     
     def _on_new_usuario(self):
         """Crea un nuevo usuario de sistema"""
+        if not self.main_window.tiene_permiso("create"):
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permiso para crear usuarios",
+            )
+            return
         dialog = UsuarioDialog(self, self.main_window)
         self.wait_window(dialog)
         if dialog.result:
@@ -3987,7 +4000,7 @@ class UsuarioDialog(ctk.CTkToplevel):
         
         hint = ctk.CTkLabel(
             form,
-            text="Mínimo 6 caracteres para la contraseña.",
+            text=f"Mínimo {LONGITUD_MINIMA_PASSWORD} caracteres para la contraseña.",
             text_color="#888888", font=ctk.CTkFont(size=11))
         hint.grid(row=5, column=1, padx=8, pady=2, sticky="w")
         
@@ -4087,7 +4100,8 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.confirmar_entry.grid(row=2, column=1, padx=5, pady=8, sticky="w")
         
         ctk.CTkLabel(
-            form, text="La contraseña debe tener al menos 8 caracteres.",
+            form,
+            text=f"La contraseña debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres.",
             text_color=COLORES["texto_suave"], font=(_familia_fuente(), 9)).grid(
             row=3, column=0, columnspan=2, pady=(4, 8))
         

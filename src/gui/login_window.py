@@ -179,7 +179,6 @@ class LoginWindow(ctk.CTk):
         setup_ui_raiz(self)
 
         self.user: Optional[Usuario] = None
-        self._session_activa = None
 
         # Respetar el modo de apariencia guardado por el usuario
         try:
@@ -340,7 +339,6 @@ class LoginWindow(ctk.CTk):
                     return
 
             self.user = usuario
-            self._session_activa = session
             # Transición a la ventana principal: la ventana de login se
             # OCULTA (no se destruye) y se sale del mainloop. Destruir la
             # raíz aquí, justo antes de crear la raíz de MainWindow, es un

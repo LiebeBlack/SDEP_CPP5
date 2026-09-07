@@ -453,7 +453,9 @@ jobs:
       # -------------------------------------------------------------------------
       # 10. Compilar instalador con Inno Setup
       #     - Empaqueta los archivos YA FIRMADOS de la PASADA 1.
-      #     - Firma el instalador y el desinstalador (SignTool + SignedUninstaller).
+      #     - Firma el instalador y el desinstalador: el Sign Tool 'GitHubSign'
+      #       se REGISTRA aquí vía /S"GitHubSign=..." (la directiva SignTool de
+      #       Inno no admite comandos inline) y setup.iss solo lo referencia.
       # -------------------------------------------------------------------------
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
@@ -469,25 +471,36 @@ jobs:
             exit 1
           }
           Write-Host "ISCC: $iscc"
-          # Defines de firma para Inno Setup. Si la validación detectó la
-          # huella del certificado hoja, se pasa como LeafSha1 para que Inno
-          # firme (instalador y desinstalador) con /sha1 DETERMINISTA; si no,
-          # setup.iss usa su variante con /a.
-          $definesFirma = @(
-            "/DSignToolPath=$env:SIGNTOOL",
-            "/DCertPath=$env:CERT_PFX",
-            "/DCertPassword=$env:PFX_PASSWORD"
-          )
-          if ($env:SIGN_CERT_SHA1) {
-            $definesFirma += "/DLeafSha1=$env:SIGN_CERT_SHA1"
-          }
+          # ----------------------------------------------------------------------
+          # Registro del Sign Tool para Inno Setup (opción /S de ISCC).
+          # La directiva SignTool de Inno NO admite el comando inline: exige un
+          # NOMBRE previamente registrado (vía /S de ISCC o el IDE); si el nombre
+          # no está registrado, falla con "Value of [Setup] section directive
+          # 'SignTool' is invalid". Por eso el comando completo se registra AQUÍ
+          # y setup.iss solo hace 'SignTool=GitHubSign'.
+          #
+          # Placeholders de Inno (van LITERALES en la cadena; por eso se usa
+          # comillas simples y concatenación, para que PowerShell no los expanda):
+          #   $q -> comilla doble | $f -> ruta del archivo a firmar (con comillas)
+          #
+          # Selección del certificado: /sha1 con la huella hoja detectada
+          # (determinista) o /a como fallback. Sin /sha1 o /a, signtool falla con
+          # "Multiple certificates were found that meet all the given criteria":
+          # el PFX trae la cadena completa y VARIOS certificados resultan "aptos
+          # para firmar".
+          # ----------------------------------------------------------------------
+          $seleccionInno = if ($env:SIGN_CERT_SHA1) { '/sha1 ' + $env:SIGN_CERT_SHA1 } else { '/a' }
+          $ghSign = '$q' + $env:SIGNTOOL + '$q sign ' + $seleccionInno +
+            ' /f $q' + $env:CERT_PFX + '$q /p ' + $env:PFX_PASSWORD +
+            ' /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f'
           & $iscc `
             "/DMyAppVersion=$env:APP_VERSION" `
             "/DMyVersionInfo=$env:APP_VERSION" `
             "/DMyAppName=SDEP_CPP5" `
             "/DMyAppExeName=SDEP_CPP5.exe" `
             "/DMyOutputBaseFilename=SistemaGestionPersonal-Setup-$env:APP_VERSION" `
-            @definesFirma `
+            "/DConFirmaCI=1" `
+            "/SGitHubSign=$ghSign" `
             "installer\setup.iss"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

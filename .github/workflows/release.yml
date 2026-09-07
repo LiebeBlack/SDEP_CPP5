@@ -12,6 +12,14 @@
 #     haya aparecido en dist_installer. Inno Setup además firma el
 #     desinstalador (SignedUninstaller=yes) con el mismo certificado.
 #
+#   Selección del certificado (CRÍTICO): el PFX lleva la cadena completa y
+#   VARIAS de sus entidades (raíz, intermedios y hoja) resultan "aptas para
+#   firmar" a ojos de signtool. Si no se fija QUÉ certificado firma,
+#   signtool aborta con "Multiple certificates were found that meet all the
+#   given criteria" (fallo del run #58). Por eso la validación detecta la
+#   huella del certificado hoja (SIGN_CERT_SHA1) y TODAS las llamadas firman
+#   con /sha1 <huella>; /a queda solo como fallback.
+#
 #   Auditoría final: si queda UN solo archivo firmable sin firma, el pipeline
 #   FALLA (no se publica nada sin firmar).
 #
@@ -156,12 +164,15 @@ jobs:
           Write-Host "OK actualizador: dist_updater\SDEP_CPP5_AutoUpdater.exe"
 
       # -------------------------------------------------------------------------
-      # 5. Restaurar y VALIDAR el certificado PFX (fail-fast)
-      #    Si la contraseña es incorrecta o el Base64 está corrupto, el pipeline
-      #    se detiene AQUÍ con un mensaje claro (antes fallaba más adelante o
-      #    firmaba con errores silenciosos).
+      # 5. Restaurar, VALIDAR el certificado PFX y DETECTAR la huella del
+      #    certificado de firma (hoja) - fail-fast
+      #    - Si la contraseña es incorrecta o el Base64 está corrupto, el
+      #      pipeline se detiene AQUÍ con un mensaje claro.
+      #    - Se detecta el certificado hoja del PFX: sin fijarlo, signtool
+      #      falla con "Multiple certificates were found that meet all the
+      #      given criteria", porque TODA la cadena resulta "apta para firmar".
       # -------------------------------------------------------------------------
-      - name: Restaurar y validar certificado PFX (CadenaEnterpriseFirma.pfx)
+      - name: Restaurar, validar PFX y detectar el certificado de firma (hoja)
         run: |
           if (-not $env:PFX_BASE64) {
             Write-Error "FALTA el secreto PFX_BASE64. Crealo en Settings -> Secrets and variables -> Actions (PFX en Base64)."
@@ -198,6 +209,54 @@ jobs:
           foreach ($c in $cadena) {
             Write-Host ("  - {0} | huella {1}" -f $c.Subject, $c.Thumbprint)
           }
+          # ----------------------------------------------------------------
+          # DETECCIÓN AUTOMÁTICA del certificado de firma (hoja).
+          # El PFX trae raíz + intermedios + hoja y VARIOS resultan "aptos
+          # para firmar"; sin fijar uno, signtool falla con
+          # "Multiple certificates were found that meet all the given
+          # criteria". Criterio, en orden:
+          #   1. Único cert con EKU Code Signing (1.3.6.1.5.5.7.3.3) y clave.
+          #   2. Único end-entity con clave privada, Subject != Issuer y sin
+          #      Basic Constraints CA=true (no es una CA).
+          # La huella se exporta como SIGN_CERT_SHA1 y todas las llamadas de
+          # firma la fijan con /sha1 (fallback: /a si no se pudo detectar).
+          # ----------------------------------------------------------------
+          $conCodeSigning = @($cadena | Where-Object {
+            $_.HasPrivateKey -and (@($_.Extensions |
+              Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] } |
+              ForEach-Object { $_.EnhancedKeyUsages } |
+              ForEach-Object { $_.Value }) -contains '1.3.6.1.5.5.7.3.3')
+          })
+          $endEntities = @($cadena | Where-Object {
+            $_.HasPrivateKey -and ($_.Subject -ne $_.Issuer)
+          } | Where-Object {
+            $bc = $_.Extensions |
+              Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] } |
+              Select-Object -First 1
+            (-not $bc) -or (-not $bc.CertificateAuthority)
+          })
+          $hoja = $null
+          if ($conCodeSigning.Count -eq 1) {
+            $hoja = $conCodeSigning[0]
+            Write-Host "Detección: único certificado con EKU Code Signing y clave privada."
+          } elseif ($endEntities.Count -eq 1) {
+            $hoja = $endEntities[0]
+            Write-Host "Detección: único end-entity (no CA) con clave privada."
+          } elseif ($conCodeSigning.Count -gt 1 -or $endEntities.Count -gt 1) {
+            Write-Warning "Detección ambigua (code-signing: $($conCodeSigning.Count), end-entity: $($endEntities.Count)); NO se fija /sha1 y signtool usará /a."
+          } else {
+            Write-Warning "No se detectó ningún certificado hoja con clave privada; signtool usará /a."
+          }
+          if ($hoja) {
+            Write-Output "SIGN_CERT_SHA1=$($hoja.Thumbprint)" >> $env:GITHUB_ENV
+            Write-Host ("CERTIFICADO DE FIRMA SELECCIONADO: {0} | huella SHA1 {1}" -f $hoja.Subject, $hoja.Thumbprint)
+          }
+          # Huellas de TODA la cadena: la limpieza final (if: always()) las usa
+          # para purgar del almacén del runner los certificados que esta
+          # validación importa (DefaultKeySet persiste las claves privadas en
+          # Cert:\CurrentUser\My).
+          $huellas = ($cadena | ForEach-Object { $_.Thumbprint }) -join ','
+          Write-Output "PFX_THUMBPRINTS=$huellas" >> $env:GITHUB_ENV
 
       # -------------------------------------------------------------------------
       # 6. Localizar signtool.exe (Windows SDK preinstalado en el runner)
@@ -235,7 +294,11 @@ jobs:
             [Parameter(Mandatory = $true)][string] $PfxPath,
             [Parameter(Mandatory = $true)][string] $Password,
             [Parameter(Mandatory = $true)][string[]] $Dirs,
-            [string] $Etiqueta = "FIRMA"
+            [string] $Etiqueta = "FIRMA",
+            # Huella SHA1 del certificado hoja detectado en la validación del
+            # PFX. Si viene, se firma con /sha1 (selección determinista); si
+            # viene vacía, se usa /a como fallback.
+            [string] $LeafSha1 = ""
           )
 
           # Lista completa de extensiones soportadas por Authenticode.
@@ -269,17 +332,28 @@ jobs:
 
           foreach ($archivo in $archivos) {
             Write-Host "  Firmando: $archivo"
-            # Parámetros estrictos de signtool:
+            # Selección del certificado de firma (CLAVE para un PFX con la
+            # cadena completa, donde varios certificados son "aptos para firmar"):
+            #   /sha1 <huella> : usa EXACTAMENTE el certificado hoja detectado
+            #   /a             : fallback si no se detectó la huella
+            # Parámetros estrictos:
             #   /f  : PFX con la cadena de confianza completa
             #   /p  : contraseña del PFX
             #   /fd : digest del archivo SHA-256
             #   /tr : timestamping RFC3161 oficial (DigiCert)
             #   /td : SHA-256 para el timestamp
-            #   /a  : elige el mejor certificado e incrusta TODA la cadena del PFX
             #   /v  : salida verbosa en el log
-            & $SignTool sign /f "$PfxPath" /p "$Password" `
+            # Tanto /sha1 como /a incrustan TODA la cadena del PFX que encadena
+            # con el certificado que firma.
+            $seleccion = if ($LeafSha1) { @('/sha1', "$LeafSha1") } else { @('/a') }
+            if ($LeafSha1) {
+              Write-Host "  Selección de certificado: /sha1 $LeafSha1"
+            } else {
+              Write-Host "  Selección de certificado: /a (automática)"
+            }
+            & $SignTool sign @seleccion /f "$PfxPath" /p "$Password" `
               /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
-              /a /v "$archivo" 2>&1 | ForEach-Object { Write-Host "    $_" }
+              /v "$archivo" 2>&1 | ForEach-Object { Write-Host "    $_" }
 
             if ($LASTEXITCODE -ne 0) {
               Write-Warning "  [$Etiqueta] FALLO al firmar (exit $LASTEXITCODE): $archivo"
@@ -316,6 +390,7 @@ jobs:
             -SignTool "$env:SIGNTOOL" `
             -PfxPath "$env:CERT_PFX" `
             -Password "$env:PFX_PASSWORD" `
+            -LeafSha1 "$env:SIGN_CERT_SHA1" `
             -Dirs @('dist', 'dist_updater') `
             -Etiqueta "PASADA-1-PAYLOAD"
           if ($LASTEXITCODE -ne 0) {
@@ -356,15 +431,25 @@ jobs:
             exit 1
           }
           Write-Host "ISCC: $iscc"
+          # Defines de firma para Inno Setup. Si la validación detectó la
+          # huella del certificado hoja, se pasa como LeafSha1 para que Inno
+          # firme (instalador y desinstalador) con /sha1 DETERMINISTA; si no,
+          # setup.iss usa su variante con /a.
+          $definesFirma = @(
+            "/DSignToolPath=$env:SIGNTOOL",
+            "/DCertPath=$env:CERT_PFX",
+            "/DCertPassword=$env:PFX_PASSWORD"
+          )
+          if ($env:SIGN_CERT_SHA1) {
+            $definesFirma += "/DLeafSha1=$env:SIGN_CERT_SHA1"
+          }
           & $iscc `
             "/DMyAppVersion=$env:APP_VERSION" `
             "/DMyVersionInfo=$env:APP_VERSION" `
             "/DMyAppName=SDEP_CPP5" `
             "/DMyAppExeName=SDEP_CPP5.exe" `
             "/DMyOutputBaseFilename=SistemaGestionPersonal-Setup-$env:APP_VERSION" `
-            "/DSignToolPath=$env:SIGNTOOL" `
-            "/DCertPath=$env:CERT_PFX" `
-            "/DCertPassword=$env:PFX_PASSWORD" `
+            @definesFirma `
             "installer\setup.iss"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -383,6 +468,7 @@ jobs:
             -SignTool "$env:SIGNTOOL" `
             -PfxPath "$env:CERT_PFX" `
             -Password "$env:PFX_PASSWORD" `
+            -LeafSha1 "$env:SIGN_CERT_SHA1" `
             -Dirs @('dist_installer') `
             -Etiqueta "PASADA-2-INSTALADOR"
           if ($LASTEXITCODE -ne 0) {
@@ -446,6 +532,22 @@ jobs:
             Write-Host "OK: $env:PFX_FILE sobrescrito y eliminado del runner"
           } else {
             Write-Host "El PFX ya no existe en el runner"
+          }
+          # Purgar del almacén del usuario los certificados que la validación
+          # importó del PFX (DefaultKeySet persiste las claves privadas en
+          # Cert:\CurrentUser\My). Best-effort: si algo falla aquí no debe
+          # romper el job.
+          if ($env:PFX_THUMBPRINTS) {
+            foreach ($tp in ($env:PFX_THUMBPRINTS -split ',')) {
+              $tp = $tp.Trim()
+              if (-not $tp) { continue }
+              $rutaCert = "Cert:\CurrentUser\My\$tp"
+              if (Test-Path $rutaCert) {
+                # -DeleteKey borra también la clave privada persistida
+                Remove-Item $rutaCert -Force -DeleteKey -ErrorAction SilentlyContinue
+                Write-Host "  Purgado del almacén de certificados: $tp"
+              }
+            }
           }
 
       # -------------------------------------------------------------------------

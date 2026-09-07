@@ -24,6 +24,34 @@ APP_DATA_DIR_NAME = "SistemaGestionPersonal"
 
 APP_VERSION_DEFAULT = "2.79"
 
+# Información de compilación incrustada en el build (generada por build.py
+# o por el CI como src/config/build_info.py). En desarrollo, sin ese archivo,
+# se lee la versión desde VERSION en la raíz del repositorio.
+try:
+    from . import build_info as _build_info  # generado en el build
+except ImportError:  # pragma: no cover - depende del entorno de build
+    _build_info = None
+
+
+def _version_desarrollo() -> str:
+    """Versión desde el archivo VERSION de la raíz (modo desarrollo)."""
+    try:
+        ruta = Path(__file__).resolve().parents[2] / "VERSION"
+        return ruta.read_text(encoding="utf-8").strip() or ""
+    except OSError:
+        return ""
+
+
+def _build_info_incrustado():
+    """Devuelve (versión, commit, fecha) incrustados en el build."""
+    if _build_info is None:
+        return "", "", ""
+    return (
+        getattr(_build_info, "BUILD_VERSION", "") or "",
+        getattr(_build_info, "BUILD_COMMIT", "") or "",
+        getattr(_build_info, "BUILD_DATE", "") or "",
+    )
+
 
 def _es_dir_escribible(ruta: Path) -> bool:
     """Verifica que un directorio exista y permita escribir (probe real)"""
@@ -88,7 +116,14 @@ class Settings:
 
         # Aplicación
         self.app_name = os.getenv("APP_NAME", "Sistema de Gestión de Personal")
-        self.app_version = os.getenv("APP_VERSION", APP_VERSION_DEFAULT)
+        version_incrustada, self.build_commit, self.build_date = _build_info_incrustado()
+        if not version_incrustada and not getattr(sys, "frozen", False):
+            version_incrustada = _version_desarrollo()
+        # Prioridad: variable de entorno > versión incrustada en el build >
+        # archivo VERSION (desarrollo) > constante por defecto.
+        self.app_version = (
+            os.getenv("APP_VERSION") or version_incrustada or APP_VERSION_DEFAULT
+        )
         self.debug = os.getenv("DEBUG", "False").lower() == "true"
         
         # Base de datos

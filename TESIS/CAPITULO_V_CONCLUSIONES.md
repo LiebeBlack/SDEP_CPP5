@@ -67,7 +67,7 @@ Las conclusiones se fundamentan en la evidencia empírica recopilada durante el 
 
 **Validación:**
 - Separación clara de responsabilidades entre capas
-- Facilidad para testing unitario e integración (281 pruebas automatizadas)
+- Facilidad para testing unitario e integración (323 pruebas automatizadas)
 - Capacidad para evolución del sistema sin refactorización mayor
 
 **Recomendación:** Proyectos de mediana complejidad deben invertir en diseño arquitectónico antes de implementación, seleccionando patrones apropiados al contexto.
@@ -402,7 +402,7 @@ La validación empírica de las hipótesis se realizará con la evidencia cuanti
 
 El proyecto aporta una solución tecnológica completa y verificable, cuyo impacto en las instituciones piloto se medirá durante la implementación real:
 
-- **Impacto Técnico:** Sistema funcional y estable (281 pruebas automatizadas, 43% de cobertura total y 73% en lógica de negocio) listo para implementación piloto
+- **Impacto Técnico:** Sistema funcional y estable (323 pruebas automatizadas, 43% de cobertura total y 73% en lógica de negocio) listo para implementación piloto
 - **Impacto Operativo:** Las mediciones pre/post de tiempos de procesamiento y tasas de error se registrarán en el Capítulo IV (sección 4.5)
 - **Impacto Social:** Mejora esperada en satisfacción laboral del personal y optimización de recursos administrativos, a confirmar con la evidencia del piloto
 - **Impacto Académico:** Contribución al campo de sistemas de información educativa con una investigación aplicada documentada y reproducible

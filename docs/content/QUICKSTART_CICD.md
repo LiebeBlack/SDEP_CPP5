@@ -18,9 +18,9 @@ Ve a `Settings > Branches`:
 
 ### Build & Release (`build.yml`)
 - **Trigger**: Push a main/develop, etiquetas `v*`, manual
-- **Función**: Pruebas (pytest) + ejecutable Windows + instalador (Inno Setup)
+- **Función**: Pruebas (pytest) + ejecutable Windows + actualizador automático + instalador (Inno Setup)
   + ejecutable Linux portable (PyInstaller en ubuntu)
-- **Output**: `Setup.exe` + ZIP portable (Windows) + `tar.gz` portable (Linux)
+- **Output**: `Setup.exe` (incluye el actualizador automático) + ZIP portable (Windows) + `tar.gz` portable (Linux) + `SDEP_CPP5_AutoUpdater.exe`
 - **Compatibilidad**: el ejecutable Linux se compila en Ubuntu 22.04
   (glibc 2.35) y funciona en Ubuntu 22.04, Debian 12 y Debian 13
   (verificado en CI dentro de contenedores `ubuntu:22.04`, `debian:12`
@@ -39,7 +39,7 @@ git push origin main
 ```
 
 **Resultado:**
-- ✅ Pruebas automatizadas (79 pruebas)
+- ✅ Pruebas automatizadas (323 pruebas)
 - ✅ Ejecutable Windows (onedir, icono, versión)
 - ✅ Instalador `Setup.exe` subido como artefacto
 - ✅ ZIP portable subido como artefacto

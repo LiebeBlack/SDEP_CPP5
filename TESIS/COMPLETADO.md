@@ -94,7 +94,7 @@ Archivos de configuración del proyecto:
 
 ### 🧪 Pruebas
 
-Suite automatizada implementada (281 pruebas, todas exitosas):
+Suite automatizada implementada (323 pruebas, todas exitosas):
 
 1. ✅ **tests/conftest.py** - Fixtures y aislamiento de la base de datos
 2. ✅ **tests/test_empleados.py** - Pruebas del módulo de empleados
@@ -110,6 +110,10 @@ Suite automatizada implementada (281 pruebas, todas exitosas):
 12. ✅ **tests/test_backups.py** - Pruebas de respaldos
 13. ✅ **tests/test_configuracion.py** - Pruebas de configuración
 14. ✅ **tests/test_migraciones.py** - Pruebas de migraciones de esquema
+15. ✅ **tests/test_auto_updater.py** - Pruebas del actualizador automático
+16. ✅ **tests/test_reportes.py** - Pruebas de generación de reportes PDF
+17. ✅ **tests/test_gui_smoke.py** - Pruebas de humo de la interfaz gráfica
+18. ✅ **tests/test_settings_version.py** - Pruebas de versión y configuración
 
 **Cobertura de código:** 43% total (73% en la lógica de negocio, excluyendo la capa gráfica)
 
@@ -201,7 +205,7 @@ Sistema CI/CD con GitHub Actions:
 
 ### Correcciones de la Revisión Integral (septiembre 2026)
 - ✅ Bibliografía verificada: sustituidas las referencias fabricadas por fuentes reales y comprobables (Bondarouk & Ruël, Pollock & Cornford, Benavides et al., Voogt & Pieters, Pelgrum, Lakhan & Jhunjhunwala, Davis)
-- ✅ Capítulo IV anclado a evidencia real: módulos, pruebas (281) y cobertura (43% total / 73% lógica de negocio) medidos sobre el repositorio
+- ✅ Capítulo IV anclado a evidencia real: módulos, pruebas (323) y cobertura (43% total / 73% lógica de negocio) medidos sobre el repositorio
 - ✅ Métricas de piloto convertidas en plantillas con marcadores explícitos `[dato real del piloto]` para completar con datos reales
 - ✅ Inconsistencias transversales corregidas (objetivos específicos, muestra, contradicciones internas)
 - ✅ 192 pruebas automatizadas nuevas (validators, helpers, security, document_manager, theme)

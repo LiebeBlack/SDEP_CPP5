@@ -100,6 +100,7 @@ Además de las cuatro capas principales, el sistema incorpora módulos transvers
 - **exporter.py:** Exportación de datos y reportes en formatos abiertos.
 - **pdf_generator.py:** Generación de documentos oficiales (constancias, recibos de pago, planillas) en formato PDF mediante ReportLab.
 - **document_manager.py:** Gestión del almacenamiento de documentos y fotografías de empleados.
+- **updater/:** Actualización automática del sistema cada 2 días (ventana de estado, bandeja del sistema y programación en el Programador de tareas de Windows).
 - **validators.py y helpers.py:** Validaciones de dominio y funciones auxiliares de formateo y manipulación de datos.
 
 ### 4.2.2 Funcionalidades Implementadas
@@ -129,7 +130,7 @@ Además de las cuatro capas principales, el sistema incorpora módulos transvers
 **Resultados de implementación:**
 - Formulario completo organizado en pestañas temáticas (datos personales, físicos, de contacto y laborales)
 - Validación en tiempo real con feedback visual
-- Cobertura funcional verificada por la suite de pruebas automatizadas del sistema (281 pruebas, todas exitosas; ver sección 4.3.1)
+- Cobertura funcional verificada por la suite de pruebas automatizadas del sistema (323 pruebas, todas exitosas; ver sección 4.3.1)
 - Medición de tiempo de registro en piloto: **[dato real del piloto]** minutos (vs. proceso manual: **[dato real del piloto]** minutos)
 
 #### 4.2.2.2 Módulo de Gestión Documental
@@ -287,8 +288,8 @@ Además de las cuatro capas principales, el sistema incorpora módulos transvers
 
 **Resultados medidos directamente sobre el repositorio del proyecto (v2.79):**
 
-- **Total de pruebas:** 281 (89 de la suite original + 192 incorporadas durante el desarrollo)
-- **Pruebas exitosas:** 281 (100%)
+- **Total de pruebas:** 323 (89 de la suite original + 234 incorporadas durante el desarrollo)
+- **Pruebas exitosas:** 323 (100%)
 - **Pruebas falladas:** 0
 - **Cobertura de código total:** 43%
 - **Cobertura de la lógica de negocio** (modelos, repositorios, servicios, utilidades y configuración; excluye la capa gráfica y el punto de entrada): **73%**
@@ -324,7 +325,7 @@ La suite automatizada incluye pruebas de integración que verifican los flujos c
 
 6. **Respaldo y restauración:** Ciclo completo de backup/restore de la base de datos (tests/test_backups.py).
 
-**Resultado:** Las 281 pruebas (unitarias e de integración) se ejecutan correctamente y sin fallas en la suite completa.
+**Resultado:** Las 323 pruebas (unitarias e de integración) se ejecutan correctamente y sin fallas en la suite completa.
 
 ### 4.3.3 Pruebas de Rendimiento
 
@@ -684,7 +685,7 @@ El protocolo de pruebas de rendimiento se define conforme a la metodología del 
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos presentados en este capítulo demuestran que el Sistema de Gestión de Personal y Nómina fue desarrollado de forma sólida y verificable: la arquitectura de capas con patrones Repository y Service está implementada y documentada; los módulos de empleados, documentos, incidencias, nómina, configuración, autenticación, auditoría, respaldos y exportación son funcionales; y la suite de **281 pruebas automatizadas** se ejecuta exitosamente con **43% de cobertura total** (73% en la lógica de negocio), incluyendo pruebas de seguridad, pagos, integración y respaldos.
+Los resultados técnicos presentados en este capítulo demuestran que el Sistema de Gestión de Personal y Nómina fue desarrollado de forma sólida y verificable: la arquitectura de capas con patrones Repository y Service está implementada y documentada; los módulos de empleados, documentos, incidencias, nómina, configuración, autenticación, auditoría, respaldos y exportación son funcionales; y la suite de **323 pruebas automatizadas** se ejecuta exitosamente con **43% de cobertura total** (73% en la lógica de negocio), incluyendo pruebas de seguridad, pagos, integración y respaldos.
 
 Las funcionalidades de seguridad implementadas (autenticación con PBKDF2, control de acceso por rol, auditoría, sanitización de entradas y respaldo/restauración) fueron verificadas mediante pruebas automatizadas dedicadas, y los módulos de lógica de negocio presentan coberturas altas (modelos 92%, servicios 75%, utilidades 81%).
 

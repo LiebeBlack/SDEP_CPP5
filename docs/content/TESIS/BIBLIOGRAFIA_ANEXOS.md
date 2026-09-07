@@ -609,7 +609,7 @@ SDEP_CPP5/
 │   │   ├── exporter.py
 │   │   └── pdf_generator.py
 │   └── main.py
-├── tests/                     # 281 pruebas automatizadas
+├── tests/                     # 323 pruebas automatizadas
 ├── requirements.txt
 ├── pyproject.toml
 ├── README.md
@@ -687,7 +687,7 @@ class AuthService:
         return usuario_bd
 ```
 
-> **Nota:** El código fuente completo del sistema se encuentra en el repositorio del proyecto (`src/`), con 281 pruebas automatizadas (Anexo 7).
+> **Nota:** El código fuente completo del sistema se encuentra en el repositorio del proyecto (`src/`), con 323 pruebas automatizadas (Anexo 7).
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
@@ -707,8 +707,8 @@ class AuthService:
 **Cobertura de la lógica de negocio** (modelos, repositorios, servicios, utilidades y configuración; excluye la capa gráfica y el punto de entrada): **73%**
 
 **Resultados de Pruebas Automatizadas:**
-- Total de pruebas: 281
-- Pruebas pasadas: 281 (100%)
+- Total de pruebas: 323
+- Pruebas pasadas: 323 (100%)
 - Pruebas falladas: 0
 - Suite: unitarias, de integración, de seguridad, de pagos, de respaldos y de migraciones
 

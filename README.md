@@ -62,6 +62,15 @@ Este sistema proporciona una solución integral para la administración de recur
 - Barra de estado con reloj y mensajes de la aplicación
 - Soporte de alta resolución (DPI) en Windows
 
+### Actualización Automática (Windows)
+- Actualizador incluido en el instalador y programado automáticamente
+  **cada 2 días** (Programador de tareas de Windows, 09:00)
+- **Ventana de estado** que muestra todo el proceso: comprobando,
+  descargando (con porcentaje y tamaño), instalando y resultado final
+- **Ícono en la bandeja del sistema** (barra inferior derecha) con menú:
+  buscar ahora, mostrar ventana o salir
+- Descarga e instala en silencio la última versión publicada en GitHub
+
 ## 📋 Requisitos del Sistema
 
 - Python 3.10 o superior
@@ -86,16 +95,21 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
 1. **Pruebas**: ejecuta la suite completa de pytest (aislada) en cada push.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
-3. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
-   Inno Setup (asistente en español/inglés, accesos directos, desinstalador).
-4. **Compilación Linux**: compila el mismo `spec/app.spec` dentro de un
+3. **Actualizador automático**: compila `SDEP_CPP5_AutoUpdater.exe`
+   (PyInstaller onefile, sin consola) con la ventana de estado y el
+   ícono de bandeja del sistema.
+4. **Instalador**: genera `SistemaGestionPersonal-Setup-<versión>.exe` con
+   Inno Setup (asistente en español/inglés, accesos directos,
+   desinstalador); incluye el actualizador dentro del instalador y lo
+   programa en el Programador de tareas cada 2 días.
+5. **Compilación Linux**: compila el mismo `spec/app.spec` dentro de un
    contenedor **Ubuntu 22.04** (glibc 2.35) y empaqueta la versión portable
    de Linux en un `tar.gz`. El binario funciona en Ubuntu 22.04, Debian 12
    y Debian 13; se autoverifica con `--selftest` bajo `xvfb-run` en Ubuntu
    22.04 y se prueba dentro de contenedores `debian:12` y `debian:13`.
-5. **Artefactos**: sube Setup.exe, ZIP portable (Windows) y tar.gz (Linux)
-   como artefactos del run.
-6. **Release continua**: cada push a `main` publica automáticamente un
+6. **Artefactos**: sube Setup.exe, ZIP portable (Windows), tar.gz (Linux)
+   y `SDEP_CPP5_AutoUpdater.exe` como artefactos del run.
+7. **Release continua**: cada push a `main` publica automáticamente un
    Release de GitHub con el instalador y las versiones portables de Windows
    y Linux (sin necesidad de crear etiquetas). Un push con etiqueta `vX.Y.Z`
    genera una release versionada con ese nombre.
@@ -119,6 +133,11 @@ Descargue `SistemaGestionPersonal-Setup-<versión>.exe` desde el Release o
 los artefactos del workflow y ejecútelo. Los datos de la aplicación
 (base de datos, documentos, respaldos) se guardan en
 `%LOCALAPPDATA%\SistemaGestionPersonal`, independientes de la instalación.
+
+> El instalador incluye el **actualizador automático**
+> (`SDEP_CPP5_AutoUpdater.exe`): al terminar la instalación queda
+> programado para comprobar novedades **cada 2 días** y se ejecuta con
+> ventana de estado e ícono en la bandeja del sistema.
 
 ### Versión portable para Linux
 
@@ -169,12 +188,14 @@ pip install pyinstaller
 
 2. Ejecutar el script de construcción:
 ```bash
-python build.py        # ejecutable + instalador
+python build.py        # ejecutable + actualizador + instalador
 python build.py --exe  # solo el ejecutable
+python build.py --updater  # solo el actualizador automático
 ```
 
 3. Resultados:
    - Ejecutable: `dist/SistemaGestionPersonal/`
+   - Actualizador: `dist_updater/SDEP_CPP5_AutoUpdater.exe`
    - Instalador: `dist_installer/SistemaGestionPersonal-Setup-<versión>.exe`
 
 > La versión se lee del archivo `VERSION` (fuente única).
@@ -222,6 +243,11 @@ SDEP_CPP5/
 ├── requirements-dev.txt        # Dependencias de desarrollo
 ├── pyproject.toml             # Configuración del proyecto
 ├── build.py                   # Script de construcción
+├── updater/                   # Actualizador automático
+│   ├── auto_updater.py        # Lógica principal (GitHub, descarga, tareas)
+│   ├── updater_gui.py         # Ventana de estado (tkinter)
+│   ├── tray_icon.py           # Ícono de bandeja del sistema (ctypes)
+│   └── updater.spec           # Spec de PyInstaller
 └── .env.example               # Ejemplo de variables de entorno
 ```
 
@@ -280,7 +306,8 @@ El sistema utiliza SQLite como base de datos local. La base de datos se crea aut
 ## 🔐 Seguridad
 
 - Los datos se almacenan localmente en SQLite
-- No se requiere conexión a internet
+- La aplicación funciona sin conexión a internet (solo el actualizador
+  automático la consulta, de forma opcional)
 - Los documentos se almacenan en el sistema de archivos local
 - Se recomienda realizar copias de seguridad periódicas
 

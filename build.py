@@ -57,7 +57,7 @@ def generar_build_info() -> None:
     commit = os.environ.get("BUILD_COMMIT") or leer_commit()
     fecha = datetime.now(timezone.utc).isoformat(timespec="seconds")
     contenido = (
-        '"""Generado automáticamente por build.py / CI. No editar."""\n'
+        '"""Generado automaticamente por build.py / CI. No editar."""\n'
         f"BUILD_VERSION = {version!r}\n"
         f"BUILD_COMMIT = {commit!r}\n"
         f"BUILD_DATE = {fecha!r}\n"

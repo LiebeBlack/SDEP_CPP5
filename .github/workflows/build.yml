@@ -3,7 +3,9 @@ name: Compilar e Instalar (Windows + Linux)
 on:
   push:
     branches: [main, develop]
-    tags: ["v*"]
+    # SIN etiquetas v*: esas las procesa release.yml, que es el ÚNICO workflow
+    # que firma. Si build.yml también corrriera en tags, publicaría una release
+    # SIN FIRMAR (sus pasos no firman nada) que competiría con la firmada.
   workflow_dispatch:
 
 permissions:
@@ -289,30 +291,10 @@ jobs:
             -DestinationPath "SistemaGestionPersonal-Windows-$env:APP_VERSION.zip" -Force
           Write-Host "OK zip portable"
 
-      - name: Descargar versión Linux (para el release)
-        uses: actions/download-artifact@v4
-        with:
-          name: ejecutable-portable-linux
-          path: linux-artifact
-
-      - name: Definir etiqueta y nombre del release
-        shell: pwsh
-        run: |
-          $isTag = $env:GITHUB_REF_TYPE -eq "tag"
-          if ($isTag) {
-            # Push de etiqueta v*: el release usa la etiqueta versionada
-            $tag = $env:GITHUB_REF_NAME
-            $nombre = "Sistema de Gestión de Personal $env:APP_VERSION"
-          } else {
-            # Push normal (main): release continua sin etiqueta manual.
-            # El nombre no empieza con "v" para no re-disparar el workflow
-            # (el trigger de etiquetas solo escucha "v*").
-            $tag = "continuous-v$env:APP_VERSION.$env:GITHUB_RUN_NUMBER"
-            $nombre = "Release continua v$env:APP_VERSION (#$env:GITHUB_RUN_NUMBER)"
-          }
-          Write-Output "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
-          Write-Output "RELEASE_NAME=$nombre" >> $env:GITHUB_ENV
-          Write-Host "Release: $nombre (etiqueta $tag)"
+      # NOTA: este workflow NO publica releases. Solo compila y verifica.
+      # TODAS las releases (con firma digital) las publica exclusivamente
+      # .github/workflows/release.yml, que firma cada archivo antes de
+      # empaquetar y verifica al final.
 
       - name: Subir instalador (Setup.exe)
         uses: actions/upload-artifact@v4
@@ -328,31 +310,6 @@ jobs:
           path: SistemaGestionPersonal-Windows-${{ env.APP_VERSION }}.zip
           retention-days: 30
 
-      - name: Publicar release (cada push a main o etiqueta v*)
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ env.RELEASE_NAME }}
-          tag_name: ${{ env.RELEASE_TAG }}
-          body: |
-            Compilación automática del commit `${{ github.sha }}` en `${{ github.ref_name }}`.
-            Descarga el instalador (**Setup.exe**), la versión portable de Windows (ZIP)
-            o la versión portable de Linux (tar.gz).
-
-            **Actualización automática cada 2 días:** el instalador ya incluye el
-            actualizador (SDEP_CPP5_AutoUpdater.exe) y lo programa en el Programador
-            de tareas de Windows para comprobar novedades **cada 2 días a las 09:00**.
-            Al ejecutarse muestra una **ventana de estado** (comprobando, descargando,
-            instalando, resultado) y un **ícono en la bandeja del sistema** (barra
-            inferior derecha). Si prefieres actualizar a mano, también se publica el
-            actualizador suelto para ejecutarlo cuando quieras.
-          files: |
-            dist_installer/SistemaGestionPersonal-Setup-${{ env.APP_VERSION }}.exe
-            SistemaGestionPersonal-Windows-${{ env.APP_VERSION }}.zip
-            linux-artifact/SistemaGestionPersonal-Linux-${{ env.APP_VERSION }}.tar.gz
-            dist_updater/SDEP_CPP5_AutoUpdater.exe
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Publicación de releases: EXCLUSIVAMENTE en release.yml (firma masiva
+      # profunda + auditoría final). Aquí solo quedan los artefactos del
+      # workflow descargables desde la pestaña Actions.

@@ -15,9 +15,18 @@
 #   Auditoría final: si queda UN solo archivo firmable sin firma, el pipeline
 #   FALLA (no se publica nada sin firmar).
 #
+#   La Release publicada contiene EXACTAMENTE los 3 archivos de siempre:
+#     - SistemaGestionPersonal-Setup-<versión>.exe   (instalador firmado)
+#     - SistemaGestionPersonal-Windows-<versión>.zip (portable firmado)
+#     - SDEP_CPP5_AutoUpdater.exe                    (actualizador firmado)
+#
 # Disparadores:
+#   - Push a main (release continua firmada, etiqueta continuous-vX.Y.N)
 #   - Push de etiquetas de versión (v*)
 #   - Ejecución manual (workflow_dispatch)
+#
+# build.yml ya NO publica releases: solo compila y verifica. Este workflow
+# es el ÚNICO que publica releases, y SIEMPRE con todos los archivos firmados.
 #
 # Secretos requeridos (Settings -> Secrets and variables -> Actions -> Actions):
 #   PFX_BASE64    : Certificado PFX con la cadena de confianza completa (4
@@ -37,6 +46,8 @@ name: Release Firmada (Firma Masiva Profunda)
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -89,9 +100,12 @@ jobs:
             $ver = $env:GITHUB_REF_NAME.TrimStart('v')
             $tagFinal = $env:GITHUB_REF_NAME
           } else {
-            # Ejecución manual: versión del archivo VERSION
+            # Push a main o ejecución manual: release continua con la versión
+            # del archivo VERSION. El tag NO empieza por "v" a propósito, para
+            # no volver a disparar este workflow (su trigger de etiquetas solo
+            # escucha v*). Misma convención que usaba build.yml.
             $ver = (Get-Content -Path VERSION).Trim()
-            $tagFinal = "v$ver.ci.$env:GITHUB_RUN_NUMBER"
+            $tagFinal = "continuous-v$ver.$env:GITHUB_RUN_NUMBER"
           }
           $commit = $env:GITHUB_SHA.Substring(0, [Math]::Min(7, $env:GITHUB_SHA.Length))
           $contenido = @"
@@ -347,7 +361,7 @@ jobs:
             "/DMyVersionInfo=$env:APP_VERSION" `
             "/DMyAppName=SDEP_CPP5" `
             "/DMyAppExeName=SDEP_CPP5.exe" `
-            "/DMyOutputBaseFilename=Instalador_SDEP_CPP5" `
+            "/DMyOutputBaseFilename=SistemaGestionPersonal-Setup-$env:APP_VERSION" `
             "/DSignToolPath=$env:SIGNTOOL" `
             "/DCertPath=$env:CERT_PFX" `
             "/DCertPassword=$env:PFX_PASSWORD" `
@@ -406,25 +420,12 @@ jobs:
       # -------------------------------------------------------------------------
       # 13. EMPAQUETADO: ZIP con TODA la estructura de archivos firmados
       # -------------------------------------------------------------------------
-      - name: Empaquetar estructura completa de archivos firmados (ZIP)
+      - name: Empaquetar versión portable firmada (ZIP)
         run: |
-          $zip = "SDEP_CPP5-Firmado-$env:APP_VERSION.zip"
-          $staging = Join-Path $env:RUNNER_TEMP "paquete_firmado"
-          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
-          New-Item -ItemType Directory -Force -Path $staging | Out-Null
-
-          # Copiar TODA la estructura firmada (aplicación + actualizador + instalador)
-          if (Test-Path "dist\SistemaGestionPersonal") {
-            Copy-Item -Recurse -Force "dist\SistemaGestionPersonal" "$staging\SistemaGestionPersonal"
-          }
-          if (Test-Path "dist_updater") {
-            Copy-Item -Recurse -Force "dist_updater" "$staging\dist_updater"
-          }
-          if (Test-Path "dist_installer") {
-            Copy-Item -Recurse -Force "dist_installer" "$staging\dist_installer"
-          }
-
-          Compress-Archive -Path "$staging\*" -DestinationPath $zip -Force
+          # ZIP portable con el MISMO nombre/estructura del release de siempre:
+          # solo la carpeta de la aplicación (todos sus archivos ya van firmados).
+          $zip = "SistemaGestionPersonal-Windows-$env:APP_VERSION.zip"
+          Compress-Archive -Path "dist\SistemaGestionPersonal" -DestinationPath $zip -Force
           $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
           Write-Host "OK paquete firmado: $zip ($size MB)"
 
@@ -454,9 +455,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
           files: |
-            dist_installer/Instalador_SDEP_CPP5.exe
+            dist_installer/SistemaGestionPersonal-Setup-*.exe
+            SistemaGestionPersonal-Windows-*.zip
             dist_updater/SDEP_CPP5_AutoUpdater.exe
-            SDEP_CPP5-Firmado-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

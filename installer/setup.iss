@@ -5,9 +5,12 @@
 ;
 ; Compilación firmada (GitHub Actions - .github/workflows/release.yml):
 ;   ISCC.exe /DMyAppVersion=1.0.0 /DMyVersionInfo=1.0.0 /DMyAppName=SDEP_CPP5 ^
-;           /DMyAppExeName=SDEP_CPP5.exe /DMyOutputBaseFilename=Instalador_SDEP_CPP5 ^
-;           /DSignToolPath="C:\...\signtool.exe" /DCertPath="C:\...\cert.pfx" ^
-;           /DCertPassword="..." installer\setup.iss
+;           /DMyAppExeName=SDEP_CPP5.exe ^
+;           /DMyOutputBaseFilename=SistemaGestionPersonal-Setup-1.0.0 ^
+;           /DConFirmaCI=1 ^
+;           /SGitHubSign="$qC:\...\signtool.exe$q sign /sha1 <huella> ^
+;           /f $qC:\...\cert.pfx$q /p <contraseña> /fd SHA256 ^
+;           /tr http://timestamp.digicert.com /td SHA256 $f" installer\setup.iss
 ;
 ; Certificado público (MiCertificadoPublico.cer):
 ;   Se copia a {tmp} y se importa en Cert:\LocalMachine\Root con un comando
@@ -16,7 +19,7 @@
 ; Certificado privado (MiCertificadoPrivado.pfx):
 ;   NO viaja dentro del instalador. Solo se usa para FIRMAR el ejecutable
 ;   y el instalador en el CI, donde el PFX se recupera desde el secreto
-;   CODE_SIGN_CERT_BASE64 y se elimina del runner al terminar.
+;   PFX_BASE64 y se elimina del runner al terminar.
 
 #ifndef MyAppVersion
   #define MyAppVersion "2.79"
@@ -87,25 +90,22 @@ VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName}
 VersionInfoProductName={#MyAppName}
 
-; Firma del instalador (y del desinstalador) cuando el CI pasa los
-; parámetros por línea de comandos. Sin esos defines, la compilación
-; local genera un instalador sin firmar sin ningún cambio.
-;   $f = ruta del instalador generado (entre comillas)
-;   $q = carácter de comilla
-;
-; IMPORTANTE: el PFX lleva la cadena completa (raíz + intermedios + hoja) y
-; varios de sus certificados resultan "aptos para firmar" a ojos de signtool;
-; sin selección explícita falla con "Multiple certificates were found that
-; meet all the given criteria". Por eso:
-;   - Con LeafSha1 (huella del certificado hoja, la pasa el CI) se firma con
-;     /sha1: selección DETERMINISTA del certificado.
-;   - Sin LeafSha1 se usa /a: signtool elige el certificado automáticamente.
-#ifdef SignToolPath
-#ifdef LeafSha1
-SignTool=GitHubSign $q{#SignToolPath}$q sign /sha1 $q{#LeafSha1}$q /f $q{#CertPath}$q /p $q{#CertPassword}$q /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
-#else
-SignTool=GitHubSign $q{#SignToolPath}$q sign /a /f $q{#CertPath}$q /p $q{#CertPassword}$q /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
-#endif
+; Firma del instalador (y del desinstalador) cuando el CI está compilando.
+;   - La directiva SignTool de Inno Setup NO admite el comando inline: exige
+;     un Sign Tool NOMBRE registrado antes (opción /S de ISCC o el IDE). El
+;     workflow registra 'GitHubSign' con /S"GitHubSign=..." y define
+;     ConFirmaCI (ver .github/workflows/release.yml); aquí solo se referencia
+;     por nombre.
+;   - Sin ese registro (compilación local sin /S ni ConFirmaCI) no se firma:
+;     se genera un instalador sin firmar sin ningún cambio.
+;   - La definición del tool fija el certificado con /sha1 (huella hoja) o /a
+;     como fallback: el PFX lleva la cadena completa y VARIOS certificados
+;     resultan "aptos para firmar"; sin selección explícita signtool falla
+;     con "Multiple certificates were found that meet all the given criteria".
+;   - Placeholders de Inno (en la definición del tool): $f = archivo a firmar
+;     (entre comillas), $q = comilla, $p = parámetros de la directiva.
+#ifdef ConFirmaCI
+SignTool=GitHubSign
 SignedUninstaller=yes
 #endif
 

@@ -1,26 +1,36 @@
 # =============================================================================
-# Release Firmada - Firma Masiva Profunda (Windows)
+# Release Firmada - Firma Masiva Profunda en DOS PASADAS (Windows)
 # =============================================================================
 #
-# Este workflow compila la aplicación, firma digitalmente TODOS los archivos
-# soportados por Authenticode de forma recursiva y profunda (exe, dll, sys,
-# ocx, scr, cpl, msi, msm, msp, cab, appx, msix, cat, ps1, psm1, psd1, vbs)
-# dentro de las carpetas de artefactos, empaqueta la estructura firmada,
-# compila el instalador con Inno Setup (también firmado) y lo publica.
+# ESTRATEGIA DE FIRMA (por qué hay DOS pasadas):
+#   PASADA 1 (antes de Inno Setup): firma RECURSIVAMENTE todo el contenido de
+#     dist\ (aplicación completa: .exe, .dll, .pyd, ...) y dist_updater\.
+#     Así, cuando Inno Setup empaqueta, TODOS los archivos que van DENTRO del
+#     instalador ya llevan su firma Authenticode incrustada.
+#   PASADA 2 (después de Inno Setup): firma el INSTALADOR final generado
+#     (dist_installer\Instalador_SDEP_CPP5.exe) y cualquier otro binario que
+#     haya aparecido en dist_installer. Inno Setup además firma el
+#     desinstalador (SignedUninstaller=yes) con el mismo certificado.
+#
+#   Auditoría final: si queda UN solo archivo firmable sin firma, el pipeline
+#   FALLA (no se publica nada sin firmar).
 #
 # Disparadores:
 #   - Push de etiquetas de versión (v*)
 #   - Ejecución manual (workflow_dispatch)
 #
-# Secretos requeridos (Settings -> Secrets and variables -> Actions):
-#   PFX_BASE64    : Certificado PFX con la cadena de confianza completa de
-#                   4 niveles, codificado en Base64. Generarlo con:
+# Secretos requeridos (Settings -> Secrets and variables -> Actions -> Actions):
+#   PFX_BASE64    : Certificado PFX con la cadena de confianza completa (4
+#                   niveles) codificado en Base64. Generarlo con:
 #                     [Convert]::ToBase64String(
 #                       [IO.File]::ReadAllBytes("C:\ruta\CadenaEnterpriseFirma.pfx"))
 #   PFX_PASSWORD  : Contraseña del archivo PFX.
+#   (Si antes usabas CODE_SIGN_CERT_BASE64 / CODE_SIGN_CERT_PASSWORD, crea
+#    estos dos nuevos secretos: el workflow YA NO lee los antiguos.)
 #
-# Seguridad: el PFX se restaura en RUNNER_TEMP, se usa en memoria y se
-# borra forzosamente en un paso con `if: always()` (incluso si el job falla).
+# Seguridad: el PFX se restaura en RUNNER_TEMP, se valida (contraseña y
+# cadena) y se BORRA forzosamente en un paso con `if: always()` aunque el
+# job falle. La contraseña nunca se imprime en el log (GitHub la enmascara).
 # =============================================================================
 
 name: Release Firmada (Firma Masiva Profunda)
@@ -54,7 +64,7 @@ jobs:
 
     steps:
       # -------------------------------------------------------------------------
-      # 1. Clonar repositorio
+      # 1. Clonar repositorio y preparar entorno Python
       # -------------------------------------------------------------------------
       - name: Clonar repositorio
         uses: actions/checkout@v5
@@ -73,8 +83,6 @@ jobs:
       # 2. Determinar versión y generar información de build
       # -------------------------------------------------------------------------
       - name: Determinar versión y generar información de build
-        env:
-          RELEASE_TAG_FROM_EVENT: ${{ github.event.release.tag_name }}
         run: |
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             # Push de etiqueta v*: la versión sale de la etiqueta (v1.0.0 -> 1.0.0)
@@ -102,7 +110,7 @@ jobs:
           Write-Host "Versión: $ver | Etiqueta: $tagFinal | Commit: $commit"
 
       # -------------------------------------------------------------------------
-      # 3. Compilar ejecutable principal (PyInstaller onedir)
+      # 3. Compilar ejecutable principal (PyInstaller onedir) y renombrarlo
       # -------------------------------------------------------------------------
       - name: Compilar ejecutable (PyInstaller onedir)
         run: python -m PyInstaller --noconfirm --clean spec/app.spec
@@ -134,27 +142,48 @@ jobs:
           Write-Host "OK actualizador: dist_updater\SDEP_CPP5_AutoUpdater.exe"
 
       # -------------------------------------------------------------------------
-      # 5. Restaurar certificado PFX desde el secreto PFX_BASE64
+      # 5. Restaurar y VALIDAR el certificado PFX (fail-fast)
+      #    Si la contraseña es incorrecta o el Base64 está corrupto, el pipeline
+      #    se detiene AQUÍ con un mensaje claro (antes fallaba más adelante o
+      #    firmaba con errores silenciosos).
       # -------------------------------------------------------------------------
-      - name: Restaurar certificado PFX (CadenaEnterpriseFirma.pfx)
+      - name: Restaurar y validar certificado PFX (CadenaEnterpriseFirma.pfx)
         run: |
           if (-not $env:PFX_BASE64) {
-            Write-Error "Falta el secreto PFX_BASE64 (PFX con cadena de confianza en Base64)"
+            Write-Error "FALTA el secreto PFX_BASE64. Crealo en Settings -> Secrets and variables -> Actions (PFX en Base64)."
             exit 1
           }
           if (-not $env:PFX_PASSWORD) {
-            Write-Error "Falta el secreto PFX_PASSWORD (contraseña del PFX)"
+            Write-Error "FALTA el secreto PFX_PASSWORD. Crealo en Settings -> Secrets and variables -> Actions."
             exit 1
           }
           $pfxPath = Join-Path $env:RUNNER_TEMP $env:PFX_FILE
           # Decodificar Base64 -> bytes -> archivo físico temporal
-          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
-          if (-not (Test-Path $pfxPath)) {
-            Write-Error "No se pudo restaurar el PFX en $pfxPath"
+          try {
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+          } catch {
+            Write-Error "PFX_BASE64 no es un Base64 válido: $($_.Exception.Message)"
+            exit 1
+          }
+          # Validación REAL: abrir el PFX con la contraseña y contar la cadena.
+          # Si la contraseña es incorrecta, esto lanza excepción -> error claro.
+          try {
+            $cadena = [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
+            $cadena.Import($pfxPath, $env:PFX_PASSWORD,
+              [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::DefaultKeySet)
+          } catch {
+            Write-Error "El PFX NO se pudo abrir (¿PFX_PASSWORD incorrecta o PFX corrupto?): $($_.Exception.Message)"
+            exit 1
+          }
+          if ($cadena.Count -eq 0) {
+            Write-Error "El PFX no contiene ningún certificado"
             exit 1
           }
           Write-Output "CERT_PFX=$pfxPath" >> $env:GITHUB_ENV
-          Write-Host "PFX restaurado: $pfxPath ($(([math]::Round((Get-Item $pfxPath).Length/1KB,1))) KB)"
+          Write-Host "PFX válido: $pfxPath ($([math]::Round((Get-Item $pfxPath).Length/1KB,1)) KB) con $($cadena.Count) certificado(s) en la cadena:"
+          foreach ($c in $cadena) {
+            Write-Host ("  - {0} | huella {1}" -f $c.Subject, $c.Thumbprint)
+          }
 
       # -------------------------------------------------------------------------
       # 6. Localizar signtool.exe (Windows SDK preinstalado en el runner)
@@ -179,117 +208,125 @@ jobs:
           Write-Host "signtool: $signtool"
 
       # -------------------------------------------------------------------------
-      # 7. FIRMA MASIVA PROFUNDA (Deep Mass Signing)
-      #    Firma recursivamente TODOS los formatos soportados por Authenticode
-      #    en dist, dist_updater y dist_installer, incluyendo subdirectorios.
-      #    Tolerante a fallos: registra advertencia y continúa con el resto.
+      # 7. Preparar módulo de firma reutilizable (lo usan la PASADA 1 y la 2)
+      #    Firma cada archivo con parámetros estrictos y VERIFICA la firma
+      #    incrustada. Devuelve código de salida != 0 si ALGO falla.
       # -------------------------------------------------------------------------
-      - name: Firma masiva profunda de todos los artefactos (Authenticode)
+      - name: Preparar módulo de firma (Sign-Masivo.ps1)
         run: |
-          $ErrorActionPreference = 'Continue'
+          $helper = Join-Path $env:RUNNER_TEMP "Sign-Masivo.ps1"
+          @'
+          param(
+            [Parameter(Mandatory = $true)][string] $SignTool,
+            [Parameter(Mandatory = $true)][string] $PfxPath,
+            [Parameter(Mandatory = $true)][string] $Password,
+            [Parameter(Mandatory = $true)][string[]] $Dirs,
+            [string] $Etiqueta = "FIRMA"
+          )
 
-          # Lista completa de extensiones soportadas por Authenticode
+          # Lista completa de extensiones soportadas por Authenticode.
+          # .pyd incluido: son las DLLs de extension Python que PyInstaller
+          # genera (sin firmarlas, algunos AV marcan la app como sospechosa).
           $extensiones = @(
-            # Ejecutables y librerías
-            '*.exe', '*.dll', '*.sys', '*.ocx', '*.scr', '*.cpl',
-            # Instaladores y paquetes
+            '*.exe', '*.dll', '*.pyd', '*.sys', '*.ocx', '*.scr', '*.cpl',
             '*.msi', '*.msm', '*.msp', '*.cab',
             '*.appx', '*.appxbundle', '*.msix', '*.msixbundle',
-            # Scripts y catálogos
             '*.cat', '*.ps1', '*.psm1', '*.psd1', '*.vbs'
           )
 
-          # Directorios de artefactos donde buscar de forma recursiva y profunda
-          $directorios = @('dist', 'dist_updater', 'dist_installer')
-          $directorios = $directorios | Where-Object { Test-Path $_ }
-
-          if (-not $directorios) {
-            Write-Warning "No se encontraron directorios de artefactos para firmar"
+          $dirsExistentes = $Dirs | Where-Object { Test-Path $_ }
+          if (-not $dirsExistentes) {
+            Write-Host "[$Etiqueta] Sin directorios que firmar: $($Dirs -join ', ')"
             exit 0
           }
 
-          # Recolectar TODOS los archivos candidatos (recursivo, subdirectorios incluidos)
-          $archivos = Get-ChildItem -Path $directorios -Recurse -Include $extensiones -File |
+          # Búsqueda RECURSIVA y profunda: incluye todos los subdirectorios
+          $archivos = Get-ChildItem -Path $dirsExistentes -Recurse -Include $extensiones -File |
             Select-Object -ExpandProperty FullName -Unique
 
           if (-not $archivos) {
-            Write-Warning "No se encontraron archivos firmables en: $($directorios -join ', ')"
+            Write-Host "[$Etiqueta] Sin archivos firmables en: $($dirsExistentes -join ', ')"
             exit 0
           }
 
-          Write-Host "=== FIRMA MASIVA PROFUNDA: $($archivos.Count) archivo(s) detectados ==="
-          $archivos | ForEach-Object { Write-Host "  -> $_" }
-
-          $firmados   = 0
-          $omitidos   = 0
-          $fallidos   = 0
+          Write-Host "=== [$Etiqueta] FIRMA MASIVA: $($archivos.Count) archivo(s) detectados ==="
+          $firmados = 0
+          $fallidos = 0
 
           foreach ($archivo in $archivos) {
-            $nombre = Split-Path $archivo -Leaf
-            try {
-              Write-Host "Firmando: $archivo"
-              # Parámetros estrictos de signtool:
-              #   /f  : archivo PFX con la cadena completa de confianza
-              #   /p  : contraseña del PFX
-              #   /fd : digest del archivo SHA-256
-              #   /tr : timestamping RFC3161 oficial (DigiCert)
-              #   /td : algoritmo SHA-256 para el timestamp
-              #   /a  : selecciona automáticamente el mejor certificado
-              #         e incrusta TODA la cadena presente en el PFX
-              #   /v  : salida verbosa para el log del pipeline
-              & $env:SIGNTOOL sign `
-                /f "$env:CERT_PFX" /p "$env:PFX_PASSWORD" `
-                /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
-                /a /v `
-                "$archivo" 2>&1 | ForEach-Object { Write-Host "    $_" }
+            Write-Host "  Firmando: $archivo"
+            # Parámetros estrictos de signtool:
+            #   /f  : PFX con la cadena de confianza completa
+            #   /p  : contraseña del PFX
+            #   /fd : digest del archivo SHA-256
+            #   /tr : timestamping RFC3161 oficial (DigiCert)
+            #   /td : SHA-256 para el timestamp
+            #   /a  : elige el mejor certificado e incrusta TODA la cadena del PFX
+            #   /v  : salida verbosa en el log
+            & $SignTool sign /f "$PfxPath" /p "$Password" `
+              /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+              /a /v "$archivo" 2>&1 | ForEach-Object { Write-Host "    $_" }
 
-              if ($LASTEXITCODE -eq 0) {
-                # Verificación posterior de la firma incrustada
-                & $env:SIGNTOOL verify /pa /all "$archivo" 2>&1 | Out-Null
-                if ($LASTEXITCODE -eq 0) {
-                  Write-Host "OK firmado y verificado: $nombre"
-                  $firmados++
-                } else {
-                  Write-Warning "Firmado pero la verificación devolvió código $LASTEXITCODE: $nombre"
-                  $firmados++
-                }
-              } else {
-                # Tolerante a fallos: el archivo no admite Authenticode o está
-                # bloqueado -> advertencia y continuar con el resto
-                Write-Warning "No se pudo firmar (exit $LASTEXITCODE), se continúa: $nombre"
-                $omitidos++
-              }
-            } catch {
-              Write-Warning "Excepción al firmar '$nombre': $($_.Exception.Message)"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "  [$Etiqueta] FALLO al firmar (exit $LASTEXITCODE): $archivo"
+              $fallidos++
+              continue
+            }
+
+            # Verificación de la firma incrustada. 'Valid' = cadena de confianza
+            # completa; 'NotTrusted' = firma correcta con CA privada/autofirmada
+            # (normal con certificados empresariales propios): también es válido.
+            $estado = (Get-AuthenticodeSignature -FilePath $archivo).Status
+            if ($estado -in @('Valid', 'NotTrusted')) {
+              Write-Host "  OK firmado (estado: $estado): $(Split-Path $archivo -Leaf)"
+              $firmados++
+            } else {
+              Write-Warning "  [$Etiqueta] Firmado pero estado inesperado '$estado': $archivo"
               $fallidos++
             }
           }
 
-          Write-Host "=== RESUMEN DE FIRMA MASIVA ==="
-          Write-Host "  Firmados : $firmados"
-          Write-Host "  Omitidos : $omitidos"
-          Write-Host "  Fallidos : $fallidos"
-          Write-Host "  Total    : $($archivos.Count)"
+          Write-Host "=== [$Etiqueta] RESUMEN: $firmados firmados / $fallidos fallidos / $($archivos.Count) total ==="
+          if ($fallidos -gt 0) { exit 1 }
+          exit 0
+          '@ | Set-Content -Path $helper -Encoding UTF8
+          Write-Host "Módulo de firma listo: $helper"
 
       # -------------------------------------------------------------------------
-      # 8. Verificación de firmas (auditoría post-firma)
+      # 8. PASADA 1 - FIRMA PROFUNDA del PAYLOAD (dist + dist_updater)
+      #    TODO lo que va DENTRO del instalador queda firmado AQUÍ.
       # -------------------------------------------------------------------------
-      - name: Verificar firmas Authenticode de los artefactos
+      - name: "PASADA 1: firma profunda de dist y dist_updater"
         run: |
-          $principal = "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
-          if (Test-Path $principal) {
-            $sig = Get-AuthenticodeSignature $principal
-            $sig | Select-Object Status, @{n='Firmante';e={$_.SignerCertificate.Subject}} | Format-List
-            if ($sig.Status -ne 'Valid') {
-              Write-Warning "Firma del ejecutable principal no válida (Status: $($sig.Status))"
-            } else {
-              Write-Host "OK: firma válida del ejecutable principal"
-            }
+          & (Join-Path $env:RUNNER_TEMP "Sign-Masivo.ps1") `
+            -SignTool "$env:SIGNTOOL" `
+            -PfxPath "$env:CERT_PFX" `
+            -Password "$env:PFX_PASSWORD" `
+            -Dirs @('dist', 'dist_updater') `
+            -Etiqueta "PASADA-1-PAYLOAD"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "La PASADA 1 terminó con fallos de firma (ver warnings arriba)"
+            exit 1
           }
 
       # -------------------------------------------------------------------------
-      # 9. Compilar instalador con Inno Setup (firmando instalador y desinstalador)
-      #    Los archivos ya firmados se empaquetan dentro del instalador.
+      # 9. Verificación dura del ejecutable principal
+      # -------------------------------------------------------------------------
+      - name: Verificar firma del ejecutable principal
+        run: |
+          $principal = "dist\SistemaGestionPersonal\SDEP_CPP5.exe"
+          $sig = Get-AuthenticodeSignature -FilePath $principal
+          $sig | Select-Object Status, @{n = 'Firmante'; e = { $_.SignerCertificate.Subject } } | Format-List
+          if ($sig.Status -notin @('Valid', 'NotTrusted')) {
+            Write-Error "El ejecutable principal NO quedó firmado (Status: $($sig.Status))"
+            exit 1
+          }
+          Write-Host "OK: ejecutable principal firmado ($($sig.Status))"
+
+      # -------------------------------------------------------------------------
+      # 10. Compilar instalador con Inno Setup
+      #     - Empaqueta los archivos YA FIRMADOS de la PASADA 1.
+      #     - Firma el instalador y el desinstalador (SignTool + SignedUninstaller).
       # -------------------------------------------------------------------------
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
@@ -318,7 +355,56 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # -------------------------------------------------------------------------
-      # 10. EMPAQUETADO: ZIP con TODA la estructura de archivos firmados
+      # 11. PASADA 2 - FIRMA del INSTALADOR FINAL (dist_installer)
+      #     El instalador se genera DESPUÉS de la pasada 1, por eso necesita
+      #     su propia pasada: aquí queda firmado el .exe que se publica.
+      # -------------------------------------------------------------------------
+      - name: "PASADA 2: firma del instalador final (dist_installer)"
+        run: |
+          if (-not (Test-Path "dist_installer")) {
+            Write-Error "No existe dist_installer: Inno Setup no generó salida"
+            exit 1
+          }
+          & (Join-Path $env:RUNNER_TEMP "Sign-Masivo.ps1") `
+            -SignTool "$env:SIGNTOOL" `
+            -PfxPath "$env:CERT_PFX" `
+            -Password "$env:PFX_PASSWORD" `
+            -Dirs @('dist_installer') `
+            -Etiqueta "PASADA-2-INSTALADOR"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "La PASADA 2 terminó con fallos de firma (ver warnings arriba)"
+            exit 1
+          }
+
+      # -------------------------------------------------------------------------
+      # 12. AUDITORÍA FINAL: cero archivos firmables sin firma.
+      #     Si queda alguno sin firmar, el pipeline FALLA y no se publica.
+      # -------------------------------------------------------------------------
+      - name: Auditoría final (ningún archivo sin firmar)
+        run: |
+          $extensiones = @(
+            '*.exe', '*.dll', '*.pyd', '*.sys', '*.ocx', '*.scr', '*.cpl',
+            '*.msi', '*.msm', '*.msp', '*.cab',
+            '*.appx', '*.appxbundle', '*.msix', '*.msixbundle',
+            '*.cat', '*.ps1', '*.psm1', '*.psd1', '*.vbs'
+          )
+          $sinFirmar = Get-ChildItem -Path 'dist', 'dist_updater', 'dist_installer' `
+            -Recurse -Include $extensiones -File -ErrorAction SilentlyContinue |
+            Where-Object { (Get-AuthenticodeSignature -FilePath $_.FullName).Status -eq 'NotSigned' }
+
+          $total = Get-ChildItem -Path 'dist', 'dist_updater', 'dist_installer' `
+            -Recurse -Include $extensiones -File -ErrorAction SilentlyContinue
+
+          Write-Host "Auditoría: $($total.Count) archivo(s) firmables, $($sinFirmar.Count) sin firma"
+          if ($sinFirmar) {
+            $sinFirmar | ForEach-Object { Write-Warning "SIN FIRMAR: $($_.FullName)" }
+            Write-Error "Quedan $($sinFirmar.Count) archivo(s) sin firmar: NO se publica la release"
+            exit 1
+          }
+          Write-Host "OK: TODOS los archivos firmables llevan firma Authenticode"
+
+      # -------------------------------------------------------------------------
+      # 13. EMPAQUETADO: ZIP con TODA la estructura de archivos firmados
       # -------------------------------------------------------------------------
       - name: Empaquetar estructura completa de archivos firmados (ZIP)
         run: |
@@ -343,15 +429,16 @@ jobs:
           Write-Host "OK paquete firmado: $zip ($size MB)"
 
       # -------------------------------------------------------------------------
-      # 11. LIMPIEZA DE SEGURIDAD: borrar el PFX SIEMPRE (if: always())
-      #     Borrado forzado incluso si un paso anterior falló.
+      # 14. LIMPIEZA DE SEGURIDAD: borrar el PFX SIEMPRE (if: always())
+      #     Borrado forzado (sobrescribir con ceros + Remove-Item -Force),
+      #     se ejecute o no el resto del pipeline con éxito.
       # -------------------------------------------------------------------------
       - name: Eliminar certificado PFX del runner (seguridad)
         if: always()
         run: |
           $pfxPath = Join-Path $env:RUNNER_TEMP $env:PFX_FILE
           if (Test-Path $pfxPath) {
-            # Borrado forzado: sobrescribir antes de eliminar
+            # Sobrescribir con ceros antes de borrar (borrado forzado)
             $bytes = [byte[]]::new((Get-Item $pfxPath).Length)
             [IO.File]::WriteAllBytes($pfxPath, $bytes)
             Remove-Item $pfxPath -Force
@@ -361,7 +448,7 @@ jobs:
           }
 
       # -------------------------------------------------------------------------
-      # 12. Publicar Release con todos los artefactos firmados
+      # 15. Publicar Release con todos los artefactos firmados
       # -------------------------------------------------------------------------
       - name: Adjuntar artefactos firmados a la Release
         uses: softprops/action-gh-release@v2

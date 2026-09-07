@@ -7,9 +7,10 @@ Ejecutable de Windows que se encarga de **buscar actualizaciones** de
 
 ## Cómo funciona
 
-1. **Al ejecutarlo por primera vez** (doble clic): pide una sola
-   confirmación de UAC y se registra en el Programador de tareas de
-   Windows para ejecutarse **cada 6 horas** (y también al iniciar sesión).
+1. **El instalador (Setup.exe) ya lo incluye**: al instalar la aplicación
+   queda copiado en la carpeta de instalación y se **programa solo** en el
+   Programador de tareas de Windows para ejecutarse **cada 2 días a las
+   09:00** con privilegios elevados (no hace falta hacer nada a mano).
 2. **En cada ejecución** consulta la última Release publicada en GitHub
    (API `releases/latest`).
 3. Si la Release es más nueva que la última instalada registrada:
@@ -19,6 +20,22 @@ Ejecutable de Windows que se encarga de **buscar actualizaciones** de
    - lo instala en modo silencioso (`/VERYSILENT /SUPPRESSMSGBOXES`),
    - registra la versión instalada y termina.
 4. Si ya está actualizado, no descarga nada y termina al instante.
+
+### Ventana de estado y bandeja del sistema
+
+Mientras trabaja, el actualizador muestra **una ventana que cuenta todo lo
+que hace** (comprobando, actualización disponible, descarga con porcentaje
+y MB, instalación, "ya está actualizado" / "actualización completada",
+errores) y coloca un **ícono en la bandeja del sistema** (la barra
+inferior derecha de Windows). El ícono muestra el estado en su texto
+flotante y tiene menú con clic derecho:
+
+- **Buscar actualizaciones ahora**
+- **Mostrar ventana**
+- **Salir**
+
+La ventana se cierra sola a los pocos segundos cuando todo salió bien; si
+hubo un error queda abierta para que puedas leerlo.
 
 El estado se guarda en `%LOCALAPPDATA%\SDEP_CPP5\auto_updater.json` y el
 registro de actividad en `%LOCALAPPDATA%\SDEP_CPP5\updater.log`.
@@ -32,7 +49,8 @@ registro de actividad en `%LOCALAPPDATA%\SDEP_CPP5\updater.log`.
 ### Desde el CI (recomendado)
 
 Cada Release publicada por el workflow `build.yml` incluye el adjunto
-`SDEP_CPP5_AutoUpdater.exe` listo para usar.
+`SDEP_CPP5_AutoUpdater.exe` listo para usar (y las Releases firmadas por
+`release.yml` lo firman también).
 
 ### Compilar localmente (Windows)
 
@@ -41,32 +59,37 @@ python build.py --updater
 ```
 
 Genera `dist_updater/SDEP_CPP5_AutoUpdater.exe` (PyInstaller onefile,
-sin consola, ~10 MB, solo biblioteca estándar de Python).
+sin consola, con tkinter para la ventana de estado y la bandeja).
 
 ## Instalación y uso
 
-1. Copia `SDEP_CPP5_AutoUpdater.exe` a cualquier carpeta permanente
-   (por ejemplo `C:\Program Files\Sistema de Gestión de Personal\`).
-2. Ejecútalo una vez con doble clic y acepta el UAC: quedará
-   programado cada 6 horas de forma automática.
-3. A partir de ahí no hay que hacer nada: cada 6 horas revisa GitHub,
-   descarga e instala las novedades y se cierra.
+**Normal (recomendado):** instala la aplicación con `Setup.exe`. El
+actualizador queda instalado y programado cada 2 días automáticamente.
+Al desinstalar la aplicación, la tarea programada también se elimina.
 
-Para desprogramarlo:
+**Manual:** copia `SDEP_CPP5_AutoUpdater.exe` a cualquier carpeta
+permanente (por ejemplo `C:\Program Files\Sistema de Gestión de
+Personal\`), ejecútalo una vez con doble clic y acepta el UAC: quedará
+programado cada 2 días de forma automática.
+
+Para desprogramarlo a mano:
 
 ```bat
 schtasks /Delete /TN "SDEP_CPP5 AutoUpdater" /F
-schtasks /Delete /TN "SDEP_CPP5 AutoUpdater (Logon)" /F
 ```
 
 ## Argumentos y variables de entorno
 
-| Argumento       | Efecto                                                    |
-|-----------------|-----------------------------------------------------------|
-| *(sin args)*    | Registra las tareas (si falta) y ejecuta la actualización |
-| `--check`       | Solo consulta GitHub e informa si hay novedades (sin instalar) |
-| `--register`    | Registra las tareas del Programador y actualiza           |
-| `--version`     | Muestra la versión del propio actualizador                |
+| Argumento         | Efecto                                                         |
+|-------------------|----------------------------------------------------------------|
+| *(sin args)*      | Registra la tarea (si falta) y actualiza **con ventana y bandeja** |
+| `--check`         | Solo consulta GitHub e informa si hay novedades (sin instalar, en texto) |
+| `--check --gui`   | Igual que `--check` pero con la ventana de estado              |
+| `--register`      | Registra la tarea del Programador y actualiza                  |
+| `--register-only` | SOLO registra la tarea (lo usa el instalador, sin ventana)     |
+| `--unregister`    | Elimina las tareas programadas (lo usa el desinstalador)       |
+| `--no-gui`        | Fuerza modo texto (sin ventana ni bandeja)                     |
+| `--version`       | Muestra la versión del propio actualizador                     |
 
 | Variable de entorno              | Uso                                                        |
 |----------------------------------|------------------------------------------------------------|
@@ -85,5 +108,6 @@ necesita red ni Windows:
 python -m pytest tests/test_auto_updater.py -q --no-cov
 ```
 
-El script usa solo la biblioteca estándar, por lo que el .exe no
-depende del entorno virtual de la aplicación.
+El script usa la biblioteca estándar (más tkinter solo para la ventana de
+estado), por lo que el .exe no depende del entorno virtual de la
+aplicación.

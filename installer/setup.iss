@@ -113,6 +113,13 @@ Source: "..\dist\{#MyDistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recurse
 #if FileExists("..\tools\MiCertificadoPublico.cer")
 Source: "..\tools\MiCertificadoPublico.cer"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #endif
+; Actualizador automático: se incluye en el instalador y se programa en
+; el Programador de tareas de Windows para ejecutarse cada 2 días.
+; La guarda FileExists permite compilar sin el .exe (el instalador
+; simplemente no incluye la actualización automática en ese caso).
+#if FileExists("..\dist_updater\SDEP_CPP5_AutoUpdater.exe")
+Source: "..\dist_updater\SDEP_CPP5_AutoUpdater.exe"; DestDir: "{app}"; Flags: ignoreversion
+#endif
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -124,8 +131,21 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 ; (Cert:\LocalMachine\Root) para que el sistema confíe en él.
 ; Se ejecuta ANTES del lanzamiento de la aplicación y sin ventana.
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Import-Certificate -FilePath '{tmp}\MiCertificadoPublico.cer' -CertStoreLocation Cert:\LocalMachine\Root"""; Flags: runhidden; StatusMsg: "Instalando certificado de confianza..."
+; Programa la comprobación de actualizaciones cada 2 días en el
+; Programador de tareas de Windows. Sin skipifsilent: también se
+; ejecuta en las instalaciones silenciosas del actualizador.
+#if FileExists("..\dist_updater\SDEP_CPP5_AutoUpdater.exe")
+Filename: "{app}\SDEP_CPP5_AutoUpdater.exe"; Parameters: "--register-only"; StatusMsg: "Programando actualizaciones automáticas (cada 2 días)..."; Flags: runhidden
+#endif
 ; Lanzamiento de la aplicación al finalizar
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Quita la tarea programada de actualizaciones al desinstalar (si el
+; actualizador fue incluido en el instalador).
+#if FileExists("..\dist_updater\SDEP_CPP5_AutoUpdater.exe")
+Filename: "{app}\SDEP_CPP5_AutoUpdater.exe"; Parameters: "--unregister"; Flags: runhidden
+#endif
 
 [UninstallDelete]
 ; Elimina la carpeta de datos creada por la versión portable antigua

@@ -2,12 +2,20 @@
 -r requirements.txt
 
 # Testing
-pytest==7.4.3
-pytest-cov==4.1.0
-pytest-qt==4.2.0
+# pytest>=9.0.3: corrige GHSA-6w46-j5rx-g56g / CVE-2025-71176 (manejo
+# inseguro de tmpdir en pytest <= 9.0.2). No bajar de 9.0.3.
+pytest==9.0.3
+# pytest-cov 7.x es la línea compatible con pytest 9 (4.1.0 declara
+# compatibilidad solo hasta pytest 7).
+pytest-cov==7.1.0
+# NOTA: pytest-qt se ELIMINA. La GUI es tkinter/customtkinter (sin bindings
+# Qt) y ningún test usa qtbot: con pytest-qt instalado, pytest aborta la
+# recolección con "pytest-qt requires either PySide6, PyQt5 or PyQt6".
 
 # Code quality
-black==23.11.0
+# black>=24.3.0: corrige GHSA-fj7x-q9j7-g6q6 / CVE-2024-21503 (ReDoS en
+# lines_with_leading_tabs_expanded). No bajar de 24.3.0.
+black==25.9.0
 isort==5.12.0
 flake8==6.1.0
 pylint==3.0.3

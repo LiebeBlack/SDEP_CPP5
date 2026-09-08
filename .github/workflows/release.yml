@@ -83,10 +83,11 @@ jobs:
         shell: pwsh
     env:
       PYTHONUNBUFFERED: "1"
-      PFX_BASE64: ${{ secrets.PFX_BASE64 }}
-      PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
       # Nombre físico del certificado restaurado en el runner
       PFX_FILE: CadenaEnterpriseFirma.pfx
+      # NOTA: PFX_BASE64 y PFX_PASSWORD (secrets del repositorio) ya NO se
+      # inyectan a nivel de job: se pasan SOLO a los pasos que los usan
+      # (restauración/importación del PFX, ISCC y las dos pasadas de firma).
 
     steps:
       # -------------------------------------------------------------------------
@@ -171,15 +172,23 @@ jobs:
           Write-Host "OK actualizador: dist_updater\SDEP_CPP5_AutoUpdater.exe"
 
       # -------------------------------------------------------------------------
-      # 5. Restaurar, VALIDAR el certificado PFX y DETECTAR la huella del
-      #    certificado de firma (hoja) - fail-fast
+      # 5. Restaurar, VALIDAR el certificado PFX, IMPORTARLO en los almacenes
+      #    de usuario (Cert:\CurrentUser\My y Cert:\CurrentUser\CA) y DETECTAR
+      #    la huella del certificado de firma (hoja) - fail-fast
       #    - Si la contraseña es incorrecta o el Base64 está corrupto, el
       #      pipeline se detiene AQUÍ con un mensaje claro.
+      #    - La importación en My/CA es OBLIGATORIA: es lo que permite que la
+      #      ventana de propiedades de Windows muestre la cadena de
+      #      certificación completa (4 niveles) y válida de cada binario.
       #    - Se detecta el certificado hoja del PFX: sin fijarlo, signtool
       #      falla con "Multiple certificates were found that meet all the
       #      given criteria", porque TODA la cadena resulta "apta para firmar".
       # -------------------------------------------------------------------------
-      - name: Restaurar, validar PFX y detectar el certificado de firma (hoja)
+      - name: Restaurar, validar e importar el PFX (CurrentUser\My y CA) y detectar el certificado de firma (hoja)
+        env:
+          # Secrets del repositorio inyectados SOLO en este paso.
+          PFX_BASE64: ${{ secrets.PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
         run: |
           if (-not $env:PFX_BASE64) {
             Write-Error "FALTA el secreto PFX_BASE64. Crealo en Settings -> Secrets and variables -> Actions (PFX en Base64)."
@@ -258,10 +267,53 @@ jobs:
             Write-Output "SIGN_CERT_SHA1=$($hoja.Thumbprint)" >> $env:GITHUB_ENV
             Write-Host ("CERTIFICADO DE FIRMA SELECCIONADO: {0} | huella SHA1 {1}" -f $hoja.Subject, $hoja.Thumbprint)
           }
+          # ----------------------------------------------------------------
+          # IMPORTACIÓN OBLIGATORIA del PFX en los almacenes de usuario:
+          #   - Cert:\CurrentUser\My : toda la cadena; la hoja queda CON su
+          #     clave privada persistida en disco.
+          #   - Cert:\CurrentUser\CA : raíz e intermedios (CryptoAPI usa este
+          #     almacén para construir y MOSTRAR la cadena completa en la
+          #     ventana de propiedades de cada binario firmado).
+          # Importar en almacenes CurrentUser NO requiere elevación en el
+          # runner. La limpieza final (if: always()) purga AMBOS almacenes
+          # con PFX_THUMBPRINTS.
+          # ----------------------------------------------------------------
+          $claveSegura = ConvertTo-SecureString -String $env:PFX_PASSWORD -AsPlainText -Force
+          try {
+            Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $claveSegura | Out-Null
+            Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\CA -Password $claveSegura | Out-Null
+          } catch {
+            Write-Error "No se pudo importar el PFX en los almacenes de usuario (My/CA): $($_.Exception.Message)"
+            exit 1
+          }
+          Write-Host "PFX importado en Cert:\CurrentUser\My y Cert:\CurrentUser\CA"
+          # Comprobación dura: la hoja debe quedar en My CON clave privada.
+          $huellasPfx = @($cadena | ForEach-Object Thumbprint)
+          $hojaEnMy = Get-ChildItem Cert:\CurrentUser\My |
+            Where-Object { $_.HasPrivateKey -and ($_.Thumbprint -in $huellasPfx) } |
+            Where-Object { (-not $hoja) -or ($_.Thumbprint -eq $hoja.Thumbprint) } |
+            Select-Object -First 1
+          if (-not $hojaEnMy) {
+            Write-Error "La importación a Cert:\CurrentUser\My falló: el certificado de firma no quedó disponible con clave privada"
+            exit 1
+          }
+          # Construir y mostrar la cadena (raíz -> intermedios -> hoja) tal y
+          # como la mostrará Windows en las propiedades del archivo firmado.
+          $cadenaAlmacen = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+          $cadenaAlmacen.ChainPolicy.RevocationMode = 'NoCheck'
+          $null = $cadenaAlmacen.Build($hojaEnMy)
+          Write-Host ("Cadena construida en el almacén: {0} nivel(es)" -f $cadenaAlmacen.ChainElements.Count)
+          for ($i = 0; $i -lt $cadenaAlmacen.ChainElements.Count; $i++) {
+            $nivel = $cadenaAlmacen.ChainElements[$i].Certificate
+            Write-Host ("  Nivel {0}: {1} (huella {2})" -f ($i + 1), $nivel.Subject, $nivel.Thumbprint)
+          }
+          if ($cadenaAlmacen.ChainElements.Count -lt 3) {
+            Write-Warning "La cadena construida tiene menos de 3 niveles: verifica que el PFX incluya raíz e intermedios."
+          }
           # Huellas de TODA la cadena: la limpieza final (if: always()) las usa
-          # para purgar del almacén del runner los certificados que esta
-          # validación importa (DefaultKeySet persiste las claves privadas en
-          # Cert:\CurrentUser\My).
+          # para purgar de los almacenes del runner (My y CA) los certificados
+          # que esta validación importó (DefaultKeySet/Import-PfxCertificate
+          # persisten las claves privadas en Cert:\CurrentUser\My).
           $huellas = ($cadena | ForEach-Object { $_.Thumbprint }) -join ','
           Write-Output "PFX_THUMBPRINTS=$huellas" >> $env:GITHUB_ENV
           # ----------------------------------------------------------------
@@ -423,6 +475,9 @@ jobs:
       #    TODO lo que va DENTRO del instalador queda firmado AQUÍ.
       # -------------------------------------------------------------------------
       - name: "PASADA 1: firma profunda de dist y dist_updater"
+        env:
+          # Secret del repositorio inyectado SOLO en este paso.
+          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
         run: |
           & (Join-Path $env:RUNNER_TEMP "Sign-Masivo.ps1") `
             -SignTool "$env:SIGNTOOL" `
@@ -452,6 +507,18 @@ jobs:
             Firmante        = $sig.SignerCertificate.Subject
             Huella          = $sig.SignerCertificate.Thumbprint
           } | Format-List
+          # CADENA COMPLETA del firmante: como el PFX ya está importado en
+          # Cert:\CurrentUser\My y Cert:\CurrentUser\CA, esta es exactamente
+          # la cadena (raíz -> intermedios -> hoja) que mostrará la ventana de
+          # propiedades de Windows para el binario firmado.
+          $cadenaFirmante = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+          $cadenaFirmante.ChainPolicy.RevocationMode = 'NoCheck'
+          $null = $cadenaFirmante.Build($sig.SignerCertificate)
+          Write-Host ("Cadena de certificación incrustada: {0} nivel(es)" -f $cadenaFirmante.ChainElements.Count)
+          for ($i = 0; $i -lt $cadenaFirmante.ChainElements.Count; $i++) {
+            $nivel = $cadenaFirmante.ChainElements[$i].Certificate
+            Write-Host ("  Nivel {0}: {1} (huella {2})" -f ($i + 1), $nivel.Subject, $nivel.Thumbprint)
+          }
           if ($null -eq $sig.SignerCertificate) {
             Write-Error "El ejecutable principal NO quedó firmado (Status: $($sig.Status))"
             exit 1
@@ -477,6 +544,10 @@ jobs:
         run: choco install innosetup -y --no-progress
 
       - name: Compilar instalador firmado (ISCC con parámetros de firma)
+        env:
+          # Secret del repositorio inyectado SOLO en este paso (Inno lo usa
+          # para firmar instalador y desinstalador).
+          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
         run: |
           $iscc = @(
             "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
@@ -526,6 +597,9 @@ jobs:
       #     su propia pasada: aquí queda firmado el .exe que se publica.
       # -------------------------------------------------------------------------
       - name: "PASADA 2: firma del instalador final (dist_installer)"
+        env:
+          # Secret del repositorio inyectado SOLO en este paso.
+          PFX_PASSWORD: ${{ secrets.PFX_PASSWORD }}
         run: |
           if (-not (Test-Path "dist_installer")) {
             Write-Error "No existe dist_installer: Inno Setup no generó salida"
@@ -605,19 +679,21 @@ jobs:
           } else {
             Write-Host "El PFX ya no existe en el runner"
           }
-          # Purgar del almacén del usuario los certificados que la validación
-          # importó del PFX (DefaultKeySet persiste las claves privadas en
-          # Cert:\CurrentUser\My). Best-effort: si algo falla aquí no debe
-          # romper el job.
+          # Purgar de los almacenes del usuario los certificados que la
+          # validación importó con Import-PfxCertificate (My: hoja con clave
+          # privada persistida; CA: raíz e intermedios). Best-effort: si algo
+          # falla aquí no debe romper el job.
           if ($env:PFX_THUMBPRINTS) {
-            foreach ($tp in ($env:PFX_THUMBPRINTS -split ',')) {
-              $tp = $tp.Trim()
-              if (-not $tp) { continue }
-              $rutaCert = "Cert:\CurrentUser\My\$tp"
-              if (Test-Path $rutaCert) {
-                # -DeleteKey borra también la clave privada persistida
-                Remove-Item $rutaCert -Force -DeleteKey -ErrorAction SilentlyContinue
-                Write-Host "  Purgado del almacén de certificados: $tp"
+            foreach ($almacen in @('My', 'CA')) {
+              foreach ($tp in ($env:PFX_THUMBPRINTS -split ',')) {
+                $tp = $tp.Trim()
+                if (-not $tp) { continue }
+                $rutaCert = "Cert:\CurrentUser\$almacen\$tp"
+                if (Test-Path $rutaCert) {
+                  # -DeleteKey borra también la clave privada persistida (My)
+                  Remove-Item $rutaCert -Force -DeleteKey -ErrorAction SilentlyContinue
+                  Write-Host "  Purgado Cert:\CurrentUser\$almacen : $tp"
+                }
               }
             }
           }
@@ -632,18 +708,34 @@ jobs:
           # para que la release firmada no choque con ella ni herede sus
           # archivos viejos (softprops salta los assets con nombre duplicado:
           # sin este paso, el Setup firmado NUNCA se subiría).
+          #
+          # FIX (exit code 1): el runner de Actions añade SIEMPRE al final de
+          # cada paso pwsh `exit $LASTEXITCODE`. Si el ÚLTIMO comando nativo
+          # del paso falló (aquí: `gh release view` cuando la release NO
+          # existe -> exit 1, caso ESPERADO), el paso muere aunque la lógica
+          # sea correcta. Por eso cada código se captura en una variable y la
+          # ejecución termina con `exit 0` EXPLÍCITO en todas las ramas.
           $env:GH_TOKEN = $env:GITHUB_TOKEN
           gh release view "$env:RELEASE_TAG" -R "$env:GITHUB_REPOSITORY" *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $exeView = $LASTEXITCODE
+          if ($exeView -eq 0) {
             gh release delete "$env:RELEASE_TAG" -R "$env:GITHUB_REPOSITORY" --yes --cleanup-tag
-            if ($LASTEXITCODE -eq 0) {
+            $exeDelete = $LASTEXITCODE
+            if ($exeDelete -eq 0) {
               Write-Host "Eliminada release/etiqueta previa: $env:RELEASE_TAG"
             } else {
-              Write-Warning "No se pudo eliminar la release previa (se continúa)"
+              Write-Warning "No se pudo eliminar la release previa (exit $exeDelete); se continúa: softprops creará la release nueva"
             }
+          } elseif ($exeView -eq 1) {
+            # Caso esperado: NO existe release/etiqueta previa. No es error:
+            # softprops/action-gh-release creará la release con su etiqueta.
+            Write-Host "No hay release previa con la etiqueta $env:RELEASE_TAG (gh release view: exit $exeView). Continuando."
           } else {
-            Write-Host "No hay release previa con la etiqueta $env:RELEASE_TAG"
+            # Fallo inesperado (red/permisos/rate-limit): se reporta, pero no
+            # detiene la publicación.
+            Write-Warning "gh release view terminó con exit inesperado $exeView; se continúa"
           }
+          exit 0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

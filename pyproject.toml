@@ -38,10 +38,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.3",
-    "pytest-cov>=4.1.0",
-    "pytest-qt>=4.2.0",
-    "black>=23.11.0",
+    # pytest>=9.0.3 corrige GHSA-6w46-j5rx-g56g (tmpdir inseguro)
+    "pytest>=9.0.3",
+    "pytest-cov>=7.0.0",
+    # pytest-qt retirado: la GUI es tkinter/customtkinter y ningún test usa Qt.
+    # black>=24.3.0 corrige GHSA-fj7x-q9j7-g6q6 (ReDoS, CVE-2024-21503)
+    "black>=24.3.0",
     "isort>=5.12.0",
     "flake8>=6.1.0",
     "pylint>=3.0.3",

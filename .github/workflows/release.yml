@@ -317,21 +317,28 @@ jobs:
           $huellas = ($cadena | ForEach-Object { $_.Thumbprint }) -join ','
           Write-Output "PFX_THUMBPRINTS=$huellas" >> $env:GITHUB_ENV
           # ----------------------------------------------------------------
-          # EXPORTAR la RAÍZ de la cadena como certificado público para el
-          # instalador. tools/MiCertificadoPublico.cer puede estar
-          # DESACTUALIZADO (p. ej. de una CA anterior): si el instalador
-          # importara un certificado que NO es la raíz real de esta cadena,
-          # las firmas NUNCA serían de confianza en los equipos cliente.
-          # La raíz es el certificado autofirmado (Subject == Issuer).
-          # El instalador la importa en Cert:\LocalMachine\Root.
+          # EXPORTAR la CADENA COMPLETA como certificados públicos para el
+          # instalador (tools/cert_01.cer ... tools/cert_04.cer). Los .cer
+          # versionados pueden quedar DESACTUALIZADOS (p. ej. tras una
+          # rotación de CA): si el instalador empaquetara certs que NO
+          # corresponden a esta cadena, las firmas NUNCA serían de
+          # confianza en los equipos cliente. Mapeo por posición en la
+          # cadena construida (ChainElements[0] = HOJA, último = RAÍZ):
+          #   [0] hoja de firma           -> cert_04.cer (NO se instala:
+          #       viaja incrustada en los ejecutables firmados)
+          #   [1] issuing CA              -> cert_03.cer (LocalMachine\CA)
+          #   [2] intermedio de política  -> cert_02.cer (LocalMachine\CA)
+          #   [3] raíz autofirmada        -> cert_01.cer (LocalMachine\Root)
           # ----------------------------------------------------------------
-          $raiz = $cadena | Where-Object { $_.Subject -eq $_.Issuer } | Select-Object -First 1
-          if ($raiz) {
-            $destinoCer = Join-Path (Get-Location) "tools\MiCertificadoPublico.cer"
-            [IO.File]::WriteAllBytes($destinoCer, $raiz.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
-            Write-Host ("CERTIFICADO PÚBLICO RAÍZ exportado a tools/MiCertificadoPublico.cer: {0} (huella {1})" -f $raiz.Subject, $raiz.Thumbprint)
+          if ($cadenaAlmacen.ChainElements.Count -eq 4) {
+            $rolesCer = @('cert_04.cer', 'cert_03.cer', 'cert_02.cer', 'cert_01.cer')
+            for ($i = 0; $i -lt 4; $i++) {
+              $destinoCer = Join-Path (Get-Location) (Join-Path 'tools' $rolesCer[$i])
+              [IO.File]::WriteAllBytes($destinoCer, $cadenaAlmacen.ChainElements[$i].Certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+              Write-Host ("CERTIFICADO {0} exportado a tools/{1}: {2} (huella {3})" -f $rolesCer[$i], $rolesCer[$i], $cadenaAlmacen.ChainElements[$i].Certificate.Subject, $cadenaAlmacen.ChainElements[$i].Certificate.Thumbprint)
+            }
           } else {
-            Write-Warning "No se encontró raíz autofirmada en el PFX; el instalador usará el .cer versionado"
+            Write-Warning "La cadena del PFX no tiene 4 niveles; el instalador usará los .cer versionados de tools/"
           }
 
       # -------------------------------------------------------------------------

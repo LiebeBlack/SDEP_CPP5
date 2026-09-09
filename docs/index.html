@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDEP - Sistema de Gestión de Personal y Nómina | Documentación Centralizada</title>
-    <meta name="description" content="Plataforma de documentación centralizada y ultra-minimalista para el Sistema de Gestión de Personal y Nómina. Lector integrado de Markdown, tesis académica y documentación técnica.">
+    <title>Sistema de Gestión de Personal y Nómina | Documentación Oficial — LiebeBlack Systems</title>
+    <meta name="description" content="Portal oficial de documentación del Sistema de Gestión de Personal y Nómina de LiebeBlack Systems. Lector integrado de Markdown, tesis académica, catálogo centralizado y búsqueda instantánea.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>">
     
     <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -24,8 +24,9 @@
         <div class="container header-inner">
             <a href="#inicio" class="brand" aria-label="SDEP Inicio">
                 <span class="brand-icon">◆</span>
-                <span class="brand-name">SDEP</span>
-                <span class="brand-badge">v2.79</span>
+                <span class="brand-name brand-name-full">Sistema de Gestión de Personal</span>
+                <span class="brand-name brand-name-short">SDEP</span>
+                <span class="brand-badge">v2.80</span>
             </a>
 
             <nav class="nav-menu" id="nav-menu">
@@ -37,6 +38,10 @@
             </nav>
 
             <div class="header-actions">
+                <button class="icon-btn mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Abrir menú de navegación" aria-expanded="false" title="Menú">
+                    <span>☰</span>
+                </button>
+
                 <button class="search-trigger-btn" id="open-search-btn" title="Buscar documentación (Ctrl+K)">
                     <span class="search-icon">🔍</span>
                     <span>Buscar...</span>
@@ -66,7 +71,7 @@
             <section id="inicio" class="hero">
                 <a href="#catalogo" class="hero-pill-link">
                     <span class="hero-pill-dot"></span>
-                    <span>Versión 2.79 • 323 Tests Passing • 17 Documentos Indexados</span>
+                    <span>Versión 2.80 • 323 Tests Passing • 17 Documentos Indexados</span>
                 </a>
 
                 <h1 class="hero-title">
@@ -145,32 +150,9 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 python -m src.gui.main_window</code></pre>
-                <!-- GitHub Direct URL Live Reader Box -->
-                <div class="github-url-box">
-                    <div class="github-url-head">
-                        <div class="github-url-title">
-                            <span>⚡</span>
-                            <span>Lector en Vivo desde GitHub (Repositorio Oficial)</span>
-                        </div>
-                        <span class="github-url-sub">Abrir cualquier Markdown del repositorio en el visor web, con el mismo tema del portal.</span>
-                    </div>
-                    <form class="github-url-form" id="gh-url-form">
-                        <input type="url" id="gh-url-input" class="github-url-input" placeholder="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md" value="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md" required>
-                        <button type="submit" class="github-url-submit">
-                            <span>Renderizar en Web</span>
-                            <span>→</span>
-                        </button>
-                    </form>
-                    <div class="github-quick-chips">
-                        <span>Acceso rápido:</span>
-                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md">GUIA_USUARIO.md</button>
-                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/DOCUMENTACION_TECNICA.md">DOCUMENTACION_TECNICA.md</button>
-                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/README.md">README.md</button>
-                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/TESIS/CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md">CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md</button>
-                        <button type="button" class="github-chip" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/TESIS/CAPITULO_IV_RESULTADOS.md">CAPITULO_IV_RESULTADOS.md</button>
                     </div>
                 </div>
-            </section>
+        </section>
 
             <!-- Stats Metrics Section -->
             <div class="stats-strip">
@@ -494,7 +476,7 @@ python -m src.gui.main_window</code></pre>
                     <span><kbd class="kbd-shortcut">↵</kbd> Seleccionar</span>
                     <span><kbd class="kbd-shortcut">ESC</kbd> Cerrar</span>
                 </div>
-                <span>SDEP Search Engine</span>
+                <span>Buscador — Sistema de Gestión de Personal</span>
             </div>
         </div>
     </div>
@@ -513,10 +495,11 @@ python -m src.gui.main_window</code></pre>
                 <div class="footer-brand">
                     <div class="brand">
                         <span class="brand-icon">◆</span>
-                        <span>SDEP</span>
+                        <span class="brand-name brand-name-full">Sistema de Gestión de Personal</span>
+                        <span class="brand-name brand-name-short">SDEP</span>
                     </div>
                     <p>
-                        Sistema de Gestión de Personal y Nómina para instituciones educativas. Desarrollado con Python, SQLAlchemy y CustomTkinter bajo principios de arquitectura modular y código abierto.
+                        Sistema de Gestión de Personal y Nómina para instituciones educativas, desarrollado por LiebeBlack Systems con Python, SQLAlchemy y CustomTkinter bajo principios de arquitectura modular y código abierto.
                     </p>
                 </div>
 
@@ -559,7 +542,7 @@ python -m src.gui.main_window</code></pre>
             </div>
 
             <div class="footer-bottom">
-                <div>© 2026 SDEP • Sistema de Gestión de Personal y Nómina. Documentación ultra-minimalista.</div>
+                <div>© 2026 LiebeBlack Systems • Sistema de Gestión de Personal y Nómina</div>
                 <div>Licencia de Código Abierto • Python 3.10+</div>
             </div>
         </div>

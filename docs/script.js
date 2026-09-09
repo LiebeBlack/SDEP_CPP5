@@ -61,6 +61,22 @@
     }
 
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+
+    // --- 1b. Menú de Navegación Móvil ---
+    const mobileNavToggle = document.getElementById('mobile-nav-toggle');
+    const navMenu = document.getElementById('nav-menu');
+    if (mobileNavToggle && navMenu) {
+        mobileNavToggle.addEventListener('click', () => {
+            const abierto = navMenu.classList.toggle('open');
+            mobileNavToggle.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+        });
+        navMenu.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('open');
+                mobileNavToggle.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
     if (readerThemeToggleBtn) readerThemeToggleBtn.addEventListener('click', toggleTheme);
 
     // --- 2. Toast Notification ---
@@ -358,7 +374,7 @@
         // Show Reader Modal/View
         readerView.classList.add('active');
         document.body.style.overflow = 'hidden';
-        document.title = `${doc.title} | SDEP`;
+        document.title = `${doc.title} | Gestión de Personal`;
 
         // Update URL Hash only on first open or explicit navigation
         if (!isRefresh) {
@@ -539,7 +555,7 @@
 
                 readerView.classList.add('active');
                 document.body.style.overflow = 'hidden';
-                document.title = `${customDoc.title} | SDEP`;
+                document.title = `${customDoc.title} | Gestión de Personal`;
                 readerScrollContainer.scrollTop = 0;
                 setSyncBadgeStatus(true, 'GitHub Live (URL)');
                 showToast('Documento renderizado en la web con éxito');
@@ -555,7 +571,7 @@
     function closeDocument() {
         readerView.classList.remove('active');
         document.body.style.overflow = '';
-        document.title = 'SDEP - Sistema de Gestión de Personal y Nómina | Documentación Centralizada';
+        document.title = 'Sistema de Gestión de Personal y Nómina | Documentación Oficial — LiebeBlack Systems';
         currentDocId = null;
 
         if (window.location.hash.startsWith('#doc=')) {

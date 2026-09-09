@@ -4,7 +4,8 @@
 ;   ISCC.exe /DMyAppVersion=2.79 installer\setup.iss
 ;
 ; Compilación firmada (GitHub Actions - .github/workflows/release.yml):
-;   ISCC.exe /DMyAppVersion=1.0.0 /DMyVersionInfo=1.0.0 /DMyAppName=SDEP_CPP5 ^
+;   ISCC.exe /DMyAppVersion=1.0.0 /DMyVersionInfo=1.0.0 ^
+;           "/DMyAppName=Sistema de Gestión de Personal" ^
 ;           /DMyAppExeName=SDEP_CPP5.exe ^
 ;           /DMyOutputBaseFilename=SistemaGestionPersonal-Setup-1.0.0 ^
 ;           /DConFirmaCI=1 ^

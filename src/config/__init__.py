@@ -8,7 +8,4 @@ Configuración de la aplicación
 from .settings import Settings, settings
 from .database import DatabaseConfig, db_config, get_db
 
-__all__ = [
-    "DatabaseConfig", "db_config", "get_db",
-    "Settings", "settings"
-]
+__all__ = ["DatabaseConfig", "db_config", "get_db", "Settings", "settings"]

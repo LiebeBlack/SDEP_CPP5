@@ -7,14 +7,15 @@ Maneja el inicio y cierre de sesión, la verificación de credenciales
 cuentas con roles. Registra en auditoría cada operación.
 """
 
-from typing import Dict, List, Optional
-
 from sqlalchemy.orm import Session
 
 from src.models import Usuario, RolUsuario
 from src.repositories import UsuarioRepository
 from src.utils.security import SecurityValidator
 from src.utils.audit_logger import AuditEventType, get_audit_logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 MAX_INTENTOS_FALLIDOS = 5
 LONGITUD_MINIMA_PASSWORD = 6
@@ -68,18 +69,13 @@ class AuthService:
             if usuario.intentos_fallidos >= MAX_INTENTOS_FALLIDOS:
                 usuario.bloqueado = 1
                 self.session.commit()
-                self._audit_fallido(
-                    username, "cuenta bloqueada por intentos fallidos"
-                )
-                raise ValueError(
-                    "Demasiados intentos fallidos. La cuenta ha sido bloqueada."
-                )
+                self._audit_fallido(username, "cuenta bloqueada por intentos fallidos")
+                raise ValueError("Demasiados intentos fallidos. La cuenta ha sido bloqueada.")
             self.session.commit()
             restantes = MAX_INTENTOS_FALLIDOS - usuario.intentos_fallidos
             self._audit_fallido(username, "contraseña incorrecta")
             raise ValueError(
-                f"Usuario o contraseña incorrectos. "
-                f"Intentos restantes: {restantes}"
+                f"Usuario o contraseña incorrectos. " f"Intentos restantes: {restantes}"
             )
 
         # Éxito: resetear contadores y registrar acceso
@@ -97,7 +93,7 @@ class AuthService:
     # Cambio de contraseña
     # ------------------------------------------------------------------
     def cambiar_password(
-        self, usuario: Usuario, nueva_password: str, actual_password: Optional[str] = None
+        self, usuario: Usuario, nueva_password: str, actual_password: str | None = None
     ) -> bool:
         """
         Cambia la contraseña de un usuario
@@ -110,22 +106,20 @@ class AuthService:
                 nueva no cumple los requisitos
         """
         if actual_password is not None:
-            if not SecurityValidator.verify_password(
-                actual_password, usuario.password_hash
-            ):
+            if not SecurityValidator.verify_password(actual_password, usuario.password_hash):
                 raise ValueError("La contraseña actual es incorrecta")
 
         if len(nueva_password or "") < LONGITUD_MINIMA_PASSWORD:
             raise ValueError(
-                f"La nueva contraseña debe tener al menos "
-                f"{LONGITUD_MINIMA_PASSWORD} caracteres"
+                f"La nueva contraseña debe tener al menos " f"{LONGITUD_MINIMA_PASSWORD} caracteres"
             )
 
         usuario.password_hash = SecurityValidator.hash_password(nueva_password)
         usuario.debe_cambiar_password = 0
         self.session.commit()
         self._audit_exitoso(
-            AuditEventType.DATA_UPDATE, usuario.username,
+            AuditEventType.DATA_UPDATE,
+            usuario.username,
             entity_id=usuario.id,
             details={"operacion": "cambio_password"},
         )
@@ -135,8 +129,12 @@ class AuthService:
     # Administración de usuarios (admin)
     # ------------------------------------------------------------------
     def crear_usuario(
-        self, username: str, password: str, rol: str,
-        nombre_completo: str = "", debe_cambiar_password: bool = True,
+        self,
+        username: str,
+        password: str,
+        rol: str,
+        nombre_completo: str = "",
+        debe_cambiar_password: bool = True,
     ) -> Usuario:
         """Crea un nuevo usuario de sistema"""
         username = (username or "").strip()
@@ -164,14 +162,15 @@ class AuthService:
         )
         creado = self.repository.create(usuario)
         self._audit_exitoso(
-            AuditEventType.DATA_CREATE, creado.username,
+            AuditEventType.DATA_CREATE,
+            creado.username,
             entity_id=creado.id,
             details={"rol": rol},
         )
         return creado
 
     def actualizar_usuario(
-        self, usuario_id: int, datos: Dict, usuario_actual: Optional[Usuario] = None
+        self, usuario_id: int, datos: dict, usuario_actual: Usuario | None = None
     ) -> Usuario:
         """
         Actualiza datos de un usuario (rol, nombre, estado)
@@ -210,38 +209,38 @@ class AuthService:
             usuario.activo = 1 if int(datos["activo"]) else 0
 
         if "password" in datos and datos["password"]:
-            usuario.password_hash = SecurityValidator.hash_password(
-                str(datos["password"])
-            )
+            usuario.password_hash = SecurityValidator.hash_password(str(datos["password"]))
             usuario.debe_cambiar_password = 1
 
         self.session.commit()
         self._audit_exitoso(
-            AuditEventType.DATA_UPDATE, usuario.username,
+            AuditEventType.DATA_UPDATE,
+            usuario.username,
             entity_id=usuario.id,
             details={"operacion": "actualizar_usuario"},
         )
         return usuario
 
-    def listar_usuarios(self) -> List[Usuario]:
+    def listar_usuarios(self) -> list[Usuario]:
         """Lista todos los usuarios del sistema"""
         return self.repository.get_all()
 
-    def listar_roles(self) -> List[str]:
+    def listar_roles(self) -> list[str]:
         """Lista los roles disponibles"""
-        return RolUsuario.values()
+        return [rol.value for rol in RolUsuario]
 
     # ------------------------------------------------------------------
     # Utilidades
     # ------------------------------------------------------------------
-    def usuario_por_id(self, usuario_id: int) -> Optional[Usuario]:
+    def usuario_por_id(self, usuario_id: int) -> Usuario | None:
         return self.repository.get_by_id(usuario_id)
 
-    def usuario_por_username(self, username: str) -> Optional[Usuario]:
+    def usuario_por_username(self, username: str) -> Usuario | None:
         return self.repository.get_by_username(username)
 
     def _now(self):
         from src.utils.helpers import utcnow
+
         return utcnow()
 
     def _audit_exitoso(self, event_type, username, entity_id=None, details=None):
@@ -257,7 +256,9 @@ class AuthService:
                     success=True,
                 )
         except Exception:
-            pass
+            logger.warning(
+                "%s: operación auxiliar falló (se continúa)", "_audit_exitoso", exc_info=True
+            )
 
     def _audit_fallido(self, username, motivo):
         try:
@@ -271,10 +272,12 @@ class AuthService:
                     success=False,
                 )
         except Exception:
-            pass
+            logger.warning(
+                "%s: operación auxiliar falló (se continúa)", "_audit_fallido", exc_info=True
+            )
 
 
-def ensure_default_admin(session: Session) -> Usuario:
+def ensure_default_admin(session: Session) -> Usuario | None:
     """
     Crea el usuario administrador por defecto si no existe ningún usuario
 

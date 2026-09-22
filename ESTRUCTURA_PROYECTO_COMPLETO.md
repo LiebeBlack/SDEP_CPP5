@@ -498,7 +498,7 @@ project/
 🔄 Feature updates (semver versioning, changelog automático)
 🔄 Bug fixes (hotfix branches, emergency deployments de EXE)
 🔄 Deprecation warnings (warnings module, deprecation decorators)
-🔄 Python version updates (3.10 → 3.11 → 3.12 migrations)
+🔄 Python version updates (3.10 → 3.11 → 3.12 → 3.15 migration)
 🔄 Auto-updates (mecanismo de actualización automática en la app)
 ```
 
@@ -680,4 +680,4 @@ Un proyecto de software Python exitoso requiere:
 
 **Última actualización:** 2026-08-10
 **Versión:** 1.0.0-python
-**Stack:** Python 3.11+
+**Stack:** Python 3.15+

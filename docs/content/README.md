@@ -73,7 +73,7 @@ Este sistema proporciona una solución integral para la administración de recur
 
 ## 📋 Requisitos del Sistema
 
-- Python 3.10 o superior
+- Python 3.15 o superior
 - Windows 10/11
 - 4GB RAM mínimo
 - 500MB espacio en disco
@@ -103,8 +103,8 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
    desinstalador); incluye el actualizador dentro del instalador y lo
    programa en el Programador de tareas cada 2 días.
 5. **Compilación Linux**: compila el mismo `spec/app.spec` dentro de un
-   contenedor **Ubuntu 22.04** (glibc 2.35) y empaqueta la versión portable
-   de Linux en un `tar.gz`. El binario funciona en Ubuntu 22.04, Debian 12
+   contenedor **Debian 13** (glibc 2.41) y empaqueta la versión portable
+   de Linux en un `tar.gz`. El binario funciona en Debian 13, Ubuntu 24.04 LTS
    y Debian 13; se autoverifica con `--selftest` bajo `xvfb-run` en Ubuntu
    22.04 y se prueba dentro de contenedores `debian:12` y `debian:13`.
 6. **Artefactos**: sube Setup.exe, ZIP portable (Windows), tar.gz (Linux)
@@ -121,8 +121,8 @@ git push origin main
 
 Para una release versionada (opcional):
 ```bash
-git tag v2.79
-git push origin v2.79
+git tag v2.81
+git push origin v2.81
 ```
 
 ## 🔧 Instalación
@@ -365,7 +365,7 @@ La configuración se puede modificar desde la sección "Configuración" de la ap
 
 ### Error al iniciar la aplicación
 
-- Verifique que Python 3.10+ esté instalado
+- Verifique que Python 3.15+ esté instalado
 - Instale las dependencias: `pip install -r requirements.txt`
 - Verifique que los directorios `documents`, `photos`, `exports` existan
 
@@ -394,5 +394,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 2.79  
+**Versión**: 2.81  
 **Última actualización**: 2026

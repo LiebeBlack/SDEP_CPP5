@@ -52,6 +52,7 @@ def empleado_completo(session):
 
 # --- Ficha del empleado (PDF) ---
 
+
 def test_generar_ficha_empleado_pdf(session, empleado_completo, tmp_path):
     salida = str(tmp_path / "ficha.pdf")
     resultado = PDFGenerator().generate_ficha_empleado(empleado_completo, salida)
@@ -83,6 +84,7 @@ def test_generar_ficha_estado_inactivo(session, tmp_path):
 
 
 # --- Planilla de nómina (PDF) ---
+
 
 def _filas_planilla():
     return [
@@ -124,7 +126,8 @@ def _filas_planilla():
 def test_generar_planilla_pdf(session, tmp_path):
     salida = str(tmp_path / "planilla.pdf")
     resultado = PDFGenerator().generate_reporte_nomina(
-        _filas_planilla(), salida, titulo_periodo="Periodo: 01/08/2026 a 31/08/2026")
+        _filas_planilla(), salida, titulo_periodo="Periodo: 01/08/2026 a 31/08/2026"
+    )
     assert resultado == salida
     assert os.path.getsize(salida) > 1500
     with open(salida, "rb") as archivo:
@@ -138,26 +141,29 @@ def test_generar_planilla_sin_pagos_error(session, tmp_path):
 
 def test_planilla_con_empleado_real(session, empleado_completo, tmp_path):
     """Una fila armada desde un empleado real de la BD genera el PDF"""
-    filas = [{
-        "nombre_empleado": empleado_completo.nombre_completo,
-        "cedula": empleado_completo.cedula,
-        "cargo": empleado_completo.cargo,
-        "salario_base": float(empleado_completo.salario_base),
-        "bonificaciones": 0.0,
-        "horas_extra": 0.0,
-        "deduccion_seguro": 55.5,
-        "deduccion_pension": 134.13,
-        "deduccion_impuesto": 0.0,
-        "otras_deducciones": 0.0,
-        "descuentos": 0.0,
-        "monto_neto": 1660.37,
-    }]
+    filas = [
+        {
+            "nombre_empleado": empleado_completo.nombre_completo,
+            "cedula": empleado_completo.cedula,
+            "cargo": empleado_completo.cargo,
+            "salario_base": float(empleado_completo.salario_base),
+            "bonificaciones": 0.0,
+            "horas_extra": 0.0,
+            "deduccion_seguro": 55.5,
+            "deduccion_pension": 134.13,
+            "deduccion_impuesto": 0.0,
+            "otras_deducciones": 0.0,
+            "descuentos": 0.0,
+            "monto_neto": 1660.37,
+        }
+    ]
     salida = str(tmp_path / "planilla_empleado.pdf")
     PDFGenerator().generate_reporte_nomina(filas, salida)
     assert os.path.getsize(salida) > 2000
 
 
 # --- Exportación CSV / Excel ---
+
 
 @pytest.fixture()
 def filas_exportacion():
@@ -214,19 +220,23 @@ def test_exportar_xlsx_sanea_caracteres_control(tmp_path):
 
 # --- Reporte de incidencias ---
 
+
 def test_generar_reporte_incidencias_pdf(session, tmp_path):
-    filas = [{
-        "nombre_empleado": "Pedro Lara",
-        "tipo_incidencia": "permiso",
-        "fecha_inicio": date(2026, 8, 10),
-        "fecha_fin": date(2026, 8, 12),
-        "dias_solicitados": 3,
-        "estado": "pendiente",
-        "motivo": "Trámite personal",
-    }]
+    filas = [
+        {
+            "nombre_empleado": "Pedro Lara",
+            "tipo_incidencia": "permiso",
+            "fecha_inicio": date(2026, 8, 10),
+            "fecha_fin": date(2026, 8, 12),
+            "dias_solicitados": 3,
+            "estado": "pendiente",
+            "motivo": "Trámite personal",
+        }
+    ]
     salida = str(tmp_path / "incidencias.pdf")
     resultado = PDFGenerator().generate_reporte_incidencias(
-        filas, salida, titulo="Empleado: Pedro Lara")
+        filas, salida, titulo="Empleado: Pedro Lara"
+    )
     assert resultado == salida
     assert os.path.getsize(salida) > 1500
     with open(salida, "rb") as archivo:
@@ -247,34 +257,44 @@ def test_incidencia_service_listar_todas(session):
     emp = emp_svc.crear_empleado(_datos_empleado(cedula="33333333-1"))
     inc_svc = IncidenciaService(session)
     hoy = date.today()
-    inc_svc.crear_incidencia({
-        "empleado_id": emp.id, "tipo_incidencia": "permiso",
-        "fecha_inicio": hoy + timedelta(days=1),
-        "fecha_fin": hoy + timedelta(days=2),
-        "motivo": "Trámite personal",
-    })
-    inc_svc.crear_incidencia({
-        "empleado_id": emp.id, "tipo_incidencia": "ausencia",
-        "fecha_inicio": hoy + timedelta(days=5),
-        "fecha_fin": hoy + timedelta(days=6),
-        "motivo": "Cita médica",
-    })
+    inc_svc.crear_incidencia(
+        {
+            "empleado_id": emp.id,
+            "tipo_incidencia": "permiso",
+            "fecha_inicio": hoy + timedelta(days=1),
+            "fecha_fin": hoy + timedelta(days=2),
+            "motivo": "Trámite personal",
+        }
+    )
+    inc_svc.crear_incidencia(
+        {
+            "empleado_id": emp.id,
+            "tipo_incidencia": "ausencia",
+            "fecha_inicio": hoy + timedelta(days=5),
+            "fecha_fin": hoy + timedelta(days=6),
+            "motivo": "Cita médica",
+        }
+    )
     assert len(inc_svc.listar_todas()) == 2
 
 
 # --- Control de vencimientos ---
 
+
 def test_generar_reporte_vencimientos_pdf(session, tmp_path):
-    filas = [{
-        "nombre_empleado": "María Fernández",
-        "tipo_documento": "cedula",
-        "titulo": "Cédula de identidad",
-        "fecha_vencimiento": date(2026, 9, 15),
-        "estado": "Por vencer",
-    }]
+    filas = [
+        {
+            "nombre_empleado": "María Fernández",
+            "tipo_documento": "cedula",
+            "titulo": "Cédula de identidad",
+            "fecha_vencimiento": date(2026, 9, 15),
+            "estado": "Por vencer",
+        }
+    ]
     salida = str(tmp_path / "vencimientos.pdf")
     resultado = PDFGenerator().generate_reporte_vencimientos(
-        filas, salida, titulo="Generado el 01/09/2026")
+        filas, salida, titulo="Generado el 01/09/2026"
+    )
     assert resultado == salida
     assert os.path.getsize(salida) > 1500
     with open(salida, "rb") as archivo:
@@ -295,27 +315,39 @@ def test_documentos_vencidos_y_por_vencer(session, storage):
     emp = emp_svc.crear_empleado(_datos_empleado(cedula="44444444-1"))
     doc_svc = DocumentoService(session)
     hoy = date.today()
-    doc_svc.crear_documento({
-        "empleado_id": emp.id, "tipo_documento": "cedula",
-        "titulo": "Cédula vencida",
-        "fecha_emision": hoy - timedelta(days=400),
-        "fecha_vencimiento": hoy - timedelta(days=10),
-        "nombre_archivo": "vencida.pdf",
-    }, b"%PDF-x")
-    doc_svc.crear_documento({
-        "empleado_id": emp.id, "tipo_documento": "reposo",
-        "titulo": "Reposo por vencer",
-        "fecha_emision": hoy - timedelta(days=5),
-        "fecha_vencimiento": hoy + timedelta(days=5),
-        "nombre_archivo": "reposo.pdf",
-    }, b"%PDF-x")
-    doc_svc.crear_documento({
-        "empleado_id": emp.id, "tipo_documento": "titulo",
-        "titulo": "Título vigente",
-        "fecha_emision": hoy - timedelta(days=300),
-        "fecha_vencimiento": hoy + timedelta(days=200),
-        "nombre_archivo": "titulo.pdf",
-    }, b"%PDF-x")
+    doc_svc.crear_documento(
+        {
+            "empleado_id": emp.id,
+            "tipo_documento": "cedula",
+            "titulo": "Cédula vencida",
+            "fecha_emision": hoy - timedelta(days=400),
+            "fecha_vencimiento": hoy - timedelta(days=10),
+            "nombre_archivo": "vencida.pdf",
+        },
+        b"%PDF-x",
+    )
+    doc_svc.crear_documento(
+        {
+            "empleado_id": emp.id,
+            "tipo_documento": "reposo",
+            "titulo": "Reposo por vencer",
+            "fecha_emision": hoy - timedelta(days=5),
+            "fecha_vencimiento": hoy + timedelta(days=5),
+            "nombre_archivo": "reposo.pdf",
+        },
+        b"%PDF-x",
+    )
+    doc_svc.crear_documento(
+        {
+            "empleado_id": emp.id,
+            "tipo_documento": "titulo",
+            "titulo": "Título vigente",
+            "fecha_emision": hoy - timedelta(days=300),
+            "fecha_vencimiento": hoy + timedelta(days=200),
+            "nombre_archivo": "titulo.pdf",
+        },
+        b"%PDF-x",
+    )
     assert len(doc_svc.listar_vencidos()) == 1
     assert len(doc_svc.listar_por_vencer(30)) == 1
     assert len(doc_svc.listar_todas()) == 3

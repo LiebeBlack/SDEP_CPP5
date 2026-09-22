@@ -9,12 +9,17 @@ software funciona en cualquier cuenta de Windows sin privilegios de
 administrador, sin importar dónde se haya instalado el ejecutable.
 """
 
+import importlib
 import os
 import sys
 import json
 import tempfile
+from types import ModuleType
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Cargar variables de entorno
 load_dotenv()
@@ -22,13 +27,14 @@ load_dotenv()
 # Nombre de la carpeta de datos cuando la app está instalada en Windows
 APP_DATA_DIR_NAME = "SistemaGestionPersonal"
 
-APP_VERSION_DEFAULT = "2.79"
+APP_VERSION_DEFAULT = "2.81"
 
 # Información de compilación incrustada en el build (generada por build.py
 # o por el CI como src/config/build_info.py). En desarrollo, sin ese archivo,
 # se lee la versión desde VERSION en la raíz del repositorio.
+_build_info: ModuleType | None
 try:
-    from . import build_info as _build_info  # generado en el build
+    _build_info = importlib.import_module("src.config.build_info")  # generado en el build
 except ImportError:  # pragma: no cover - depende del entorno de build
     _build_info = None
 
@@ -121,18 +127,16 @@ class Settings:
             version_incrustada = _version_desarrollo()
         # Prioridad: variable de entorno > versión incrustada en el build >
         # archivo VERSION (desarrollo) > constante por defecto.
-        self.app_version = (
-            os.getenv("APP_VERSION") or version_incrustada or APP_VERSION_DEFAULT
-        )
+        self.app_version = os.getenv("APP_VERSION") or version_incrustada or APP_VERSION_DEFAULT
         self.debug = os.getenv("DEBUG", "False").lower() == "true"
-        
+
         # Base de datos
         db_env_path = os.getenv("DATABASE_PATH", "personal_management.db")
         if os.path.isabs(db_env_path):
             self.database_path = db_env_path
         else:
             self.database_path = str(self.base_dir / db_env_path)
-        
+
         db_env_url = os.getenv("DATABASE_URL")
         if db_env_url:
             self.database_url = db_env_url
@@ -140,12 +144,12 @@ class Settings:
             # Normalizar slashes para URL de SQLite en Windows
             db_posix = Path(self.database_path).as_posix()
             self.database_url = f"sqlite:///{db_posix}"
-        
+
         # Rutas de archivos (inicializar como absolutas)
         self.documents_path = str(self.base_dir / os.getenv("DOCUMENTS_PATH", "documents"))
         self.photos_path = str(self.base_dir / os.getenv("PHOTOS_PATH", "photos"))
         self.exports_path = str(self.base_dir / os.getenv("EXPORTS_PATH", "exports"))
-        
+
         # Estructura limpia y aislada en la carpeta del usuario:
         # caché, temporales, logs, respaldos y configuración local
         self.cache_dir = str(self.base_dir / os.getenv("CACHE_DIR", "cache"))
@@ -153,26 +157,26 @@ class Settings:
         self.logs_dir = str(self.base_dir / "logs")
         self.backups_dir = str(self.base_dir / "backups")
         self.config_path = str(self.base_dir / os.getenv("CONFIG_FILE", "config.json"))
-        
+
         # PDF
         self.pdf_author = os.getenv("PDF_AUTHOR", "Sistema de Gestión de Personal")
         self.pdf_title = os.getenv("PDF_TITLE", "Documentos Oficiales")
-        
+
         # Logging
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
         self.log_file = str(self.base_dir / os.getenv("LOG_FILE", "app.log"))
-        
+
         # Crear directorios necesarios (nunca aborta el arranque)
         self._ensure_directories()
-        
+
         # Aislar los archivos temporales de la aplicación (ReportLab,
         # CustomTkinter, PIL, etc.) en tmp/ dentro de la carpeta de datos
         # del usuario, en lugar de TEMP del sistema compartido.
         try:
             tempfile.tempdir = self.temp_dir
         except Exception:
-            pass
-    
+            logger.warning("%s: operación auxiliar falló (se continúa)", "__init__", exc_info=True)
+
     def _ensure_directories(self):
         """Asegura que los directorios necesarios existan sin abortar"""
         directorios = [
@@ -186,13 +190,13 @@ class Settings:
             str(Path(self.config_path).parent),
             str(Path(self.log_file).parent),
         ]
-        
+
         for directorio in directorios:
             try:
                 Path(directorio).mkdir(parents=True, exist_ok=True)
             except (OSError, PermissionError):
-                print(f"ADVERTENCIA: no se pudo crear el directorio {directorio}")
-    
+                logger.warning("No se pudo crear el directorio %s", directorio)
+
     # ------------------------------------------------------------------
     # Configuración local del usuario (config.json)
     # ------------------------------------------------------------------
@@ -221,7 +225,7 @@ class Settings:
             if ruta.exists():
                 ruta.rename(ruta.with_suffix(".json.corrupto"))
         except OSError:
-            pass
+            logger.warning("No se pudo apartar el config.json corrupto", exc_info=True)
 
     def save_config_json(self, datos: dict) -> bool:
         """
@@ -246,7 +250,7 @@ class Settings:
                 if temporal.exists():
                     temporal.unlink()
             except OSError:
-                pass
+                logger.debug("No se pudo eliminar el archivo temporal", exc_info=True)
             return False
 
     def get_config_value(self, clave: str, default=None):
@@ -262,11 +266,11 @@ class Settings:
     def get_document_path(self, filename: str) -> str:
         """Retorna la ruta completa para un documento"""
         return str(Path(self.documents_path) / filename)
-    
+
     def get_photo_path(self, filename: str) -> str:
         """Retorna la ruta completa para una foto"""
         return str(Path(self.photos_path) / filename)
-    
+
     def get_export_path(self, filename: str) -> str:
         """Retorna la ruta completa para un archivo exportado"""
         return str(Path(self.exports_path) / filename)

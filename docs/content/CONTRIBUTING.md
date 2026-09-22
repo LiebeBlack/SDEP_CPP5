@@ -40,7 +40,7 @@ Report unacceptable behavior to the project maintainers through GitHub Issues.
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.15 or higher
 - Git
 - GitHub account
 - Basic knowledge of Python and GUI development
@@ -391,7 +391,7 @@ gh workflow run build.yml
 git push origin main
 
 # Optional: versioned release from a tag
-git tag v2.79 && git push origin v2.79
+git tag v2.81 && git push origin v2.81
 ```
 
 ---
@@ -421,7 +421,7 @@ Add screenshots if applicable
 
 ## Environment
 - OS: [e.g. Windows 11]
-- Python Version: [e.g. 3.11]
+- Python Version: [e.g. 3.15]
 - Application Version: [e.g. 1.0.0]
 
 ## Additional Context

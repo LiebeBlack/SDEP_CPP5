@@ -8,8 +8,9 @@ archivos .db duplicados según el directorio de trabajo.
 """
 
 import logging
+import re
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -44,9 +45,24 @@ def migrar_columnas(engine) -> int:
     Se ejecuta en cada arranque (create_tables) para que las bases de datos
     creadas con versiones anteriores ganen los campos nuevos sin perder datos.
 
+    Seguridad: la sentencia ALTER TABLE se construye con interpolación, así
+    que columna y tipo se validan contra listas blancas estrictas antes de
+    tocar la base (defensa en profundidad aunque la fuente sea interna).
+
     Returns:
         int: Cantidad de columnas agregadas
     """
+    # Lista blanca: nombre de columna y tipos SQL permitidos en la DDL
+    patron_columna = re.compile(r"^[a-z_][a-z0-9_]*$")
+    patron_tipo = re.compile(
+        r"^(VARCHAR\(\d+\)|TEXT|INTEGER|REAL|BLOB|NUMERIC\(\d+(,\s*\d+)?\))$",
+        re.IGNORECASE,
+    )
+    for columna, tipo in MIGRACIONES_EMPLEADOS.items():
+        if not patron_columna.fullmatch(columna) or not patron_tipo.fullmatch(tipo):
+            raise ValueError(
+                f"MIGRACIONES_EMPLEADOS contiene una entrada no válida: " f"{columna!r} -> {tipo!r}"
+            )
     try:
         with engine.begin() as conn:
             existe = conn.execute(
@@ -62,17 +78,18 @@ def migrar_columnas(engine) -> int:
             ]
             if not faltantes:
                 return 0
-            
+
             # Respaldo automático ANTES de modificar el esquema: si la
             # migración falla a mitad de camino (disco lleno, corte de
             # energía, archivo bloqueado), la base nunca queda en un
             # estado a medio migrar sin recuperación posible.
             try:
                 from src.utils.backup_manager import get_backup_manager
+
                 get_backup_manager().create_backup("pre_migracion", compress=True)
             except Exception as e:
                 logger.warning(f"No se pudo crear backup antes de migrar el esquema: {e}")
-            
+
             for columna, tipo in faltantes:
                 conn.execute(text(f"ALTER TABLE empleados ADD COLUMN {columna} {tipo}"))
                 logger.info(f"Migración: columna empleados.{columna} agregada")
@@ -96,32 +113,34 @@ class DatabaseConfig:
         self._ensure_data_directory()
 
         self.engine = self._create_engine()
-        self.SessionFactory = sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=self.engine
-        )
+        self.SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.SessionLocal = scoped_session(self.SessionFactory)
 
         logger.info(f"Base de datos configurada: {self.database_path}")
 
-    def _safe_log_error(self, error: Exception, context: Dict = None):
+    def _safe_log_error(self, error: Exception, context: dict | None = None):
         try:
             from src.utils.audit_logger import get_audit_logger
+
             audit = get_audit_logger()
             if audit:
                 audit.log_error(error, context=context)
         except Exception:
-            pass
+            logger.warning(
+                "%s: operación auxiliar falló (se continúa)", "_safe_log_error", exc_info=True
+            )
 
-    def _safe_log_event(self, event_type, details: Dict = None):
+    def _safe_log_event(self, event_type, details: dict | None = None):
         try:
             from src.utils.audit_logger import get_audit_logger
+
             audit = get_audit_logger()
             if audit:
                 audit.log_system_event(event_type, details=details)
         except Exception:
-            pass
+            logger.warning(
+                "%s: operación auxiliar falló (se continúa)", "_safe_log_event", exc_info=True
+            )
 
     def _ensure_data_directory(self):
         db_path = Path(self.database_path)
@@ -159,6 +178,7 @@ class DatabaseConfig:
         try:
             try:
                 from src.utils.backup_manager import get_backup_manager
+
                 backup_mgr = get_backup_manager()
                 backup_info = backup_mgr.create_backup("pre_drop_tables", compress=True)
                 logger.info(f"Backup creado antes de eliminar tablas: {backup_info.get('name')}")
@@ -237,10 +257,12 @@ class DatabaseConfig:
 
             # Crear backup inicial una sola vez (si la BD es nueva)
             from pathlib import Path as _Path
+
             db_file = _Path(self.database_path)
             if not db_file.exists() or db_file.stat().st_size == 0:
                 try:
                     from src.utils.backup_manager import get_backup_manager
+
                     get_backup_manager().create_backup("initial_setup", compress=True)
                 except Exception as e:
                     logger.warning(f"No se pudo crear backup inicial: {e}")
@@ -248,9 +270,12 @@ class DatabaseConfig:
             logger.info("Base de datos inicializada exitosamente")
             try:
                 from src.utils.audit_logger import AuditEventType
+
                 self._safe_log_event(AuditEventType.SYSTEM_START, details={"operation": "init_db"})
             except Exception:
-                pass
+                logger.warning(
+                    "%s: operación auxiliar falló (se continúa)", "init_db", exc_info=True
+                )
         except Exception as e:
             logger.error(f"Error inicializando base de datos: {e}")
             self._safe_log_error(e, context={"operation": "init_db"})
@@ -281,44 +306,104 @@ class DatabaseConfig:
                 return
 
             configuraciones = [
-                Configuracion(clave="nombre_institucion", valor="Institución Educativa",
-                              descripcion="Nombre de la institución educativa",
-                              tipo_dato="string", categoria="general"),
-                Configuracion(clave="ruc", valor="", descripcion="RUC de la institución",
-                              tipo_dato="string", categoria="general"),
-                Configuracion(clave="direccion", valor="", descripcion="Dirección de la institución",
-                              tipo_dato="string", categoria="general"),
-                Configuracion(clave="telefono", valor="", descripcion="Teléfono de la institución",
-                              tipo_dato="string", categoria="general"),
-                Configuracion(clave="email", valor="", descripcion="Email de la institución",
-                              tipo_dato="string", categoria="general"),
-                Configuracion(clave="porcentaje_seguro", valor="4.5",
-                              descripcion="Porcentaje de deducción por seguro social",
-                              tipo_dato="float", categoria="nomina"),
-                Configuracion(clave="porcentaje_pension", valor="5.0",
-                              descripcion="Porcentaje de deducción por pensión",
-                              tipo_dato="float", categoria="nomina"),
-                Configuracion(clave="porcentaje_impuesto", valor="0.0",
-                              descripcion="Porcentaje de deducción por impuesto",
-                              tipo_dato="float", categoria="nomina"),
-                Configuracion(clave="salario_minimo", valor="130.0",
-                              descripcion="Salario mínimo mensual",
-                              tipo_dato="float", categoria="nomina"),
-                Configuracion(clave="dias_vacaciones_anual", valor="15",
-                              descripcion="Días de vacaciones anuales",
-                              tipo_dato="int", categoria="recursos_humanos"),
-                Configuracion(clave="horas_laborales_semana", valor="40",
-                              descripcion="Horas laborales semanales",
-                              tipo_dato="int", categoria="recursos_humanos"),
-                Configuracion(clave="backup_enabled", valor="true",
-                              descripcion="Habilitar backups automáticos",
-                              tipo_dato="bool", categoria="seguridad"),
-                Configuracion(clave="backup_interval_hours", valor="24",
-                              descripcion="Intervalo de backups en horas",
-                              tipo_dato="int", categoria="seguridad"),
-                Configuracion(clave="audit_enabled", valor="true",
-                              descripcion="Habilitar auditoría de eventos",
-                              tipo_dato="bool", categoria="seguridad"),
+                Configuracion(
+                    clave="nombre_institucion",
+                    valor="Institución Educativa",
+                    descripcion="Nombre de la institución educativa",
+                    tipo_dato="string",
+                    categoria="general",
+                ),
+                Configuracion(
+                    clave="ruc",
+                    valor="",
+                    descripcion="RUC de la institución",
+                    tipo_dato="string",
+                    categoria="general",
+                ),
+                Configuracion(
+                    clave="direccion",
+                    valor="",
+                    descripcion="Dirección de la institución",
+                    tipo_dato="string",
+                    categoria="general",
+                ),
+                Configuracion(
+                    clave="telefono",
+                    valor="",
+                    descripcion="Teléfono de la institución",
+                    tipo_dato="string",
+                    categoria="general",
+                ),
+                Configuracion(
+                    clave="email",
+                    valor="",
+                    descripcion="Email de la institución",
+                    tipo_dato="string",
+                    categoria="general",
+                ),
+                Configuracion(
+                    clave="porcentaje_seguro",
+                    valor="4.5",
+                    descripcion="Porcentaje de deducción por seguro social",
+                    tipo_dato="float",
+                    categoria="nomina",
+                ),
+                Configuracion(
+                    clave="porcentaje_pension",
+                    valor="5.0",
+                    descripcion="Porcentaje de deducción por pensión",
+                    tipo_dato="float",
+                    categoria="nomina",
+                ),
+                Configuracion(
+                    clave="porcentaje_impuesto",
+                    valor="0.0",
+                    descripcion="Porcentaje de deducción por impuesto",
+                    tipo_dato="float",
+                    categoria="nomina",
+                ),
+                Configuracion(
+                    clave="salario_minimo",
+                    valor="130.0",
+                    descripcion="Salario mínimo mensual",
+                    tipo_dato="float",
+                    categoria="nomina",
+                ),
+                Configuracion(
+                    clave="dias_vacaciones_anual",
+                    valor="15",
+                    descripcion="Días de vacaciones anuales",
+                    tipo_dato="int",
+                    categoria="recursos_humanos",
+                ),
+                Configuracion(
+                    clave="horas_laborales_semana",
+                    valor="40",
+                    descripcion="Horas laborales semanales",
+                    tipo_dato="int",
+                    categoria="recursos_humanos",
+                ),
+                Configuracion(
+                    clave="backup_enabled",
+                    valor="true",
+                    descripcion="Habilitar backups automáticos",
+                    tipo_dato="bool",
+                    categoria="seguridad",
+                ),
+                Configuracion(
+                    clave="backup_interval_hours",
+                    valor="24",
+                    descripcion="Intervalo de backups en horas",
+                    tipo_dato="int",
+                    categoria="seguridad",
+                ),
+                Configuracion(
+                    clave="audit_enabled",
+                    valor="true",
+                    descripcion="Habilitar auditoría de eventos",
+                    tipo_dato="bool",
+                    categoria="seguridad",
+                ),
             ]
             session.add_all(configuraciones)
             session.commit()
@@ -336,20 +421,24 @@ class DatabaseConfig:
         session = self.get_session()
         try:
             from src.models import Usuario
+
             if session.query(Usuario).count() > 0:
                 return
             from src.services.auth_service import ensure_default_admin
+
             ensure_default_admin(session)
         except Exception as e:
             logger.warning(f"No se pudo crear el usuario inicial: {e}")
         finally:
             self.close_session(session)
 
-    def create_backup(self, backup_name: Optional[str] = None) -> Dict:
+    def create_backup(self, backup_name: str | None = None) -> dict:
         """Crea un backup de la base de datos"""
         try:
             from src.utils.backup_manager import get_backup_manager
-            return get_backup_manager().create_backup(backup_name)
+
+            resultado: dict[str, Any] = get_backup_manager().create_backup(backup_name)
+            return resultado
         except Exception as e:
             logger.error(f"Error creando backup: {e}")
             self._safe_log_error(e, context={"operation": "create_backup"})
@@ -359,32 +448,41 @@ class DatabaseConfig:
         """Restaura un backup de la base de datos"""
         try:
             from src.utils.backup_manager import get_backup_manager
+
             result = get_backup_manager().restore_backup(backup_name)
             try:
                 from src.utils.audit_logger import AuditEventType
-                self._safe_log_event(AuditEventType.SYSTEM_RESTORE, details={"backup_name": backup_name})
+
+                self._safe_log_event(
+                    AuditEventType.SYSTEM_RESTORE, details={"backup_name": backup_name}
+                )
             except Exception:
-                pass
-            return result
+                logger.warning(
+                    "%s: operación auxiliar falló (se continúa)", "restore_backup", exc_info=True
+                )
+            return bool(result)
         except Exception as e:
             logger.error(f"Error restaurando backup: {e}")
-            self._safe_log_error(e, context={"operation": "restore_backup", "backup_name": backup_name})
+            self._safe_log_error(
+                e, context={"operation": "restore_backup", "backup_name": backup_name}
+            )
             raise
 
-    def get_backup_status(self) -> Dict:
+    def get_backup_status(self) -> dict:
         """Obtiene el estado del sistema de backups"""
         try:
             from src.utils.backup_manager import get_backup_manager
+
             backup_mgr = get_backup_manager()
             backups = backup_mgr.list_backups()
             # Leer la preferencia real de configuración; ante cualquier
             # error se conserva el valor por defecto (habilitado).
             try:
                 from src.repositories import ConfiguracionRepository
+
                 session = self.get_session()
                 try:
-                    habilitado = ConfiguracionRepository(session).get_valor(
-                        "backup_enabled", True)
+                    habilitado = ConfiguracionRepository(session).get_valor("backup_enabled", True)
                 finally:
                     self.close_session(session)
             except Exception:

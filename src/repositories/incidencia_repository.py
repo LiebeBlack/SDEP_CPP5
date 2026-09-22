@@ -1,4 +1,3 @@
-from typing import List, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from datetime import date
@@ -12,86 +11,109 @@ logger = logging.getLogger(__name__)
 
 class IncidenciaRepository(BaseRepository[Incidencia]):
     """Repositorio de incidencias"""
-    
+
     def __init__(self, session: Session):
         super().__init__(Incidencia, session)
-    
-    def get_by_empleado(self, empleado_id: int) -> List[Incidencia]:
+
+    def get_by_empleado(self, empleado_id: int) -> list[Incidencia]:
         """Obtiene incidencias de un empleado"""
-        return self.session.query(Incidencia).filter(
-            Incidencia.empleado_id == empleado_id
-        ).order_by(Incidencia.fecha_inicio.desc()).all()
-    
-    def get_by_tipo(self, tipo: Union[str, TipoIncidencia]) -> List[Incidencia]:
+        return (
+            self.session.query(Incidencia)
+            .filter(Incidencia.empleado_id == empleado_id)
+            .order_by(Incidencia.fecha_inicio.desc())
+            .all()
+        )
+
+    def get_by_tipo(self, tipo: str | TipoIncidencia) -> list[Incidencia]:
         """Obtiene incidencias por tipo"""
-        tipo_val = tipo.value if hasattr(tipo, 'value') else str(tipo)
-        return self.session.query(Incidencia).filter(
-            or_(
-                Incidencia.tipo_incidencia == tipo_val,
-                Incidencia.tipo_incidencia == tipo
-            )
-        ).all()
-    
-    def get_by_estado(self, estado: Union[str, EstadoIncidencia]) -> List[Incidencia]:
+        tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
+        return (
+            self.session.query(Incidencia)
+            .filter(or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo))
+            .all()
+        )
+
+    def get_by_estado(self, estado: str | EstadoIncidencia) -> list[Incidencia]:
         """Obtiene incidencias por estado"""
-        estado_val = estado.value if hasattr(estado, 'value') else str(estado)
-        return self.session.query(Incidencia).filter(
-            or_(
-                Incidencia.estado == estado_val,
-                Incidencia.estado == estado
-            )
-        ).all()
-    
-    def get_by_empleado_y_tipo(self, empleado_id: int, tipo: Union[str, TipoIncidencia]) -> List[Incidencia]:
+        estado_val = estado.value if hasattr(estado, "value") else str(estado)
+        return (
+            self.session.query(Incidencia)
+            .filter(or_(Incidencia.estado == estado_val, Incidencia.estado == estado))
+            .all()
+        )
+
+    def get_by_empleado_y_tipo(
+        self, empleado_id: int, tipo: str | TipoIncidencia
+    ) -> list[Incidencia]:
         """Obtiene incidencias de un empleado por tipo"""
-        tipo_val = tipo.value if hasattr(tipo, 'value') else str(tipo)
-        return self.session.query(Incidencia).filter(
-            and_(
-                Incidencia.empleado_id == empleado_id,
-                or_(
-                    Incidencia.tipo_incidencia == tipo_val,
-                    Incidencia.tipo_incidencia == tipo
+        tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
+        return (
+            self.session.query(Incidencia)
+            .filter(
+                and_(
+                    Incidencia.empleado_id == empleado_id,
+                    or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo),
                 )
             )
-        ).all()
-    
-    def get_pendientes(self) -> List[Incidencia]:
+            .all()
+        )
+
+    def get_pendientes(self) -> list[Incidencia]:
         """Obtiene incidencias pendientes de aprobación"""
-        return self.session.query(Incidencia).filter(
-            Incidencia.estado == EstadoIncidencia.PENDIENTE.value
-        ).all()
-    
-    def get_vigentes(self) -> List[Incidencia]:
+        return (
+            self.session.query(Incidencia)
+            .filter(Incidencia.estado == EstadoIncidencia.PENDIENTE.value)
+            .all()
+        )
+
+    def get_vigentes(self) -> list[Incidencia]:
         """Obtiene incidencias vigentes actualmente"""
         hoy = date.today()
-        return self.session.query(Incidencia).filter(
-            and_(
-                Incidencia.fecha_inicio <= hoy,
-                Incidencia.fecha_fin >= hoy,
-                Incidencia.estado == EstadoIncidencia.APROBADO.value
+        return (
+            self.session.query(Incidencia)
+            .filter(
+                and_(
+                    Incidencia.fecha_inicio <= hoy,
+                    Incidencia.fecha_fin >= hoy,
+                    Incidencia.estado == EstadoIncidencia.APROBADO.value,
+                )
             )
-        ).all()
-    
-    def get_by_periodo(self, fecha_inicio: date, fecha_fin: date) -> List[Incidencia]:
+            .all()
+        )
+
+    def get_by_periodo(self, fecha_inicio: date, fecha_fin: date) -> list[Incidencia]:
         """Obtiene incidencias en un periodo de tiempo"""
-        return self.session.query(Incidencia).filter(
-            and_(
-                Incidencia.fecha_inicio <= fecha_fin,
-                Incidencia.fecha_fin >= fecha_inicio
+        return (
+            self.session.query(Incidencia)
+            .filter(
+                and_(Incidencia.fecha_inicio <= fecha_fin, Incidencia.fecha_fin >= fecha_inicio)
             )
-        ).all()
-    
-    def get_by_empleado_periodo(self, empleado_id: int, fecha_inicio: date, fecha_fin: date) -> List[Incidencia]:
+            .all()
+        )
+
+    def get_by_empleado_periodo(
+        self, empleado_id: int, fecha_inicio: date, fecha_fin: date
+    ) -> list[Incidencia]:
         """Obtiene incidencias de un empleado en un periodo"""
-        return self.session.query(Incidencia).filter(
-            and_(
-                Incidencia.empleado_id == empleado_id,
-                Incidencia.fecha_inicio <= fecha_fin,
-                Incidencia.fecha_fin >= fecha_inicio
+        return (
+            self.session.query(Incidencia)
+            .filter(
+                and_(
+                    Incidencia.empleado_id == empleado_id,
+                    Incidencia.fecha_inicio <= fecha_fin,
+                    Incidencia.fecha_fin >= fecha_inicio,
+                )
             )
-        ).all()
-    
-    def aprobar(self, id: int, aprobado_por: str, comentarios: str = None, dias_aprobados: int = None) -> bool:
+            .all()
+        )
+
+    def aprobar(
+        self,
+        id: int,
+        aprobado_por: str,
+        comentarios: str | None = None,
+        dias_aprobados: int | None = None,
+    ) -> bool:
         """Aprueba una incidencia con manejo de errores"""
         try:
             incidencia = self.get_by_id(id)
@@ -111,8 +133,8 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
             self.session.rollback()
             logger.error(f"Error al aprobar incidencia {id}: {e}")
             return False
-    
-    def rechazar(self, id: int, rechazado_por: str, comentarios: str = None) -> bool:
+
+    def rechazar(self, id: int, rechazado_por: str, comentarios: str | None = None) -> bool:
         """Rechaza una incidencia con manejo de errores"""
         try:
             incidencia = self.get_by_id(id)
@@ -128,7 +150,7 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
             self.session.rollback()
             logger.error(f"Error al rechazar incidencia {id}: {e}")
             return False
-    
+
     def completar(self, id: int) -> bool:
         """Marca una incidencia como completada con manejo de errores"""
         try:
@@ -142,21 +164,29 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
             self.session.rollback()
             logger.error(f"Error al completar incidencia {id}: {e}")
             return False
-    
+
     def get_estadisticas_por_tipo(self) -> dict:
         """Obtiene estadísticas de incidencias por tipo"""
         stats = {t.value: 0 for t in TipoIncidencia}
         incidencias = self.get_all()
         for incidencia in incidencias:
-            tipo = incidencia.tipo_incidencia.value if hasattr(incidencia.tipo_incidencia, 'value') else str(incidencia.tipo_incidencia)
+            tipo = (
+                incidencia.tipo_incidencia.value
+                if hasattr(incidencia.tipo_incidencia, "value")
+                else str(incidencia.tipo_incidencia)
+            )
             stats[tipo] = stats.get(tipo, 0) + 1
         return stats
-    
+
     def get_estadisticas_por_estado(self) -> dict:
         """Obtiene estadísticas de incidencias por estado"""
         stats = {e.value: 0 for e in EstadoIncidencia}
         incidencias = self.get_all()
         for incidencia in incidencias:
-            estado = incidencia.estado.value if hasattr(incidencia.estado, 'value') else str(incidencia.estado)
+            estado = (
+                incidencia.estado.value
+                if hasattr(incidencia.estado, "value")
+                else str(incidencia.estado)
+            )
             stats[estado] = stats.get(estado, 0) + 1
         return stats

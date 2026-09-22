@@ -136,6 +136,7 @@ class TestTexto:
     def test_calculate_age_cumpleanos_pendiente(self):
         # Nacido ayer => edad 0
         from datetime import timedelta
+
         assert helpers.calculate_age(date.today() - timedelta(days=1)) == 0
 
     def test_calculate_age_none(self):

@@ -9,8 +9,6 @@ hilo secundario; la ventana solo se toca desde el hilo principal de Tk
 mediante una cola thread-safe.
 """
 
-from __future__ import annotations
-
 import queue
 import threading
 from datetime import datetime
@@ -20,8 +18,8 @@ from tkinter import ttk
 
 from updater.tray_icon import TrayIcon
 
-AUTO_CLOSE_MS = 6000      # cierre automático en éxito ("ya actualizado"/"completada")
-POLL_MS = 120             # frecuencia de lectura de la cola
+AUTO_CLOSE_MS = 6000  # cierre automático en éxito ("ya actualizado"/"completada")
+POLL_MS = 120  # frecuencia de lectura de la cola
 COLOR_EXITO = "#1a7f37"
 COLOR_ERROR = "#b3261e"
 COLOR_DETALLE = "#5f6368"
@@ -92,19 +90,29 @@ class UpdaterGui:
         marco.pack(fill="both", expand=True)
 
         ttk.Label(
-            marco, text="Actualizador automático",
+            marco,
+            text="Actualizador automático",
             font=("Segoe UI", 14, "bold"),
         ).pack(anchor="w")
 
         self._status = tk.Label(
-            marco, text="Iniciando…", font=("Segoe UI", 11), anchor="w",
-            justify="left", wraplength=460,
+            marco,
+            text="Iniciando…",
+            font=("Segoe UI", 11),
+            anchor="w",
+            justify="left",
+            wraplength=460,
         )
         self._status.pack(fill="x", pady=(10, 2))
 
         self._detail = tk.Label(
-            marco, text="", font=("Segoe UI", 9), fg=COLOR_DETALLE,
-            anchor="w", justify="left", wraplength=460,
+            marco,
+            text="",
+            font=("Segoe UI", 9),
+            fg=COLOR_DETALLE,
+            anchor="w",
+            justify="left",
+            wraplength=460,
         )
         self._detail.pack(fill="x")
 
@@ -116,8 +124,12 @@ class UpdaterGui:
             anchor="w", pady=(4, 2)
         )
         self._log = tk.Text(
-            marco, height=8, width=60, state="disabled",
-            font=("Consolas", 8), wrap="word",
+            marco,
+            height=8,
+            width=60,
+            state="disabled",
+            font=("Consolas", 8),
+            wrap="word",
         )
         self._log.pack(fill="both", expand=True)
 
@@ -139,9 +151,7 @@ class UpdaterGui:
             candidato = Path(base) / "assets" / "app.ico"
             if candidato.exists():
                 return str(candidato)
-        candidato = (
-            Path(__file__).resolve().parent.parent / "assets" / "app.ico"
-        )
+        candidato = Path(__file__).resolve().parent.parent / "assets" / "app.ico"
         return str(candidato) if candidato.exists() else None
 
     # ---------------------------------------------------------- hilo trabajo

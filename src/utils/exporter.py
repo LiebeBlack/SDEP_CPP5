@@ -14,7 +14,7 @@ import csv
 import re
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
 
 from src.utils.helpers import ensure_directory_exists, format_date
 
@@ -27,6 +27,7 @@ try:
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font
     from openpyxl.utils import get_column_letter
+
     _OPENPYXL_DISPONIBLE = True
 except ImportError:  # pragma: no cover
     _OPENPYXL_DISPONIBLE = False
@@ -50,7 +51,7 @@ def _valor_plano(valor):
     return valor
 
 
-def _encabezados(datos: Sequence[Dict]) -> List[str]:
+def _encabezados(datos: Sequence[dict]) -> list[str]:
     """Encabezados de columna en el orden de la primera fila"""
     if not datos:
         raise ValueError("No hay datos para exportar")
@@ -58,7 +59,7 @@ def _encabezados(datos: Sequence[Dict]) -> List[str]:
     return [str(clave) for clave in primera.keys()]
 
 
-def _filas_normalizadas(datos: Sequence[Dict]) -> List[List]:
+def _filas_normalizadas(datos: Sequence[dict]) -> list[list]:
     """Convierte cada diccionario en una fila alineada con los encabezados"""
     encabezados = _encabezados(datos)
     filas = []
@@ -67,7 +68,7 @@ def _filas_normalizadas(datos: Sequence[Dict]) -> List[List]:
     return filas
 
 
-def escribir_csv(datos: Sequence[Dict], ruta: str) -> str:
+def escribir_csv(datos: Sequence[dict], ruta: str) -> str:
     """
     Escribe un CSV con codificación UTF-8 (BOM).
 
@@ -90,7 +91,7 @@ def escribir_csv(datos: Sequence[Dict], ruta: str) -> str:
     return str(destino)
 
 
-def escribir_xlsx(datos: Sequence[Dict], ruta: str, hoja: str = "Datos") -> str:
+def escribir_xlsx(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:
     """
     Escribe un libro Excel (.xlsx) con openpyxl.
 
@@ -145,7 +146,7 @@ def escribir_xlsx(datos: Sequence[Dict], ruta: str, hoja: str = "Datos") -> str:
     return str(destino)
 
 
-def exportar_archivo(datos: Sequence[Dict], ruta: str, hoja: str = "Datos") -> str:
+def exportar_archivo(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:
     """
     Exporta datos al formato indicado por la extensión de la ruta.
 

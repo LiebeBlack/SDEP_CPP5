@@ -29,8 +29,7 @@ def test_actualizar_valor(session):
     config = servicio.obtener_por_clave("nombre_institucion")
     assert config is not None
 
-    actualizada = servicio.actualizar_configuracion(
-        config.id, {"valor": "Colegio San Martín"})
+    actualizada = servicio.actualizar_configuracion(config.id, {"valor": "Colegio San Martín"})
     assert actualizada.valor == "Colegio San Martín"
     session.expire_all()
     assert servicio.obtener_valor("nombre_institucion") == "Colegio San Martín"
@@ -47,12 +46,14 @@ def test_actualizar_con_tipado_bool(session):
 def test_clave_duplicada_rechazada(session):
     servicio = ConfiguracionService(session)
     with pytest.raises(ValueError):
-        servicio.crear_configuracion({
-            "clave": "nombre_institucion",
-            "valor": "Otro nombre",
-            "tipo_dato": "string",
-            "categoria": "general",
-        })
+        servicio.crear_configuracion(
+            {
+                "clave": "nombre_institucion",
+                "valor": "Otro nombre",
+                "tipo_dato": "string",
+                "categoria": "general",
+            }
+        )
 
 
 def test_establecer_valor_crea_si_no_existe(session):
@@ -74,8 +75,7 @@ def test_eliminar_configuracion(session):
 
 def test_validar_datos(session):
     servicio = ConfiguracionService(session)
-    errores = servicio.validar_datos_configuracion({
-        "clave": "", "tipo_dato": "xml"})
+    errores = servicio.validar_datos_configuracion({"clave": "", "tipo_dato": "xml"})
     assert len(errores) >= 2
 
 

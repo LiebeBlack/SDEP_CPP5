@@ -106,11 +106,14 @@ def test_busqueda_solo_empleados_activos(session):
 def test_busqueda_combinada_con_tipo(session):
     servicio = EmpleadoService(session)
     servicio.crear_empleado(_datos_empleado(cedula="7770003", nombres="Pedro"))
-    servicio.crear_empleado(_datos_empleado(
-        cedula="7770004", nombres="Pedro",
-        tipo_empleado=TipoEmpleado.ADMINISTRATIVO.value,
-        apellidos="Ruiz",
-    ))
+    servicio.crear_empleado(
+        _datos_empleado(
+            cedula="7770004",
+            nombres="Pedro",
+            tipo_empleado=TipoEmpleado.ADMINISTRATIVO.value,
+            apellidos="Ruiz",
+        )
+    )
     # Solo docentes llamados Pedro
     docentes = servicio.listar_filtrados({"busqueda": "Pedro", "tipo": "docente", "activo": 1})
     assert len(docentes) == 1
@@ -123,12 +126,14 @@ def test_busqueda_combinada_con_tipo(session):
 def test_estadisticas(session):
     servicio = EmpleadoService(session)
     servicio.crear_empleado(_datos_empleado())
-    servicio.crear_empleado(_datos_empleado(
-        cedula="11111111",
-        tipo_empleado=TipoEmpleado.ADMINISTRATIVO.value,
-        nombres="Luis",
-        apellidos="Pérez",
-    ))
+    servicio.crear_empleado(
+        _datos_empleado(
+            cedula="11111111",
+            tipo_empleado=TipoEmpleado.ADMINISTRATIVO.value,
+            nombres="Luis",
+            apellidos="Pérez",
+        )
+    )
     stats = servicio.obtener_estadisticas()
     assert stats["total"] == 2
     assert stats["activos"] == 2
@@ -138,16 +143,20 @@ def test_estadisticas(session):
 
 def test_edad_y_antiguedad():
     from src.models import Empleado
+
     hoy = date.today()
     try:
         fecha_contrato = date(hoy.year - 5, hoy.month, hoy.day)
     except ValueError:  # 29 de febrero sin año bisiesto a 5 años
         fecha_contrato = date(hoy.year - 5, hoy.month, 28)
     emp = Empleado(
-        nombres="X", apellidos="Y", cedula="0001",
+        nombres="X",
+        apellidos="Y",
+        cedula="0001",
         fecha_nacimiento=date(1980, 1, 1),
         tipo_empleado=TipoEmpleado.DOCENTE.value,
-        cargo="Docente", departamento="Ciencias",
+        cargo="Docente",
+        departamento="Ciencias",
         salario_base=100.0,
         fecha_contratacion=fecha_contrato,
     )
@@ -169,18 +178,21 @@ def test_actualizar_foto(session, storage):
 def test_campos_opcionales_adicionales(session):
     """Los campos opcionales (bancarios, salud, familia, académicos) se persisten"""
     servicio = EmpleadoService(session)
-    datos = _datos_empleado(cedula="5550001", **{
-        "institucion_bancaria": "Banco Nacional",
-        "numero_cuenta": "123456789",
-        "tipo_cuenta": "ahorro",
-        "carnet_discapacidad": "DISC-001",
-        "enfermedades_preexistentes": "Asma",
-        "alergias_medicamentosas": "Penicilina",
-        "alergias_alimentarias": "Maní",
-        "tipo_contratacion": "indefinido",
-        "titulo_secundaria": "Bachiller en Ciencias",
-        "hijos": "María (10 años, C.I. 12345678)",
-    })
+    datos = _datos_empleado(
+        cedula="5550001",
+        **{
+            "institucion_bancaria": "Banco Nacional",
+            "numero_cuenta": "123456789",
+            "tipo_cuenta": "ahorro",
+            "carnet_discapacidad": "DISC-001",
+            "enfermedades_preexistentes": "Asma",
+            "alergias_medicamentosas": "Penicilina",
+            "alergias_alimentarias": "Maní",
+            "tipo_contratacion": "indefinido",
+            "titulo_secundaria": "Bachiller en Ciencias",
+            "hijos": "María (10 años, C.I. 12345678)",
+        },
+    )
     empleado = servicio.crear_empleado(datos)
     session.expire_all()
     emp = servicio.obtener_empleado(empleado.id)
@@ -200,12 +212,14 @@ def test_campos_opcionales_vacios_son_none(session):
     """Los campos opcionales vacíos se guardan como NULL"""
     servicio = EmpleadoService(session)
     datos = _datos_empleado(cedula="5550002")
-    datos.update({
-        "institucion_bancaria": "",
-        "numero_cuenta": "",
-        "tipo_contratacion": "",
-        "hijos": "",
-    })
+    datos.update(
+        {
+            "institucion_bancaria": "",
+            "numero_cuenta": "",
+            "tipo_contratacion": "",
+            "hijos": "",
+        }
+    )
     empleado = servicio.crear_empleado(datos)
     session.expire_all()
     emp = servicio.obtener_empleado(empleado.id)
@@ -219,10 +233,13 @@ def test_actualizar_campos_opcionales(session):
     """La actualización persiste los campos opcionales nuevos"""
     servicio = EmpleadoService(session)
     empleado = servicio.crear_empleado(_datos_empleado(cedula="5550003"))
-    servicio.actualizar_empleado(empleado.id, {
-        "institucion_bancaria": "Banco del Pacífico",
-        "tipo_contratacion": "fijo",
-    })
+    servicio.actualizar_empleado(
+        empleado.id,
+        {
+            "institucion_bancaria": "Banco del Pacífico",
+            "tipo_contratacion": "fijo",
+        },
+    )
     session.expire_all()
     emp = servicio.obtener_empleado(empleado.id)
     assert emp.institucion_bancaria == "Banco del Pacífico"

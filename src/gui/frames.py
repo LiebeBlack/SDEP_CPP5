@@ -4,27 +4,28 @@ Frames específicos para cada módulo de la aplicación
 """
 
 import customtkinter as ctk
+import logging
 from tkinter import ttk, messagebox, filedialog
 import tkinter as tk
-import os
-import sys
-import webbrowser
-from typing import Optional, List
-from datetime import date
 import json
+import os
+import subprocess
+import sys
+import tempfile
+import webbrowser
+from datetime import date
 
 from src.models import Empleado, EstadoIncidencia
-from src.utils.helpers import (
-    format_date, format_currency, parse_date, mantener_ventana_al_frente
-)
+from src.utils.helpers import format_date, format_currency, parse_date, mantener_ventana_al_frente
 from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
 from src.utils.audit_logger import audit_logger, AuditEventType
 from src.services.auth_service import AuthService, LONGITUD_MINIMA_PASSWORD
 from src.gui.theme import COLORES
 
+logger = logging.getLogger(__name__)
 
-_FUENTE_FAMILIA_CACHE = [None]
+_FUENTE_FAMILIA_CACHE: list[str | None] = [None]
 
 
 def _familia_fuente() -> str:
@@ -38,14 +39,15 @@ def _familia_fuente() -> str:
     if _FUENTE_FAMILIA_CACHE[0] is None:
         try:
             from src.gui.theme import familia_fuente_tk
-            _FUENTE_FAMILIA_CACHE[0] = familia_fuente_tk(
-                "TkDefaultFont", "Arial")
+
+            _FUENTE_FAMILIA_CACHE[0] = familia_fuente_tk("TkDefaultFont", "Arial")
         except Exception:
             _FUENTE_FAMILIA_CACHE[0] = "Arial"
-    return _FUENTE_FAMILIA_CACHE[0]
+    familia = _FUENTE_FAMILIA_CACHE[0]
+    return familia if familia is not None else "Arial"
 
 
-def _id_fila_seleccionada(tree) -> Optional[int]:
+def _id_fila_seleccionada(tree) -> int | None:
     """ID numérico de la fila seleccionada en un Treeview o None"""
     seleccion = tree.selection()
     if not seleccion:
@@ -98,6 +100,7 @@ def _clave_orden(valor) -> tuple:
         try:
             return (0, float(limpio))
         except ValueError:
+            # Dígitos fuera del rango de float: se ordenan como texto
             pass
     return (1, texto.lower())
 
@@ -113,7 +116,7 @@ def _marcar_encabezado_orden(tree, columna, ascendente: bool) -> None:
             else:
                 tree.heading(c, text=base)
     except Exception:
-        pass
+        logger.debug("operación de interfaz ignorada", exc_info=True)
 
 
 def _ordenar_por_columna(tree, columna) -> None:
@@ -126,8 +129,7 @@ def _ordenar_por_columna(tree, columna) -> None:
     """
     try:
         ascendente = tree._orden_asc.get(columna, True)
-        filas = [(tree.set(item, columna), item)
-                 for item in tree.get_children("")]
+        filas = [(tree.set(item, columna), item) for item in tree.get_children("")]
         filas.sort(key=lambda par: _clave_orden(par[0]), reverse=not ascendente)
         for indice, (_, item) in enumerate(filas):
             tree.move(item, "", indice)
@@ -135,7 +137,7 @@ def _ordenar_por_columna(tree, columna) -> None:
         tree._orden_columna = columna
         _marcar_encabezado_orden(tree, columna, ascendente)
     except Exception:
-        pass
+        logger.debug("operación de interfaz ignorada", exc_info=True)
 
 
 def _habilitar_orden_columnas(tree) -> None:
@@ -175,13 +177,13 @@ def _estado_documento(documento) -> str:
 
 class DashboardFrame(ctk.CTkFrame):
     """Frame del Dashboard"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
         self._create_widgets()
         self._load_data()
-    
+
     def _create_widgets(self):
         """Crea los widgets del dashboard"""
         # Título
@@ -189,17 +191,17 @@ class DashboardFrame(ctk.CTkFrame):
             self,
             text="Panel de Control",
             font=ctk.CTkFont(size=24, weight="bold"),
-            text_color=COLORES["texto"]
+            text_color=COLORES["texto"],
         )
         title.pack(pady=20)
-        
+
         # Contenedor de tarjetas
         cards_container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         cards_container.pack(fill="x", padx=20, pady=10)
-        
+
         # Tarjetas de estadísticas
         self.stats_cards = {}
-        
+
         cards = [
             ("Total Empleados", "empleados", "👥", "empleados"),
             ("Empleados Activos", "activos", "✅", "empleados"),
@@ -207,40 +209,37 @@ class DashboardFrame(ctk.CTkFrame):
             ("Incidencias Pendientes", "incidencias", "📅", "incidencias"),
             ("Pagos Pendientes", "pagos", "💰", "nomina"),
         ]
-        
+
         for i, (title_text, key, icon, modulo) in enumerate(cards):
-            card = self._create_stat_card(
-                cards_container, title_text, icon, key, modulo)
+            card = self._create_stat_card(cards_container, title_text, icon, key, modulo)
             card.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
             cards_container.grid_columnconfigure(i, weight=1)
-        
+
         # Sección de acciones rápidas
         actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         actions_frame.pack(fill="x", padx=20, pady=20)
-        
+
         actions_title = ctk.CTkLabel(
-            actions_frame,
-            text="Acciones Rápidas",
-            font=ctk.CTkFont(size=18, weight="bold")
+            actions_frame, text="Acciones Rápidas", font=ctk.CTkFont(size=18, weight="bold")
         )
         actions_title.pack(pady=10)
-        
+
         actions_container = ctk.CTkFrame(actions_frame)
         actions_container.pack(fill="x", padx=10, pady=10)
-        
+
         # Crear funciones separadas para evitar problemas de lambda
         def go_to_empleados():
             self.main_window._show_frame("empleados")
-        
+
         def go_to_documentos():
             self.main_window._show_frame("documentos")
-        
+
         def go_to_incidencias():
             self.main_window._show_frame("incidencias")
-        
+
         def go_to_nomina():
             self.main_window._show_frame("nomina")
-        
+
         # Solo se muestran accesos a módulos permitidos por el rol del usuario
         acciones = [
             ("Ir a Empleados", go_to_empleados, "empleados"),
@@ -249,27 +248,25 @@ class DashboardFrame(ctk.CTkFrame):
             ("Ir a Nómina", go_to_nomina, "nomina"),
         ]
         acciones = [
-            (text, command) for text, command, modulo in acciones
+            (text, command)
+            for text, command, modulo in acciones
             if self.main_window.puede_ver_modulo(modulo)
         ]
-        
+
         for i, (text, command) in enumerate(acciones):
-            btn = ctk.CTkButton(
-                actions_container,
-                text=text,
-                height=50,
-                command=command
-            )
+            btn = ctk.CTkButton(actions_container, text=text, height=50, command=command)
             btn.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
             actions_container.grid_columnconfigure(i, weight=1)
-    
-    def _create_stat_card(self, parent, title: str, icon: str, key: str,
-                          modulo: str = "") -> ctk.CTkFrame:
+
+    def _create_stat_card(
+        self, parent, title: str, icon: str, key: str, modulo: str = ""
+    ) -> ctk.CTkFrame:
         """Crea una tarjeta de estadística (clic navega al módulo indicado)"""
         card = ctk.CTkFrame(parent, height=150, fg_color=COLORES["campo"], corner_radius=8)
         card.pack_propagate(False)
 
         if modulo:
+
             def _navegar(event=None):
                 if self.main_window.puede_ver_modulo(modulo):
                     self.main_window._show_frame(modulo)
@@ -282,21 +279,14 @@ class DashboardFrame(ctk.CTkFrame):
             card.bind("<Button-1>", _navegar)
             card.configure(cursor="hand2")
 
-        icon_label = ctk.CTkLabel(
-            card,
-            text=icon,
-            font=ctk.CTkFont(size=40)
-        )
+        icon_label = ctk.CTkLabel(card, text=icon, font=ctk.CTkFont(size=40))
         icon_label.pack(pady=(15, 5))
         if modulo:
             icon_label.bind("<Button-1>", _navegar)
             icon_label.configure(cursor="hand2")
 
         value_label = ctk.CTkLabel(
-            card,
-            text="0",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color=COLORES["texto"]
+            card, text="0", font=ctk.CTkFont(size=28, weight="bold"), text_color=COLORES["texto"]
         )
         value_label.pack(pady=5)
         if modulo:
@@ -304,10 +294,7 @@ class DashboardFrame(ctk.CTkFrame):
             value_label.configure(cursor="hand2")
 
         title_label = ctk.CTkLabel(
-            card,
-            text=title,
-            font=ctk.CTkFont(size=12),
-            text_color=COLORES["texto_suave"]
+            card, text=title, font=ctk.CTkFont(size=12), text_color=COLORES["texto_suave"]
         )
         title_label.pack(pady=(5, 15))
         if modulo:
@@ -316,7 +303,7 @@ class DashboardFrame(ctk.CTkFrame):
 
         self.stats_cards[key] = value_label
         return card
-    
+
     def _load_data(self):
         """Carga los datos del dashboard"""
         try:
@@ -328,28 +315,30 @@ class DashboardFrame(ctk.CTkFrame):
             except Exception:
                 self.stats_cards["empleados"].configure(text="0")
                 self.stats_cards["activos"].configure(text="0")
-            
+
             # Estadísticas de documentos
             try:
                 doc_stats = self.main_window.documento_service.obtener_estadisticas()
                 self.stats_cards["documentos"].configure(text=str(doc_stats.get("total", 0)))
             except Exception:
                 self.stats_cards["documentos"].configure(text="0")
-            
+
             # Estadísticas de incidencias
             try:
                 incidencia_stats = self.main_window.incidencia_service.obtener_estadisticas()
-                self.stats_cards["incidencias"].configure(text=str(incidencia_stats.get("pendientes", 0)))
+                self.stats_cards["incidencias"].configure(
+                    text=str(incidencia_stats.get("pendientes", 0))
+                )
             except Exception:
                 self.stats_cards["incidencias"].configure(text="0")
-            
+
             # Estadísticas de pagos
             try:
                 pago_stats = self.main_window.pago_service.obtener_estadisticas()
                 self.stats_cards["pagos"].configure(text=str(pago_stats.get("pendientes", 0)))
             except Exception:
                 self.stats_cards["pagos"].configure(text="0")
-            
+
         except Exception:
             # Error general, establecer todos en 0
             for key in self.stats_cards:
@@ -358,99 +347,121 @@ class DashboardFrame(ctk.CTkFrame):
 
 class EmpleadosFrame(ctk.CTkFrame):
     """Frame de Gestión de Empleados"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
         self.current_empleado = None
         self._create_widgets()
         self._load_empleados()
-    
+
     def _create_widgets(self):
         """Crea los widgets del frame de empleados"""
         # Panel de búsqueda y filtros
         search_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         search_frame.pack(fill="x", padx=10, pady=10)
-        
+
         # Campo de búsqueda
-        search_label = tk.Label(search_frame, text="Buscar:", bg=COLORES["panel"], fg=COLORES["texto"], font=(_familia_fuente(), 10))
+        search_label = tk.Label(
+            search_frame,
+            text="Buscar:",
+            bg=COLORES["panel"],
+            fg=COLORES["texto"],
+            font=(_familia_fuente(), 10),
+        )
         search_label.pack(side="left", padx=5)
-        
-        self.search_entry = tk.Entry(search_frame, width=40, bg=COLORES["campo"], fg=COLORES["texto"], insertbackground=COLORES["texto"])
+
+        self.search_entry = tk.Entry(
+            search_frame,
+            width=40,
+            bg=COLORES["campo"],
+            fg=COLORES["texto"],
+            insertbackground=COLORES["texto"],
+        )
         self.search_entry.pack(side="left", padx=5)
         self.search_entry.bind("<KeyRelease>", self._on_search)
-        
+
         # Filtro por tipo
-        tipo_label = tk.Label(search_frame, text="Tipo:", bg=COLORES["panel"], fg=COLORES["texto"], font=(_familia_fuente(), 10))
+        tipo_label = tk.Label(
+            search_frame,
+            text="Tipo:",
+            bg=COLORES["panel"],
+            fg=COLORES["texto"],
+            font=(_familia_fuente(), 10),
+        )
         tipo_label.pack(side="left", padx=5)
-        
+
         self.tipo_combo = ttk.Combobox(
             search_frame,
             values=["Todos", "docente", "administrativo", "mantenimiento"],
             width=18,
             state="readonly",
-            font=(_familia_fuente(), 9)
+            font=(_familia_fuente(), 9),
         )
         self.tipo_combo.pack(side="left", padx=5)
         self.tipo_combo.set("Todos")
         self.tipo_combo.bind("<<ComboboxSelected>>", self._on_filter)
-        
+
         # Botones de acción (según permisos del rol)
         btn_frame = ctk.CTkFrame(search_frame)
         btn_frame.pack(side="right", padx=5)
-        
+
         if self.main_window.tiene_permiso("create"):
             new_btn = ctk.CTkButton(btn_frame, text="Nuevo Empleado", command=self._on_new_empleado)
             new_btn.pack(side="left", padx=5)
-        
+
         if self.main_window.tiene_permiso("report"):
-            report_btn = ctk.CTkButton(btn_frame, text="Reporte PDF", command=self._on_reporte_empleados)
+            report_btn = ctk.CTkButton(
+                btn_frame, text="Reporte PDF", command=self._on_reporte_empleados
+            )
             report_btn.pack(side="left", padx=5)
-            export_btn = ctk.CTkButton(btn_frame, text="Exportar", command=self._on_exportar_empleados)
+            export_btn = ctk.CTkButton(
+                btn_frame, text="Exportar", command=self._on_exportar_empleados
+            )
             export_btn.pack(side="left", padx=5)
-        
+
         refresh_btn = ctk.CTkButton(btn_frame, text="Actualizar", command=self._load_empleados)
         refresh_btn.pack(side="left", padx=5)
-        
+
         # Tabla de empleados
         table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Scrollbar
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         # Treeview
         self.tree = ttk.Treeview(
             table_frame,
             columns=("cedula", "nombre", "cargo", "departamento", "tipo", "salario"),
             show="headings",
-            yscrollcommand=scrollbar.set
+            yscrollcommand=scrollbar.set,
         )
-        
+
         self.tree.heading("cedula", text="Cédula")
         self.tree.heading("nombre", text="Nombre")
         self.tree.heading("cargo", text="Puesto de Trabajo")
         self.tree.heading("departamento", text="Departamento")
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("salario", text="Salario")
-        
+
         self.tree.column("cedula", width=130, minwidth=100)
         self.tree.column("nombre", width=250, minwidth=150)
         self.tree.column("cargo", width=180, minwidth=120)
         self.tree.column("departamento", width=180, minwidth=120)
         self.tree.column("tipo", width=120, minwidth=80)
         self.tree.column("salario", width=120, minwidth=100)
-        
+
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
-        
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
-        
+
         # Doble clic para ver detalles (un clic solo selecciona)
         self.tree.bind("<Double-1>", self._on_double_click)
-        
+
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_details)
@@ -458,92 +469,109 @@ class EmpleadosFrame(ctk.CTkFrame):
             self.context_menu.add_command(label="Editar", command=self._on_edit)
         self.context_menu.add_separator()
         if self.main_window.tiene_permiso("report"):
-            self.context_menu.add_command(label="Constancia de Trabajo (PDF)", command=self._on_constancia_trabajo)
-            self.context_menu.add_command(label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios)
-            self.context_menu.add_command(label="Ficha del Empleado (PDF)", command=self._on_ficha_empleado)
+            self.context_menu.add_command(
+                label="Constancia de Trabajo (PDF)", command=self._on_constancia_trabajo
+            )
+            self.context_menu.add_command(
+                label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios
+            )
+            self.context_menu.add_command(
+                label="Ficha del Empleado (PDF)", command=self._on_ficha_empleado
+            )
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Ver Documentos", command=self._on_documents)
         self.context_menu.add_command(label="Ver Incidencias", command=self._on_incidencias)
         if self.main_window.tiene_permiso("delete"):
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Eliminar", command=self._on_delete)
-        
+
         self.tree.bind("<Button-3>", self._show_context_menu)
-    
+
     def _load_empleados(self):
         """Carga la lista de empleados (todos los activos)"""
         try:
-            self._update_tree(
-                self.main_window.empleado_service.listar_empleados_activos())
+            self._update_tree(self.main_window.empleado_service.listar_empleados_activos())
         except Exception:
             # Mostrar error pero no bloquear la UI
             self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
-    
-    def _consultar_empleados_visibles(self) -> List[Empleado]:
+
+    def _consultar_empleados_visibles(self) -> list[Empleado]:
         """Empleados que cumplen la búsqueda, el filtro de tipo y activos"""
         termino = self.search_entry.get().strip()
         tipo = self.tipo_combo.get()
         if not termino and tipo == "Todos":
-            return self.main_window.empleado_service.listar_empleados_activos()
+            activos: list[Empleado] = self.main_window.empleado_service.listar_empleados_activos()
+            return activos
         filtros = {"activo": 1}
         if termino:
             filtros["busqueda"] = termino
         if tipo != "Todos":
             filtros["tipo"] = tipo
-        return self.main_window.empleado_service.listar_filtrados(filtros)
-    
+        filtrados: list[Empleado] = self.main_window.empleado_service.listar_filtrados(filtros)
+        return filtrados
+
     def _aplicar_filtros(self):
         """Aplica el término de búsqueda y el filtro de tipo combinados"""
         try:
             self._update_tree(self._consultar_empleados_visibles())
         except Exception:
             self._load_empleados()
-    
+
     def _on_search(self, event=None):
         """Maneja el evento de búsqueda por nombre o cédula"""
         self._aplicar_filtros()
-    
+
     def _on_filter(self, event=None):
         """Maneja el evento de filtrado por tipo"""
         self._aplicar_filtros()
-    
-    def _update_tree(self, empleados: List[Empleado]):
+
+    def _update_tree(self, empleados: list[Empleado]):
         """Actualiza el treeview con una lista de empleados"""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        
+
         for emp in empleados:
             try:
-                tipo_emp_val = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or '')
-                self.tree.insert("", "end", values=(
-                    emp.cedula,
-                    emp.nombre_completo,
-                    emp.cargo,
-                    emp.departamento,
-                    tipo_emp_val,
-                    format_currency(emp.salario_base)
-                ), tags=(str(emp.id),))
+                tipo_emp_val = (
+                    emp.tipo_empleado.value
+                    if hasattr(emp.tipo_empleado, "value")
+                    else str(emp.tipo_empleado or "")
+                )
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        emp.cedula,
+                        emp.nombre_completo,
+                        emp.cargo,
+                        emp.departamento,
+                        tipo_emp_val,
+                        format_currency(emp.salario_base),
+                    ),
+                    tags=(str(emp.id),),
+                )
             except Exception:
                 # Continuar con el siguiente empleado si hay error
                 continue
-    
+
     def _on_double_click(self, event):
         """Doble clic: selecciona la fila bajo el cursor y abre los detalles"""
         _seleccionar_fila_click(self.tree, event)
         self._on_view_details()
-    
+
     def _show_context_menu(self, event):
         """Muestra el menú contextual sobre la fila bajo el cursor"""
         if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
-    
-    def _get_selected_empleado(self) -> Optional[Empleado]:
+
+    def _get_selected_empleado(self) -> Empleado | None:
         """Obtiene el empleado seleccionado o None si la fila no tiene datos"""
         empleado_id = _id_fila_seleccionada(self.tree)
         if empleado_id is None:
             return None
-        return self.main_window.empleado_service.obtener_empleado(empleado_id)
-    
+        empleado: Empleado | None = self.main_window.empleado_service.obtener_empleado(empleado_id)
+        return empleado
+
     def _on_new_empleado(self):
         """Maneja la creación de nuevo empleado"""
         if not self.main_window.tiene_permiso("create"):
@@ -553,165 +581,183 @@ class EmpleadosFrame(ctk.CTkFrame):
             )
             return
         self._show_empleado_dialog()
-    
+
     def _on_view_details(self):
         """Muestra detalles del empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if empleado:
             self._show_empleado_details_dialog(empleado)
-    
+
     def _on_edit(self):
         """Edita el empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if empleado:
             self._show_empleado_dialog(empleado, edit_mode=True)
-    
+
     def _on_documents(self):
         """Muestra documentos del empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if empleado:
             self.main_window.show_frame("documentos", select_empleado=empleado.id)
-    
+
     def _on_incidencias(self):
         """Muestra incidencias del empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if empleado:
             self.main_window.show_frame("incidencias", select_empleado=empleado.id)
-    
+
     def _on_constancia_trabajo(self):
         """Genera constancia de trabajo en PDF para el empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if not empleado:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"constancia_trabajo_{empleado.cedula}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if file_path:
             try:
                 pdf_gen = PDFGenerator()
                 pdf_gen.generate_constancia_trabajo(empleado, file_path)
-                messagebox.showinfo("Éxito", f"Constancia de trabajo generada exitosamente:\n{file_path}")
+                messagebox.showinfo(
+                    "Éxito", f"Constancia de trabajo generada exitosamente:\n{file_path}"
+                )
             except Exception as e:
                 messagebox.showerror("Error", f"Error al generar constancia: {str(e)}")
-    
+
     def _on_constancia_estudios(self):
         """Genera constancia de estudios en PDF para el empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if not empleado:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"constancia_estudios_{empleado.cedula}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if file_path:
             try:
                 pdf_gen = PDFGenerator()
                 pdf_gen.generate_constancia_estudios(empleado, file_path)
-                messagebox.showinfo("Éxito", f"Constancia de estudios generada exitosamente:\n{file_path}")
+                messagebox.showinfo(
+                    "Éxito", f"Constancia de estudios generada exitosamente:\n{file_path}"
+                )
             except Exception as e:
                 messagebox.showerror("Error", f"Error al generar constancia: {str(e)}")
-    
+
     def _on_reporte_empleados(self):
         """Genera un reporte general de empleados en PDF"""
         empleados = self.main_window.empleado_service.listar_empleados_activos()
         if not empleados:
-            messagebox.showwarning("Advertencia", "No hay empleados registrados para generar el reporte")
+            messagebox.showwarning(
+                "Advertencia", "No hay empleados registrados para generar el reporte"
+            )
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"reporte_empleados_{date.today().strftime('%Y%m%d')}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if file_path:
             try:
                 pdf_gen = PDFGenerator()
                 pdf_gen.generate_reporte_empleados(empleados, file_path)
-                messagebox.showinfo("Éxito", f"Reporte de empleados generado exitosamente:\n{file_path}")
+                messagebox.showinfo(
+                    "Éxito", f"Reporte de empleados generado exitosamente:\n{file_path}"
+                )
             except Exception as e:
                 messagebox.showerror("Error", f"Error al generar reporte: {str(e)}")
-    
+
     def _on_ficha_empleado(self):
         """Genera la ficha completa del empleado seleccionado en PDF"""
         empleado = self._get_selected_empleado()
         if not empleado:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"ficha_{empleado.cedula}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if file_path:
             try:
                 pdf_gen = PDFGenerator()
                 pdf_gen.generate_ficha_empleado(empleado, file_path)
-                messagebox.showinfo("Éxito", f"Ficha del empleado generada exitosamente:\n{file_path}")
+                messagebox.showinfo(
+                    "Éxito", f"Ficha del empleado generada exitosamente:\n{file_path}"
+                )
             except Exception as e:
                 messagebox.showerror("Error", f"Error al generar ficha: {str(e)}")
-    
+
     def _on_exportar_empleados(self):
         """Exporta la lista visible de empleados a Excel o CSV"""
         empleados = self._consultar_empleados_visibles()
         if not empleados:
             messagebox.showwarning("Advertencia", "No hay empleados para exportar")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             initialfile=f"empleados_{date.today().strftime('%Y%m%d')}.xlsx",
-            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             for emp in empleados:
-                tipo_display = emp.tipo_empleado.value if hasattr(emp.tipo_empleado, 'value') else str(emp.tipo_empleado or "")
-                filas.append({
-                    "Cédula": str(emp.cedula),
-                    "Nombre Completo": emp.nombre_completo,
-                    "Puesto de Trabajo": emp.cargo or "",
-                    "Departamento": emp.departamento or "",
-                    "Tipo": tipo_display,
-                    "Correo Electrónico": emp.email or "",
-                    "Teléfono": emp.telefono or "",
-                    "Salario Mensual": float(emp.salario_base or 0),
-                    "Estado": "Activo" if emp.activo else "Inactivo",
-                })
+                tipo_display = (
+                    emp.tipo_empleado.value
+                    if hasattr(emp.tipo_empleado, "value")
+                    else str(emp.tipo_empleado or "")
+                )
+                filas.append(
+                    {
+                        "Cédula": str(emp.cedula),
+                        "Nombre Completo": emp.nombre_completo,
+                        "Puesto de Trabajo": emp.cargo or "",
+                        "Departamento": emp.departamento or "",
+                        "Tipo": tipo_display,
+                        "Correo Electrónico": emp.email or "",
+                        "Teléfono": emp.telefono or "",
+                        "Salario Mensual": float(emp.salario_base or 0),
+                        "Estado": "Activo" if emp.activo else "Inactivo",
+                    }
+                )
             exportar_archivo(filas, file_path)
             messagebox.showinfo("Éxito", f"Listado exportado exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar listado: {str(e)}")
-    
+
     def _on_delete(self):
         """Elimina el empleado seleccionado"""
         empleado = self._get_selected_empleado()
         if empleado:
-            if messagebox.askyesno("Confirmar", f"¿Desea eliminar al empleado {empleado.nombre_completo}?"):
+            if messagebox.askyesno(
+                "Confirmar", f"¿Desea eliminar al empleado {empleado.nombre_completo}?"
+            ):
                 try:
                     self.main_window.empleado_service.eliminar_empleado(empleado.id)
                     self._load_empleados()
                     messagebox.showinfo("Éxito", "Empleado eliminado correctamente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al eliminar empleado: {str(e)}")
-    
-    def _show_empleado_dialog(self, empleado: Optional[Empleado] = None, edit_mode: bool = False):
+
+    def _show_empleado_dialog(self, empleado: Empleado | None = None, edit_mode: bool = False):
         """Muestra el diálogo de empleado"""
         dialog = EmpleadoDialog(self, self.main_window, empleado, edit_mode)
         self.wait_window(dialog)
         if dialog.result:
             self._load_empleados()
-    
+
     def _show_empleado_details_dialog(self, empleado: Empleado):
         """Muestra solo los detalles del empleado (solo lectura)"""
         dialog = EmpleadoDetailsDialog(self, self.main_window, empleado)
@@ -720,18 +766,18 @@ class EmpleadosFrame(ctk.CTkFrame):
 
 class EmpleadoDetailsDialog(ctk.CTkToplevel):
     """Diálogo para ver detalles de empleado (solo lectura)"""
-    
+
     def __init__(self, parent, main_window, empleado: Empleado):
         super().__init__(parent)
         self.main_window = main_window
         self.empleado = empleado
-        
+
         self.title(f"Detalles: {empleado.nombre_completo}")
         self.geometry("700x500")
-        
+
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
-        
+
         self._create_widgets()
         self._load_empleado_data()
 
@@ -740,132 +786,166 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         # Notebook para pestañas
         notebook = ctk.CTkTabview(self, fg_color=COLORES["panel"])
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Pestaña de datos personales
         personal_tab = notebook.add("Datos Personales")
         self._create_personal_details_tab(personal_tab)
-        
+
         # Pestaña de datos laborales
         laboral_tab = notebook.add("Datos Laborales")
         self._create_laboral_details_tab(laboral_tab)
-        
+
         # Pestaña de contacto
         contacto_tab = notebook.add("Contacto")
         self._create_contacto_details_tab(contacto_tab)
-        
+
         # Pestaña de salud y datos bancarios
         salud_tab = notebook.add("Salud y Bancarios")
         self._create_salud_details_tab(salud_tab)
-        
+
         # Pestaña de familia
         familia_tab = notebook.add("Familia")
         self._create_familia_details_tab(familia_tab)
-        
+
         # Botón de cerrar
         btn_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         close_btn = ctk.CTkButton(btn_frame, text="Cerrar", command=self._on_close)
         close_btn.pack(side="right", padx=5)
-        
+
         # Botón de editar (solo con permiso de actualización)
         if self.main_window.tiene_permiso("update"):
             edit_btn = ctk.CTkButton(btn_frame, text="Editar", command=self._on_edit)
             edit_btn.pack(side="right", padx=5)
-    
+
     def _create_personal_details_tab(self, parent):
         """Crea la pestaña de datos personales (solo lectura)"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Campos de datos personales (solo lectura)
         self.nombres_label = self._create_detail_field(form_frame, "Nombres:", 0, 0)
         self.apellidos_label = self._create_detail_field(form_frame, "Apellidos:", 0, 2)
         self.cedula_label = self._create_detail_field(form_frame, "Cédula:", 1, 0)
-        self.fecha_nacimiento_label = self._create_detail_field(form_frame, "Fecha Nacimiento:", 1, 2)
-        
+        self.fecha_nacimiento_label = self._create_detail_field(
+            form_frame, "Fecha Nacimiento:", 1, 2
+        )
+
         self.genero_label = self._create_detail_field(form_frame, "Género:", 2, 0)
         self.estado_civil_label = self._create_detail_field(form_frame, "Estado Civil:", 2, 2)
-        
+
         self.peso_label = self._create_detail_field(form_frame, "Peso (kg):", 3, 0)
         self.altura_label = self._create_detail_field(form_frame, "Altura (m):", 3, 2)
         self.tipo_sangre_label = self._create_detail_field(form_frame, "Tipo Sangre:", 4, 0)
         self.nacionalidad_label = self._create_detail_field(form_frame, "Nacionalidad:", 4, 2)
-    
+
     def _create_laboral_details_tab(self, parent):
         """Crea la pestaña de datos laborales (solo lectura)"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         self.tipo_empleado_label = self._create_detail_field(form_frame, "Tipo Empleado:", 0, 0)
         self.cargo_label = self._create_detail_field(form_frame, "Puesto de Trabajo:", 0, 2)
         self.departamento_label = self._create_detail_field(form_frame, "Departamento:", 1, 0)
-        self.fecha_contratacion_label = self._create_detail_field(form_frame, "Fecha de Ingreso a la Institución:", 1, 2)
-        
+        self.fecha_contratacion_label = self._create_detail_field(
+            form_frame, "Fecha de Ingreso a la Institución:", 1, 2
+        )
+
         self.salario_base_label = self._create_detail_field(form_frame, "Salario Base:", 2, 0)
         self.nivel_educativo_label = self._create_detail_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_label = self._create_detail_field(form_frame, "Especialidad:", 3, 0)
-        self.titulo_obtenido_label = self._create_detail_field(form_frame, "Título Universitario:", 3, 2)
-        self.tipo_contratacion_label = self._create_detail_field(form_frame, "Tipo de Contratación:", 4, 0)
-        self.titulo_secundaria_label = self._create_detail_field(form_frame, "Título Secundaria:", 4, 2)
-        
+        self.titulo_obtenido_label = self._create_detail_field(
+            form_frame, "Título Universitario:", 3, 2
+        )
+        self.tipo_contratacion_label = self._create_detail_field(
+            form_frame, "Tipo de Contratación:", 4, 0
+        )
+        self.titulo_secundaria_label = self._create_detail_field(
+            form_frame, "Título Secundaria:", 4, 2
+        )
+
         # Información adicional
         self.activo_label = self._create_detail_field(form_frame, "Estado:", 5, 0)
         self.antiguedad_label = self._create_detail_field(form_frame, "Antigüedad:", 5, 2)
-    
+
     def _create_contacto_details_tab(self, parent):
         """Crea la pestaña de contacto (solo lectura)"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         self.telefono_label = self._create_detail_field(form_frame, "Teléfono:", 0, 0)
         self.celular_label = self._create_detail_field(form_frame, "Celular:", 0, 2)
         self.email_label = self._create_detail_field(form_frame, "Correo Electrónico:", 1, 0)
         self.direccion_label = self._create_detail_field(form_frame, "Dirección:", 1, 2)
-        
+
         self.ciudad_label = self._create_detail_field(form_frame, "Ciudad:", 2, 0)
         self.estado_label = self._create_detail_field(form_frame, "Estado:", 2, 2)
         self.codigo_postal_label = self._create_detail_field(form_frame, "Código Postal:", 3, 0)
-        
+
         # Contacto de emergencia
         emergency_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         emergency_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
-        
-        emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
-                                     font=ctk.CTkFont(weight="bold"), text_color=COLORES["texto"])
+
+        emergency_label = ctk.CTkLabel(
+            emergency_frame,
+            text="Contacto de Emergencia",
+            font=ctk.CTkFont(weight="bold"),
+            text_color=COLORES["texto"],
+        )
         emergency_label.grid(row=0, column=0, columnspan=4, pady=5)
-        
-        self.contacto_emergencia_nombre_label = self._create_detail_field(emergency_frame, "Nombre:", 1, 0)
-        self.contacto_emergencia_telefono_label = self._create_detail_field(emergency_frame, "Teléfono:", 1, 2)
-        self.contacto_emergencia_relacion_label = self._create_detail_field(emergency_frame, "Relación:", 2, 0)
-    
+
+        self.contacto_emergencia_nombre_label = self._create_detail_field(
+            emergency_frame, "Nombre:", 1, 0
+        )
+        self.contacto_emergencia_telefono_label = self._create_detail_field(
+            emergency_frame, "Teléfono:", 1, 2
+        )
+        self.contacto_emergencia_relacion_label = self._create_detail_field(
+            emergency_frame, "Relación:", 2, 0
+        )
+
     def _create_salud_details_tab(self, parent):
         """Crea la pestaña de salud y datos bancarios (solo lectura)"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.carnet_discapacidad_label = self._create_detail_field(form_frame, "Carnet de Discapacidad:", 0, 0)
-        self.institucion_bancaria_label = self._create_detail_field(form_frame, "Institución Bancaria:", 0, 2)
+
+        self.carnet_discapacidad_label = self._create_detail_field(
+            form_frame, "Carnet de Discapacidad:", 0, 0
+        )
+        self.institucion_bancaria_label = self._create_detail_field(
+            form_frame, "Institución Bancaria:", 0, 2
+        )
         self.numero_cuenta_label = self._create_detail_field(form_frame, "Número de Cuenta:", 1, 0)
         self.tipo_cuenta_label = self._create_detail_field(form_frame, "Tipo de Cuenta:", 1, 2)
-        self.enfermedades_preexistentes_label = self._create_detail_field(form_frame, "Enfermedades Preexistentes / Crónicas:", 2, 0)
-        self.alergias_medicamentosas_label = self._create_detail_field(form_frame, "Alergias Medicamentosas:", 3, 0)
-        self.alergias_alimentarias_label = self._create_detail_field(form_frame, "Alergias Alimentarias o Ambientales:", 4, 0)
-    
+        self.enfermedades_preexistentes_label = self._create_detail_field(
+            form_frame, "Enfermedades Preexistentes / Crónicas:", 2, 0
+        )
+        self.alergias_medicamentosas_label = self._create_detail_field(
+            form_frame, "Alergias Medicamentosas:", 3, 0
+        )
+        self.alergias_alimentarias_label = self._create_detail_field(
+            form_frame, "Alergias Alimentarias o Ambientales:", 4, 0
+        )
+
     def _create_familia_details_tab(self, parent):
         """Crea la pestaña de familia (solo lectura)"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.hijos_label = self._create_detail_field(form_frame, "Hijos (nombres, edades y cédulas):", 0, 0)
-    
+
+        self.hijos_label = self._create_detail_field(
+            form_frame, "Hijos (nombres, edades y cédulas):", 0, 0
+        )
+
     def _create_detail_field(self, parent, label: str, row: int, col: int) -> ctk.CTkLabel:
         """Crea un campo de detalle (solo lectura)"""
-        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(
+            row=row, column=col, padx=5, pady=5, sticky="e"
+        )
         value_label = ctk.CTkLabel(parent, text="-", text_color=COLORES["texto_suave"], anchor="w")
-        value_label.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
+        value_label.grid(row=row, column=col + 1, padx=5, pady=5, sticky="w")
         return value_label
-    
+
     def _load_empleado_data(self):
         """Carga los datos del empleado en el formulario"""
         # Datos personales
@@ -874,33 +954,37 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.cedula_label.configure(text=self.empleado.cedula)
         if self.empleado.fecha_nacimiento:
             self.fecha_nacimiento_label.configure(text=format_date(self.empleado.fecha_nacimiento))
-        
+
         self.genero_label.configure(text=self.empleado.genero or "-")
         self.estado_civil_label.configure(text=self.empleado.estado_civil or "-")
-        
+
         self.peso_label.configure(text=str(self.empleado.peso) if self.empleado.peso else "-")
         self.altura_label.configure(text=str(self.empleado.altura) if self.empleado.altura else "-")
         self.tipo_sangre_label.configure(text=self.empleado.tipo_sangre or "-")
         self.nacionalidad_label.configure(text=self.empleado.nacionalidad or "-")
-        
+
         # Datos laborales
         self.tipo_empleado_label.configure(text=self.empleado.tipo_empleado)
         self.cargo_label.configure(text=self.empleado.cargo)
         self.departamento_label.configure(text=self.empleado.departamento)
         if self.empleado.fecha_contratacion:
-            self.fecha_contratacion_label.configure(text=format_date(self.empleado.fecha_contratacion))
-        
+            self.fecha_contratacion_label.configure(
+                text=format_date(self.empleado.fecha_contratacion)
+            )
+
         self.salario_base_label.configure(text=format_currency(self.empleado.salario_base))
         self.nivel_educativo_label.configure(text=self.empleado.nivel_educativo or "-")
         self.especialidad_label.configure(text=self.empleado.especialidad or "-")
         self.titulo_obtenido_label.configure(text=self.empleado.titulo_obtenido or "-")
         self.tipo_contratacion_label.configure(text=self.empleado.tipo_contratacion or "-")
         self.titulo_secundaria_label.configure(text=self.empleado.titulo_secundaria or "-")
-        
+
         # Información adicional
         self.activo_label.configure(text="Activo" if self.empleado.activo else "Inactivo")
-        self.antiguedad_label.configure(text=f"{self.empleado.antiguedad_anos} años" if self.empleado.antiguedad_anos else "-")
-        
+        self.antiguedad_label.configure(
+            text=f"{self.empleado.antiguedad_anos} años" if self.empleado.antiguedad_anos else "-"
+        )
+
         # Contacto
         self.telefono_label.configure(text=self.empleado.telefono or "-")
         self.celular_label.configure(text=self.empleado.celular or "-")
@@ -909,55 +993,69 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.ciudad_label.configure(text=self.empleado.ciudad or "-")
         self.estado_label.configure(text=self.empleado.estado or "-")
         self.codigo_postal_label.configure(text=self.empleado.codigo_postal or "-")
-        
+
         # Contacto de emergencia
-        self.contacto_emergencia_nombre_label.configure(text=self.empleado.contacto_emergencia_nombre or "-")
-        self.contacto_emergencia_telefono_label.configure(text=self.empleado.contacto_emergencia_telefono or "-")
-        self.contacto_emergencia_relacion_label.configure(text=self.empleado.contacto_emergencia_relacion or "-")
-        
+        self.contacto_emergencia_nombre_label.configure(
+            text=self.empleado.contacto_emergencia_nombre or "-"
+        )
+        self.contacto_emergencia_telefono_label.configure(
+            text=self.empleado.contacto_emergencia_telefono or "-"
+        )
+        self.contacto_emergencia_relacion_label.configure(
+            text=self.empleado.contacto_emergencia_relacion or "-"
+        )
+
         # Salud y datos bancarios
         self.carnet_discapacidad_label.configure(text=self.empleado.carnet_discapacidad or "-")
         self.institucion_bancaria_label.configure(text=self.empleado.institucion_bancaria or "-")
         self.numero_cuenta_label.configure(text=self.empleado.numero_cuenta or "-")
         self.tipo_cuenta_label.configure(text=self.empleado.tipo_cuenta or "-")
-        self.enfermedades_preexistentes_label.configure(text=self.empleado.enfermedades_preexistentes or "-")
-        self.alergias_medicamentosas_label.configure(text=self.empleado.alergias_medicamentosas or "-")
+        self.enfermedades_preexistentes_label.configure(
+            text=self.empleado.enfermedades_preexistentes or "-"
+        )
+        self.alergias_medicamentosas_label.configure(
+            text=self.empleado.alergias_medicamentosas or "-"
+        )
         self.alergias_alimentarias_label.configure(text=self.empleado.alergias_alimentarias or "-")
-        
+
         # Familia
         self.hijos_label.configure(text=self.empleado.hijos or "-")
-    
+
     def _on_close(self):
         """Cierra el diálogo"""
         self.destroy()
-    
+
     def _on_edit(self):
         """Abre el diálogo de edición"""
         self.destroy()
         # Llamar al método de edición del frame padre
-        if hasattr(self.main_window, 'current_frame') and hasattr(self.main_window.current_frame, '_on_edit'):
+        if hasattr(self.main_window, "current_frame") and hasattr(
+            self.main_window.current_frame, "_on_edit"
+        ):
             # Encontrar el empleado seleccionado y editar
             self.main_window.current_frame._on_edit()
 
 
 class EmpleadoDialog(ctk.CTkToplevel):
     """Diálogo para crear/editar empleado"""
-    
-    def __init__(self, parent, main_window, empleado: Optional[Empleado] = None, edit_mode: bool = False):
+
+    def __init__(
+        self, parent, main_window, empleado: Empleado | None = None, edit_mode: bool = False
+    ):
         super().__init__(parent)
         self.main_window = main_window
         self.empleado = empleado
         self.edit_mode = edit_mode
         self.result = False
-        
+
         self.title("Nuevo Empleado" if not empleado else "Editar Empleado")
         self.geometry("800x600")
-        
+
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
-        
+
         self._create_widgets()
-        
+
         # En modo edición precargar los datos del empleado
         if self.empleado and self.edit_mode:
             self._load_empleado_data()
@@ -967,178 +1065,235 @@ class EmpleadoDialog(ctk.CTkToplevel):
         # Notebook para pestañas
         notebook = ctk.CTkTabview(self, fg_color=COLORES["panel"])
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Pestaña de datos personales
         personal_tab = notebook.add("Datos Personales")
         self._create_personal_tab(personal_tab)
-        
+
         # Pestaña de datos laborales
         laboral_tab = notebook.add("Datos Laborales")
         self._create_laboral_tab(laboral_tab)
-        
+
         # Pestaña de contacto
         contacto_tab = notebook.add("Contacto")
         self._create_contacto_tab(contacto_tab)
-        
+
         # Pestaña de salud y datos bancarios
         salud_tab = notebook.add("Salud y Bancarios")
         self._create_salud_tab(salud_tab)
-        
+
         # Pestaña de familia
         familia_tab = notebook.add("Familia")
         self._create_familia_tab(familia_tab)
-        
+
         # Botones
         btn_frame = ctk.CTkFrame(self)
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
-        
+
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self._on_cancel)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _create_personal_tab(self, parent):
         """Crea la pestaña de datos personales"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Campos de datos personales
         self.nombres_entry = self._create_form_field(form_frame, "Nombres:", 0, 0)
         self.apellidos_entry = self._create_form_field(form_frame, "Apellidos:", 0, 2)
         self.cedula_entry = self._create_form_field(form_frame, "Cédula:", 1, 0)
         self.fecha_nacimiento_entry = self._create_form_field(form_frame, "Fecha Nacimiento:", 1, 2)
-        
-        self.genero_combo = self._create_combo_field(form_frame, "Género:", 2, 0, 
-                                                      ["masculino", "femenino", "otro"])
-        self.estado_civil_combo = self._create_combo_field(form_frame, "Estado Civil:", 2, 2,
-                                                           ["soltero", "casado", "divorciado", "viudo", "union_libre"])
-        
+
+        self.genero_combo = self._create_combo_field(
+            form_frame, "Género:", 2, 0, ["masculino", "femenino", "otro"]
+        )
+        self.estado_civil_combo = self._create_combo_field(
+            form_frame,
+            "Estado Civil:",
+            2,
+            2,
+            ["soltero", "casado", "divorciado", "viudo", "union_libre"],
+        )
+
         self.peso_entry = self._create_form_field(form_frame, "Peso (kg):", 3, 0)
         self.altura_entry = self._create_form_field(form_frame, "Altura (m):", 3, 2)
         self.tipo_sangre_entry = self._create_form_field(form_frame, "Tipo Sangre:", 4, 0)
         self.nacionalidad_entry = self._create_form_field(form_frame, "Nacionalidad:", 4, 2)
-        
+
         # Foto de perfil (opcional)
         ctk.CTkLabel(form_frame, text="Foto de Perfil:", text_color=COLORES["texto"]).grid(
-            row=5, column=0, padx=5, pady=10, sticky="e")
+            row=5, column=0, padx=5, pady=10, sticky="e"
+        )
         self.photo_label = ctk.CTkLabel(
-            form_frame, text="Sin foto", text_color=COLORES["texto_suave"], anchor="w")
+            form_frame, text="Sin foto", text_color=COLORES["texto_suave"], anchor="w"
+        )
         self.photo_label.grid(row=5, column=1, padx=5, pady=10, sticky="w")
         photo_btn = ctk.CTkButton(
-            form_frame, text="Seleccionar…", width=110,
-            command=self._on_select_foto)
+            form_frame, text="Seleccionar…", width=110, command=self._on_select_foto
+        )
         photo_btn.grid(row=5, column=2, columnspan=2, padx=5, pady=10, sticky="w")
-    
+
     def _create_laboral_tab(self, parent):
         """Crea la pestaña de datos laborales"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.tipo_empleado_combo = self._create_combo_field(form_frame, "Tipo Empleado:", 0, 0,
-                                                            ["docente", "administrativo", "mantenimiento"])
+
+        self.tipo_empleado_combo = self._create_combo_field(
+            form_frame, "Tipo Empleado:", 0, 0, ["docente", "administrativo", "mantenimiento"]
+        )
         self.cargo_entry = self._create_form_field(form_frame, "Puesto de Trabajo:", 0, 2)
         self.departamento_entry = self._create_form_field(form_frame, "Departamento:", 1, 0)
-        self.fecha_contratacion_entry = self._create_form_field(form_frame, "Fecha de Ingreso a la Institución:", 1, 2)
-        
+        self.fecha_contratacion_entry = self._create_form_field(
+            form_frame, "Fecha de Ingreso a la Institución:", 1, 2
+        )
+
         self.salario_base_entry = self._create_form_field(form_frame, "Salario Base:", 2, 0)
         self.nivel_educativo_entry = self._create_form_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_entry = self._create_form_field(form_frame, "Especialidad:", 3, 0)
-        self.titulo_obtenido_entry = self._create_form_field(form_frame, "Título Universitario:", 3, 2)
-        self.tipo_contratacion_combo = self._create_combo_field(form_frame, "Tipo de Contratación:", 4, 0,
-                                                                ["", "fijo", "indefinido", "temporal", "por_horas"])
-        self.titulo_secundaria_entry = self._create_form_field(form_frame, "Título Secundaria:", 4, 2)
-    
+        self.titulo_obtenido_entry = self._create_form_field(
+            form_frame, "Título Universitario:", 3, 2
+        )
+        self.tipo_contratacion_combo = self._create_combo_field(
+            form_frame,
+            "Tipo de Contratación:",
+            4,
+            0,
+            ["", "fijo", "indefinido", "temporal", "por_horas"],
+        )
+        self.titulo_secundaria_entry = self._create_form_field(
+            form_frame, "Título Secundaria:", 4, 2
+        )
+
     def _create_contacto_tab(self, parent):
         """Crea la pestaña de contacto"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         self.telefono_entry = self._create_form_field(form_frame, "Teléfono:", 0, 0)
         self.celular_entry = self._create_form_field(form_frame, "Celular:", 0, 2)
         self.email_entry = self._create_form_field(form_frame, "Correo Electrónico:", 1, 0)
         self.direccion_entry = self._create_form_field(form_frame, "Dirección:", 1, 2)
-        
+
         self.ciudad_entry = self._create_form_field(form_frame, "Ciudad:", 2, 0)
         self.estado_entry = self._create_form_field(form_frame, "Estado:", 2, 2)
         self.codigo_postal_entry = self._create_form_field(form_frame, "Código Postal:", 3, 0)
-        
+
         # Contacto de emergencia
         emergency_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         emergency_frame.grid(row=4, column=0, columnspan=4, sticky="ew", pady=10)
-        
-        emergency_label = ctk.CTkLabel(emergency_frame, text="Contacto de Emergencia", 
-                                     font=ctk.CTkFont(weight="bold"))
+
+        emergency_label = ctk.CTkLabel(
+            emergency_frame, text="Contacto de Emergencia", font=ctk.CTkFont(weight="bold")
+        )
         emergency_label.grid(row=0, column=0, columnspan=4, pady=5)
-        
-        self.contacto_emergencia_nombre_entry = self._create_form_field(emergency_frame, "Nombre:", 1, 0)
-        self.contacto_emergencia_telefono_entry = self._create_form_field(emergency_frame, "Teléfono:", 1, 2)
-        self.contacto_emergencia_relacion_entry = self._create_form_field(emergency_frame, "Relación:", 2, 0)
-    
+
+        self.contacto_emergencia_nombre_entry = self._create_form_field(
+            emergency_frame, "Nombre:", 1, 0
+        )
+        self.contacto_emergencia_telefono_entry = self._create_form_field(
+            emergency_frame, "Teléfono:", 1, 2
+        )
+        self.contacto_emergencia_relacion_entry = self._create_form_field(
+            emergency_frame, "Relación:", 2, 0
+        )
+
     def _create_salud_tab(self, parent):
         """Crea la pestaña de salud y datos bancarios"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.carnet_discapacidad_entry = self._create_form_field(form_frame, "Carnet de Discapacidad:", 0, 0)
-        self.institucion_bancaria_entry = self._create_form_field(form_frame, "Institución Bancaria:", 0, 2)
+
+        self.carnet_discapacidad_entry = self._create_form_field(
+            form_frame, "Carnet de Discapacidad:", 0, 0
+        )
+        self.institucion_bancaria_entry = self._create_form_field(
+            form_frame, "Institución Bancaria:", 0, 2
+        )
         self.numero_cuenta_entry = self._create_form_field(form_frame, "Número de Cuenta:", 1, 0)
-        self.tipo_cuenta_combo = self._create_combo_field(form_frame, "Tipo de Cuenta:", 1, 2,
-                                                          ["", "ahorro", "corriente"])
-        
+        self.tipo_cuenta_combo = self._create_combo_field(
+            form_frame, "Tipo de Cuenta:", 1, 2, ["", "ahorro", "corriente"]
+        )
+
         self.enfermedades_preexistentes_text = self._create_text_field(
-            form_frame, "Enfermedades Preexistentes / Crónicas:", 2, 0)
+            form_frame, "Enfermedades Preexistentes / Crónicas:", 2, 0
+        )
         self.alergias_medicamentosas_text = self._create_text_field(
-            form_frame, "Alergias Medicamentosas:", 3, 0)
+            form_frame, "Alergias Medicamentosas:", 3, 0
+        )
         self.alergias_alimentarias_text = self._create_text_field(
-            form_frame, "Alergias Alimentarias o Ambientales:", 4, 0)
-    
+            form_frame, "Alergias Alimentarias o Ambientales:", 4, 0
+        )
+
     def _create_familia_tab(self, parent):
         """Crea la pestaña de datos familiares"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         self.hijos_text = self._create_text_field(
-            form_frame, "Hijos (nombres, edades y cédulas):", 0, 0, height=140)
+            form_frame, "Hijos (nombres, edades y cédulas):", 0, 0, height=140
+        )
         ctk.CTkLabel(
             form_frame,
             text="Ej.: María López (10 años, C.I. 12345678); Juan López (5 años, C.I. 87654321)",
-            text_color="#888888", font=(_familia_fuente(), 9)
+            text_color="#888888",
+            font=(_familia_fuente(), 9),
         ).grid(row=1, column=1, columnspan=3, padx=5, pady=2, sticky="w")
-    
-    def _create_text_field(self, parent, label: str, row: int, col: int, height: int = 80) -> ctk.CTkTextbox:
+
+    def _create_text_field(
+        self, parent, label: str, row: int, col: int, height: int = 80
+    ) -> ctk.CTkTextbox:
         """Crea un campo de texto multilínea"""
-        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="ne")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(
+            row=row, column=col, padx=5, pady=5, sticky="ne"
+        )
         textbox = ctk.CTkTextbox(
-            parent, width=400, height=height, fg_color=COLORES["campo"], text_color=COLORES["texto"])
-        textbox.grid(row=row, column=col+1, columnspan=3, padx=5, pady=5, sticky="ew")
+            parent, width=400, height=height, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        textbox.grid(row=row, column=col + 1, columnspan=3, padx=5, pady=5, sticky="ew")
         return textbox
-    
+
     def _get_text(self, textbox: ctk.CTkTextbox) -> str:
         """Obtiene el texto de un CTkTextbox"""
-        return textbox.get("1.0", tk.END).strip()
-    
+        texto: str = textbox.get("1.0", tk.END).strip()
+        return texto
+
     def _create_form_field(self, parent, label: str, row: int, col: int) -> ctk.CTkEntry:
         """Crea un campo de formulario"""
-        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
-        entry = ctk.CTkEntry(parent, width=200, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text=" ")
-        entry.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(
+            row=row, column=col, padx=5, pady=5, sticky="e"
+        )
+        entry = ctk.CTkEntry(
+            parent,
+            width=200,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text=" ",
+        )
+        entry.grid(row=row, column=col + 1, padx=5, pady=5, sticky="w")
         return entry
-    
-    def _create_combo_field(self, parent, label: str, row: int, col: int, values: List[str]) -> ttk.Combobox:
+
+    def _create_combo_field(
+        self, parent, label: str, row: int, col: int, values: list[str]
+    ) -> ttk.Combobox:
         """Crea un campo de combo"""
-        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=col, padx=5, pady=5, sticky="e")
-        combo = ttk.Combobox(parent, values=values, width=25, state="readonly", font=(_familia_fuente(), 9))
-        combo.grid(row=row, column=col+1, padx=5, pady=5, sticky="w")
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(
+            row=row, column=col, padx=5, pady=5, sticky="e"
+        )
+        combo = ttk.Combobox(
+            parent, values=values, width=25, state="readonly", font=(_familia_fuente(), 9)
+        )
+        combo.grid(row=row, column=col + 1, padx=5, pady=5, sticky="w")
         if values:
             combo.set(values[0])  # Establecer primer valor por defecto
         return combo
-    
+
     def _load_empleado_data(self):
         """Carga los datos del empleado en el formulario"""
         if not self.empleado:
             return
-        
+
         # Datos personales
         if self.empleado.foto_ruta:
             self.photo_label.configure(text=os.path.basename(self.empleado.foto_ruta))
@@ -1151,12 +1306,12 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.fecha_nacimiento:
             self.fecha_nacimiento_entry.delete(0, tk.END)
             self.fecha_nacimiento_entry.insert(0, format_date(self.empleado.fecha_nacimiento))
-        
+
         if self.empleado.genero:
             self.genero_combo.set(self.empleado.genero)
         if self.empleado.estado_civil:
             self.estado_civil_combo.set(self.empleado.estado_civil)
-        
+
         if self.empleado.peso:
             self.peso_entry.delete(0, tk.END)
             self.peso_entry.insert(0, str(self.empleado.peso))
@@ -1169,7 +1324,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.nacionalidad:
             self.nacionalidad_entry.delete(0, tk.END)
             self.nacionalidad_entry.insert(0, self.empleado.nacionalidad)
-        
+
         # Datos laborales
         self.tipo_empleado_combo.set(self.empleado.tipo_empleado)
         self.cargo_entry.delete(0, tk.END)
@@ -1179,7 +1334,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.fecha_contratacion:
             self.fecha_contratacion_entry.delete(0, tk.END)
             self.fecha_contratacion_entry.insert(0, format_date(self.empleado.fecha_contratacion))
-        
+
         self.salario_base_entry.delete(0, tk.END)
         self.salario_base_entry.insert(0, str(self.empleado.salario_base))
         if self.empleado.nivel_educativo:
@@ -1191,7 +1346,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.titulo_obtenido:
             self.titulo_obtenido_entry.delete(0, tk.END)
             self.titulo_obtenido_entry.insert(0, self.empleado.titulo_obtenido)
-        
+
         # Contacto
         if self.empleado.telefono:
             self.telefono_entry.delete(0, tk.END)
@@ -1214,25 +1369,31 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.codigo_postal:
             self.codigo_postal_entry.delete(0, tk.END)
             self.codigo_postal_entry.insert(0, self.empleado.codigo_postal)
-        
+
         # Contacto de emergencia
         if self.empleado.contacto_emergencia_nombre:
             self.contacto_emergencia_nombre_entry.delete(0, tk.END)
-            self.contacto_emergencia_nombre_entry.insert(0, self.empleado.contacto_emergencia_nombre)
+            self.contacto_emergencia_nombre_entry.insert(
+                0, self.empleado.contacto_emergencia_nombre
+            )
         if self.empleado.contacto_emergencia_telefono:
             self.contacto_emergencia_telefono_entry.delete(0, tk.END)
-            self.contacto_emergencia_telefono_entry.insert(0, self.empleado.contacto_emergencia_telefono)
+            self.contacto_emergencia_telefono_entry.insert(
+                0, self.empleado.contacto_emergencia_telefono
+            )
         if self.empleado.contacto_emergencia_relacion:
             self.contacto_emergencia_relacion_entry.delete(0, tk.END)
-            self.contacto_emergencia_relacion_entry.insert(0, self.empleado.contacto_emergencia_relacion)
-        
+            self.contacto_emergencia_relacion_entry.insert(
+                0, self.empleado.contacto_emergencia_relacion
+            )
+
         # Datos laborales adicionales
         if self.empleado.tipo_contratacion:
             self.tipo_contratacion_combo.set(self.empleado.tipo_contratacion)
         if self.empleado.titulo_secundaria:
             self.titulo_secundaria_entry.delete(0, tk.END)
             self.titulo_secundaria_entry.insert(0, self.empleado.titulo_secundaria)
-        
+
         # Salud y datos bancarios
         if self.empleado.carnet_discapacidad:
             self.carnet_discapacidad_entry.delete(0, tk.END)
@@ -1246,16 +1407,18 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if self.empleado.tipo_cuenta:
             self.tipo_cuenta_combo.set(self.empleado.tipo_cuenta)
         if self.empleado.enfermedades_preexistentes:
-            self.enfermedades_preexistentes_text.insert("1.0", self.empleado.enfermedades_preexistentes)
+            self.enfermedades_preexistentes_text.insert(
+                "1.0", self.empleado.enfermedades_preexistentes
+            )
         if self.empleado.alergias_medicamentosas:
             self.alergias_medicamentosas_text.insert("1.0", self.empleado.alergias_medicamentosas)
         if self.empleado.alergias_alimentarias:
             self.alergias_alimentarias_text.insert("1.0", self.empleado.alergias_alimentarias)
-        
+
         # Familia
         if self.empleado.hijos:
             self.hijos_text.insert("1.0", self.empleado.hijos)
-    
+
     def _get_form_data(self) -> dict:
         """Obtiene los datos del formulario"""
         return {
@@ -1298,11 +1461,11 @@ class EmpleadoDialog(ctk.CTkToplevel):
             "alergias_alimentarias": self._get_text(self.alergias_alimentarias_text),
             "hijos": self._get_text(self.hijos_text),
         }
-    
-    def _parse_date(self, date_str: str) -> Optional[date]:
+
+    def _parse_date(self, date_str: str) -> date | None:
         """Parsea una fecha"""
         return parse_date(date_str)
-    
+
     def _on_select_foto(self):
         """Selecciona una imagen para la foto de perfil"""
         ruta = filedialog.askopenfilename(
@@ -1315,7 +1478,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         if ruta:
             self.photo_path = ruta
             self.photo_label.configure(text=os.path.basename(ruta), text_color="#8ab4f8")
-    
+
     def _guardar_foto(self, empleado_id: int):
         """Guarda la foto seleccionada y actualiza la ruta del empleado"""
         ruta = getattr(self, "photo_path", None)
@@ -1323,33 +1486,36 @@ class EmpleadoDialog(ctk.CTkToplevel):
             return
         try:
             from src.utils.document_manager import document_manager
+
             with open(ruta, "rb") as f:
                 contenido = f.read()
             ruta_guardada, _ = document_manager.save_photo(
-                contenido, os.path.basename(ruta), empleado_id)
+                contenido, os.path.basename(ruta), empleado_id
+            )
             self.main_window.empleado_service.actualizar_foto(empleado_id, ruta_guardada)
         except Exception as e:
             messagebox.showwarning(
-                "Advertencia", f"El empleado se guardó pero no se pudo almacenar la foto: {e}")
-    
-    def _parse_float(self, value: str) -> Optional[float]:
+                "Advertencia", f"El empleado se guardó pero no se pudo almacenar la foto: {e}"
+            )
+
+    def _parse_float(self, value: str) -> float | None:
         """Parsea un float"""
         try:
             return float(value) if value else None
         except ValueError:
             return None
-    
+
     def _on_save(self):
         """Maneja el guardado del empleado"""
         try:
             datos = self._get_form_data()
-            
+
             # Validaciones básicas
             errores = self.main_window.empleado_service.validar_datos_empleado(datos)
             if errores:
                 messagebox.showerror("Errores de Validación", "\n".join(errores))
                 return
-            
+
             if self.empleado and self.edit_mode:
                 self.main_window.empleado_service.actualizar_empleado(self.empleado.id, datos)
                 self._guardar_foto(self.empleado.id)
@@ -1357,23 +1523,25 @@ class EmpleadoDialog(ctk.CTkToplevel):
             else:
                 # Verificar que la cédula no exista antes de crear
                 if datos.get("cedula"):
-                    existing = self.main_window.empleado_service.obtener_empleado_por_cedula(datos["cedula"])
+                    existing = self.main_window.empleado_service.obtener_empleado_por_cedula(
+                        datos["cedula"]
+                    )
                     if existing:
                         messagebox.showerror("Error", "Ya existe un empleado con esta cédula")
                         return
-                
+
                 empleado = self.main_window.empleado_service.crear_empleado(datos)
                 self._guardar_foto(empleado.id)
                 messagebox.showinfo("Éxito", "Empleado creado correctamente")
-            
+
             self.result = True
             self.destroy()
-            
+
         except ValueError as e:
             messagebox.showerror("Error de Validación", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar empleado: {str(e)}")
-    
+
     def _on_cancel(self):
         """Maneja la cancelación"""
         self.destroy()
@@ -1381,73 +1549,85 @@ class EmpleadoDialog(ctk.CTkToplevel):
 
 class DocumentosFrame(ctk.CTkFrame):
     """Frame de Gestión Documental"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
         self.current_empleado_id = None
         self._create_widgets()
         self._load_documentos()
-    
+
     def _create_widgets(self):
         """Crea los widgets del frame de documentos"""
         # Panel de selección de empleado
         selection_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         selection_frame.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
-        
-        self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=(_familia_fuente(), 9))
+
+        ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
+
+        self.empleado_combo = ttk.Combobox(
+            selection_frame, width=40, state="readonly", font=(_familia_fuente(), 9)
+        )
         self.empleado_combo.pack(side="left", padx=5)
         self.empleado_combo.bind("<<ComboboxSelected>>", self._on_empleado_selected)
-        
-        refresh_btn = ctk.CTkButton(selection_frame, text="Actualizar", command=self._load_empleados)
+
+        refresh_btn = ctk.CTkButton(
+            selection_frame, text="Actualizar", command=self._load_empleados
+        )
         refresh_btn.pack(side="left", padx=5)
-        
+
         # Panel de acciones
         actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         actions_frame.pack(fill="x", padx=10, pady=5)
-        
+
         if self.main_window.tiene_permiso("create"):
-            new_doc_btn = ctk.CTkButton(actions_frame, text="Nuevo Documento", command=self._on_new_documento)
+            new_doc_btn = ctk.CTkButton(
+                actions_frame, text="Nuevo Documento", command=self._on_new_documento
+            )
             new_doc_btn.pack(side="left", padx=5)
-        
+
         if self.main_window.tiene_permiso("report"):
-            venc_btn = ctk.CTkButton(actions_frame, text="Control de Vencimientos", command=self._on_reporte_vencimientos)
+            venc_btn = ctk.CTkButton(
+                actions_frame, text="Control de Vencimientos", command=self._on_reporte_vencimientos
+            )
             venc_btn.pack(side="left", padx=5)
-            export_doc_btn = ctk.CTkButton(actions_frame, text="Exportar", command=self._on_exportar_documentos)
+            export_doc_btn = ctk.CTkButton(
+                actions_frame, text="Exportar", command=self._on_exportar_documentos
+            )
             export_doc_btn.pack(side="left", padx=5)
-        
+
         # Tabla de documentos
         table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.tree = ttk.Treeview(
             table_frame,
             columns=("tipo", "titulo", "fecha", "estado"),
             show="headings",
-            yscrollcommand=scrollbar.set
+            yscrollcommand=scrollbar.set,
         )
-        
+
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("titulo", text="Título")
         self.tree.heading("fecha", text="Fecha")
         self.tree.heading("estado", text="Estado")
-        
+
         self.tree.column("tipo", width=180, minwidth=120)
         self.tree.column("titulo", width=300, minwidth=200)
         self.tree.column("fecha", width=130, minwidth=100)
         self.tree.column("estado", width=120, minwidth=80)
-        
+
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
-        
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
-        
+
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Documento", command=self._on_view_documento)
@@ -1458,19 +1638,21 @@ class DocumentosFrame(ctk.CTkFrame):
         if self.main_window.tiene_permiso("delete"):
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Eliminar", command=self._on_delete_documento)
-        
+
         self.tree.bind("<Button-3>", self._show_context_menu)
         self.tree.bind("<Double-1>", self._on_double_click)
-        
+
         # Cargar empleados
         self._load_empleados()
-    
+
     def _load_empleados(self):
         """Carga la lista de empleados en el combo"""
         empleados = self.main_window.empleado_service.listar_empleados_activos()
-        self.empleado_combo['values'] = [f"{emp.nombre_completo} ({emp.cedula})" for emp in empleados]
+        self.empleado_combo["values"] = [
+            f"{emp.nombre_completo} ({emp.cedula})" for emp in empleados
+        ]
         self.empleado_data = {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
-    
+
     def select_empleado(self, empleado_id: int):
         """Selecciona un empleado específico programáticamente"""
         self._load_empleados()
@@ -1480,126 +1662,136 @@ class DocumentosFrame(ctk.CTkFrame):
                 self.current_empleado_id = empleado_id
                 self._load_documentos()
                 break
-    
+
     def _on_empleado_selected(self, event):
         """Maneja la selección de empleado"""
         selected = self.empleado_combo.get()
         if selected in self.empleado_data:
             self.current_empleado_id = self.empleado_data[selected]
             self._load_documentos()
-    
+
     def _documentos_visibles(self):
         """Documentos mostrados en la tabla (por empleado o todos)"""
         if self.current_empleado_id:
-            return self.main_window.documento_service.listar_documentos_empleado(self.current_empleado_id)
+            return self.main_window.documento_service.listar_documentos_empleado(
+                self.current_empleado_id
+            )
         return self.main_window.documento_service.listar_todas()
-    
+
     def _on_exportar_documentos(self):
         """Exporta los documentos visibles a Excel o CSV"""
         documentos = self._documentos_visibles()
         if not documentos:
             messagebox.showwarning("Advertencia", "No hay documentos para exportar")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             initialfile=f"documentos_{date.today().strftime('%Y%m%d')}.xlsx",
-            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             for doc in documentos:
                 empleado = self.main_window.empleado_service.obtener_empleado(doc.empleado_id)
-                filas.append({
-                    "Empleado": empleado.nombre_completo if empleado else "Desconocido",
-                    "Cédula": empleado.cedula if empleado else "",
-                    "Tipo": doc.tipo_documento,
-                    "Título": doc.titulo,
-                    "Fecha Emisión": format_date(doc.fecha_emision),
-                    "Fecha Vencimiento": format_date(doc.fecha_vencimiento),
-                    "Estado": _estado_documento(doc),
-                })
+                filas.append(
+                    {
+                        "Empleado": empleado.nombre_completo if empleado else "Desconocido",
+                        "Cédula": empleado.cedula if empleado else "",
+                        "Tipo": doc.tipo_documento,
+                        "Título": doc.titulo,
+                        "Fecha Emisión": format_date(doc.fecha_emision),
+                        "Fecha Vencimiento": format_date(doc.fecha_vencimiento),
+                        "Estado": _estado_documento(doc),
+                    }
+                )
             exportar_archivo(filas, file_path)
             messagebox.showinfo("Éxito", f"Documentos exportados exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar documentos: {str(e)}")
-    
+
     def _on_reporte_vencimientos(self):
         """Genera el control de vencimientos de documentos en PDF"""
-        documentos = (self.main_window.documento_service.listar_vencidos()
-                      + self.main_window.documento_service.listar_por_vencer(30))
+        documentos = (
+            self.main_window.documento_service.listar_vencidos()
+            + self.main_window.documento_service.listar_por_vencer(30)
+        )
         if not documentos:
             messagebox.showwarning("Advertencia", "No hay documentos vencidos ni por vencer")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"vencimientos_{date.today().strftime('%Y%m%d')}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             for doc in documentos:
                 empleado = self.main_window.empleado_service.obtener_empleado(doc.empleado_id)
-                filas.append({
-                    "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
-                    "tipo_documento": doc.tipo_documento,
-                    "titulo": doc.titulo,
-                    "fecha_vencimiento": doc.fecha_vencimiento,
-                    "estado": _estado_documento(doc),
-                })
+                filas.append(
+                    {
+                        "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
+                        "tipo_documento": doc.tipo_documento,
+                        "titulo": doc.titulo,
+                        "fecha_vencimiento": doc.fecha_vencimiento,
+                        "estado": _estado_documento(doc),
+                    }
+                )
             pdf_gen = PDFGenerator()
             pdf_gen.generate_reporte_vencimientos(
-                filas, file_path,
-                titulo=f"Generado el {format_date(date.today())}")
+                filas, file_path, titulo=f"Generado el {format_date(date.today())}"
+            )
             messagebox.showinfo("Éxito", f"Control de vencimientos generado:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al generar control de vencimientos: {str(e)}")
-    
+
     def _load_documentos(self):
         """Carga los documentos del empleado seleccionado"""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        
+
         if not self.current_empleado_id:
             self.tree.insert("", "end", values=("Seleccione un empleado", "", "", ""))
             return
-        
+
         try:
-            documentos = self.main_window.documento_service.listar_documentos_empleado(self.current_empleado_id)
-            
+            documentos = self.main_window.documento_service.listar_documentos_empleado(
+                self.current_empleado_id
+            )
+
             if not documentos:
                 self.tree.insert("", "end", values=("", "No hay documentos registrados", "", ""))
                 return
-            
+
             for doc in documentos:
                 try:
                     estado = "Vigente" if doc.es_valido else "Vencido"
                 except AttributeError:
                     estado = "N/A"
                 fecha_str = format_date(doc.fecha_emision) if doc.fecha_emision else "N/A"
-                
-                self.tree.insert("", "end", values=(
-                    doc.tipo_documento,
-                    doc.titulo,
-                    fecha_str,
-                    estado
-                ), tags=(str(doc.id),))
-                
+
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(doc.tipo_documento, doc.titulo, fecha_str, estado),
+                    tags=(str(doc.id),),
+                )
+
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar documentos: {str(e)}")
-    
+
     def _show_context_menu(self, event):
         """Muestra el menú contextual sobre la fila bajo el cursor"""
         if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
-    
+
     def _on_double_click(self, event):
         """Doble clic: selecciona la fila bajo el cursor y abre el documento"""
         _seleccionar_fila_click(self.tree, event)
@@ -1611,7 +1803,7 @@ class DocumentosFrame(ctk.CTkFrame):
         if documento_id is None:
             return None
         return self.main_window.documento_service.obtener_documento(documento_id)
-    
+
     def _on_edit_documento(self):
         """Edita el documento seleccionado"""
         documento = self._get_selected_documento()
@@ -1620,7 +1812,7 @@ class DocumentosFrame(ctk.CTkFrame):
             self.wait_window(dialog)
             if dialog.result:
                 self._load_documentos()
-    
+
     def _on_new_documento(self):
         """Maneja la creación de nuevo documento"""
         if not self.main_window.tiene_permiso("create"):
@@ -1632,38 +1824,36 @@ class DocumentosFrame(ctk.CTkFrame):
         if not self.current_empleado_id:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
-        
+
         dialog = DocumentoDialog(self, self.main_window, self.current_empleado_id)
         self.wait_window(dialog)
         if dialog.result:
             self._load_documentos()
-    
+
     def _abrir_con_aplicacion(self, ruta: str):
         """Abre un archivo con la aplicación predeterminada del sistema"""
         try:
-            if sys.platform == "win32":
-                os.startfile(ruta)  # type: ignore[attr-defined]
-            elif sys.platform == "darwin":
-                import subprocess
-                subprocess.Popen(["open", ruta])
-            else:
-                import subprocess
-                subprocess.Popen(["xdg-open", ruta])
+            match sys.platform:
+                case "win32":
+                    os.startfile(ruta)
+                case "darwin":
+                    subprocess.Popen(["open", ruta])
+                case _:
+                    subprocess.Popen(["xdg-open", ruta])
         except Exception:
             webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
-    
+
     def _on_view_documento(self):
         """Muestra el documento seleccionado en el visor del sistema"""
-        import tempfile
         documento = self._get_selected_documento()
         if not documento:
             return
-        
+
         # 1. Si existe el archivo en disco, abrirlo directamente
         if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
             self._abrir_con_aplicacion(documento.ruta_archivo)
             return
-        
+
         # 2. Si hay contenido binario, guardar a un archivo temporal y abrirlo
         contenido = self.main_window.documento_service.obtener_archivo(documento.id)
         if contenido:
@@ -1681,7 +1871,7 @@ class DocumentosFrame(ctk.CTkFrame):
                 )
         else:
             messagebox.showerror("Error", "No se pudo recuperar el archivo del documento")
-    
+
     def _on_download_documento(self):
         """Descarga el documento seleccionado"""
         documento = self._get_selected_documento()
@@ -1691,18 +1881,20 @@ class DocumentosFrame(ctk.CTkFrame):
                 file_path = filedialog.asksaveasfilename(
                     defaultextension=".pdf",
                     initialfile=documento.nombre_archivo,
-                    filetypes=[("Todos los archivos", "*.*")]
+                    filetypes=[("Todos los archivos", "*.*")],
                 )
                 if file_path:
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, "wb") as f:
                         f.write(contenido)
                     messagebox.showinfo("Éxito", "Documento descargado correctamente")
-    
+
     def _on_delete_documento(self):
         """Elimina el documento seleccionado"""
         documento = self._get_selected_documento()
         if documento:
-            if messagebox.askyesno("Confirmar", f"¿Desea eliminar el documento {documento.titulo}?"):
+            if messagebox.askyesno(
+                "Confirmar", f"¿Desea eliminar el documento {documento.titulo}?"
+            ):
                 try:
                     self.main_window.documento_service.eliminar_documento(documento.id)
                     self._load_documentos()
@@ -1713,7 +1905,7 @@ class DocumentosFrame(ctk.CTkFrame):
 
 class DocumentoDialog(ctk.CTkToplevel):
     """Diálogo para crear/editar documento"""
-    
+
     def __init__(self, parent, main_window, empleado_id: int, documento=None):
         super().__init__(parent)
         self.main_window = main_window
@@ -1721,22 +1913,22 @@ class DocumentoDialog(ctk.CTkToplevel):
         self.documento = documento
         self.result = False
         self.file_content = None
-        
+
         self.title("Editar Documento" if documento else "Nuevo Documento")
         self.geometry("600x400")
-        
+
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
-        
+
         self._create_widgets()
         if documento:
             self._load_documento_data()
-    
+
     def _load_documento_data(self):
         """Precarga los datos del documento en el formulario"""
         if not self.documento:
             return
-        
+
         self.tipo_combo.set(self.documento.tipo_documento)
         self.titulo_entry.insert(0, self.documento.titulo)
         if self.documento.descripcion:
@@ -1748,80 +1940,115 @@ class DocumentoDialog(ctk.CTkToplevel):
         if self.documento.nombre_archivo:
             self.file_label.configure(text=self.documento.nombre_archivo)
 
-    
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
         form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Tipo de documento
-        ctk.CTkLabel(form_frame, text="Tipo de Documento:", text_color=COLORES["texto"]).grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        ctk.CTkLabel(form_frame, text="Tipo de Documento:", text_color=COLORES["texto"]).grid(
+            row=0, column=0, padx=5, pady=5, sticky="e"
+        )
         self.tipo_combo = ttk.Combobox(
             form_frame,
             values=["cedula", "titulo", "reposo", "certificado", "expediente", "otro"],
             width=25,
             state="readonly",
-            font=(_familia_fuente(), 9)
+            font=(_familia_fuente(), 9),
         )
         self.tipo_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.tipo_combo.set("cedula")  # Valor por defecto
-        
+
         # Título
-        ctk.CTkLabel(form_frame, text="Título:", text_color=COLORES["texto"]).grid(row=1, column=0, padx=5, pady=5, sticky="e")
-        self.titulo_entry = ctk.CTkEntry(form_frame, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="Ingrese título")
+        ctk.CTkLabel(form_frame, text="Título:", text_color=COLORES["texto"]).grid(
+            row=1, column=0, padx=5, pady=5, sticky="e"
+        )
+        self.titulo_entry = ctk.CTkEntry(
+            form_frame,
+            width=300,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="Ingrese título",
+        )
         self.titulo_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        
+
         # Descripción
-        ctk.CTkLabel(form_frame, text="Descripción:", text_color=COLORES["texto"]).grid(row=2, column=0, padx=5, pady=5, sticky="ne")
-        self.descripcion_text = ctk.CTkTextbox(form_frame, width=300, height=100, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+        ctk.CTkLabel(form_frame, text="Descripción:", text_color=COLORES["texto"]).grid(
+            row=2, column=0, padx=5, pady=5, sticky="ne"
+        )
+        self.descripcion_text = ctk.CTkTextbox(
+            form_frame,
+            width=300,
+            height=100,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+        )
         self.descripcion_text.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-        
+
         # Fechas
-        ctk.CTkLabel(form_frame, text="Fecha Emisión:", text_color=COLORES["texto"]).grid(row=3, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_emision_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
+        ctk.CTkLabel(form_frame, text="Fecha Emisión:", text_color=COLORES["texto"]).grid(
+            row=3, column=0, padx=5, pady=5, sticky="e"
+        )
+        self.fecha_emision_entry = ctk.CTkEntry(
+            form_frame,
+            width=150,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="DD/MM/YYYY",
+        )
         self.fecha_emision_entry.grid(row=3, column=1, padx=5, pady=5, sticky="w")
-        
-        ctk.CTkLabel(form_frame, text="Fecha Vencimiento:", text_color=COLORES["texto"]).grid(row=4, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_vencimiento_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
+
+        ctk.CTkLabel(form_frame, text="Fecha Vencimiento:", text_color=COLORES["texto"]).grid(
+            row=4, column=0, padx=5, pady=5, sticky="e"
+        )
+        self.fecha_vencimiento_entry = ctk.CTkEntry(
+            form_frame,
+            width=150,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="DD/MM/YYYY",
+        )
         self.fecha_vencimiento_entry.grid(row=4, column=1, padx=5, pady=5, sticky="w")
-        
+
         # Archivo
         file_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         file_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=10)
-        
+
         ctk.CTkLabel(file_frame, text="Archivo:").pack(side="left", padx=5)
         self.file_label = ctk.CTkLabel(file_frame, text="Ningún archivo seleccionado")
         self.file_label.pack(side="left", padx=5)
-        
-        select_file_btn = ctk.CTkButton(file_frame, text="Seleccionar", command=self._on_select_file)
+
+        select_file_btn = ctk.CTkButton(
+            file_frame, text="Seleccionar", command=self._on_select_file
+        )
         select_file_btn.pack(side="left", padx=5)
-        
+
         # Botones
         btn_frame = ctk.CTkFrame(self)
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
-        
+
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self._on_cancel)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _on_select_file(self):
         """Selecciona un archivo"""
         file_path = filedialog.askopenfilename(
             filetypes=[
                 ("PDF Files", "*.pdf"),
                 ("Image Files", "*.jpg *.jpeg *.png *.gif *.bmp"),
-                ("All Files", "*.*")
+                ("All Files", "*.*"),
             ]
         )
         if file_path:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 self.file_content = f.read()
-            
+
             filename = os.path.basename(file_path)
             self.file_label.configure(text=filename)
-    
+
     def _on_save(self):
         """Guarda (crea o actualiza) el documento"""
         try:
@@ -1830,7 +2057,7 @@ class DocumentoDialog(ctk.CTkToplevel):
             if requiere_archivo and not self.file_content:
                 messagebox.showerror("Error", "Debe seleccionar un archivo")
                 return
-            
+
             datos = {
                 "empleado_id": self.empleado_id,
                 "tipo_documento": self.tipo_combo.get(),
@@ -1838,42 +2065,44 @@ class DocumentoDialog(ctk.CTkToplevel):
                 "descripcion": self.descripcion_text.get("1.0", "end").strip(),
                 "fecha_emision": self._parse_date(self.fecha_emision_entry.get()),
                 "fecha_vencimiento": self._parse_date(self.fecha_vencimiento_entry.get()),
-                "nombre_archivo": self.file_label.cget("text")
+                "nombre_archivo": self.file_label.cget("text"),
             }
-            
+
             if not datos["titulo"]:
                 messagebox.showerror("Error", "El título es requerido")
                 return
-            
+
             if self.documento is None and self.file_content:
                 datos["nombre_archivo"] = self.file_label.cget("text")
-            
+
             errores = self.main_window.documento_service.validar_datos_documento(datos)
             if errores:
                 messagebox.showerror("Errores de Validación", "\n".join(errores))
                 return
-            
+
             if self.documento:
                 self.main_window.documento_service.actualizar_documento(
-                    self.documento.id, datos, self.file_content)
+                    self.documento.id, datos, self.file_content
+                )
                 messagebox.showinfo("Éxito", "Documento actualizado correctamente")
             else:
                 self.main_window.documento_service.crear_documento(datos, self.file_content)
                 messagebox.showinfo("Éxito", "Documento creado correctamente")
-            
+
             self.result = True
             self.destroy()
-            
+
         except ValueError as e:
             messagebox.showerror("Error de Validación", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar documento: {str(e)}")
-    
-    def _parse_date(self, date_str: str) -> Optional[date]:
+
+    def _parse_date(self, date_str: str) -> date | None:
         """Parsea una fecha"""
         from src.utils.helpers import parse_date
+
         return parse_date(date_str)
-    
+
     def _on_cancel(self):
         """Cancela la operación"""
         self.destroy()
@@ -1881,75 +2110,87 @@ class DocumentoDialog(ctk.CTkToplevel):
 
 class IncidenciasFrame(ctk.CTkFrame):
     """Frame de Incidencias y Permisos"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
         self.current_empleado_id = None
         self._create_widgets()
         self._load_data()
-    
+
     def _create_widgets(self):
         """Crea los widgets del frame de incidencias"""
         # Panel de selección de empleado
         selection_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         selection_frame.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
-        
-        self.empleado_combo = ttk.Combobox(selection_frame, width=40, state="readonly", font=(_familia_fuente(), 9))
+
+        ctk.CTkLabel(selection_frame, text="Empleado:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
+
+        self.empleado_combo = ttk.Combobox(
+            selection_frame, width=40, state="readonly", font=(_familia_fuente(), 9)
+        )
         self.empleado_combo.pack(side="left", padx=5)
         self.empleado_combo.bind("<<ComboboxSelected>>", self._on_empleado_selected)
-        
-        refresh_btn = ctk.CTkButton(selection_frame, text="Actualizar", command=self._load_empleados)
+
+        refresh_btn = ctk.CTkButton(
+            selection_frame, text="Actualizar", command=self._load_empleados
+        )
         refresh_btn.pack(side="left", padx=5)
-        
+
         # Panel de acciones
         actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         actions_frame.pack(fill="x", padx=10, pady=5)
-        
+
         if self.main_window.tiene_permiso("create"):
-            new_incidencia_btn = ctk.CTkButton(actions_frame, text="Nueva Incidencia", command=self._on_new_incidencia)
+            new_incidencia_btn = ctk.CTkButton(
+                actions_frame, text="Nueva Incidencia", command=self._on_new_incidencia
+            )
             new_incidencia_btn.pack(side="left", padx=5)
-        
+
         if self.main_window.tiene_permiso("report"):
-            reporte_inc_btn = ctk.CTkButton(actions_frame, text="Reporte PDF", command=self._on_reporte_incidencias)
+            reporte_inc_btn = ctk.CTkButton(
+                actions_frame, text="Reporte PDF", command=self._on_reporte_incidencias
+            )
             reporte_inc_btn.pack(side="left", padx=5)
-            export_inc_btn = ctk.CTkButton(actions_frame, text="Exportar", command=self._on_exportar_incidencias)
+            export_inc_btn = ctk.CTkButton(
+                actions_frame, text="Exportar", command=self._on_exportar_incidencias
+            )
             export_inc_btn.pack(side="left", padx=5)
-        
+
         # Tabla de incidencias
         table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.tree = ttk.Treeview(
             table_frame,
             columns=("tipo", "fechas", "dias", "estado", "motivo"),
             show="headings",
-            yscrollcommand=scrollbar.set
+            yscrollcommand=scrollbar.set,
         )
-        
+
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("fechas", text="Fechas")
         self.tree.heading("dias", text="Días")
         self.tree.heading("estado", text="Estado")
         self.tree.heading("motivo", text="Motivo")
-        
+
         self.tree.column("tipo", width=150, minwidth=100)
         self.tree.column("fechas", width=200, minwidth=150)
         self.tree.column("dias", width=80, minwidth=60)
         self.tree.column("estado", width=120, minwidth=80)
         self.tree.column("motivo", width=300, minwidth=200)
-        
+
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
-        
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
-        
+
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_incidencia)
@@ -1960,21 +2201,23 @@ class IncidenciasFrame(ctk.CTkFrame):
             self.context_menu.add_command(label="Rechazar", command=self._on_reject_incidencia)
         if self.main_window.tiene_permiso("delete"):
             self.context_menu.add_command(label="Eliminar", command=self._on_delete_incidencia)
-        
+
         self.tree.bind("<Button-3>", self._show_context_menu)
         self.tree.bind("<Double-1>", self._on_double_click)
-    
+
     def _load_data(self):
         """Carga los datos iniciales"""
         self._load_empleados()
         self._load_incidencias()
-    
+
     def _load_empleados(self):
         """Carga la lista de empleados en el combo"""
         empleados = self.main_window.empleado_service.listar_empleados_activos()
-        self.empleado_combo['values'] = [f"{emp.nombre_completo} ({emp.cedula})" for emp in empleados]
+        self.empleado_combo["values"] = [
+            f"{emp.nombre_completo} ({emp.cedula})" for emp in empleados
+        ]
         self.empleado_data = {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
-    
+
     def select_empleado(self, empleado_id: int):
         """Selecciona un empleado específico programáticamente"""
         self._load_empleados()
@@ -1984,131 +2227,148 @@ class IncidenciasFrame(ctk.CTkFrame):
                 self.current_empleado_id = empleado_id
                 self._load_incidencias()
                 break
-    
+
     def _on_empleado_selected(self, event):
         """Maneja la selección de empleado"""
         selected = self.empleado_combo.get()
         if selected in self.empleado_data:
             self.current_empleado_id = self.empleado_data[selected]
             self._load_incidencias()
-    
+
     def _incidencias_visibles(self):
         """Incidencias mostradas en la tabla (por empleado o todas)"""
         if self.current_empleado_id:
-            return self.main_window.incidencia_service.listar_incidencias_empleado(self.current_empleado_id)
+            return self.main_window.incidencia_service.listar_incidencias_empleado(
+                self.current_empleado_id
+            )
         return self.main_window.incidencia_service.listar_todas()
-    
+
     def _on_exportar_incidencias(self):
         """Exporta las incidencias visibles a Excel o CSV"""
         incidencias = self._incidencias_visibles()
         if not incidencias:
             messagebox.showwarning("Advertencia", "No hay incidencias para exportar")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             initialfile=f"incidencias_{date.today().strftime('%Y%m%d')}.xlsx",
-            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             for inc in incidencias:
                 empleado = self.main_window.empleado_service.obtener_empleado(inc.empleado_id)
-                filas.append({
-                    "Empleado": empleado.nombre_completo if empleado else "Desconocido",
-                    "Cédula": empleado.cedula if empleado else "",
-                    "Tipo": inc.tipo_incidencia,
-                    "Fecha Inicio": format_date(inc.fecha_inicio),
-                    "Fecha Fin": format_date(inc.fecha_fin),
-                    "Días": inc.dias_solicitados,
-                    "Estado": str(inc.estado).capitalize(),
-                    "Motivo": inc.motivo or "",
-                })
+                filas.append(
+                    {
+                        "Empleado": empleado.nombre_completo if empleado else "Desconocido",
+                        "Cédula": empleado.cedula if empleado else "",
+                        "Tipo": inc.tipo_incidencia,
+                        "Fecha Inicio": format_date(inc.fecha_inicio),
+                        "Fecha Fin": format_date(inc.fecha_fin),
+                        "Días": inc.dias_solicitados,
+                        "Estado": str(inc.estado).capitalize(),
+                        "Motivo": inc.motivo or "",
+                    }
+                )
             exportar_archivo(filas, file_path)
             messagebox.showinfo("Éxito", f"Incidencias exportadas exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar incidencias: {str(e)}")
-    
+
     def _on_reporte_incidencias(self):
         """Genera el reporte de incidencias en PDF"""
         incidencias = self._incidencias_visibles()
         if not incidencias:
             messagebox.showwarning("Advertencia", "No hay incidencias para generar el reporte")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"reporte_incidencias_{date.today().strftime('%Y%m%d')}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             titulo = "Todas las incidencias"
             if self.current_empleado_id:
-                empleado = self.main_window.empleado_service.obtener_empleado(self.current_empleado_id)
+                empleado = self.main_window.empleado_service.obtener_empleado(
+                    self.current_empleado_id
+                )
                 if empleado:
                     titulo = f"Empleado: {empleado.nombre_completo}"
             for inc in incidencias:
                 empleado = self.main_window.empleado_service.obtener_empleado(inc.empleado_id)
-                filas.append({
-                    "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
-                    "tipo_incidencia": inc.tipo_incidencia,
-                    "fecha_inicio": inc.fecha_inicio,
-                    "fecha_fin": inc.fecha_fin,
-                    "dias_solicitados": inc.dias_solicitados,
-                    "estado": inc.estado,
-                    "motivo": inc.motivo or "",
-                })
+                filas.append(
+                    {
+                        "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
+                        "tipo_incidencia": inc.tipo_incidencia,
+                        "fecha_inicio": inc.fecha_inicio,
+                        "fecha_fin": inc.fecha_fin,
+                        "dias_solicitados": inc.dias_solicitados,
+                        "estado": inc.estado,
+                        "motivo": inc.motivo or "",
+                    }
+                )
             pdf_gen = PDFGenerator()
             pdf_gen.generate_reporte_incidencias(filas, file_path, titulo=titulo)
             messagebox.showinfo("Éxito", f"Reporte de incidencias generado:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al generar reporte de incidencias: {str(e)}")
-    
+
     def _load_incidencias(self):
         """Carga las incidencias del empleado seleccionado"""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        
+
         if not self.current_empleado_id:
             self.tree.insert("", "end", values=("Seleccione un empleado", "", "", "", ""))
             return
-        
+
         try:
-            incidencias = self.main_window.incidencia_service.listar_incidencias_empleado(self.current_empleado_id)
-            
+            incidencias = self.main_window.incidencia_service.listar_incidencias_empleado(
+                self.current_empleado_id
+            )
+
             if not incidencias:
-                self.tree.insert("", "end", values=("", "No hay incidencias registradas", "", "", ""))
+                self.tree.insert(
+                    "", "end", values=("", "No hay incidencias registradas", "", "", "")
+                )
                 return
-            
+
             for incidencia in incidencias:
-                fechas = f"{format_date(incidencia.fecha_inicio)} - {format_date(incidencia.fecha_fin)}"
+                fechas = (
+                    f"{format_date(incidencia.fecha_inicio)} - {format_date(incidencia.fecha_fin)}"
+                )
                 dias = str(incidencia.dias_solicitados)
                 estado = incidencia.estado.capitalize()
-                motivo = incidencia.motivo[:30] + "..." if len(incidencia.motivo) > 30 else incidencia.motivo
-                
-                self.tree.insert("", "end", values=(
-                    incidencia.tipo_incidencia,
-                    fechas,
-                    dias,
-                    estado,
-                    motivo
-                ), tags=(str(incidencia.id),))
-                
+                motivo = (
+                    incidencia.motivo[:30] + "..."
+                    if len(incidencia.motivo) > 30
+                    else incidencia.motivo
+                )
+
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(incidencia.tipo_incidencia, fechas, dias, estado, motivo),
+                    tags=(str(incidencia.id),),
+                )
+
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar incidencias: {str(e)}")
-    
+
     def _show_context_menu(self, event):
         """Muestra el menú contextual sobre la fila bajo el cursor"""
         if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
-    
+
     def _on_double_click(self, event):
         """Doble clic: selecciona la fila bajo el cursor y abre la incidencia"""
         _seleccionar_fila_click(self.tree, event)
@@ -2120,7 +2380,7 @@ class IncidenciasFrame(ctk.CTkFrame):
         if incidencia_id is None:
             return None
         return self.main_window.incidencia_service.obtener_incidencia(incidencia_id)
-    
+
     def _on_edit_incidencia(self):
         """Edita la incidencia seleccionada"""
         incidencia = self._get_selected_incidencia()
@@ -2131,12 +2391,11 @@ class IncidenciasFrame(ctk.CTkFrame):
                     "Solo las incidencias pendientes pueden editarse",
                 )
                 return
-            dialog = IncidenciaDialog(
-                self, self.main_window, incidencia.empleado_id, incidencia)
+            dialog = IncidenciaDialog(self, self.main_window, incidencia.empleado_id, incidencia)
             self.wait_window(dialog)
             if dialog.result:
                 self._load_incidencias()
-    
+
     def _on_new_incidencia(self):
         """Maneja la creación de nueva incidencia"""
         if not self.main_window.tiene_permiso("create"):
@@ -2148,63 +2407,62 @@ class IncidenciasFrame(ctk.CTkFrame):
         if not self.current_empleado_id:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
             return
-        
+
         dialog = IncidenciaDialog(self, self.main_window, self.current_empleado_id)
         self.wait_window(dialog)
         if dialog.result:
             self._load_incidencias()
-    
+
     def _on_view_incidencia(self):
         """Muestra detalles de la incidencia seleccionada"""
         incidencia = self._get_selected_incidencia()
         if incidencia:
             self._show_incidencia_details(incidencia)
-    
+
     def _on_approve_incidencia(self):
         """Aprueba la incidencia seleccionada"""
         incidencia = self._get_selected_incidencia()
         if incidencia:
             if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
-                messagebox.showwarning("Advertencia", "Solo se pueden aprobar incidencias pendientes")
+                messagebox.showwarning(
+                    "Advertencia", "Solo se pueden aprobar incidencias pendientes"
+                )
                 return
-            
+
             dialog = ApprovalDialog(self, "Aprobar Incidencia", "Aprobar", incidencia)
             self.wait_window(dialog)
             if dialog.result:
                 try:
                     self.main_window.incidencia_service.aprobar_incidencia(
-                        incidencia.id,
-                        dialog.approved_by,
-                        dialog.comments,
-                        dialog.dias_aprobados
+                        incidencia.id, dialog.approved_by, dialog.comments, dialog.dias_aprobados
                     )
                     self._load_incidencias()
                     messagebox.showinfo("Éxito", "Incidencia aprobada correctamente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al aprobar incidencia: {str(e)}")
-    
+
     def _on_reject_incidencia(self):
         """Rechaza la incidencia seleccionada"""
         incidencia = self._get_selected_incidencia()
         if incidencia:
             if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
-                messagebox.showwarning("Advertencia", "Solo se pueden rechazar incidencias pendientes")
+                messagebox.showwarning(
+                    "Advertencia", "Solo se pueden rechazar incidencias pendientes"
+                )
                 return
-            
+
             dialog = ApprovalDialog(self, "Rechazar Incidencia", "Rechazar", incidencia)
             self.wait_window(dialog)
             if dialog.result:
                 try:
                     self.main_window.incidencia_service.rechazar_incidencia(
-                        incidencia.id,
-                        dialog.approved_by,
-                        dialog.comments
+                        incidencia.id, dialog.approved_by, dialog.comments
                     )
                     self._load_incidencias()
                     messagebox.showinfo("Éxito", "Incidencia rechazada correctamente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al rechazar incidencia: {str(e)}")
-    
+
     def _on_delete_incidencia(self):
         """Elimina la incidencia seleccionada"""
         incidencia = self._get_selected_incidencia()
@@ -2216,11 +2474,10 @@ class IncidenciasFrame(ctk.CTkFrame):
                     messagebox.showinfo("Éxito", "Incidencia eliminada correctamente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al eliminar incidencia: {str(e)}")
-    
+
     def _show_incidencia_details(self, incidencia):
         """Muestra los detalles de una incidencia"""
-        empleado = self.main_window.empleado_service.obtener_empleado(
-            incidencia.empleado_id)
+        empleado = self.main_window.empleado_service.obtener_empleado(incidencia.empleado_id)
         nombre_empleado = empleado.nombre_completo if empleado else "Desconocido"
         detalle = f"""
 Tipo: {incidencia.tipo_incidencia}
@@ -2243,7 +2500,7 @@ Soporte: {incidencia.documento_soporte_nombre or 'N/A'}
 
 class IncidenciaDialog(ctk.CTkToplevel):
     """Diálogo para crear/editar incidencia"""
-    
+
     def __init__(self, parent, main_window, empleado_id: int, incidencia=None):
         super().__init__(parent)
         self.main_window = main_window
@@ -2251,17 +2508,17 @@ class IncidenciaDialog(ctk.CTkToplevel):
         self.incidencia = incidencia
         self.result = False
         self.file_content = None
-        
+
         self.title("Editar Incidencia" if incidencia else "Nueva Incidencia")
         self.geometry("600x500")
-        
+
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
-        
+
         self._create_widgets()
         if incidencia:
             self._load_incidencia_data()
-    
+
     def _load_incidencia_data(self):
         """Precarga los datos de la incidencia en el formulario"""
         if not self.incidencia:
@@ -2275,80 +2532,107 @@ class IncidenciaDialog(ctk.CTkToplevel):
         if self.incidencia.documento_soporte_nombre:
             self.file_label.configure(text=self.incidencia.documento_soporte_nombre)
 
-    
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
         form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Tipo de incidencia
-        ctk.CTkLabel(form_frame, text="Tipo de Incidencia:", text_color=COLORES["texto"]).grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        ctk.CTkLabel(form_frame, text="Tipo de Incidencia:", text_color=COLORES["texto"]).grid(
+            row=0, column=0, padx=5, pady=5, sticky="e"
+        )
         self.tipo_combo = ttk.Combobox(
             form_frame,
             values=["reposo_medico", "ausencia", "permiso", "vacaciones", "licencia"],
             width=25,
             state="readonly",
-            font=(_familia_fuente(), 9)
+            font=(_familia_fuente(), 9),
         )
         self.tipo_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.tipo_combo.set("reposo_medico")  # Valor por defecto
-        
+
         # Fechas
-        ctk.CTkLabel(form_frame, text="Fecha Inicio:", text_color=COLORES["texto"]).grid(row=1, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_inicio_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
+        ctk.CTkLabel(form_frame, text="Fecha Inicio:", text_color=COLORES["texto"]).grid(
+            row=1, column=0, padx=5, pady=5, sticky="e"
+        )
+        self.fecha_inicio_entry = ctk.CTkEntry(
+            form_frame,
+            width=150,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="DD/MM/YYYY",
+        )
         self.fecha_inicio_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        
-        ctk.CTkLabel(form_frame, text="Fecha Fin:", text_color=COLORES["texto"]).grid(row=2, column=0, padx=5, pady=5, sticky="e")
-        self.fecha_fin_entry = ctk.CTkEntry(form_frame, width=150, fg_color=COLORES["campo"], text_color=COLORES["texto"], placeholder_text="DD/MM/YYYY")
+
+        ctk.CTkLabel(form_frame, text="Fecha Fin:", text_color=COLORES["texto"]).grid(
+            row=2, column=0, padx=5, pady=5, sticky="e"
+        )
+        self.fecha_fin_entry = ctk.CTkEntry(
+            form_frame,
+            width=150,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="DD/MM/YYYY",
+        )
         self.fecha_fin_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-        
+
         # Motivo
-        ctk.CTkLabel(form_frame, text="Motivo:", text_color=COLORES["texto"]).grid(row=3, column=0, padx=5, pady=5, sticky="ne")
-        self.motivo_text = ctk.CTkTextbox(form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+        ctk.CTkLabel(form_frame, text="Motivo:", text_color=COLORES["texto"]).grid(
+            row=3, column=0, padx=5, pady=5, sticky="ne"
+        )
+        self.motivo_text = ctk.CTkTextbox(
+            form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.motivo_text.grid(row=3, column=1, padx=5, pady=5, sticky="w")
-        
+
         # Descripción
-        ctk.CTkLabel(form_frame, text="Descripción:", text_color=COLORES["texto"]).grid(row=4, column=0, padx=5, pady=5, sticky="ne")
-        self.descripcion_text = ctk.CTkTextbox(form_frame, width=300, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+        ctk.CTkLabel(form_frame, text="Descripción:", text_color=COLORES["texto"]).grid(
+            row=4, column=0, padx=5, pady=5, sticky="ne"
+        )
+        self.descripcion_text = ctk.CTkTextbox(
+            form_frame, width=300, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.descripcion_text.grid(row=4, column=1, padx=5, pady=5, sticky="w")
-        
+
         # Archivo de soporte
         file_frame = ctk.CTkFrame(form_frame, fg_color=COLORES["campo"])
         file_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=10)
-        
+
         ctk.CTkLabel(file_frame, text="Documento de Soporte:").pack(side="left", padx=5)
         self.file_label = ctk.CTkLabel(file_frame, text="Ningún archivo seleccionado")
         self.file_label.pack(side="left", padx=5)
-        
-        select_file_btn = ctk.CTkButton(file_frame, text="Seleccionar", command=self._on_select_file)
+
+        select_file_btn = ctk.CTkButton(
+            file_frame, text="Seleccionar", command=self._on_select_file
+        )
         select_file_btn.pack(side="left", padx=5)
-        
+
         # Botones
         btn_frame = ctk.CTkFrame(self)
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
-        
+
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self._on_cancel)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _on_select_file(self):
         """Selecciona un archivo"""
         file_path = filedialog.askopenfilename(
             filetypes=[
                 ("PDF Files", "*.pdf"),
                 ("Image Files", "*.jpg *.jpeg *.png *.gif *.bmp"),
-                ("All Files", "*.*")
+                ("All Files", "*.*"),
             ]
         )
         if file_path:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 self.file_content = f.read()
-            
+
             filename = os.path.basename(file_path)
             self.file_label.configure(text=filename)
-    
+
     def _on_save(self):
         """Guarda la incidencia"""
         try:
@@ -2364,42 +2648,44 @@ class IncidenciaDialog(ctk.CTkToplevel):
             # de lo contrario se conserva el nombre del soporte existente.
             if self.file_content:
                 datos["documento_soporte_nombre"] = self.file_label.cget("text")
-            
+
             # Validar campos requeridos
             if not datos["motivo"]:
                 messagebox.showerror("Error", "El motivo es requerido")
                 return
-            
+
             if not datos["fecha_inicio"] or not datos["fecha_fin"]:
                 messagebox.showerror("Error", "Las fechas son requeridas")
                 return
-            
+
             errores = self.main_window.incidencia_service.validar_datos_incidencia(datos)
             if errores:
                 messagebox.showerror("Errores de Validación", "\n".join(errores))
                 return
-            
+
             if self.incidencia:
                 self.main_window.incidencia_service.actualizar_incidencia(
-                    self.incidencia.id, datos, self.file_content)
+                    self.incidencia.id, datos, self.file_content
+                )
                 messagebox.showinfo("Éxito", "Incidencia actualizada correctamente")
             else:
                 self.main_window.incidencia_service.crear_incidencia(datos, self.file_content)
                 messagebox.showinfo("Éxito", "Incidencia creada correctamente")
-            
+
             self.result = True
             self.destroy()
-            
+
         except ValueError as e:
             messagebox.showerror("Error de Validación", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar incidencia: {str(e)}")
-    
-    def _parse_date(self, date_str: str) -> Optional[date]:
+
+    def _parse_date(self, date_str: str) -> date | None:
         """Parsea una fecha"""
         from src.utils.helpers import parse_date
+
         return parse_date(date_str)
-    
+
     def _on_cancel(self):
         """Cancela la operación"""
         self.destroy()
@@ -2407,67 +2693,81 @@ class IncidenciaDialog(ctk.CTkToplevel):
 
 class ApprovalDialog(ctk.CTkToplevel):
     """Diálogo para aprobación/rechazo"""
-    
+
     def __init__(self, parent, title: str, action: str, incidencia):
         super().__init__(parent)
         self.result = False
         self.approved_by = ""
         self.comments = ""
         self.dias_aprobados = None
-        
+
         self.title(title)
         self.geometry("400x300")
-        
+
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
-        
+
         self._create_widgets(title, action, incidencia)
 
     def _create_widgets(self, title: str, action: str, incidencia):
         """Crea los widgets del diálogo"""
         form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Información de la incidencia
         info_text = f"Incidencia: {incidencia.tipo_incidencia}\nDías solicitados: {incidencia.dias_solicitados}"
         ctk.CTkLabel(form_frame, text=info_text, font=ctk.CTkFont(weight="bold")).pack(pady=10)
-        
+
         # Aprobado por
-        ctk.CTkLabel(form_frame, text=f"{action} por:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
+        ctk.CTkLabel(form_frame, text=f"{action} por:", text_color=COLORES["texto"]).pack(
+            anchor="w", padx=5
+        )
         placeholder_actor = "Su nombre" if action == "Rechazar" else "Nombre del aprobador"
         self.approved_by_entry = ctk.CTkEntry(
-            form_frame, width=300, fg_color=COLORES["campo"],
-            text_color=COLORES["texto"], placeholder_text=placeholder_actor)
+            form_frame,
+            width=300,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text=placeholder_actor,
+        )
         self.approved_by_entry.pack(padx=5, pady=5)
-        
+
         # Días aprobados (solo para aprobación)
         if action == "Aprobar":
-            ctk.CTkLabel(form_frame, text="Días a aprobar:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
-            self.dias_entry = ctk.CTkEntry(form_frame, width=100, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            ctk.CTkLabel(form_frame, text="Días a aprobar:", text_color=COLORES["texto"]).pack(
+                anchor="w", padx=5
+            )
+            self.dias_entry = ctk.CTkEntry(
+                form_frame, width=100, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+            )
             self.dias_entry.insert(0, str(incidencia.dias_solicitados))
             self.dias_entry.pack(padx=5, pady=5)
-        
+
         # Comentarios
-        ctk.CTkLabel(form_frame, text="Comentarios:", text_color=COLORES["texto"]).pack(anchor="w", padx=5)
-        self.comments_text = ctk.CTkTextbox(form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+        ctk.CTkLabel(form_frame, text="Comentarios:", text_color=COLORES["texto"]).pack(
+            anchor="w", padx=5
+        )
+        self.comments_text = ctk.CTkTextbox(
+            form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.comments_text.pack(padx=5, pady=5)
-        
+
         # Botones
         btn_frame = ctk.CTkFrame(self)
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text=action, command=self._on_save)
         save_btn.pack(side="right", padx=5)
-        
+
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self._on_cancel)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _on_save(self):
         """Guarda la acción"""
         self.approved_by = self.approved_by_entry.get().strip()
         self.comments = self.comments_text.get("1.0", "end").strip()
-        
-        if hasattr(self, 'dias_entry'):
+
+        if hasattr(self, "dias_entry"):
             try:
                 dias_str = self.dias_entry.get().strip()
                 if not dias_str:
@@ -2480,14 +2780,14 @@ class ApprovalDialog(ctk.CTkToplevel):
             except ValueError:
                 messagebox.showerror("Error", "Los días deben ser un número entero")
                 return
-        
+
         if not self.approved_by:
             messagebox.showerror("Error", "Debe ingresar quien aprueba/rechaza")
             return
-        
+
         self.result = True
         self.destroy()
-    
+
     def _on_cancel(self):
         """Cancela la operación"""
         self.destroy()
@@ -2495,90 +2795,126 @@ class ApprovalDialog(ctk.CTkToplevel):
 
 class NominaFrame(ctk.CTkFrame):
     """Frame de Nómina y Pagos"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
         self._create_widgets()
         self._load_pagos()
-    
+
     def _create_widgets(self):
         """Crea los widgets del frame de nómina"""
         # Panel de generación de nómina
         generation_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         generation_frame.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(generation_frame, text="Generar Nómina:", font=ctk.CTkFont(weight="bold"), text_color=COLORES["texto"]).pack(side="left", padx=5)
-        
-        ctk.CTkLabel(generation_frame, text="Desde:", text_color=COLORES["texto"]).pack(side="left", padx=5)
-        self.fecha_inicio_entry = ctk.CTkEntry(generation_frame, width=120, placeholder_text="DD/MM/YYYY", fg_color=COLORES["campo"], text_color=COLORES["texto"])
+
+        ctk.CTkLabel(
+            generation_frame,
+            text="Generar Nómina:",
+            font=ctk.CTkFont(weight="bold"),
+            text_color=COLORES["texto"],
+        ).pack(side="left", padx=5)
+
+        ctk.CTkLabel(generation_frame, text="Desde:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
+        self.fecha_inicio_entry = ctk.CTkEntry(
+            generation_frame,
+            width=120,
+            placeholder_text="DD/MM/YYYY",
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+        )
         self.fecha_inicio_entry.pack(side="left", padx=5)
-        
-        ctk.CTkLabel(generation_frame, text="Hasta:", text_color=COLORES["texto"]).pack(side="left", padx=5)
-        self.fecha_fin_entry = ctk.CTkEntry(generation_frame, width=120, placeholder_text="DD/MM/YYYY", fg_color=COLORES["campo"], text_color=COLORES["texto"])
+
+        ctk.CTkLabel(generation_frame, text="Hasta:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
+        self.fecha_fin_entry = ctk.CTkEntry(
+            generation_frame,
+            width=120,
+            placeholder_text="DD/MM/YYYY",
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+        )
         self.fecha_fin_entry.pack(side="left", padx=5)
-        
-        generate_btn = ctk.CTkButton(generation_frame, text="Generar", command=self._on_generate_nomina)
+
+        generate_btn = ctk.CTkButton(
+            generation_frame, text="Generar", command=self._on_generate_nomina
+        )
         generate_btn.pack(side="left", padx=5)
-        
+
         # Panel de filtros
         filter_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         filter_frame.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(filter_frame, text="Estado:", text_color=COLORES["texto"]).pack(side="left", padx=5)
-        self.estado_combo = ttk.Combobox(filter_frame, values=["Todos", "Pendientes", "Pagados"], width=18, state="readonly", font=(_familia_fuente(), 9))
+
+        ctk.CTkLabel(filter_frame, text="Estado:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
+        self.estado_combo = ttk.Combobox(
+            filter_frame,
+            values=["Todos", "Pendientes", "Pagados"],
+            width=18,
+            state="readonly",
+            font=(_familia_fuente(), 9),
+        )
         self.estado_combo.pack(side="left", padx=5)
         self.estado_combo.set("Todos")
         self.estado_combo.bind("<<ComboboxSelected>>", self._on_filter)
-        
+
         if self.main_window.tiene_permiso("create"):
             nuevo_pago_btn = ctk.CTkButton(
-                filter_frame, text="Nuevo Pago", command=self._on_new_pago)
+                filter_frame, text="Nuevo Pago", command=self._on_new_pago
+            )
             nuevo_pago_btn.pack(side="left", padx=5)
-        
+
         if self.main_window.tiene_permiso("report"):
-            planilla_btn = ctk.CTkButton(filter_frame, text="Planilla PDF", command=self._on_planilla_pdf)
+            planilla_btn = ctk.CTkButton(
+                filter_frame, text="Planilla PDF", command=self._on_planilla_pdf
+            )
             planilla_btn.pack(side="left", padx=5)
-            export_pagos_btn = ctk.CTkButton(filter_frame, text="Exportar", command=self._on_exportar_pagos)
+            export_pagos_btn = ctk.CTkButton(
+                filter_frame, text="Exportar", command=self._on_exportar_pagos
+            )
             export_pagos_btn.pack(side="left", padx=5)
-        
+
         refresh_btn = ctk.CTkButton(filter_frame, text="Actualizar", command=self._load_pagos)
         refresh_btn.pack(side="right", padx=5)
-        
+
         # Tabla de pagos
         table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.tree = ttk.Treeview(
             table_frame,
             columns=("empleado", "periodo", "tipo", "bruto", "neto", "estado"),
             show="headings",
-            yscrollcommand=scrollbar.set
+            yscrollcommand=scrollbar.set,
         )
-        
+
         self.tree.heading("empleado", text="Empleado")
         self.tree.heading("periodo", text="Periodo")
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("bruto", text="Bruto")
         self.tree.heading("neto", text="Neto")
         self.tree.heading("estado", text="Estado")
-        
+
         self.tree.column("empleado", width=250, minwidth=180)
         self.tree.column("periodo", width=200, minwidth=150)
         self.tree.column("tipo", width=150, minwidth=100)
         self.tree.column("bruto", width=120, minwidth=100)
         self.tree.column("neto", width=120, minwidth=100)
         self.tree.column("estado", width=100, minwidth=80)
-        
+
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
-        
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
-        
+
         # Menú contextual según permisos del rol
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Ver Detalles", command=self._on_view_pago)
@@ -2592,10 +2928,10 @@ class NominaFrame(ctk.CTkFrame):
         if self.main_window.tiene_permiso("delete"):
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Eliminar", command=self._on_delete_pago)
-        
+
         self.tree.bind("<Button-3>", self._show_context_menu)
         self.tree.bind("<Double-1>", self._on_double_click)
-    
+
     def _obtener_pagos_filtrados(self):
         """Pagos según el filtro de estado seleccionado"""
         estado = self.estado_combo.get()
@@ -2604,7 +2940,7 @@ class NominaFrame(ctk.CTkFrame):
         if estado == "Pagados":
             return self.main_window.pago_service.listar_pagados()
         return self.main_window.pago_service.listar_pagos()
-    
+
     def _pagos_con_empleado(self):
         """Lista de (pago, empleado) para los pagos visibles"""
         resultado = []
@@ -2612,76 +2948,87 @@ class NominaFrame(ctk.CTkFrame):
             empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
             resultado.append((pago, empleado))
         return resultado
-    
+
     def _load_pagos(self):
         """Carga la lista de pagos"""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        
+
         try:
             pagos = self._obtener_pagos_filtrados()
-            
+
             if not pagos:
                 self.tree.insert("", "end", values=("", "No hay pagos registrados", "", "", "", ""))
                 return
-            
+
             for pago in pagos:
                 try:
                     empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
                     nombre_empleado = empleado.nombre_completo if empleado else "Desconocido"
-                    
-                    periodo = f"{format_date(pago.periodo_inicio)} - {format_date(pago.periodo_fin)}"
+
+                    periodo = (
+                        f"{format_date(pago.periodo_inicio)} - {format_date(pago.periodo_fin)}"
+                    )
                     estado_pago = "Pagado" if pago.pagado else "Pendiente"
-                    
-                    self.tree.insert("", "end", values=(
-                        nombre_empleado,
-                        periodo,
-                        pago.tipo_pago,
-                        format_currency(float(pago.monto_bruto)),
-                        format_currency(float(pago.monto_neto)),
-                        estado_pago
-                    ), tags=(str(pago.id),))
+
+                    self.tree.insert(
+                        "",
+                        "end",
+                        values=(
+                            nombre_empleado,
+                            periodo,
+                            pago.tipo_pago,
+                            format_currency(float(pago.monto_bruto)),
+                            format_currency(float(pago.monto_neto)),
+                            estado_pago,
+                        ),
+                        tags=(str(pago.id),),
+                    )
                 except Exception:
                     continue
-                
+
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar pagos: {str(e)}")
-    
+
     def _on_filter(self, event):
         """Maneja el filtrado de pagos"""
         self._load_pagos()
-    
+
     def _on_generate_nomina(self):
         """Genera nómina para un periodo"""
         fecha_inicio_str = self.fecha_inicio_entry.get()
         fecha_fin_str = self.fecha_fin_entry.get()
-        
+
         if not fecha_inicio_str or not fecha_fin_str:
             messagebox.showwarning("Advertencia", "Debe ingresar las fechas del periodo")
             return
-        
+
         try:
             fecha_inicio = self._parse_date(fecha_inicio_str)
             fecha_fin = self._parse_date(fecha_fin_str)
-            
+
             if not fecha_inicio or not fecha_fin:
                 messagebox.showerror("Error", "Formato de fecha inválido. Use DD/MM/YYYY")
                 return
-            
-            if messagebox.askyesno("Confirmar", 
-                                  f"¿Desea generar nómina para el periodo {format_date(fecha_inicio)} - {format_date(fecha_fin)}?"):
-                pagos = self.main_window.pago_service.generar_nominas_periodo(fecha_inicio, fecha_fin)
+
+            if messagebox.askyesno(
+                "Confirmar",
+                f"¿Desea generar nómina para el periodo {format_date(fecha_inicio)} - {format_date(fecha_fin)}?",
+            ):
+                pagos = self.main_window.pago_service.generar_nominas_periodo(
+                    fecha_inicio, fecha_fin
+                )
                 messagebox.showinfo("Éxito", f"Se generaron {len(pagos)} pagos")
                 self._load_pagos()
-                
+
         except Exception as e:
             messagebox.showerror("Error", f"Error al generar nómina: {str(e)}")
-    
+
     def _show_context_menu(self, event):
         """Muestra el menú contextual sobre la fila bajo el cursor"""
         if _seleccionar_fila_click(self.tree, event):
             self.context_menu.post(event.x_root, event.y_root)
-    
+
     def _on_double_click(self, event):
         """Doble clic: selecciona la fila bajo el cursor y abre el pago"""
         _seleccionar_fila_click(self.tree, event)
@@ -2693,7 +3040,7 @@ class NominaFrame(ctk.CTkFrame):
         if pago_id is None:
             return None
         return self.main_window.pago_service.obtener_pago(pago_id)
-    
+
     def _on_new_pago(self):
         """Abre el diálogo para registrar un pago manual"""
         if not self.main_window.tiene_permiso("create"):
@@ -2706,7 +3053,7 @@ class NominaFrame(ctk.CTkFrame):
         self.wait_window(dialog)
         if dialog.result:
             self._load_pagos()
-    
+
     def _on_edit_pago(self):
         """Edita el pago seleccionado"""
         pago = self._get_selected_pago()
@@ -2715,26 +3062,26 @@ class NominaFrame(ctk.CTkFrame):
             self.wait_window(dialog)
             if dialog.result:
                 self._load_pagos()
-    
+
     def _on_view_pago(self):
         """Muestra detalles del pago seleccionado"""
         pago = self._get_selected_pago()
         if pago:
             empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
             nombre_empleado = empleado.nombre_completo if empleado else "Desconocido"
-            
+
             salario_base = float(pago.salario_base or 0)
             bonif = float(pago.bonificaciones or 0)
             hextra = float(pago.horas_extra or 0)
             bruto = float(pago.monto_bruto or 0)
-            
+
             d_seg = float(pago.deduccion_seguro or 0)
             d_pen = float(pago.deduccion_pension or 0)
             d_imp = float(pago.deduccion_impuesto or 0)
             d_otr = float(pago.otras_deducciones or 0)
             desc = float(pago.descuentos or 0)
             neto = float(pago.monto_neto or 0)
-            
+
             details = f"""
 Empleado: {nombre_empleado}
 Periodo: {format_date(pago.periodo_inicio)} - {format_date(pago.periodo_fin)}
@@ -2758,7 +3105,7 @@ Total Neto: {format_currency(neto)}
 Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 """
             InfoDialog(self, "Detalles del Pago", details)
-    
+
     def _on_generate_recibo(self):
         """Genera recibo de pago"""
         pago = self._get_selected_pago()
@@ -2781,119 +3128,125 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
                         "otras_deducciones": float(pago.otras_deducciones or 0),
                         "descuentos": float(pago.descuentos or 0),
-                        "monto_neto": float(pago.monto_neto or 0)
+                        "monto_neto": float(pago.monto_neto or 0),
                     }
-                    
+
                     file_path = filedialog.asksaveasfilename(
                         defaultextension=".pdf",
                         initialfile=f"recibo_{empleado.cedula}_{pago.id}.pdf",
-                        filetypes=[("PDF Files", "*.pdf")]
+                        filetypes=[("PDF Files", "*.pdf")],
                     )
-                    
+
                     if file_path:
                         pdf_gen = PDFGenerator()
                         pdf_gen.generate_recibo_pago(pago_data, file_path)
                         messagebox.showinfo("Éxito", "Recibo generado correctamente")
-                        
+
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al generar recibo: {str(e)}")
-    
+
     def _on_exportar_pagos(self):
         """Exporta los pagos visibles a Excel o CSV"""
         pares = self._pagos_con_empleado()
         if not pares:
             messagebox.showwarning("Advertencia", "No hay pagos para exportar")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             initialfile=f"pagos_{date.today().strftime('%Y%m%d')}.xlsx",
-            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")]
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             for pago, empleado in pares:
                 nombre = empleado.nombre_completo if empleado else "Desconocido"
                 cedula = empleado.cedula if empleado else ""
-                filas.append({
-                    "Empleado": nombre,
-                    "Cédula": str(cedula),
-                    "Periodo Inicio": format_date(pago.periodo_inicio),
-                    "Periodo Fin": format_date(pago.periodo_fin),
-                    "Tipo de Pago": pago.tipo_pago,
-                    "Método de Pago": pago.metodo_pago,
-                    "Salario Base": float(pago.salario_base or 0),
-                    "Bonificaciones": float(pago.bonificaciones or 0),
-                    "Horas Extra": float(pago.horas_extra or 0),
-                    "ISSS": float(pago.deduccion_seguro or 0),
-                    "AFP": float(pago.deduccion_pension or 0),
-                    "ISR": float(pago.deduccion_impuesto or 0),
-                    "Otras Deducciones": float(pago.otras_deducciones or 0),
-                    "Descuentos": float(pago.descuentos or 0),
-                    "Neto a Pagar": float(pago.monto_neto or 0),
-                    "Estado": "Pagado" if pago.pagado else "Pendiente",
-                    "Referencia": pago.referencia_pago or "",
-                })
+                filas.append(
+                    {
+                        "Empleado": nombre,
+                        "Cédula": str(cedula),
+                        "Periodo Inicio": format_date(pago.periodo_inicio),
+                        "Periodo Fin": format_date(pago.periodo_fin),
+                        "Tipo de Pago": pago.tipo_pago,
+                        "Método de Pago": pago.metodo_pago,
+                        "Salario Base": float(pago.salario_base or 0),
+                        "Bonificaciones": float(pago.bonificaciones or 0),
+                        "Horas Extra": float(pago.horas_extra or 0),
+                        "ISSS": float(pago.deduccion_seguro or 0),
+                        "AFP": float(pago.deduccion_pension or 0),
+                        "ISR": float(pago.deduccion_impuesto or 0),
+                        "Otras Deducciones": float(pago.otras_deducciones or 0),
+                        "Descuentos": float(pago.descuentos or 0),
+                        "Neto a Pagar": float(pago.monto_neto or 0),
+                        "Estado": "Pagado" if pago.pagado else "Pendiente",
+                        "Referencia": pago.referencia_pago or "",
+                    }
+                )
             exportar_archivo(filas, file_path)
             messagebox.showinfo("Éxito", f"Pagos exportados exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar pagos: {str(e)}")
-    
+
     def _on_planilla_pdf(self):
         """Genera la planilla de nómina PDF con totales para los pagos visibles"""
         pares = self._pagos_con_empleado()
         if not pares:
             messagebox.showwarning("Advertencia", "No hay pagos para generar la planilla")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             initialfile=f"planilla_nomina_{date.today().strftime('%Y%m%d')}.pdf",
-            filetypes=[("PDF Files", "*.pdf")]
+            filetypes=[("PDF Files", "*.pdf")],
         )
         if not file_path:
             return
-        
+
         try:
             filas = []
             fechas_inicio = []
             fechas_fin = []
             for pago, empleado in pares:
-                filas.append({
-                    "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
-                    "cedula": empleado.cedula if empleado else "",
-                    "cargo": empleado.cargo if empleado else "",
-                    "salario_base": float(pago.salario_base or 0),
-                    "bonificaciones": float(pago.bonificaciones or 0),
-                    "horas_extra": float(pago.horas_extra or 0),
-                    "deduccion_seguro": float(pago.deduccion_seguro or 0),
-                    "deduccion_pension": float(pago.deduccion_pension or 0),
-                    "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
-                    "otras_deducciones": float(pago.otras_deducciones or 0),
-                    "descuentos": float(pago.descuentos or 0),
-                    "monto_neto": float(pago.monto_neto or 0),
-                    "periodo_inicio": pago.periodo_inicio,
-                    "periodo_fin": pago.periodo_fin,
-                })
+                filas.append(
+                    {
+                        "nombre_empleado": empleado.nombre_completo if empleado else "Desconocido",
+                        "cedula": empleado.cedula if empleado else "",
+                        "cargo": empleado.cargo if empleado else "",
+                        "salario_base": float(pago.salario_base or 0),
+                        "bonificaciones": float(pago.bonificaciones or 0),
+                        "horas_extra": float(pago.horas_extra or 0),
+                        "deduccion_seguro": float(pago.deduccion_seguro or 0),
+                        "deduccion_pension": float(pago.deduccion_pension or 0),
+                        "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
+                        "otras_deducciones": float(pago.otras_deducciones or 0),
+                        "descuentos": float(pago.descuentos or 0),
+                        "monto_neto": float(pago.monto_neto or 0),
+                        "periodo_inicio": pago.periodo_inicio,
+                        "periodo_fin": pago.periodo_fin,
+                    }
+                )
                 if pago.periodo_inicio:
                     fechas_inicio.append(pago.periodo_inicio)
                 if pago.periodo_fin:
                     fechas_fin.append(pago.periodo_fin)
-            
+
             titulo_periodo = None
             if fechas_inicio and fechas_fin:
-                titulo_periodo = (f"Periodo: {format_date(min(fechas_inicio))} a "
-                                  f"{format_date(max(fechas_fin))} | Registros: {len(filas)}")
-            
+                titulo_periodo = (
+                    f"Periodo: {format_date(min(fechas_inicio))} a "
+                    f"{format_date(max(fechas_fin))} | Registros: {len(filas)}"
+                )
+
             pdf_gen = PDFGenerator()
             pdf_gen.generate_reporte_nomina(filas, file_path, titulo_periodo=titulo_periodo)
             messagebox.showinfo("Éxito", f"Planilla de nómina generada exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al generar planilla: {str(e)}")
-    
+
     def _on_mark_paid(self):
         """Marca el pago como realizado"""
         pago = self._get_selected_pago()
@@ -2901,7 +3254,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
             if pago.pagado:
                 messagebox.showinfo("Información", "Este pago ya está marcado como pagado")
                 return
-            
+
             if messagebox.askyesno("Confirmar", "¿Desea marcar este pago como pagado?"):
                 try:
                     self.main_window.pago_service.marcar_pagado(pago.id)
@@ -2909,7 +3262,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                     messagebox.showinfo("Éxito", "Pago marcado como pagado")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al marcar pago: {str(e)}")
-    
+
     def _on_mark_unpaid(self):
         """Marca el pago como pendiente"""
         pago = self._get_selected_pago()
@@ -2917,7 +3270,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
             if not pago.pagado:
                 messagebox.showinfo("Información", "Este pago ya está pendiente")
                 return
-            
+
             if messagebox.askyesno("Confirmar", "¿Desea marcar este pago como pendiente?"):
                 try:
                     self.main_window.pago_service.marcar_pendiente(pago.id)
@@ -2925,7 +3278,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                     messagebox.showinfo("Éxito", "Pago marcado como pendiente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al marcar pago: {str(e)}")
-    
+
     def _on_delete_pago(self):
         """Elimina el pago seleccionado"""
         pago = self._get_selected_pago()
@@ -2937,67 +3290,67 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                     messagebox.showinfo("Éxito", "Pago eliminado correctamente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al eliminar pago: {str(e)}")
-    
-    def _parse_date(self, date_str: str) -> Optional[date]:
+
+    def _parse_date(self, date_str: str) -> date | None:
         """Parsea una fecha"""
         return parse_date(date_str)
 
 
 class ConfiguracionFrame(ctk.CTkFrame):
     """Frame de Configuración"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
         self._create_widgets()
         self._load_configuracion()
-    
+
     def _create_widgets(self):
         """Crea los widgets del frame de configuración"""
         # Notebook para categorías
         self.notebook = ctk.CTkTabview(self, fg_color=COLORES["panel"])
         self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Pestaña de configuración general
         general_tab = self.notebook.add("General")
         self._create_general_tab(general_tab)
-        
+
         # Pestaña de configuración de nómina
         nomina_tab = self.notebook.add("Nómina")
         self._create_nomina_tab(nomina_tab)
-        
+
         # Pestaña de configuración de recursos humanos
         rrhh_tab = self.notebook.add("Recursos Humanos")
         self._create_rrhh_tab(rrhh_tab)
-        
+
         # Pestaña de seguridad y respaldos (admin)
         seguridad_tab = self.notebook.add("Seguridad y Respaldo")
         self._create_seguridad_tab(seguridad_tab)
-        
+
         # Pestaña de usuarios (admin)
         usuarios_tab = self.notebook.add("Usuarios")
         self._create_usuarios_tab(usuarios_tab)
-        
+
         # Pestaña de auditoría (solo administradores)
         if self.main_window.tiene_permiso("config"):
             auditoria_tab = self.notebook.add("Auditoría")
             self._create_auditoria_tab(auditoria_tab)
-        
+
         # Botones generales
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar Cambios", command=self._on_save)
         save_btn.pack(side="left", padx=5)
-        
-        refresh_btn = ctk.CTkButton(
-            btn_frame, text="Actualizar", command=self._load_configuracion)
+
+        refresh_btn = ctk.CTkButton(btn_frame, text="Actualizar", command=self._load_configuracion)
         refresh_btn.pack(side="left", padx=5)
-        
+
         password_btn = ctk.CTkButton(
-            btn_frame, text="Cambiar Contraseña", command=self._on_cambiar_password)
+            btn_frame, text="Cambiar Contraseña", command=self._on_cambiar_password
+        )
         password_btn.pack(side="left", padx=5)
-    
+
     def _on_cambiar_password(self):
         """Abre el diálogo para cambiar la contraseña del usuario actual"""
         if self.main_window.current_user is None:
@@ -3005,36 +3358,46 @@ class ConfiguracionFrame(ctk.CTkFrame):
             return
         dialog = CambiarPasswordDialog(self, self.main_window)
         self.wait_window(dialog)
-    
+
     def _create_auditoria_tab(self, parent):
         """Crea la pestaña de auditoría (solo administradores)"""
         filtro_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         filtro_frame.pack(fill="x", padx=10, pady=(10, 5))
-        
-        ctk.CTkLabel(filtro_frame, text="Tipo de evento:", text_color=COLORES["texto"]).pack(side="left", padx=5)
+
+        ctk.CTkLabel(filtro_frame, text="Tipo de evento:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
         self.audit_tipo_combo = ttk.Combobox(
             filtro_frame,
             values=["Todos"] + [t.value for t in AuditEventType],
-            width=22, state="readonly", font=(_familia_fuente(), 9))
+            width=22,
+            state="readonly",
+            font=(_familia_fuente(), 9),
+        )
         self.audit_tipo_combo.pack(side="left", padx=5)
         self.audit_tipo_combo.set("Todos")
         self.audit_tipo_combo.bind("<<ComboboxSelected>>", lambda e: self._load_auditoria())
-        
+
         refresh_btn = ctk.CTkButton(filtro_frame, text="Actualizar", command=self._load_auditoria)
         refresh_btn.pack(side="left", padx=5)
-        export_btn = ctk.CTkButton(filtro_frame, text="Exportar", command=self._on_exportar_auditoria)
+        export_btn = ctk.CTkButton(
+            filtro_frame, text="Exportar", command=self._on_exportar_auditoria
+        )
         export_btn.pack(side="left", padx=5)
         manual_btn = ctk.CTkButton(filtro_frame, text="Manual", command=self._on_manual_auditoria)
         manual_btn.pack(side="left", padx=5)
-        
+
         table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=5)
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.audit_tree = ttk.Treeview(
-            table_frame, columns=("fecha", "tipo", "usuario", "exito", "detalle"),
-            show="headings", yscrollcommand=scrollbar.set)
+            table_frame,
+            columns=("fecha", "tipo", "usuario", "exito", "detalle"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
         self.audit_tree.heading("fecha", text="Fecha")
         self.audit_tree.heading("tipo", text="Tipo")
         self.audit_tree.heading("usuario", text="Usuario")
@@ -3052,7 +3415,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         # Doble clic: ver el detalle completo del evento
         self.audit_tree.bind("<Double-1>", self._on_view_auditoria_detail)
         self._load_auditoria()
-    
+
     def _load_auditoria(self):
         """Carga los eventos de auditoría recientes (con filtro opcional)"""
         for item in self.audit_tree.get_children():
@@ -3068,17 +3431,23 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 detalles = ev.get("details") or {}
                 if isinstance(detalles, dict) and "operation" in detalles:
                     detalle = str(detalles["operation"])
-                self.audit_tree.insert("", "end", iid=f"ev_{i}", values=(
-                    ev.get("timestamp", ""),
-                    ev.get("event_type", ""),
-                    ev.get("user", ""),
-                    "Sí" if ev.get("success") else "No",
-                    detalle,
-                ), tags=(str(i),))
+                self.audit_tree.insert(
+                    "",
+                    "end",
+                    iid=f"ev_{i}",
+                    values=(
+                        ev.get("timestamp", ""),
+                        ev.get("event_type", ""),
+                        ev.get("user", ""),
+                        "Sí" if ev.get("success") else "No",
+                        detalle,
+                    ),
+                    tags=(str(i),),
+                )
         except Exception as e:
             self._audit_eventos = []
             messagebox.showerror("Error", f"Error al cargar auditoría: {str(e)}")
-    
+
     def _on_view_auditoria_detail(self, event):
         """Muestra el detalle completo del evento de auditoría bajo el cursor"""
         _seleccionar_fila_click(self.audit_tree, event)
@@ -3141,7 +3510,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             initialfile=f"auditoria_{date.today().strftime('%Y%m%d')}.xlsx",
-            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")])
+            filetypes=[("Excel", "*.xlsx"), ("CSV", "*.csv")],
+        )
         if not file_path:
             return
         try:
@@ -3150,67 +3520,79 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 detalle = ev.get("details") or {}
                 if isinstance(detalle, dict):
                     detalle = detalle.get("operation", "")
-                filas.append({
-                    "Fecha": ev.get("timestamp", ""),
-                    "Tipo": ev.get("event_type", ""),
-                    "Usuario": ev.get("user", ""),
-                    "Entidad": ev.get("entity_type", ""),
-                    "Éxito": "Sí" if ev.get("success") else "No",
-                    "Detalle": str(detalle or ""),
-                })
+                filas.append(
+                    {
+                        "Fecha": ev.get("timestamp", ""),
+                        "Tipo": ev.get("event_type", ""),
+                        "Usuario": ev.get("user", ""),
+                        "Entidad": ev.get("entity_type", ""),
+                        "Éxito": "Sí" if ev.get("success") else "No",
+                        "Detalle": str(detalle or ""),
+                    }
+                )
             exportar_archivo(filas, file_path)
             messagebox.showinfo("Éxito", f"Auditoría exportada exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar auditoría: {str(e)}")
-    
+
     def _create_seguridad_tab(self, parent):
         """Crea la pestaña de seguridad y respaldos"""
         # Opciones de respaldo automático y auditoría
         options = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         options.pack(fill="x", padx=10, pady=(10, 5))
-        
+
         self.backup_enabled_var = tk.BooleanVar(value=True)
         backup_chk = ctk.CTkCheckBox(
-            options, text="Respaldo automático al cerrar",
-            variable=self.backup_enabled_var)
+            options, text="Respaldo automático al cerrar", variable=self.backup_enabled_var
+        )
         backup_chk.grid(row=0, column=0, padx=10, pady=8, sticky="w")
-        
+
         self.audit_enabled_var = tk.BooleanVar(value=True)
         audit_chk = ctk.CTkCheckBox(
-            options, text="Auditoría de eventos",
-            variable=self.audit_enabled_var)
+            options, text="Auditoría de eventos", variable=self.audit_enabled_var
+        )
         audit_chk.grid(row=0, column=1, padx=10, pady=8, sticky="w")
-        
+
         ctk.CTkLabel(options, text="Intervalo (horas):", text_color=COLORES["texto"]).grid(
-            row=1, column=0, padx=(10, 5), pady=6, sticky="e")
+            row=1, column=0, padx=(10, 5), pady=6, sticky="e"
+        )
         self.backup_interval_entry = ctk.CTkEntry(
-            options, width=80, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            options, width=80, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.backup_interval_entry.grid(row=1, column=1, padx=5, pady=6, sticky="w")
-        
+
         save_seg_btn = ctk.CTkButton(
-            options, text="Guardar Seguridad", command=self._on_save_seguridad)
+            options, text="Guardar Seguridad", command=self._on_save_seguridad
+        )
         save_seg_btn.grid(row=1, column=3, padx=15, pady=6, sticky="e")
-        
+
         options.grid_columnconfigure(3, weight=1)
-        
+
         # Información del directorio de respaldos
         info = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         info.pack(fill="x", padx=10, pady=5)
         self.backup_status_label = ctk.CTkLabel(
-            info, text="Cargando estado de respaldos…", text_color=COLORES["texto_suave"],
-            anchor="w", justify="left")
+            info,
+            text="Cargando estado de respaldos…",
+            text_color=COLORES["texto_suave"],
+            anchor="w",
+            justify="left",
+        )
         self.backup_status_label.pack(fill="x", padx=10, pady=8)
-        
+
         # Tabla de respaldos
         table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        
+
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.backup_tree = ttk.Treeview(
-            table_frame, columns=("nombre", "fecha", "tamano", "tipo"),
-            show="headings", yscrollcommand=scrollbar.set)
+            table_frame,
+            columns=("nombre", "fecha", "tamano", "tipo"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
         self.backup_tree.heading("nombre", text="Nombre")
         self.backup_tree.heading("fecha", text="Fecha")
         self.backup_tree.heading("tamano", text="Tamaño")
@@ -3221,14 +3603,14 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.backup_tree.column("tipo", width=90, minwidth=70)
         self.backup_tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.backup_tree.yview)
-        
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.backup_tree)
-        
+
         # Acciones sobre respaldos
         actions = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         actions.pack(fill="x", padx=10, pady=(5, 10))
-        
+
         create_btn = ctk.CTkButton(actions, text="Crear Respaldo", command=self._on_create_backup)
         create_btn.pack(side="left", padx=5, pady=6)
         verify_btn = ctk.CTkButton(actions, text="Verificar", command=self._on_verify_backup)
@@ -3237,18 +3619,21 @@ class ConfiguracionFrame(ctk.CTkFrame):
         restore_btn.pack(side="left", padx=5, pady=6)
         delete_btn = ctk.CTkButton(actions, text="Eliminar", command=self._on_delete_backup)
         delete_btn.pack(side="left", padx=5, pady=6)
-    
+
     def _create_usuarios_tab(self, parent):
         """Crea la pestaña de administración de usuarios"""
         table_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         scrollbar = ctk.CTkScrollbar(table_frame)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.usuarios_tree = ttk.Treeview(
-            table_frame, columns=("usuario", "rol", "nombre", "estado"),
-            show="headings", yscrollcommand=scrollbar.set)
+            table_frame,
+            columns=("usuario", "rol", "nombre", "estado"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
         self.usuarios_tree.heading("usuario", text="Usuario")
         self.usuarios_tree.heading("rol", text="Rol")
         self.usuarios_tree.heading("nombre", text="Nombre")
@@ -3259,23 +3644,24 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.usuarios_tree.column("estado", width=100, minwidth=70)
         self.usuarios_tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.usuarios_tree.yview)
-        
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.usuarios_tree)
-        
+
         actions = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         actions.pack(fill="x", padx=10, pady=(0, 10))
-        
+
         nuevo_btn = ctk.CTkButton(actions, text="Nuevo Usuario", command=self._on_new_usuario)
         nuevo_btn.pack(side="left", padx=5, pady=6)
         editar_btn = ctk.CTkButton(actions, text="Editar", command=self._on_edit_usuario)
         editar_btn.pack(side="left", padx=5, pady=6)
         toggle_btn = ctk.CTkButton(
-            actions, text="Activar / Desactivar", command=self._on_toggle_usuario)
+            actions, text="Activar / Desactivar", command=self._on_toggle_usuario
+        )
         toggle_btn.pack(side="left", padx=5, pady=6)
-        
+
         self.usuarios_tree.bind("<Double-1>", self._on_usuarios_double_click)
-    
+
     def _on_usuarios_double_click(self, event):
         """Doble clic: selecciona el usuario bajo el cursor y abre la edición"""
         _seleccionar_fila_click(self.usuarios_tree, event)
@@ -3285,48 +3671,67 @@ class ConfiguracionFrame(ctk.CTkFrame):
         """Crea la pestaña de configuración general"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.nombre_institucion_entry = self._create_form_field(form_frame, "Nombre Institución:", 0)
+
+        self.nombre_institucion_entry = self._create_form_field(
+            form_frame, "Nombre Institución:", 0
+        )
         self.ruc_entry = self._create_form_field(form_frame, "RUC:", 1)
         self.direccion_entry = self._create_form_field(form_frame, "Dirección:", 2)
         self.telefono_entry = self._create_form_field(form_frame, "Teléfono:", 3)
         self.email_entry = self._create_form_field(form_frame, "Email:", 4)
-    
+
     def _create_nomina_tab(self, parent):
         """Crea la pestaña de configuración de nómina"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.porcentaje_seguro_entry = self._create_form_field(form_frame, "Porcentaje Seguro Social (%):", 0)
-        self.porcentaje_pension_entry = self._create_form_field(form_frame, "Porcentaje Pensión (%):", 1)
-        self.porcentaje_impuesto_entry = self._create_form_field(form_frame, "Porcentaje Impuesto (%):", 2)
+
+        self.porcentaje_seguro_entry = self._create_form_field(
+            form_frame, "Porcentaje Seguro Social (%):", 0
+        )
+        self.porcentaje_pension_entry = self._create_form_field(
+            form_frame, "Porcentaje Pensión (%):", 1
+        )
+        self.porcentaje_impuesto_entry = self._create_form_field(
+            form_frame, "Porcentaje Impuesto (%):", 2
+        )
         self.salario_minimo_entry = self._create_form_field(form_frame, "Salario Mínimo:", 3)
-    
+
     def _create_rrhh_tab(self, parent):
         """Crea la pestaña de configuración de recursos humanos"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.dias_vacaciones_entry = self._create_form_field(form_frame, "Días Vacaciones Anual:", 0)
-        self.horas_laborales_entry = self._create_form_field(form_frame, "Horas Laborales Semana:", 1)
-    
+
+        self.dias_vacaciones_entry = self._create_form_field(
+            form_frame, "Días Vacaciones Anual:", 0
+        )
+        self.horas_laborales_entry = self._create_form_field(
+            form_frame, "Horas Laborales Semana:", 1
+        )
+
     def _create_form_field(self, parent, label: str, row: int) -> ctk.CTkEntry:
         """Crea un campo de formulario"""
-        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(row=row, column=0, padx=5, pady=5, sticky="e")
-        entry = ctk.CTkEntry(parent, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+        ctk.CTkLabel(parent, text=label, text_color=COLORES["texto"]).grid(
+            row=row, column=0, padx=5, pady=5, sticky="e"
+        )
+        entry = ctk.CTkEntry(
+            parent, width=300, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         entry.grid(row=row, column=1, padx=5, pady=5, sticky="w")
         return entry
-    
+
     def _load_configuracion(self):
         """Carga la configuración actual"""
         try:
+
             def safe_str(val):
                 return "" if val is None else str(val)
-            
+
             # Configuración general
             general_config = self.main_window.config_service.obtener_configuracion_general()
             self.nombre_institucion_entry.delete(0, tk.END)
-            self.nombre_institucion_entry.insert(0, safe_str(general_config.get("nombre_institucion", "")))
+            self.nombre_institucion_entry.insert(
+                0, safe_str(general_config.get("nombre_institucion", ""))
+            )
             self.ruc_entry.delete(0, tk.END)
             self.ruc_entry.insert(0, safe_str(general_config.get("ruc", "")))
             self.direccion_entry.delete(0, tk.END)
@@ -3335,31 +3740,41 @@ class ConfiguracionFrame(ctk.CTkFrame):
             self.telefono_entry.insert(0, safe_str(general_config.get("telefono", "")))
             self.email_entry.delete(0, tk.END)
             self.email_entry.insert(0, safe_str(general_config.get("email", "")))
-            
+
             # Configuración de nómina
             nomina_config = self.main_window.config_service.obtener_configuracion_nomina()
             self.porcentaje_seguro_entry.delete(0, tk.END)
-            self.porcentaje_seguro_entry.insert(0, safe_str(nomina_config.get("porcentaje_seguro", "")))
+            self.porcentaje_seguro_entry.insert(
+                0, safe_str(nomina_config.get("porcentaje_seguro", ""))
+            )
             self.porcentaje_pension_entry.delete(0, tk.END)
-            self.porcentaje_pension_entry.insert(0, safe_str(nomina_config.get("porcentaje_pension", "")))
+            self.porcentaje_pension_entry.insert(
+                0, safe_str(nomina_config.get("porcentaje_pension", ""))
+            )
             self.porcentaje_impuesto_entry.delete(0, tk.END)
-            self.porcentaje_impuesto_entry.insert(0, safe_str(nomina_config.get("porcentaje_impuesto", "")))
+            self.porcentaje_impuesto_entry.insert(
+                0, safe_str(nomina_config.get("porcentaje_impuesto", ""))
+            )
             self.salario_minimo_entry.delete(0, tk.END)
             self.salario_minimo_entry.insert(0, safe_str(nomina_config.get("salario_minimo", "")))
-            
+
             # Configuración de RRHH
             rrhh_config = self.main_window.config_service.obtener_configuracion_recursos_humanos()
             self.dias_vacaciones_entry.delete(0, tk.END)
-            self.dias_vacaciones_entry.insert(0, safe_str(rrhh_config.get("dias_vacaciones_anual", "")))
+            self.dias_vacaciones_entry.insert(
+                0, safe_str(rrhh_config.get("dias_vacaciones_anual", ""))
+            )
             self.horas_laborales_entry.delete(0, tk.END)
-            self.horas_laborales_entry.insert(0, safe_str(rrhh_config.get("horas_laborales_semana", "")))
-            
+            self.horas_laborales_entry.insert(
+                0, safe_str(rrhh_config.get("horas_laborales_semana", ""))
+            )
+
             # Datos de la pestaña de seguridad y usuarios
             self._cargar_seguridad_y_usuarios()
-            
+
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar configuración: {str(e)}")
-    
+
     def _cargar_seguridad_y_usuarios(self):
         """Carga valores de seguridad, respaldos y usuarios"""
         try:
@@ -3368,51 +3783,68 @@ class ConfiguracionFrame(ctk.CTkFrame):
             self.audit_enabled_var.set(bool(config_seguridad.get("audit_enabled", True)))
             self.backup_interval_entry.delete(0, tk.END)
             self.backup_interval_entry.insert(
-                0, str(config_seguridad.get("backup_interval_hours", 24)))
+                0, str(config_seguridad.get("backup_interval_hours", 24))
+            )
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
         self._refresh_backups()
         self._load_usuarios()
-    
+
     def _on_save(self):
         """Guarda la configuración"""
         try:
             # Configuración general
-            self.main_window.config_service.establecer_valor("nombre_institucion", self.nombre_institucion_entry.get())
+            self.main_window.config_service.establecer_valor(
+                "nombre_institucion", self.nombre_institucion_entry.get()
+            )
             self.main_window.config_service.establecer_valor("ruc", self.ruc_entry.get())
-            self.main_window.config_service.establecer_valor("direccion", self.direccion_entry.get())
+            self.main_window.config_service.establecer_valor(
+                "direccion", self.direccion_entry.get()
+            )
             self.main_window.config_service.establecer_valor("telefono", self.telefono_entry.get())
             self.main_window.config_service.establecer_valor("email", self.email_entry.get())
-            
+
             # Configuración de nómina
-            self.main_window.config_service.establecer_valor("porcentaje_seguro", self._parse_float(self.porcentaje_seguro_entry.get()))
-            self.main_window.config_service.establecer_valor("porcentaje_pension", self._parse_float(self.porcentaje_pension_entry.get()))
-            self.main_window.config_service.establecer_valor("porcentaje_impuesto", self._parse_float(self.porcentaje_impuesto_entry.get()))
-            self.main_window.config_service.establecer_valor("salario_minimo", self._parse_float(self.salario_minimo_entry.get()))
-            
+            self.main_window.config_service.establecer_valor(
+                "porcentaje_seguro", self._parse_float(self.porcentaje_seguro_entry.get())
+            )
+            self.main_window.config_service.establecer_valor(
+                "porcentaje_pension", self._parse_float(self.porcentaje_pension_entry.get())
+            )
+            self.main_window.config_service.establecer_valor(
+                "porcentaje_impuesto", self._parse_float(self.porcentaje_impuesto_entry.get())
+            )
+            self.main_window.config_service.establecer_valor(
+                "salario_minimo", self._parse_float(self.salario_minimo_entry.get())
+            )
+
             # Configuración de RRHH
-            self.main_window.config_service.establecer_valor("dias_vacaciones_anual", self._parse_int(self.dias_vacaciones_entry.get()))
-            self.main_window.config_service.establecer_valor("horas_laborales_semana", self._parse_int(self.horas_laborales_entry.get()))
-            
+            self.main_window.config_service.establecer_valor(
+                "dias_vacaciones_anual", self._parse_int(self.dias_vacaciones_entry.get())
+            )
+            self.main_window.config_service.establecer_valor(
+                "horas_laborales_semana", self._parse_int(self.horas_laborales_entry.get())
+            )
+
             messagebox.showinfo("Éxito", "Configuración guardada correctamente")
-            
+
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar configuración: {str(e)}")
-    
-    def _parse_float(self, value: str) -> Optional[float]:
+
+    def _parse_float(self, value: str) -> float | None:
         """Parsea un float"""
         try:
             return float(value) if value else None
         except ValueError:
             return None
-    
-    def _parse_int(self, value: str) -> Optional[int]:
+
+    def _parse_int(self, value: str) -> int | None:
         """Parsea un int"""
         try:
             return int(value) if value else None
         except ValueError:
             return None
-    
+
     # ------------------------------------------------------------------
     # Seguridad y respaldos
     # ------------------------------------------------------------------
@@ -3420,64 +3852,74 @@ class ConfiguracionFrame(ctk.CTkFrame):
         """Guarda la configuración de seguridad y auditoría"""
         try:
             self.main_window.config_service.establecer_valor(
-                "backup_enabled", bool(self.backup_enabled_var.get()))
+                "backup_enabled", bool(self.backup_enabled_var.get())
+            )
             self.main_window.config_service.establecer_valor(
-                "audit_enabled", bool(self.audit_enabled_var.get()))
+                "audit_enabled", bool(self.audit_enabled_var.get())
+            )
             intervalo = self._parse_int(self.backup_interval_entry.get()) or 24
             self.main_window.config_service.establecer_valor(
-                "backup_interval_hours", max(1, min(intervalo, 720)))
+                "backup_interval_hours", max(1, min(intervalo, 720))
+            )
             self._load_configuracion()
             self._refresh_backups()
             messagebox.showinfo("Éxito", "Configuración de seguridad guardada")
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar configuración: {str(e)}")
-    
-    def _backup_seleccionado(self) -> Optional[str]:
+
+    def _backup_seleccionado(self) -> str | None:
         """Nombre del respaldo seleccionado en la tabla"""
         seleccion = self.backup_tree.selection()
         if not seleccion:
             return None
         tags = self.backup_tree.item(seleccion[0], "tags") or ()
         return tags[0] if tags else None
-    
+
     def _refresh_backups(self):
         """Actualiza la lista de respaldos disponibles"""
         from src.utils.backup_manager import get_backup_manager
         from src.utils.helpers import format_file_size
-        
+
         for item in self.backup_tree.get_children():
             self.backup_tree.delete(item)
-        
+
         try:
             backups = get_backup_manager().list_backups()
             respaldo_texto = "Sí" if self.backup_enabled_var.get() else "No"
             self.backup_status_label.configure(
                 text=f"Respaldo al cerrar: {respaldo_texto}  ·  "
-                     f"Total: {len(backups)} respaldo(s)")
+                f"Total: {len(backups)} respaldo(s)"
+            )
             for b in backups:
                 fecha = str(b.get("timestamp", ""))
                 if len(fecha) == 15:
                     fecha = f"{fecha[6:8]}/{fecha[4:6]}/{fecha[:4]} {fecha[9:11]}:{fecha[11:13]}"
-                self.backup_tree.insert("", "end", values=(
-                    b.get("name", ""),
-                    fecha,
-                    format_file_size(b.get("size_bytes", 0)),
-                    "comprimido" if b.get("compressed") else "directo",
-                ), tags=(b.get("name", ""),))
+                self.backup_tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        b.get("name", ""),
+                        fecha,
+                        format_file_size(b.get("size_bytes", 0)),
+                        "comprimido" if b.get("compressed") else "directo",
+                    ),
+                    tags=(b.get("name", ""),),
+                )
         except Exception as e:
             self.backup_status_label.configure(text=f"Error al listar respaldos: {e}")
-    
+
     def _on_create_backup(self):
         """Crea un respaldo manual de la base de datos"""
         try:
             from src.utils.backup_manager import get_backup_manager
             from src.utils.helpers import get_timestamp
+
             info = get_backup_manager().create_backup(f"manual_{get_timestamp()}")
             self._refresh_backups()
             messagebox.showinfo("Éxito", f"Respaldo creado: {info.get('name')}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al crear el respaldo: {str(e)}")
-    
+
     def _on_verify_backup(self):
         """Verifica la integridad del respaldo seleccionado"""
         nombre = self._backup_seleccionado()
@@ -3486,6 +3928,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             return
         try:
             from src.utils.backup_manager import get_backup_manager
+
             resultado = get_backup_manager().verify_backup_integrity(nombre)
             mensaje = (
                 f"Respaldo: {nombre}\n\n"
@@ -3500,14 +3943,14 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 messagebox.showwarning("Verificación de Respaldo", mensaje)
         except Exception as e:
             messagebox.showerror("Error", f"Error al verificar el respaldo: {str(e)}")
-    
+
     def _on_restore_backup(self):
         """Restaura el respaldo seleccionado"""
         nombre = self._backup_seleccionado()
         if not nombre:
             messagebox.showwarning("Advertencia", "Seleccione un respaldo")
             return
-        
+
         if not messagebox.askyesno(
             "Confirmar restauración",
             f"Se reemplazará la base de datos actual por el respaldo '{nombre}'.\n"
@@ -3516,6 +3959,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             return
         try:
             from src.config import db_config
+
             # Cerrar la sesión de la ventana para liberar el archivo de la
             # base de datos antes de reemplazarlo (requisito en Windows).
             try:
@@ -3523,7 +3967,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     db_config.close_session(self.main_window.session)
                     self.main_window.session = None
             except Exception:
-                pass
+                logger.debug("operación de interfaz ignorada", exc_info=True)
             db_config.restore_backup(nombre)
             messagebox.showinfo(
                 "Restauración exitosa",
@@ -3539,17 +3983,17 @@ class ConfiguracionFrame(ctk.CTkFrame):
             self.main_window.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Error al restaurar el respaldo: {str(e)}")
-    
+
     def _on_delete_backup(self):
         """Elimina el respaldo seleccionado"""
         nombre = self._backup_seleccionado()
         if not nombre:
             messagebox.showwarning("Advertencia", "Seleccione un respaldo")
             return
-        if messagebox.askyesno(
-            "Confirmar", f"¿Eliminar el respaldo '{nombre}'?"):
+        if messagebox.askyesno("Confirmar", f"¿Eliminar el respaldo '{nombre}'?"):
             try:
                 from src.utils.backup_manager import get_backup_manager
+
                 if get_backup_manager().delete_backup(nombre):
                     self._refresh_backups()
                     messagebox.showinfo("Éxito", "Respaldo eliminado")
@@ -3557,7 +4001,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     messagebox.showerror("Error", "No se pudo eliminar el respaldo")
             except Exception as e:
                 messagebox.showerror("Error", f"Error al eliminar el respaldo: {str(e)}")
-    
+
     # ------------------------------------------------------------------
     # Administración de usuarios
     # ------------------------------------------------------------------
@@ -3565,24 +4009,29 @@ class ConfiguracionFrame(ctk.CTkFrame):
         """Carga los usuarios del sistema"""
         from src.config import db_config
         from src.services.auth_service import AuthService
-        
+
         for item in self.usuarios_tree.get_children():
             self.usuarios_tree.delete(item)
-        
+
         session = db_config.get_session()
         try:
             usuarios = AuthService(session).listar_usuarios()
             for u in usuarios:
-                self.usuarios_tree.insert("", "end", values=(
-                    u.username,
-                    u.rol_valor,
-                    u.nombre_completo or "",
-                    "Activo" if u.activo else "Inactivo",
-                ), tags=(str(u.id),))
+                self.usuarios_tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        u.username,
+                        u.rol_valor,
+                        u.nombre_completo or "",
+                        "Activo" if u.activo else "Inactivo",
+                    ),
+                    tags=(str(u.id),),
+                )
         finally:
             db_config.close_session(session)
-    
-    def _usuario_seleccionado(self) -> Optional[int]:
+
+    def _usuario_seleccionado(self) -> int | None:
         """ID del usuario seleccionado"""
         seleccion = self.usuarios_tree.selection()
         if not seleccion:
@@ -3594,7 +4043,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             return int(tags[0])
         except (TypeError, ValueError):
             return None
-    
+
     def _on_new_usuario(self):
         """Crea un nuevo usuario de sistema"""
         if not self.main_window.tiene_permiso("create"):
@@ -3607,7 +4056,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.wait_window(dialog)
         if dialog.result:
             self._load_usuarios()
-    
+
     def _on_edit_usuario(self):
         """Edita el usuario seleccionado"""
         usuario_id = self._usuario_seleccionado()
@@ -3618,17 +4067,17 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.wait_window(dialog)
         if dialog.result:
             self._load_usuarios()
-    
+
     def _on_toggle_usuario(self):
         """Activa o desactiva el usuario seleccionado"""
         from src.config import db_config
         from src.services.auth_service import AuthService
-        
+
         usuario_id = self._usuario_seleccionado()
         if usuario_id is None:
             messagebox.showwarning("Advertencia", "Seleccione un usuario")
             return
-        
+
         session = db_config.get_session()
         try:
             auth = AuthService(session)
@@ -3639,7 +4088,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
             accion = "desactivar" if usuario.activo else "activar"
             participio = "desactivado" if usuario.activo else "activado"
             if not messagebox.askyesno(
-                "Confirmar", f"¿Desea {accion} al usuario '{usuario.username}'?"):
+                "Confirmar", f"¿Desea {accion} al usuario '{usuario.username}'?"
+            ):
                 return
             auth.actualizar_usuario(
                 usuario_id,
@@ -3656,7 +4106,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
 class InfoDialog(ctk.CTkToplevel):
     """Ventana de solo lectura para mostrar información extensa"""
-    
+
     def __init__(self, parent, title: str, text: str):
         super().__init__(parent)
         self.title(title)
@@ -3665,33 +4115,38 @@ class InfoDialog(ctk.CTkToplevel):
         self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
-        
+
         container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         container.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Fuente monoespaciada resuelta desde TkFixedFont: "Consolas" no
         # existe en todos los sistemas y CustomTkinter emite un aviso de
         # "fuente no encontrada" (y en algunos entornos falla el render).
         try:
             import tkinter.font as tkfont
+
             familia_mono = tkfont.nametofont("TkFixedFont").actual("family")
         except Exception:
             familia_mono = "Courier New"
 
         textbox = ctk.CTkTextbox(
-            container, fg_color=COLORES["campo"], text_color=COLORES["texto"],
-            font=ctk.CTkFont(family=familia_mono, size=12), wrap="word")
+            container,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            font=ctk.CTkFont(family=familia_mono, size=12),
+            wrap="word",
+        )
         textbox.pack(fill="both", expand=True, padx=8, pady=8)
         textbox.insert("1.0", text)
         textbox.configure(state="disabled")
-        
+
         close_btn = ctk.CTkButton(container, text="Cerrar", width=120, command=self.destroy)
         close_btn.pack(pady=(0, 8))
 
 
 class PagoDialog(ctk.CTkToplevel):
     """Diálogo para registrar o editar un pago manual"""
-    
+
     TIPOS = [
         ("salario_base", "Salario Base"),
         ("bonificacion", "Bonificación"),
@@ -3700,142 +4155,163 @@ class PagoDialog(ctk.CTkToplevel):
         ("descuento", "Descuento"),
     ]
     METODOS = ["transferencia", "efectivo", "cheque", "deposito"]
-    
+
     def __init__(self, parent, main_window, pago=None):
         super().__init__(parent)
         self.main_window = main_window
         self.pago = pago
         self.result = False
-        
+
         self.title("Editar Pago" if pago else "Nuevo Pago")
         self.geometry("620x560")
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
-        
+
         self._create_widgets()
         if pago:
             self._load_pago_data()
-    
+
     def _create_widgets(self):
         form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         # Empleado
         ctk.CTkLabel(form, text="Empleado:", text_color=COLORES["texto"]).grid(
-            row=0, column=0, padx=8, pady=6, sticky="e")
+            row=0, column=0, padx=8, pady=6, sticky="e"
+        )
         self.empleado_combo = ttk.Combobox(
-            form, width=38, state="readonly", font=(_familia_fuente(), 9))
+            form, width=38, state="readonly", font=(_familia_fuente(), 9)
+        )
         self.empleado_combo.grid(row=0, column=1, columnspan=3, padx=8, pady=6, sticky="w")
         self._load_empleados()
-        
+
         # Tipo de pago
         ctk.CTkLabel(form, text="Tipo de Pago:", text_color=COLORES["texto"]).grid(
-            row=1, column=0, padx=8, pady=6, sticky="e")
+            row=1, column=0, padx=8, pady=6, sticky="e"
+        )
         self.tipo_combo = ttk.Combobox(
-            form, width=30, state="readonly", font=(_familia_fuente(), 9))
-        self.tipo_combo['values'] = [etiqueta for _, etiqueta in self.TIPOS]
+            form, width=30, state="readonly", font=(_familia_fuente(), 9)
+        )
+        self.tipo_combo["values"] = [etiqueta for _, etiqueta in self.TIPOS]
         self.tipo_combo.grid(row=1, column=1, padx=8, pady=6, sticky="w")
         self.tipo_combo.current(0)
-        
+
         ctk.CTkLabel(form, text="Método:", text_color=COLORES["texto"]).grid(
-            row=1, column=2, padx=8, pady=6, sticky="e")
+            row=1, column=2, padx=8, pady=6, sticky="e"
+        )
         self.metodo_combo = ttk.Combobox(
-            form, width=20, values=self.METODOS, state="readonly", font=(_familia_fuente(), 9))
+            form, width=20, values=self.METODOS, state="readonly", font=(_familia_fuente(), 9)
+        )
         self.metodo_combo.grid(row=1, column=3, padx=8, pady=6, sticky="w")
         self.metodo_combo.set("transferencia")
-        
+
         # Periodo
         ctk.CTkLabel(form, text="Período desde:", text_color=COLORES["texto"]).grid(
-            row=2, column=0, padx=8, pady=6, sticky="e")
+            row=2, column=0, padx=8, pady=6, sticky="e"
+        )
         self.periodo_inicio_entry = ctk.CTkEntry(
-            form, width=110, fg_color=COLORES["campo"], text_color=COLORES["texto"],
-            placeholder_text="DD/MM/YYYY")
+            form,
+            width=110,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="DD/MM/YYYY",
+        )
         self.periodo_inicio_entry.grid(row=2, column=1, padx=8, pady=6, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Período hasta:", text_color=COLORES["texto"]).grid(
-            row=2, column=2, padx=8, pady=6, sticky="e")
+            row=2, column=2, padx=8, pady=6, sticky="e"
+        )
         self.periodo_fin_entry = ctk.CTkEntry(
-            form, width=110, fg_color=COLORES["campo"], text_color=COLORES["texto"],
-            placeholder_text="DD/MM/YYYY")
+            form,
+            width=110,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="DD/MM/YYYY",
+        )
         self.periodo_fin_entry.grid(row=2, column=3, padx=8, pady=6, sticky="w")
-        
+
         # Montos
         monto_fila = 3
         ctk.CTkLabel(form, text="Salario Base:", text_color=COLORES["texto"]).grid(
-            row=monto_fila, column=0, padx=8, pady=6, sticky="e")
+            row=monto_fila, column=0, padx=8, pady=6, sticky="e"
+        )
         self.salario_entry = ctk.CTkEntry(
-            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.salario_entry.grid(row=monto_fila, column=1, padx=8, pady=6, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Bonificaciones:", text_color=COLORES["texto"]).grid(
-            row=monto_fila, column=2, padx=8, pady=6, sticky="e")
+            row=monto_fila, column=2, padx=8, pady=6, sticky="e"
+        )
         self.bonificaciones_entry = ctk.CTkEntry(
-            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
-        self.bonificaciones_entry.grid(
-            row=monto_fila, column=3, padx=8, pady=6, sticky="w")
-        
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.bonificaciones_entry.grid(row=monto_fila, column=3, padx=8, pady=6, sticky="w")
+
         ctk.CTkLabel(form, text="Horas Extra:", text_color=COLORES["texto"]).grid(
-            row=4, column=0, padx=8, pady=6, sticky="e")
+            row=4, column=0, padx=8, pady=6, sticky="e"
+        )
         self.horas_extra_entry = ctk.CTkEntry(
-            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.horas_extra_entry.grid(row=4, column=1, padx=8, pady=6, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Otras Deducciones:", text_color=COLORES["texto"]).grid(
-            row=4, column=2, padx=8, pady=6, sticky="e")
+            row=4, column=2, padx=8, pady=6, sticky="e"
+        )
         self.otras_deducciones_entry = ctk.CTkEntry(
-            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
-        self.otras_deducciones_entry.grid(
-            row=4, column=3, padx=8, pady=6, sticky="w")
-        
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.otras_deducciones_entry.grid(row=4, column=3, padx=8, pady=6, sticky="w")
+
         ctk.CTkLabel(form, text="Descuentos:", text_color=COLORES["texto"]).grid(
-            row=5, column=0, padx=8, pady=6, sticky="e")
+            row=5, column=0, padx=8, pady=6, sticky="e"
+        )
         self.descuentos_entry = ctk.CTkEntry(
-            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.descuentos_entry.grid(row=5, column=1, padx=8, pady=6, sticky="w")
-        
+
         self.pagado_var = tk.BooleanVar(value=False)
-        pagado_chk = ctk.CTkCheckBox(
-            form, text="Marcar como pagado", variable=self.pagado_var)
+        pagado_chk = ctk.CTkCheckBox(form, text="Marcar como pagado", variable=self.pagado_var)
         pagado_chk.grid(row=5, column=3, padx=8, pady=6, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Observaciones:", text_color=COLORES["texto"]).grid(
-            row=6, column=0, padx=8, pady=6, sticky="ne")
+            row=6, column=0, padx=8, pady=6, sticky="ne"
+        )
         self.observaciones_text = ctk.CTkTextbox(
-            form, width=400, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"])
-        self.observaciones_text.grid(
-            row=6, column=1, columnspan=3, padx=8, pady=6, sticky="w")
-        
+            form, width=400, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.observaciones_text.grid(row=6, column=1, columnspan=3, padx=8, pady=6, sticky="w")
+
         # Botones
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _load_empleados(self):
         empleados = self.main_window.empleado_service.listar_empleados_activos()
-        self.empleado_map = {
-            f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
-        self.empleado_combo['values'] = list(self.empleado_map.keys())
+        self.empleado_map = {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
+        self.empleado_combo["values"] = list(self.empleado_map.keys())
         if self.pago:
-            empleado = self.main_window.empleado_service.obtener_empleado(
-                self.pago.empleado_id)
+            empleado = self.main_window.empleado_service.obtener_empleado(self.pago.empleado_id)
             if empleado:
                 etiqueta = f"{empleado.nombre_completo} ({empleado.cedula})"
                 if etiqueta in self.empleado_map:
                     self.empleado_combo.set(etiqueta)
                 else:
-                    self.empleado_combo['values'] = \
-                        [etiqueta] + list(self.empleado_map.keys())
+                    self.empleado_combo["values"] = [etiqueta] + list(self.empleado_map.keys())
                     self.empleado_combo.set(etiqueta)
                 self.empleado_combo.configure(state="readonly")
         elif self.empleado_map:
             self.empleado_combo.current(0)
-    
+
     def _load_pago_data(self):
         """Precarga los datos del pago en el formulario"""
         if not self.pago:
@@ -3848,40 +4324,36 @@ class PagoDialog(ctk.CTkToplevel):
         else:
             self.tipo_combo.set(tipo_actual)
         self.metodo_combo.set(self.pago.metodo_pago or "transferencia")
-        self.periodo_inicio_entry.insert(
-            0, format_date(self.pago.periodo_inicio))
+        self.periodo_inicio_entry.insert(0, format_date(self.pago.periodo_inicio))
         self.periodo_fin_entry.insert(0, format_date(self.pago.periodo_fin))
         self.salario_entry.insert(0, str(float(self.pago.salario_base or 0)))
-        self.bonificaciones_entry.insert(
-            0, str(float(self.pago.bonificaciones or 0)))
-        self.horas_extra_entry.insert(
-            0, str(float(self.pago.horas_extra or 0)))
-        self.otras_deducciones_entry.insert(
-            0, str(float(self.pago.otras_deducciones or 0)))
+        self.bonificaciones_entry.insert(0, str(float(self.pago.bonificaciones or 0)))
+        self.horas_extra_entry.insert(0, str(float(self.pago.horas_extra or 0)))
+        self.otras_deducciones_entry.insert(0, str(float(self.pago.otras_deducciones or 0)))
         self.descuentos_entry.insert(0, str(float(self.pago.descuentos or 0)))
         self.pagado_var.set(bool(self.pago.pagado))
         if self.pago.observaciones:
             self.observaciones_text.insert("1.0", self.pago.observaciones)
-    
+
     def _on_save(self):
         """Guarda el pago (crea o actualiza)"""
         try:
             if not self.empleado_combo.get():
                 messagebox.showerror("Error", "Seleccione un empleado")
                 return
-            
+
             if self.pago:
                 empleado_id = self.pago.empleado_id
             else:
                 empleado_id = self.empleado_map[self.empleado_combo.get()]
-            
+
             tipo_etiqueta = self.tipo_combo.get()
             tipo_valor = tipo_etiqueta
             for valor, etiqueta in self.TIPOS:
                 if etiqueta == tipo_etiqueta:
                     tipo_valor = valor
                     break
-            
+
             datos = {
                 "empleado_id": empleado_id,
                 "tipo_pago": tipo_valor,
@@ -3896,27 +4368,27 @@ class PagoDialog(ctk.CTkToplevel):
                 "pagado": 1 if self.pagado_var.get() else 0,
                 "observaciones": self.observaciones_text.get("1.0", "end").strip() or None,
             }
-            
+
             errores = self.main_window.pago_service.validar_datos_pago(datos)
             if errores:
                 messagebox.showerror("Errores de Validación", "\n".join(errores))
                 return
-            
+
             if self.pago:
                 self.main_window.pago_service.actualizar_pago(self.pago.id, datos)
                 messagebox.showinfo("Éxito", "Pago actualizado correctamente")
             else:
                 self.main_window.pago_service.crear_pago(datos)
                 messagebox.showinfo("Éxito", "Pago registrado correctamente")
-            
+
             self.result = True
             self.destroy()
         except ValueError as e:
             messagebox.showerror("Error de Validación", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar pago: {str(e)}")
-    
-    def _parse_float(self, value: str) -> Optional[float]:
+
+    def _parse_float(self, value: str) -> float | None:
         try:
             return float(value) if value else 0.0
         except ValueError:
@@ -3925,104 +4397,121 @@ class PagoDialog(ctk.CTkToplevel):
 
 class UsuarioDialog(ctk.CTkToplevel):
     """Diálogo para crear o editar un usuario de sistema"""
-    
-    def __init__(self, parent, main_window, usuario_id: Optional[int] = None):
+
+    def __init__(self, parent, main_window, usuario_id: int | None = None):
         super().__init__(parent)
         self.main_window = main_window
         self.usuario_id = usuario_id
         self.result = False
-        
+
         self.title("Editar Usuario" if usuario_id else "Nuevo Usuario")
         self.geometry("480x430")
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
-        
+
         self.usuario = None
         if usuario_id:
             from src.config import db_config
             from src.services.auth_service import AuthService
+
             session = db_config.get_session()
             try:
                 self.usuario = AuthService(session).usuario_por_id(usuario_id)
             finally:
                 db_config.close_session(session)
-        
+
         self._create_widgets()
         if self.usuario:
             self._load_usuario_data()
-    
+
     def _create_widgets(self):
         form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         ctk.CTkLabel(form, text="Usuario:", text_color=COLORES["texto"]).grid(
-            row=0, column=0, padx=8, pady=6, sticky="e")
+            row=0, column=0, padx=8, pady=6, sticky="e"
+        )
         self.username_entry = ctk.CTkEntry(
-            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.username_entry.grid(row=0, column=1, padx=8, pady=6, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Nombre Completo:", text_color=COLORES["texto"]).grid(
-            row=1, column=0, padx=8, pady=6, sticky="e")
+            row=1, column=0, padx=8, pady=6, sticky="e"
+        )
         self.nombre_entry = ctk.CTkEntry(
-            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.nombre_entry.grid(row=1, column=1, padx=8, pady=6, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Rol:", text_color=COLORES["texto"]).grid(
-            row=2, column=0, padx=8, pady=6, sticky="e")
+            row=2, column=0, padx=8, pady=6, sticky="e"
+        )
         self.rol_combo = ttk.Combobox(
-            form, values=["admin", "manager", "user", "viewer"],
-            width=20, state="readonly", font=(_familia_fuente(), 9))
+            form,
+            values=["admin", "manager", "user", "viewer"],
+            width=20,
+            state="readonly",
+            font=(_familia_fuente(), 9),
+        )
         self.rol_combo.grid(row=2, column=1, padx=8, pady=6, sticky="w")
         self.rol_combo.set("user")
-        
+
         if self.usuario is None:
             ctk.CTkLabel(form, text="Contraseña:", text_color=COLORES["texto"]).grid(
-                row=3, column=0, padx=8, pady=6, sticky="e")
+                row=3, column=0, padx=8, pady=6, sticky="e"
+            )
             self.password_entry = ctk.CTkEntry(
-                form, width=260, show="*", fg_color=COLORES["campo"],
-                text_color=COLORES["texto"])
+                form, width=260, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
+            )
             self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
         else:
             ctk.CTkLabel(
-                form, text="Nueva Contraseña (opcional):",
-                text_color=COLORES["texto"]).grid(row=3, column=0, padx=8, pady=6, sticky="e")
+                form, text="Nueva Contraseña (opcional):", text_color=COLORES["texto"]
+            ).grid(row=3, column=0, padx=8, pady=6, sticky="e")
             self.password_entry = ctk.CTkEntry(
-                form, width=260, show="*", fg_color=COLORES["campo"],
-                text_color=COLORES["texto"], placeholder_text="Dejar vacía para no cambiar")
+                form,
+                width=260,
+                show="*",
+                fg_color=COLORES["campo"],
+                text_color=COLORES["texto"],
+                placeholder_text="Dejar vacía para no cambiar",
+            )
             self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
-        
+
         self.activo_var = tk.BooleanVar(value=True)
-        activo_chk = ctk.CTkCheckBox(
-            form, text="Cuenta activa", variable=self.activo_var)
+        activo_chk = ctk.CTkCheckBox(form, text="Cuenta activa", variable=self.activo_var)
         activo_chk.grid(row=4, column=1, padx=8, pady=6, sticky="w")
-        
+
         hint = ctk.CTkLabel(
             form,
             text=f"Mínimo {LONGITUD_MINIMA_PASSWORD} caracteres para la contraseña.",
-            text_color="#888888", font=ctk.CTkFont(size=11))
+            text_color="#888888",
+            font=ctk.CTkFont(size=11),
+        )
         hint.grid(row=5, column=1, padx=8, pady=2, sticky="w")
-        
+
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _load_usuario_data(self):
         self.username_entry.insert(0, self.usuario.username)
         if self.usuario.nombre_completo:
             self.nombre_entry.insert(0, self.usuario.nombre_completo)
         self.rol_combo.set(self.usuario.rol_valor)
         self.activo_var.set(bool(self.usuario.activo))
-    
+
     def _on_save(self):
         from src.config import db_config
         from src.services.auth_service import AuthService
-        
+
         try:
             session = db_config.get_session()
             try:
@@ -4038,8 +4527,8 @@ class UsuarioDialog(ctk.CTkToplevel):
                     if nueva_pass:
                         datos["password"] = nueva_pass
                     auth.actualizar_usuario(
-                        self.usuario.id, datos,
-                        usuario_actual=self.main_window.current_user)
+                        self.usuario.id, datos, usuario_actual=self.main_window.current_user
+                    )
                     messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
                 else:
                     auth.crear_usuario(
@@ -4062,7 +4551,7 @@ class UsuarioDialog(ctk.CTkToplevel):
 
 class CambiarPasswordDialog(ctk.CTkToplevel):
     """Diálogo para que el usuario actual cambie su contraseña"""
-    
+
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
@@ -4075,61 +4564,67 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
         self._create_widgets()
-    
+
     def _create_widgets(self):
         """Crea los widgets del diálogo"""
         form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form.pack(fill="both", expand=True, padx=10, pady=10)
-        
+
         ctk.CTkLabel(form, text="Contraseña actual:", text_color=COLORES["texto"]).grid(
-            row=0, column=0, padx=5, pady=8, sticky="e")
-        self.actual_entry = ctk.CTkEntry(form, width=240, show="*",
-                                         fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            row=0, column=0, padx=5, pady=8, sticky="e"
+        )
+        self.actual_entry = ctk.CTkEntry(
+            form, width=240, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.actual_entry.grid(row=0, column=1, padx=5, pady=8, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Nueva contraseña:", text_color=COLORES["texto"]).grid(
-            row=1, column=0, padx=5, pady=8, sticky="e")
-        self.nueva_entry = ctk.CTkEntry(form, width=240, show="*",
-                                        fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            row=1, column=0, padx=5, pady=8, sticky="e"
+        )
+        self.nueva_entry = ctk.CTkEntry(
+            form, width=240, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.nueva_entry.grid(row=1, column=1, padx=5, pady=8, sticky="w")
-        
+
         ctk.CTkLabel(form, text="Confirmar contraseña:", text_color=COLORES["texto"]).grid(
-            row=2, column=0, padx=5, pady=8, sticky="e")
-        self.confirmar_entry = ctk.CTkEntry(form, width=240, show="*",
-                                            fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            row=2, column=0, padx=5, pady=8, sticky="e"
+        )
+        self.confirmar_entry = ctk.CTkEntry(
+            form, width=240, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.confirmar_entry.grid(row=2, column=1, padx=5, pady=8, sticky="w")
-        
+
         ctk.CTkLabel(
             form,
             text=f"La contraseña debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres.",
-            text_color=COLORES["texto_suave"], font=(_familia_fuente(), 9)).grid(
-            row=3, column=0, columnspan=2, pady=(4, 8))
-        
+            text_color=COLORES["texto_suave"],
+            font=(_familia_fuente(), 9),
+        ).grid(row=3, column=0, columnspan=2, pady=(4, 8))
+
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
-        
+
         save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
         cancel_btn = ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy)
         cancel_btn.pack(side="right", padx=5)
-    
+
     def _on_save(self):
         """Valida y cambia la contraseña"""
         actual = self.actual_entry.get()
         nueva = self.nueva_entry.get()
         confirmar = self.confirmar_entry.get()
-        
+
         if not nueva:
             messagebox.showerror("Error", "Debe ingresar la nueva contraseña")
             return
         if nueva != confirmar:
             messagebox.showerror("Error", "Las contraseñas no coinciden")
             return
-        
+
         try:
             auth = AuthService(self.main_window.session)
-            auth.cambiar_password(
-                self.main_window.current_user, nueva, actual_password=actual)
+            auth.cambiar_password(self.main_window.current_user, nueva, actual_password=actual)
             self.result = True
             messagebox.showinfo("Éxito", "Contraseña cambiada correctamente")
             self.destroy()

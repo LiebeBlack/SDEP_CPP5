@@ -13,8 +13,6 @@ En plataformas que no sean Windows la clase es un no-op: el resto de la
 aplicación puede llamarla sin preocuparse de la plataforma.
 """
 
-from __future__ import annotations
-
 import ctypes
 import queue
 import sys
@@ -96,9 +94,9 @@ class WNDCLASSW(ctypes.Structure):
 
 WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
 
-_user32 = None
-_shell32 = None
-_kernel32 = None
+_user32: ctypes.WinDLL | None = None
+_shell32: ctypes.WinDLL | None = None
+_kernel32: ctypes.WinDLL | None = None
 
 
 def _win32_api() -> None:
@@ -117,9 +115,18 @@ def _win32_api() -> None:
     _user32.RegisterClassW.restype = wt.ATOM
 
     _user32.CreateWindowExW.argtypes = [
-        wt.DWORD, ctypes.c_wchar_p, ctypes.c_wchar_p, wt.DWORD,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-        wt.HWND, wt.HMENU, wt.HINSTANCE, ctypes.c_void_p,
+        wt.DWORD,
+        ctypes.c_wchar_p,
+        ctypes.c_wchar_p,
+        wt.DWORD,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wt.HWND,
+        wt.HMENU,
+        wt.HINSTANCE,
+        ctypes.c_void_p,
     ]
     _user32.CreateWindowExW.restype = wt.HWND
 
@@ -144,7 +151,12 @@ def _win32_api() -> None:
     _user32.DestroyWindow.restype = wt.BOOL
 
     _user32.LoadImageW.argtypes = [
-        wt.HINSTANCE, ctypes.c_wchar_p, wt.UINT, ctypes.c_int, ctypes.c_int, wt.UINT,
+        wt.HINSTANCE,
+        ctypes.c_wchar_p,
+        wt.UINT,
+        ctypes.c_int,
+        ctypes.c_int,
+        wt.UINT,
     ]
     _user32.LoadImageW.restype = wt.HANDLE
 
@@ -157,7 +169,13 @@ def _win32_api() -> None:
     _user32.AppendMenuW.restype = wt.BOOL
 
     _user32.TrackPopupMenu.argtypes = [
-        wt.HMENU, wt.UINT, ctypes.c_int, ctypes.c_int, ctypes.c_int, wt.HWND, ctypes.c_void_p,
+        wt.HMENU,
+        wt.UINT,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wt.HWND,
+        ctypes.c_void_p,
     ]
     _user32.TrackPopupMenu.restype = ctypes.c_ulong
 
@@ -201,10 +219,10 @@ class TrayIcon:
         self._commands = commands
         self._tooltip = tooltip
         self._hwnd: int | None = None
-        self._hicon = None
+        self._hicon: int | None = None
         self._thread: threading.Thread | None = None
         self._stopping = threading.Event()
-        self._wndproc_ref: WNDPROC | None = None
+        self._wndproc_ref: object | None = None
 
     # ------------------------------------------------------------------ API
     def start(self) -> None:
@@ -212,6 +230,8 @@ class TrayIcon:
         if sys.platform != "win32" or self._thread is not None:
             return
         _win32_api()
+        if _user32 is None:
+            return
         self._thread = threading.Thread(target=self._run, name="tray-icon", daemon=True)
         self._thread.start()
 
@@ -233,6 +253,7 @@ class TrayIcon:
 
     # ------------------------------------------------------------- internals
     def _run(self) -> None:
+        assert _user32 is not None and _shell32 is not None and _kernel32 is not None
         self._wndproc_ref = WNDPROC(self._wnd_proc)
         wc = WNDCLASSW()
         wc.lpfnWndProc = ctypes.cast(self._wndproc_ref, ctypes.c_void_p)
@@ -241,8 +262,18 @@ class TrayIcon:
         _user32.RegisterClassW(ctypes.byref(wc))
 
         hwnd = _user32.CreateWindowExW(
-            0, CLASS_NAME, "SDEP_CPP5", 0,
-            0, 0, 0, 0, HWND_MESSAGE, None, wc.hInstance, None,
+            0,
+            CLASS_NAME,
+            "SDEP_CPP5",
+            0,
+            0,
+            0,
+            0,
+            0,
+            HWND_MESSAGE,
+            None,
+            wc.hInstance,
+            None,
         )
         if not hwnd:
             return
@@ -266,6 +297,7 @@ class TrayIcon:
             self._hwnd = None
 
     def _wnd_proc(self, hwnd: int, msg: int, wparam: int, lparam: int) -> int:
+        assert _user32 is not None
         if msg == WM_TRAYICON:
             event = lparam & 0xFFFF
             if event in (WM_RBUTTONUP, WM_CONTEXTMENU):
@@ -276,9 +308,10 @@ class TrayIcon:
         if msg == WM_DESTROY:
             _user32.PostQuitMessage(0)
             return 0
-        return _user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+        return int(_user32.DefWindowProcW(hwnd, msg, wparam, lparam))
 
     def _show_menu(self) -> None:
+        assert _user32 is not None
         menu = _user32.CreatePopupMenu()
         if not menu:
             return
@@ -290,8 +323,13 @@ class TrayIcon:
             pt = wt.POINT()
             _user32.GetCursorPos(ctypes.byref(pt))
             cmd = _user32.TrackPopupMenu(
-                menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
-                pt.x, pt.y, 0, self._hwnd, None,
+                menu,
+                TPM_RETURNCMD | TPM_RIGHTBUTTON,
+                pt.x,
+                pt.y,
+                0,
+                self._hwnd,
+                None,
             )
         finally:
             _user32.DestroyMenu(menu)
@@ -319,15 +357,14 @@ class TrayIcon:
         nid.szTip = (tip or self._tooltip)[:127]
         return nid
 
-    def _load_icon(self):
+    def _load_icon(self) -> int:
+        assert _user32 is not None
         ruta = _icon_path()
         if ruta:
-            hicon = _user32.LoadImageW(
-                None, str(ruta), IMAGE_ICON, 32, 32, LR_LOADFROMFILE
-            )
+            hicon = _user32.LoadImageW(None, str(ruta), IMAGE_ICON, 32, 32, LR_LOADFROMFILE)
             if hicon:
-                return hicon
+                return int(hicon)
         # Respaldo: ícono genérico de aplicación de Windows
-        return _user32.LoadIconW(
-            None, ctypes.cast(ctypes.c_void_p(IDI_APPLICATION), ctypes.c_wchar_p)
+        return int(
+            _user32.LoadIconW(None, ctypes.cast(ctypes.c_void_p(IDI_APPLICATION), ctypes.c_wchar_p))
         )

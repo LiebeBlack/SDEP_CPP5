@@ -34,17 +34,16 @@ Uso:
     python updater/auto_updater.py --no-gui        # fuerza modo texto
 """
 
-from __future__ import annotations
-
+import ctypes
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -74,10 +73,10 @@ CHECK_INTERVAL_DAYS = 2
 CHECK_START_TIME = "09:00"
 INSTALL_IF_MISSING = os.environ.get("SDEP_UPDATE_INSTALL_IF_MISSING", "1") == "1"
 LOCK_MAX_AGE_SECONDS = 30 * 60  # una ejecución no debería durar más de 30 min
-LOG_MAX_BYTES = 1024 * 1024     # rotación simple del log (1 MB)
+LOG_MAX_BYTES = 1024 * 1024  # rotación simple del log (1 MB)
 
 USER_AGENT = (
-    "Mozilla/5.0 (compatible; SDEP_CPP5-AutoUpdater/2.79; "
+    "Mozilla/5.0 (compatible; SDEP_CPP5-AutoUpdater/2.81; "
     "+https://github.com/LiebeBlack/SDEP_CPP5)"
 )
 
@@ -85,8 +84,8 @@ _VERSION_RE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
 
 # Ganchos opcionales que la GUI (updater/updater_gui.py) engancha para
 # mostrar el progreso en su ventana y en la bandeja del sistema.
-on_progress = None  # Callable[[str], None]  -> mensaje de etapa
-on_download = None  # Callable[[int, int], None] -> (bytes descargados, total o 0)
+on_progress: Callable[[str], None] | None = None
+on_download: Callable[[int, int], None] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -142,9 +141,7 @@ def log(message: str) -> None:
     try:
         state_dir().mkdir(parents=True, exist_ok=True)
         if log_path().exists() and log_path().stat().st_size > LOG_MAX_BYTES:
-            log_path().write_text(
-                "--- log rotado ---\n", encoding="utf-8"
-            )
+            log_path().write_text("--- log rotado ---\n", encoding="utf-8")
         with log_path().open("a", encoding="utf-8") as fh:
             fh.write(f"[{now_utc()}] {message}\n")
     except OSError:
@@ -402,24 +399,38 @@ def register_tasks() -> None:
     exe = self_exe()
     tr_value = f'"{exe}"'
     command = [
-        "schtasks", "/Create", "/F", "/TN", TASK_NAME, "/SC", "DAILY",
-        "/MO", str(CHECK_INTERVAL_DAYS), "/ST", CHECK_START_TIME,
-        "/TR", tr_value, "/RL", "HIGHEST",
+        "schtasks",
+        "/Create",
+        "/F",
+        "/TN",
+        TASK_NAME,
+        "/SC",
+        "DAILY",
+        "/MO",
+        str(CHECK_INTERVAL_DAYS),
+        "/ST",
+        CHECK_START_TIME,
+        "/TR",
+        tr_value,
+        "/RL",
+        "HIGHEST",
     ]
     try:
-        result = subprocess.run(
-            command, capture_output=True, text=True, timeout=30
-        )
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
         status = "OK" if result.returncode == 0 else f"ERROR ({result.returncode})"
-        log(f"Tarea '{TASK_NAME}' (cada {CHECK_INTERVAL_DAYS} días a las "
-            f"{CHECK_START_TIME}): {status}")
+        log(
+            f"Tarea '{TASK_NAME}' (cada {CHECK_INTERVAL_DAYS} días a las "
+            f"{CHECK_START_TIME}): {status}"
+        )
     except (OSError, subprocess.SubprocessError) as exc:
         log(f"No se pudo crear la tarea '{TASK_NAME}': {exc}")
     # Limpieza: quitar la tarea antigua "al iniciar sesión" (si existe)
     try:
         result = subprocess.run(
             ["schtasks", "/Delete", "/TN", TASK_NAME_LOGON, "/F"],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode == 0:
             log(f"Tarea antigua '{TASK_NAME_LOGON}' eliminada (ya no se usa)")
@@ -435,13 +446,14 @@ def unregister_tasks() -> None:
         try:
             result = subprocess.run(
                 ["schtasks", "/Delete", "/TN", task, "/F"],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if result.returncode == 0:
                 log(f"Tarea '{task}' eliminada")
             else:
-                log(f"Tarea '{task}' no existía o no se pudo eliminar "
-                    f"({result.returncode})")
+                log(f"Tarea '{task}' no existía o no se pudo eliminar " f"({result.returncode})")
         except (OSError, subprocess.SubprocessError) as exc:
             log(f"No se pudo eliminar la tarea '{task}': {exc}")
 
@@ -452,12 +464,10 @@ def relaunch_elevated_register() -> bool:
     if sys.platform != "win32":
         return False
     try:
-        import ctypes
-
         result = ctypes.windll.shell32.ShellExecuteW(
             None, "runas", str(self_exe()), "--register", None, 0
         )
-        return result > 32
+        return bool(result > 32)
     except Exception:
         return False
 
@@ -529,13 +539,14 @@ def run_check(install: bool) -> int:
             return 0
 
     if not install:
-        log(f"Hay una versión más nueva: {tag} "
-            f"(página: {RELEASES_PAGE})")
+        log(f"Hay una versión más nueva: {tag} " f"(página: {RELEASES_PAGE})")
         return 2
 
     if not app_installed() and not INSTALL_IF_MISSING:
-        log("La aplicación no está instalada y SDEP_UPDATE_INSTALL_IF_MISSING=0; "
-            "se omite la instalación")
+        log(
+            "La aplicación no está instalada y SDEP_UPDATE_INSTALL_IF_MISSING=0; "
+            "se omite la instalación"
+        )
         return 0
 
     log(f"Actualización disponible: {last_tag or '(primera instalación)'} -> {tag}")
@@ -548,11 +559,8 @@ def run_check(install: bool) -> int:
         log("ERROR: el instalador de la Release no tiene URL de descarga")
         return 1
 
-    destino = (
-        Path(os.environ.get("TEMP") or state_dir()) / "sdep_updater" / asset["name"]
-    )
-    log(f"Descargando {asset['name']} "
-        f"({asset['size'] / (1024 * 1024):.1f} MB) desde GitHub...")
+    destino = Path(os.environ.get("TEMP") or state_dir()) / "sdep_updater" / asset["name"]
+    log(f"Descargando {asset['name']} " f"({asset['size'] / (1024 * 1024):.1f} MB) desde GitHub...")
     try:
         download(asset["url"], destino, expected_size=asset["size"])
     except RuntimeError as exc:
@@ -587,10 +595,7 @@ def _gui_enabled(args: list[str]) -> bool:
     if "--gui" in args:
         return True
     # Por defecto: ventana en los flujos interactivos; --check va en texto
-    return not any(
-        flag in args
-        for flag in ("--check", "--register-only", "--unregister")
-    )
+    return not any(flag in args for flag in ("--check", "--register-only", "--unregister"))
 
 
 def _run_with_gui(install: bool) -> int:
@@ -612,7 +617,7 @@ def main() -> int:
     args = sys.argv[1:]
 
     if "--version" in args:
-        print("SDEP_CPP5 AutoUpdater 2.79")
+        print("SDEP_CPP5 AutoUpdater 2.81")
         return 0
 
     if "--unregister" in args:
@@ -643,8 +648,10 @@ def main() -> int:
                 register_tasks()
         elif not tasks_registered():
             # Sin privilegios y sin tareas: se relanza elevado una sola vez.
-            log(f"Registrando el actualizador (cada {CHECK_INTERVAL_DAYS} días; "
-                "confirmación UAC)...")
+            log(
+                f"Registrando el actualizador (cada {CHECK_INTERVAL_DAYS} días; "
+                "confirmación UAC)..."
+            )
             if relaunch_elevated_register():
                 return 0  # el proceso elevado completa el trabajo
         if _gui_enabled(args):

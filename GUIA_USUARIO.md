@@ -8,7 +8,7 @@ Este sistema ha sido diseñado para simplificar la administración de personal e
 
 ### Instalación
 
-1. Asegúrese de tener Python 3.10 o superior instalado
+1. Asegúrese de tener Python 3.15 o superior instalado
 2. Descargue o clone el repositorio del proyecto
 3. Instale las dependencias necesarias:
    ```bash
@@ -509,5 +509,5 @@ Este sistema ha sido diseñado para ser intuitivo y eficiente. Con la práctica,
 
 ---
 
-**Versión del Sistema**: 2.79  
+**Versión del Sistema**: 2.81  
 **Última Actualización**: 2026

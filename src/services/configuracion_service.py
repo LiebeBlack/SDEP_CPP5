@@ -6,63 +6,65 @@ Este servicio gestiona la configuración del sistema, permitiendo
 almacenar y recuperar parámetros configurables por categoría.
 """
 
-from typing import List, Optional, Dict, Union
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion
 from src.repositories import ConfiguracionRepository
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ConfiguracionService:
     """
     Servicio de gestión de configuración
-    
+
     Administra los parámetros configurables del sistema organizados
     por categorías (general, nómina, recursos_humanos), permitiendo
     su recuperación y actualización de forma tipada.
     """
-    
+
     def __init__(self, session: Session):
         """
         Inicializa el servicio de configuración
-        
+
         Args:
             session: Sesión de base de datos SQLAlchemy
         """
         self.session = session
         self.repository = ConfiguracionRepository(session)
-    
-    def crear_configuracion(self, datos: Dict) -> Configuracion:
+
+    def crear_configuracion(self, datos: dict) -> Configuracion:
         """Crea una nueva configuración"""
         # Verificar que la clave no exista
         if self.repository.get_by_clave(datos["clave"]):
             raise ValueError("Ya existe una configuración con esta clave")
-        
+
         configuracion = Configuracion(
             clave=datos["clave"],
             valor=datos.get("valor"),
             descripcion=datos.get("descripcion"),
             tipo_dato=datos.get("tipo_dato", "string"),
             categoria=datos.get("categoria"),
-            editable=datos.get("editable", 1)
+            editable=datos.get("editable", 1),
         )
-        
+
         valor_to_set = datos.get("valor")
         if valor_to_set is not None:
             configuracion.set_valor(valor_to_set)
         return self.repository.create(configuracion)
-    
-    def actualizar_configuracion(self, configuracion_id: int, datos: Dict) -> Configuracion:
+
+    def actualizar_configuracion(self, configuracion_id: int, datos: dict) -> Configuracion:
         """Actualiza una configuración existente"""
         configuracion = self.repository.get_by_id(configuracion_id)
         if not configuracion:
             raise ValueError("Configuración no encontrada")
-        
+
         # Si se actualiza la clave, verificar que no exista
         if "clave" in datos and datos["clave"] != configuracion.clave:
             if self.repository.get_by_clave(datos["clave"]):
                 raise ValueError("Ya existe una configuración con esta clave")
-        
+
         # Actualizar campos
         for campo, valor in datos.items():
             if hasattr(configuracion, campo):
@@ -71,21 +73,21 @@ class ConfiguracionService:
                         configuracion.set_valor(valor)
                 else:
                     setattr(configuracion, campo, valor)
-        
+
         return self.repository.update(configuracion)
-    
+
     def eliminar_configuracion(self, configuracion_id: int) -> bool:
         """Elimina una configuración"""
         return self.repository.delete(configuracion_id)
-    
-    def obtener_configuracion(self, configuracion_id: int) -> Optional[Configuracion]:
+
+    def obtener_configuracion(self, configuracion_id: int) -> Configuracion | None:
         """Obtiene una configuración por ID"""
         return self.repository.get_by_id(configuracion_id)
-    
-    def obtener_por_clave(self, clave: str) -> Optional[Configuracion]:
+
+    def obtener_por_clave(self, clave: str) -> Configuracion | None:
         """Obtiene una configuración por clave"""
         return self.repository.get_by_clave(clave)
-    
+
     def obtener_valor(self, clave: str, default=None):
         """
         Obtiene el valor de una configuración
@@ -97,14 +99,17 @@ class ConfiguracionService:
         """
         try:
             from src.config import settings
+
             local = settings.get_config_value(clave)
             if local is not None:
                 return local
         except Exception:
-            pass
+            logger.warning(
+                "%s: operación auxiliar falló (se continúa)", "obtener_valor", exc_info=True
+            )
         return self.repository.get_valor(clave, default)
-    
-    def establecer_valor(self, clave: str, valor: Union[str, int, float, bool]) -> bool:
+
+    def establecer_valor(self, clave: str, valor: str | int | float | bool) -> bool:
         """Establece el valor de una configuración, creándola si no existe"""
         config = self.repository.get_by_clave(clave)
         if config:
@@ -117,68 +122,68 @@ class ConfiguracionService:
                 tipo = "int"
             elif isinstance(valor, float):
                 tipo = "float"
-            
-            nueva = Configuracion(
-                clave=clave,
-                tipo_dato=tipo
-            )
+
+            nueva = Configuracion(clave=clave, tipo_dato=tipo)
             nueva.set_valor(valor)
             self.repository.create(nueva)
             resultado = True
-        
+
         # Espejo local en config.json (escritura atómica): la preferencia
         # queda disponible para la pantalla de inicio sin depender de la
         # base de datos, y sobrevive incluso si el archivo .db se pierde.
         if resultado:
             try:
                 from src.config import settings
+
                 settings.set_config_value(clave, valor)
             except Exception:
-                pass
+                logger.warning(
+                    "%s: operación auxiliar falló (se continúa)", "establecer_valor", exc_info=True
+                )
         return resultado
-    
-    def listar_por_categoria(self, categoria: str) -> List[Configuracion]:
+
+    def listar_por_categoria(self, categoria: str) -> list[Configuracion]:
         """Lista configuraciones por categoría"""
         return self.repository.get_by_categoria(categoria)
-    
-    def listar_editables(self) -> List[Configuracion]:
+
+    def listar_editables(self) -> list[Configuracion]:
         """Lista configuraciones editables"""
         return self.repository.get_editables()
-    
-    def obtener_todas_dict(self) -> Dict:
+
+    def obtener_todas_dict(self) -> dict:
         """Obtiene todas las configuraciones como diccionario"""
         return self.repository.get_configuraciones_dict()
-    
-    def obtener_categoria_dict(self, categoria: str) -> Dict:
+
+    def obtener_categoria_dict(self, categoria: str) -> dict:
         """Obtiene configuraciones de una categoría como diccionario"""
         return self.repository.get_configuraciones_categoria(categoria)
-    
-    def obtener_configuracion_general(self) -> Dict:
+
+    def obtener_configuracion_general(self) -> dict:
         """Obtiene configuraciones generales de la institución"""
         return self.obtener_categoria_dict("general")
-    
-    def obtener_configuracion_nomina(self) -> Dict:
+
+    def obtener_configuracion_nomina(self) -> dict:
         """Obtiene configuraciones de nómina"""
         return self.obtener_categoria_dict("nomina")
-    
-    def obtener_configuracion_recursos_humanos(self) -> Dict:
+
+    def obtener_configuracion_recursos_humanos(self) -> dict:
         """Obtiene configuraciones de recursos humanos"""
         return self.obtener_categoria_dict("recursos_humanos")
-    
-    def validar_datos_configuracion(self, datos: Dict) -> List[str]:
+
+    def validar_datos_configuracion(self, datos: dict) -> list[str]:
         """Valida los datos de una configuración"""
         errores = []
-        
+
         # Validaciones requeridas
         campos_requeridos = ["clave", "tipo_dato"]
         for campo in campos_requeridos:
             if campo not in datos or not datos[campo]:
                 errores.append(f"El campo {campo} es requerido")
-        
+
         # Validaciones específicas
         if "tipo_dato" in datos:
             tipos_validos = ["string", "int", "float", "bool"]
             if datos["tipo_dato"] not in tipos_validos:
                 errores.append(f"El tipo de dato debe ser uno de: {', '.join(tipos_validos)}")
-        
+
         return errores

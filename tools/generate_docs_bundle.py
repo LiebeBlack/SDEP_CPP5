@@ -5,7 +5,6 @@ en un archivo JavaScript estructurado para permitir lectura instantánea offline
 y en cualquier navegador (sin problemas de CORS en file://).
 """
 
-import os
 import json
 import re
 from pathlib import Path
@@ -25,7 +24,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 1,
         "badge": "Índice",
-        "icon": "📑"
+        "icon": "📑",
     },
     {
         "id": "tesis-proyecto-social",
@@ -35,7 +34,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 2,
         "badge": "PST",
-        "icon": "🏛️"
+        "icon": "🏛️",
     },
     {
         "id": "tesis-anteproyecto",
@@ -45,7 +44,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 3,
         "badge": "Anteproyecto",
-        "icon": "📐"
+        "icon": "📐",
     },
     {
         "id": "tesis-capitulo-1",
@@ -55,7 +54,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 4,
         "badge": "Capítulo 01",
-        "icon": "🎯"
+        "icon": "🎯",
     },
     {
         "id": "tesis-capitulo-2",
@@ -65,7 +64,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 5,
         "badge": "Capítulo 02",
-        "icon": "📚"
+        "icon": "📚",
     },
     {
         "id": "tesis-capitulo-3",
@@ -75,7 +74,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 6,
         "badge": "Capítulo 03",
-        "icon": "🔬"
+        "icon": "🔬",
     },
     {
         "id": "tesis-capitulo-4",
@@ -85,7 +84,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 7,
         "badge": "Capítulo 04",
-        "icon": "📊"
+        "icon": "📊",
     },
     {
         "id": "tesis-capitulo-5",
@@ -95,7 +94,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 8,
         "badge": "Capítulo 05",
-        "icon": "🎓"
+        "icon": "🎓",
     },
     {
         "id": "tesis-bibliografia-anexos",
@@ -105,7 +104,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 9,
         "badge": "Anexos",
-        "icon": "📎"
+        "icon": "📎",
     },
     {
         "id": "tesis-completado",
@@ -115,9 +114,8 @@ DOCUMENTS_MANIFEST = [
         "category": "Tesis Académica",
         "order": 10,
         "badge": "Validación",
-        "icon": "✅"
+        "icon": "✅",
     },
-
     # --- Documentación Técnica & Guías ---
     {
         "id": "readme",
@@ -127,7 +125,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 11,
         "badge": "General",
-        "icon": "📖"
+        "icon": "📖",
     },
     {
         "id": "doc-tecnica",
@@ -137,7 +135,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 12,
         "badge": "Arquitectura",
-        "icon": "🛠️"
+        "icon": "🛠️",
     },
     {
         "id": "guia-usuario",
@@ -147,7 +145,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 13,
         "badge": "Manual",
-        "icon": "👤"
+        "icon": "👤",
     },
     {
         "id": "estructura-proyecto",
@@ -157,7 +155,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 14,
         "badge": "Estructura",
-        "icon": "🗂️"
+        "icon": "🗂️",
     },
     {
         "id": "notas-desarrollo",
@@ -167,7 +165,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 15,
         "badge": "Bitácora",
-        "icon": "📝"
+        "icon": "📝",
     },
     {
         "id": "contributing",
@@ -177,7 +175,7 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 16,
         "badge": "Contribución",
-        "icon": "🤝"
+        "icon": "🤝",
     },
     {
         "id": "quickstart-cicd",
@@ -187,8 +185,8 @@ DOCUMENTS_MANIFEST = [
         "category": "Documentación Técnica",
         "order": 17,
         "badge": "CI/CD",
-        "icon": "⚡"
-    }
+        "icon": "⚡",
+    },
 ]
 
 
@@ -222,21 +220,25 @@ def build_bundle():
         read_time = calculate_reading_time(content)
         github_url = f"{GITHUB_REPO_URL}/blob/main/{item['file']}"
 
-        documents.append({
-            "id": item["id"],
-            "title": item["title"],
-            "subtitle": item["subtitle"],
-            "category": item["category"],
-            "order": item["order"],
-            "badge": item["badge"],
-            "icon": item["icon"],
-            "filename": item["file"],
-            "githubUrl": github_url,
-            "wordCount": word_count,
-            "readingTime": read_time,
-            "content": content
-        })
-        print(f"[OK] Procesado: [{item['id']}] {item['title']} ({word_count:,} palabras, ~{read_time} min)")
+        documents.append(
+            {
+                "id": item["id"],
+                "title": item["title"],
+                "subtitle": item["subtitle"],
+                "category": item["category"],
+                "order": item["order"],
+                "badge": item["badge"],
+                "icon": item["icon"],
+                "filename": item["file"],
+                "githubUrl": github_url,
+                "wordCount": word_count,
+                "readingTime": read_time,
+                "content": content,
+            }
+        )
+        print(
+            f"[OK] Procesado: [{item['id']}] {item['title']} ({word_count:,} palabras, ~{read_time} min)"
+        )
 
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
     CONTENT_DIR = DOCS_DIR / "content"
@@ -256,7 +258,9 @@ def build_bundle():
     js_content += " * Generado automáticamente por tools/generate_docs_bundle.py\n"
     js_content += f" * Total documentos indexados: {len(documents)}\n"
     js_content += " */\n\n"
-    js_content += "window.SDEP_DOCS_DATA = " + json.dumps(documents, ensure_ascii=False, indent=2) + ";\n"
+    js_content += (
+        "window.SDEP_DOCS_DATA = " + json.dumps(documents, ensure_ascii=False, indent=2) + ";\n"
+    )
 
     OUTPUT_FILE.write_text(js_content, encoding="utf-8")
     file_size_kb = OUTPUT_FILE.stat().st_size / 1024

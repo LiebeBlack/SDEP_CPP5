@@ -20,8 +20,10 @@ def test_paletas_colores_hex_validos():
     # Los valores pueden ser colores hex (#rrggbb) o nombres de color Tk ("white")
     for paleta in (theme.PALETA_OSCURA, theme.PALETA_CLARA):
         for clave, valor in paleta.items():
-            assert _HEX_COLOR.match(valor) or valor in {"white", "black"}, \
-                f"{clave} no es un color válido: {valor!r}"
+            assert _HEX_COLOR.match(valor) or valor in {
+                "white",
+                "black",
+            }, f"{clave} no es un color válido: {valor!r}"
 
 
 def test_paletas_difieren_entre_si():

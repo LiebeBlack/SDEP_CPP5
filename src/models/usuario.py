@@ -4,8 +4,9 @@ Modelo de datos para usuarios del sistema (autenticación y roles)
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Integer, String, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, BaseModel
 from .enums import RolUsuario
@@ -25,19 +26,19 @@ class Usuario(Base, BaseModel):
 
     __tablename__ = "usuarios"
 
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    nombre_completo = Column(String(150), nullable=True)
-    rol = Column(
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    nombre_completo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    rol: Mapped[RolUsuario] = mapped_column(
         SQLEnum(RolUsuario, values_callable=_enum_values),
         nullable=False,
         default=RolUsuario.USER.value,
     )
-    activo = Column(Integer, default=1, nullable=False)
-    debe_cambiar_password = Column(Integer, default=0, nullable=False)
-    ultimo_login = Column(DateTime, nullable=True)
-    intentos_fallidos = Column(Integer, default=0, nullable=False)
-    bloqueado = Column(Integer, default=0, nullable=False)
+    activo: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    debe_cambiar_password: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    ultimo_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    intentos_fallidos: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    bloqueado: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     @property
     def rol_valor(self) -> str:

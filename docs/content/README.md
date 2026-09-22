@@ -104,9 +104,10 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
    programa en el Programador de tareas cada 2 días.
 5. **Compilación Linux**: compila el mismo `spec/app.spec` dentro de un
    contenedor **Debian 13** (glibc 2.41) y empaqueta la versión portable
-   de Linux en un `tar.gz`. El binario funciona en Debian 13, Ubuntu 24.04 LTS
-   y Debian 13; se autoverifica con `--selftest` bajo `xvfb-run` en Ubuntu
-   22.04 y se prueba dentro de contenedores `debian:12` y `debian:13`.
+   de Linux en un `tar.gz`. El binario funciona en Debian 13 y Ubuntu
+   24.04 LTS o superior; se autoverifica con `--selftest` bajo `xvfb-run`
+   dentro de contenedores `debian:13-slim` y se comprueba que la glibc
+   máxima requerida no supere 2.41.
 6. **Artefactos**: sube Setup.exe, ZIP portable (Windows), tar.gz (Linux)
    y `SDEP_CPP5_AutoUpdater.exe` como artefactos del run.
 7. **Release continua**: cada push a `main` publica automáticamente un

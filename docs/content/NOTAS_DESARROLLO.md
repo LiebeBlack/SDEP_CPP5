@@ -285,6 +285,35 @@ pylint src/
 - Versión del sistema: **2.81** (`VERSION`, `pyproject.toml`, instalador,
   `APP_VERSION_DEFAULT`, `src/__init__.py`).
 
+### Calidad y CI (cierre 2.81)
+
+- Análisis estático limpio en todo el árbol: `mypy` sin errores en los
+  52 archivos de `src/`, `updater/`, `tools/` y `build.py` (los módulos
+  del actualizador quedaron tipados: DLLs de Windows como
+  `ctypes.WinDLL | None` con guardas de invariante, callbacks
+  `on_progress`/`on_download` con firma `Callable`, retornos `int`
+  explícitos); `flake8` (F/E9/W6) sin hallazgos y cero `# type: ignore`.
+- Los mensajes de error por `print()` en producción pasaron a `logger`
+  (helpers, settings, main_window); los handlers `pass` restantes son
+  best-effort auditado (callbacks de GUI, drenaje de cola, limpieza de
+  locks).
+- `pdf_generator`: `generate_reporte_nomina` y `generate_recibo_pago`
+  se dividieron en helpers pequeños con tipado completo (salida
+  idéntica; 17 pruebas de reportes en verde).
+- Corrección de un bug de validación: los datos no numéricos en
+  `dias_solicitados` pasaban la validación en silencio; ahora producen
+  un error de validación claro.
+- Corrección de diseño en permisos: `can_access_module` niega solo
+  módulos conocidos; los desconocidos muestran el marco "Módulo en
+  desarrollo" (antes quedaban bloqueados y la rama era inalcanzable).
+- Estabilidad de pruebas GUI: los diálogos modales de `_show_frame` y
+  el diálogo de cambio de contraseña verifican la ventana con guardas
+  `TclError`; los tests de Ayuda/Acerca esperan el cierre real del
+  `CTkToplevel` (elimina el flakiness por orden de ejecución).
+- CI: el contenedor `debian:13` instala `binutils`, requerido por
+  PyInstaller (`objdump`); corrige el fallo "On Linux, objdump is
+  required" del build Linux.
+
 ## Novedades de la Versión 2.79
 
 ### Actualización automática (cada 2 días)

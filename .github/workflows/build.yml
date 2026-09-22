@@ -80,7 +80,8 @@ jobs:
               # Sin esto, apt-get se cuelga en el prompt interactivo de tzdata
               export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
-              apt-get install -y -qq ca-certificates curl
+              # binutils provee objdump, requerido por PyInstaller en Linux
+              apt-get install -y -qq ca-certificates curl binutils
               curl -LsSf https://astral.sh/uv/install.sh | sh
               export PATH=\"/root/.local/bin:$PATH\"
               uv python install 3.15

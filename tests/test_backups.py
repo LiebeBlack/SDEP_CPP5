@@ -9,16 +9,18 @@ from src.services.empleado_service import EmpleadoService
 
 def _crear_empleado(session, cedula, nombres="Marco"):
     servicio = EmpleadoService(session)
-    return servicio.crear_empleado({
-        "nombres": nombres,
-        "apellidos": "Antunes",
-        "cedula": cedula,
-        "tipo_empleado": "docente",
-        "cargo": "Docente de Lengua",
-        "departamento": "Letras",
-        "fecha_contratacion": date(2022, 2, 1),
-        "salario_base": 1100.0,
-    })
+    return servicio.crear_empleado(
+        {
+            "nombres": nombres,
+            "apellidos": "Antunes",
+            "cedula": cedula,
+            "tipo_empleado": "docente",
+            "cargo": "Docente de Lengua",
+            "departamento": "Letras",
+            "fecha_contratacion": date(2022, 2, 1),
+            "salario_base": 1100.0,
+        }
+    )
 
 
 def test_ciclo_completo_backup_y_restauracion(session, db_config):
@@ -155,16 +157,24 @@ def test_rotacion_elimina_por_antiguedad(tmp_path, monkeypatch):
         "metadata",
         {
             "viejo": {
-                "name": "viejo", "filename": "viejo.db.gz",
+                "name": "viejo",
+                "filename": "viejo.db.gz",
                 "path": str(tmp_path / "viejo.db.gz"),
                 "timestamp": (datetime.now() - timedelta(days=45)).strftime("%Y%m%d_%H%M%S"),
-                "size_bytes": 1, "checksum": "", "compressed": True, "version": 2,
+                "size_bytes": 1,
+                "checksum": "",
+                "compressed": True,
+                "version": 2,
             },
             "reciente": {
-                "name": "reciente", "filename": "reciente.db.gz",
+                "name": "reciente",
+                "filename": "reciente.db.gz",
                 "path": str(tmp_path / "reciente.db.gz"),
                 "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
-                "size_bytes": 1, "checksum": "", "compressed": True, "version": 2,
+                "size_bytes": 1,
+                "checksum": "",
+                "compressed": True,
+                "version": 2,
             },
         },
     )
@@ -192,5 +202,6 @@ def test_exportar_auditoria_genera_json(session, storage):
     assert ruta.endswith(".json")
     with open(ruta, "r", encoding="utf-8") as f:
         import json
+
         eventos = json.load(f)
     assert any(e["user"] == "admin" for e in eventos)

@@ -64,15 +64,18 @@ class TestSecurityValidator:
 
     def test_validate_file_extension_ok(self):
         assert SecurityValidator.validate_file_extension(
-            "foto.JPG", SecurityValidator.ALLOWED_IMAGE_EXTENSIONS)
+            "foto.JPG", SecurityValidator.ALLOWED_IMAGE_EXTENSIONS
+        )
 
     def test_validate_file_extension_no(self):
         assert not SecurityValidator.validate_file_extension(
-            "doc.pdf", SecurityValidator.ALLOWED_IMAGE_EXTENSIONS)
+            "doc.pdf", SecurityValidator.ALLOWED_IMAGE_EXTENSIONS
+        )
 
     def test_validate_file_extension_vacio(self):
         assert not SecurityValidator.validate_file_extension(
-            "", SecurityValidator.ALLOWED_IMAGE_EXTENSIONS)
+            "", SecurityValidator.ALLOWED_IMAGE_EXTENSIONS
+        )
 
     def test_validate_file_size_ok(self):
         assert SecurityValidator.validate_file_size(1024)
@@ -134,6 +137,7 @@ class TestPassword:
 
     def test_verify_password_hash_legado(self):
         import hashlib
+
         salt = "salt123"
         valor = hashlib.sha256(("clave" + salt).encode()).hexdigest()
         assert SecurityValidator.verify_password("clave", f"{salt}${valor}")
@@ -147,61 +151,52 @@ class TestPassword:
 
 class TestIntegridad:
     def test_validate_data_integrity_ok(self):
-        errores = SecurityValidator.validate_data_integrity(
-            {"a": "x", "b": 1}, ["a", "b"])
+        errores = SecurityValidator.validate_data_integrity({"a": "x", "b": 1}, ["a", "b"])
         assert errores == []
 
     def test_validate_data_integrity_faltante(self):
-        errores = SecurityValidator.validate_data_integrity(
-            {"a": "x"}, ["a", "b"])
+        errores = SecurityValidator.validate_data_integrity({"a": "x"}, ["a", "b"])
         assert any("b" in e for e in errores)
 
     def test_validate_data_integrity_vacio(self):
-        errores = SecurityValidator.validate_data_integrity(
-            {"a": "  "}, ["a"])
+        errores = SecurityValidator.validate_data_integrity({"a": "  "}, ["a"])
         assert any("vacío" in e for e in errores)
 
     def test_sanitize_input_data_string(self):
-        datos = SecurityValidator.sanitize_input_data(
-            {"nombre": "<Ana>"}, {"nombre": "string"})
+        datos = SecurityValidator.sanitize_input_data({"nombre": "<Ana>"}, {"nombre": "string"})
         assert datos["nombre"] == "Ana"
 
     def test_sanitize_input_data_numeric(self):
-        datos = SecurityValidator.sanitize_input_data(
-            {"monto": "1500,25"}, {"monto": "numeric"})
+        datos = SecurityValidator.sanitize_input_data({"monto": "1500,25"}, {"monto": "numeric"})
         assert datos["monto"] == 1500.25
 
     def test_sanitize_input_data_email(self):
         datos = SecurityValidator.sanitize_input_data(
-            {"correo": "  ANA@EXAMPLE.COM "}, {"correo": "email"})
+            {"correo": "  ANA@EXAMPLE.COM "}, {"correo": "email"}
+        )
         assert datos["correo"] == "ana@example.com"
 
     def test_sanitize_input_data_phone(self):
-        datos = SecurityValidator.sanitize_input_data(
-            {"tel": "0412-123-45-67"}, {"tel": "phone"})
+        datos = SecurityValidator.sanitize_input_data({"tel": "0412-123-45-67"}, {"tel": "phone"})
         assert datos["tel"] == "0412-123-45-67"
 
     def test_sanitize_input_data_none(self):
-        datos = SecurityValidator.sanitize_input_data(
-            {"campo": None}, {"campo": "string"})
+        datos = SecurityValidator.sanitize_input_data({"campo": None}, {"campo": "string"})
         assert datos["campo"] is None
 
     def test_sanitize_input_data_error(self):
-        datos = SecurityValidator.sanitize_input_data(
-            {"monto": "no-numero"}, {"monto": "numeric"})
+        datos = SecurityValidator.sanitize_input_data({"monto": "no-numero"}, {"monto": "numeric"})
         assert datos["monto"] is None
 
 
 class TestCheckFileSecurity:
     def test_archivo_seguro(self):
-        resultado = SecurityValidator.check_file_security(
-            "planilla.pdf", 1024, "application/pdf")
+        resultado = SecurityValidator.check_file_security("planilla.pdf", 1024, "application/pdf")
         assert resultado["safe"] is True
         assert resultado["errors"] == []
 
     def test_archivo_nombre_invalido(self):
-        resultado = SecurityValidator.check_file_security(
-            "planilla<>.pdf", 1024)
+        resultado = SecurityValidator.check_file_security("planilla<>.pdf", 1024)
         assert resultado["safe"] is False
 
     def test_archivo_extension_no_permitida(self):
@@ -210,13 +205,13 @@ class TestCheckFileSecurity:
         assert any("Extensión" in e for e in resultado["errors"])
 
     def test_archivo_tamano_excesivo(self):
-        resultado = SecurityValidator.check_file_security(
-            "doc.pdf", 60 * 1024 * 1024)
+        resultado = SecurityValidator.check_file_security("doc.pdf", 60 * 1024 * 1024)
         assert resultado["safe"] is False
 
     def test_mime_inusual_advierte(self):
         resultado = SecurityValidator.check_file_security(
-            "doc.pdf", 1024, "application/x-msdownload")
+            "doc.pdf", 1024, "application/x-msdownload"
+        )
         assert resultado["safe"] is True
         assert len(resultado["warnings"]) == 1
 
@@ -247,19 +242,22 @@ class TestPermissionChecker:
         assert not PermissionChecker.can_access_module("user", "nomina")
         assert not PermissionChecker.can_access_module("viewer", "incidencias")
 
+    def test_can_access_module_desconocido_no_es_asunto_de_permisos(self):
+        # Un módulo no registrado se muestra como "en desarrollo" para
+        # cualquier rol; la denegación solo aplica a módulos conocidos.
+        assert PermissionChecker.can_access_module("admin", "modulo_inexistente")
+        assert PermissionChecker.can_access_module("viewer", "modulo_inexistente")
+
 
 class TestSecurityLogger:
     def test_log_event_auth_failure(self, db_config):
-        SecurityLogger.log_security_event(
-            "auth_failure", {"usuario": "anonimo"}, "WARNING")
+        SecurityLogger.log_security_event("auth_failure", {"usuario": "anonimo"}, "WARNING")
 
     def test_log_event_permission_denied(self, db_config):
-        SecurityLogger.log_security_event(
-            "permission_denied", {"modulo": "nomina"})
+        SecurityLogger.log_security_event("permission_denied", {"modulo": "nomina"})
 
     def test_log_event_sospechoso(self, db_config):
-        SecurityLogger.log_security_event(
-            "suspicious", {"detalle": "acceso raro"})
+        SecurityLogger.log_security_event("suspicious", {"detalle": "acceso raro"})
 
     def test_log_event_tipo_desconocido(self, db_config):
         # Tipos no mapeados caen en SECURITY_SUSPICIOUS sin excepción

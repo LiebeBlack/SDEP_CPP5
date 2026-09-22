@@ -3,8 +3,6 @@ Usuario Repository
 Repositorio para operaciones de datos de usuarios
 """
 
-from typing import List, Optional
-
 from sqlalchemy.orm import Session
 
 from src.models import Usuario
@@ -17,13 +15,11 @@ class UsuarioRepository(BaseRepository[Usuario]):
     def __init__(self, session: Session):
         super().__init__(Usuario, session)
 
-    def get_by_username(self, username: str) -> Optional[Usuario]:
+    def get_by_username(self, username: str) -> Usuario | None:
         """Obtiene un usuario por nombre de usuario"""
-        return self.session.query(Usuario).filter(
-            Usuario.username == username
-        ).first()
+        return self.session.query(Usuario).filter(Usuario.username == username).first()
 
-    def get_activos(self) -> List[Usuario]:
+    def get_activos(self) -> list[Usuario]:
         """Obtiene usuarios activos"""
         return self.session.query(Usuario).filter(Usuario.activo == 1).all()
 

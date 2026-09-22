@@ -55,4 +55,4 @@ def test_default_cuando_no_hay_nada(monkeypatch):
     # VERSION falla y cae al valor por defecto.
     monkeypatch.setattr(settings_module, "_version_desarrollo", lambda: "")
     s = Settings()
-    assert s.app_version == "2.79"
+    assert s.app_version == settings_module.APP_VERSION_DEFAULT

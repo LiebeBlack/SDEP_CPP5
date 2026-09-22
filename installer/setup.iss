@@ -1,7 +1,7 @@
 ; Instalador de "Sistema de Gestión de Personal" / SDEP_CPP5
 ;
 ; Compilación local (sin firmar, desde la raíz del proyecto):
-;   ISCC.exe /DMyAppVersion=2.79 installer\setup.iss
+;   ISCC.exe /DMyAppVersion=2.81 installer\setup.iss
 ;
 ; Compilación firmada (GitHub Actions - .github/workflows/release.yml):
 ;   ISCC.exe /DMyAppVersion=1.0.0 /DMyVersionInfo=1.0.0 ^
@@ -30,7 +30,7 @@
 ;   PFX_BASE64 y se elimina del runner al terminar.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.79"
+  #define MyAppVersion "2.81"
 #endif
 
 ; VersionInfoVersion requiere formato #.#.# o #.#.#.# (Inno Setup).

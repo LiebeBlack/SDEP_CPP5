@@ -18,5 +18,5 @@ __all__ = [
     "IncidenciaRepository",
     "PagoRepository",
     "ConfiguracionRepository",
-    "UsuarioRepository"
+    "UsuarioRepository",
 ]

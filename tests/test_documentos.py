@@ -11,16 +11,18 @@ from src.services.empleado_service import EmpleadoService
 @pytest.fixture()
 def empleado(session):
     servicio = EmpleadoService(session)
-    return servicio.crear_empleado({
-        "nombres": "Rosa",
-        "apellidos": "Méndez",
-        "cedula": "88990011",
-        "tipo_empleado": "administrativo",
-        "cargo": "Secretaria",
-        "departamento": "Administración",
-        "fecha_contratacion": date(2021, 6, 1),
-        "salario_base": 900.0,
-    })
+    return servicio.crear_empleado(
+        {
+            "nombres": "Rosa",
+            "apellidos": "Méndez",
+            "cedula": "88990011",
+            "tipo_empleado": "administrativo",
+            "cargo": "Secretaria",
+            "departamento": "Administración",
+            "fecha_contratacion": date(2021, 6, 1),
+            "salario_base": 900.0,
+        }
+    )
 
 
 def _datos_documento(empleado_id, **cambios):
@@ -39,8 +41,7 @@ def _datos_documento(empleado_id, **cambios):
 
 def test_crear_documento_con_archivo(session, empleado, storage):
     servicio = DocumentoService(session)
-    doc = servicio.crear_documento(
-        _datos_documento(empleado.id), b"%PDF-1.4 contenido de prueba")
+    doc = servicio.crear_documento(_datos_documento(empleado.id), b"%PDF-1.4 contenido de prueba")
     assert doc.id is not None
     assert doc.ruta_archivo
     assert doc.contenido_binario == b"%PDF-1.4 contenido de prueba"
@@ -49,10 +50,13 @@ def test_crear_documento_con_archivo(session, empleado, storage):
 
 def test_documento_vencido(session, empleado):
     servicio = DocumentoService(session)
-    doc = servicio.crear_documento(_datos_documento(
-        empleado.id,
-        fecha_vencimiento=date.today() - timedelta(days=5),
-    ), b"data")
+    doc = servicio.crear_documento(
+        _datos_documento(
+            empleado.id,
+            fecha_vencimiento=date.today() - timedelta(days=5),
+        ),
+        b"data",
+    )
     assert not doc.es_valido
     assert doc.dias_vencimiento < 0
 
@@ -69,18 +73,24 @@ def test_documento_inactivo_no_valido(session, empleado):
 
 def test_listar_vencidos_y_por_vencer(session, empleado):
     servicio = DocumentoService(session)
-    servicio.crear_documento(_datos_documento(
-        empleado.id,
-        tipo_documento="titulo",
-        titulo="Título universitario",
-        fecha_vencimiento=date.today() + timedelta(days=10),
-    ), b"data1")
-    servicio.crear_documento(_datos_documento(
-        empleado.id,
-        tipo_documento="certificado",
-        titulo="Certificado vencido",
-        fecha_vencimiento=date.today() - timedelta(days=1),
-    ), b"data2")
+    servicio.crear_documento(
+        _datos_documento(
+            empleado.id,
+            tipo_documento="titulo",
+            titulo="Título universitario",
+            fecha_vencimiento=date.today() + timedelta(days=10),
+        ),
+        b"data1",
+    )
+    servicio.crear_documento(
+        _datos_documento(
+            empleado.id,
+            tipo_documento="certificado",
+            titulo="Certificado vencido",
+            fecha_vencimiento=date.today() - timedelta(days=1),
+        ),
+        b"data2",
+    )
 
     assert len(servicio.listar_por_vencer(30)) == 1
     assert len(servicio.listar_vencidos()) == 1
@@ -90,7 +100,8 @@ def test_actualizar_documento_y_reemplazo_archivo(session, empleado, storage):
     servicio = DocumentoService(session)
     doc = servicio.crear_documento(_datos_documento(empleado.id), b"v1")
     actualizado = servicio.actualizar_documento(
-        doc.id, {"titulo": "Cédula actualizada"}, b"v2-nuevo")
+        doc.id, {"titulo": "Cédula actualizada"}, b"v2-nuevo"
+    )
     assert actualizado.titulo == "Cédula actualizada"
     assert actualizado.contenido_binario == b"v2-nuevo"
 

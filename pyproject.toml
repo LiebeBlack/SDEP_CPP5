@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sistema-gestion-personal"
-version = "2.79"
+version = "2.81"
 description = "Sistema de Gestión de Personal y Nómina para Instituciones Educativas"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.15"
 license = {text = "MIT"}
 authors = [
     {name = "Developer", email = "developer@example.com"}
@@ -20,35 +20,37 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Office/Business",
     "Topic :: Education",
 ]
 
 dependencies = [
-    "SQLAlchemy>=2.0.23",
-    "python-dotenv>=1.0.0",
-    "customtkinter>=5.2.1",
-    "Pillow>=10.1.0",
-    "reportlab>=4.0.7",
-    "openpyxl>=3.1.0",
+    # SQLAlchemy 2.0.54: primera línea verificada en Python 3.15 (serie 2.1
+    # aún no publicada en PyPI a la fecha de esta migración).
+    "SQLAlchemy>=2.0.54",
+    "python-dotenv>=1.2.0",
+    "customtkinter>=6.0.0",
+    "Pillow>=12.0.0",
+    "reportlab>=5.0.0",
+    "openpyxl>=3.1.5",
 ]
 
 [project.optional-dependencies]
 dev = [
     # pytest>=9.0.3 corrige GHSA-6w46-j5rx-g56g (tmpdir inseguro)
-    "pytest>=9.0.3",
-    "pytest-cov>=7.0.0",
+    "pytest>=9.1.0",
+    "pytest-cov>=7.1.0",
     # pytest-qt retirado: la GUI es tkinter/customtkinter y ningún test usa Qt.
     # black>=24.3.0 corrige GHSA-fj7x-q9j7-g6q6 (ReDoS, CVE-2024-21503)
-    "black>=24.3.0",
-    "isort>=5.12.0",
-    "flake8>=6.1.0",
-    "pylint>=3.0.3",
-    "mypy>=1.7.1",
-    "PyInstaller>=6.3.0",
+    "black>=25.9.0",
+    "isort>=6.0.0",
+    "flake8>=7.0.0",
+    "pylint>=3.3.0",
+    "mypy>=1.19.0",
+    # PyInstaller>=6.21 incluye soporte de Python 3.15 (6.13-6.19 declaran
+    # Requires-Python <3.15 y no se instalan en este intérprete).
+    "PyInstaller>=6.22.0",
 ]
 
 [project.scripts]
@@ -63,7 +65,9 @@ src = ["gui/resources/*"]
 
 [tool.black]
 line-length = 100
-target-version = ['py310', 'py311', 'py312']
+# black aún no publica el enum py315: se deja el máximo disponible. Con
+# requires-python >=3.15 la detección de features del intérprete no cambia.
+target-version = ['py313']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -89,7 +93,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.15"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

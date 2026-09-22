@@ -42,7 +42,10 @@ def leer_commit() -> str:
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=10, cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=RAIZ,
         )
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout.strip()
@@ -75,9 +78,9 @@ def localizar_iscc():
     """Localiza ISCC.exe (Inno Setup 6) en las rutas habituales"""
     candidatas = [
         Path(os.environ.get("PROGRAMFILES(X86)", "C:/Program Files (x86)"))
-        / "Inno Setup 6" / "ISCC.exe",
-        Path(os.environ.get("PROGRAMFILES", "C:/Program Files"))
-        / "Inno Setup 6" / "ISCC.exe",
+        / "Inno Setup 6"
+        / "ISCC.exe",
+        Path(os.environ.get("PROGRAMFILES", "C:/Program Files")) / "Inno Setup 6" / "ISCC.exe",
     ]
     iscc = shutil.which("ISCC")
     if iscc:
@@ -93,8 +96,11 @@ def build_exe() -> bool:
     print("=== [1/3] Ejecutable con PyInstaller ===")
     generar_build_info()
     cmd = [
-        sys.executable, "-m", "PyInstaller",
-        "--noconfirm", "--clean",
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--noconfirm",
+        "--clean",
         str(RAIZ / "spec" / "app.spec"),
     ]
     print("$", " ".join(cmd))
@@ -117,8 +123,11 @@ def build_updater() -> bool:
     """Empaqueta el actualizador automático (updater/auto_updater.py)"""
     print("=== [2/3] Actualizador automático (PyInstaller onefile) ===")
     cmd = [
-        sys.executable, "-m", "PyInstaller",
-        "--noconfirm", "--clean",
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--noconfirm",
+        "--clean",
         str(RAIZ / "updater" / "updater.spec"),
     ]
     print("$", " ".join(cmd))

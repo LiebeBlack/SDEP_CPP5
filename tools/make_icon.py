@@ -10,7 +10,7 @@ El ícono se usa en el ejecutable (PyInstaller) y en el instalador
 import os
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, features
 
 RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / "assets" / "app.ico"
@@ -39,14 +39,15 @@ def generar_icono(ruta: Path) -> None:
 
     margen = 24
     radio = 110
-    azul = (34, 51, 77, 255)          # #22334d (panel de la marca)
-    azul_claro = (58, 88, 130, 255)   # degradado inferior
+    azul = (34, 51, 77, 255)  # #22334d (panel de la marca)
+    azul_claro = (58, 88, 130, 255)  # degradado inferior
     blanco = (255, 255, 255, 255)
 
     # Fondo redondeado con leve degradado vertical
     draw.rounded_rectangle(
         [margen, margen, tamano_base - margen, tamano_base - margen],
-        radius=radio, fill=azul,
+        radius=radio,
+        fill=azul,
     )
     for y in range(margen, tamano_base - margen):
         t = (y - margen) / (tamano_base - 2 * margen)
@@ -59,17 +60,23 @@ def generar_icono(ruta: Path) -> None:
     caja = draw.textbbox((0, 0), texto, font=fuente)
     ancho_texto = caja[2] - caja[0]
     alto_texto = caja[3] - caja[1]
-    x = (tamano_base - ancho_texto) // 2 - caja[0]
-    y = (tamano_base - alto_texto) // 2 - caja[1]
+    x = int((tamano_base - ancho_texto) // 2 - caja[0])
+    y = int((tamano_base - alto_texto) // 2 - caja[1])
     draw.text((x, y), texto, font=fuente, fill=blanco)
 
     # Redimensionar con suavizado a los tamaños que espera Windows
-    img_redimensionada = img.resize((256, 256), Image.LANCZOS)
+    if features.check_module("raqm"):
+        filtro = Image.Resampling.LANCZOS
+    else:
+        filtro = Image.Resampling.BICUBIC
+    img_redimensionada = img.resize((256, 256), filtro)
 
     ruta.parent.mkdir(parents=True, exist_ok=True)
     tamanos = [16, 20, 24, 32, 40, 48, 64, 128, 256]
     img_redimensionada.save(
-        ruta, format="ICO", sizes=[(s, s) for s in tamanos],
+        ruta,
+        format="ICO",
+        sizes=[(s, s) for s in tamanos],
     )
     print(f"Ícono generado: {ruta}")
 

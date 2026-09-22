@@ -8,10 +8,14 @@ heredan, proporcionando campos comunes y métodos utilitarios.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, DateTime
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Integer, DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Clase base declarativa moderna (SQLAlchemy 2.x)."""
+
+    pass
 
 
 def _utcnow():
@@ -28,33 +32,35 @@ def _utcnow():
 class BaseModel:
     """
     Modelo base con campos comunes
-    
+
     Todos los modelos del sistema heredan de esta clase, obteniendo
     automáticamente campos de identificación y auditoría.
-    
+
     Atributos:
         id: Identificador único autoincremental
         created_at: Fecha y hora de creación del registro
         updated_at: Fecha y hora de última actualización
     """
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=_utcnow, nullable=False)
-    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
-    
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
     def to_dict(self):
         """
         Convierte el modelo a diccionario
-        
+
         Returns:
             Dict: Diccionario con todos los campos del modelo
         """
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-    
+
     def __repr__(self):
         """
         Representación string del modelo
-        
+
         Returns:
             str: Representación legible del modelo
         """

@@ -12,6 +12,7 @@ detectan errores de ejecución que los análisis estáticos no ven.
 """
 
 import pytest
+import time
 
 ctk = pytest.importorskip("customtkinter")
 
@@ -28,12 +29,14 @@ def _tk_disponible() -> bool:
     """
     import os
     import sys
+
     if sys.platform == "win32":
         return True
     if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         return False
     try:
         import tkinter as tk
+
         raiz = tk.Tk()
         raiz.withdraw()
         raiz.destroy()
@@ -43,17 +46,18 @@ def _tk_disponible() -> bool:
 
 
 pytestmark = pytest.mark.skipif(
-    not _tk_disponible(), reason="No hay display disponible para pruebas GUI")
+    not _tk_disponible(), reason="No hay display disponible para pruebas GUI"
+)
 
 
-MODULOS = ["dashboard", "empleados", "documentos",
-           "incidencias", "nomina", "configuracion"]
+MODULOS = ["dashboard", "empleados", "documentos", "incidencias", "nomina", "configuracion"]
 
 
 @pytest.fixture()
 def admin_usuario(session):
     """Usuario administrador sembrado por la base de datos de pruebas"""
     from src.models import Usuario
+
     admin = session.query(Usuario).filter(Usuario.username == "admin").first()
     assert admin is not None
     return admin
@@ -63,6 +67,7 @@ def admin_usuario(session):
 def main_window(session, admin_usuario):
     """Ventana principal autenticada como administrador"""
     from src.gui.main_window import MainWindow
+
     win = MainWindow(current_user=admin_usuario)
     win.update()  # procesa el mapeo del frame inicial antes de asumir
     yield win
@@ -93,12 +98,18 @@ class TestMainWindow:
     def test_instanciacion_basica(self, main_window):
         from src.config import settings
         from src.gui.frames import DashboardFrame
+
         assert main_window.title() == settings.app_name
         assert main_window.version_label.cget("text") == f"v{settings.app_version}"
         assert set(main_window.sidebar_buttons) == set(MODULOS)
         assert isinstance(main_window.current_frame, DashboardFrame)
         assert set(main_window.current_frame.stats_cards) == {
-            "empleados", "activos", "documentos", "incidencias", "pagos"}
+            "empleados",
+            "activos",
+            "documentos",
+            "incidencias",
+            "pagos",
+        }
         assert main_window.current_frame.winfo_ismapped()
 
     def test_permisos_admin(self, main_window):
@@ -110,9 +121,14 @@ class TestMainWindow:
 
     def test_navegacion_todos_los_modulos(self, main_window):
         from src.gui.frames import (
-            DashboardFrame, EmpleadosFrame, DocumentosFrame,
-            IncidenciasFrame, NominaFrame, ConfiguracionFrame,
+            DashboardFrame,
+            EmpleadosFrame,
+            DocumentosFrame,
+            IncidenciasFrame,
+            NominaFrame,
+            ConfiguracionFrame,
         )
+
         esperados = {
             "dashboard": DashboardFrame,
             "empleados": EmpleadosFrame,
@@ -178,12 +194,16 @@ class TestMainWindow:
         assert "Selección eliminada" in main_window.status_label.cget("text")
 
     def test_ayuda_y_acerca(self, main_window):
+        """Los diálogos de Ayuda y Acerca se crean y se cierran limpiamente
+        (se espera el cierre real: CTkToplevel destruye con after(50))."""
         main_window._on_ayuda()
         main_window.update()
         dialogs = _toplevels(main_window)
         assert len(dialogs) == 1
         assert "Ayuda" in dialogs[0].title()
         dialogs[0].destroy()
+        main_window.update()
+        time.sleep(0.1)
 
         main_window._on_acerca_de()
         main_window.update()
@@ -191,6 +211,8 @@ class TestMainWindow:
         assert len(dialogs) == 1
         assert "Acerca" in dialogs[0].title()
         dialogs[0].destroy()
+        main_window.update()
+        time.sleep(0.1)
 
     def test_mostrar_modulo_invalido(self, main_window):
         """Un módulo desconocido cae en el marco de 'en desarrollo'"""
@@ -201,12 +223,16 @@ class TestMainWindow:
         """El clic/doble clic selecciona la fila bajo el cursor (fallback de selección)"""
         from types import SimpleNamespace
         from src.gui.frames import _seleccionar_fila_click, _id_fila_seleccionada
+
         main_window._show_frame("empleados")
         arbol = main_window.current_frame.tree
         arbol.insert(
-            "", "end", iid="fila_test",
+            "",
+            "end",
+            iid="fila_test",
             values=("123", "Ana", "Docente", "General", "Docente", "500"),
-            tags=("999",))
+            tags=("999",),
+        )
         arbol.identify_row = lambda y: "fila_test" if y > 0 else ""
         # Fila bajo el cursor: queda seleccionada
         assert _seleccionar_fila_click(arbol, SimpleNamespace(y=5)) is True
@@ -242,6 +268,7 @@ class TestTemaYCombobox:
         import tkinter as tk
         from tkinter import ttk
         from src.gui.theme import configure_ttk_styles
+
         root = tk.Tk()
         root.withdraw()
         try:
@@ -260,12 +287,11 @@ class TestTemaYCombobox:
     def test_orden_por_encabezado(self, main_window):
         """El clic en un encabezado ordena la lista (ascendente/descendente)"""
         from src.gui.frames import _ordenar_por_columna, _habilitar_orden_columnas
+
         main_window._show_frame("empleados")
         arbol = main_window.current_frame.tree
-        arbol.insert("", "end", iid="f2",
-                     values=("2", "Beta", "", "", "", ""), tags=("2",))
-        arbol.insert("", "end", iid="f1",
-                     values=("1", "Alfa", "", "", "", ""), tags=("1",))
+        arbol.insert("", "end", iid="f2", values=("2", "Beta", "", "", "", ""), tags=("2",))
+        arbol.insert("", "end", iid="f1", values=("1", "Alfa", "", "", "", ""), tags=("1",))
         _habilitar_orden_columnas(arbol)
         # Orden ascendente por cédula
         _ordenar_por_columna(arbol, "cedula")
@@ -282,6 +308,7 @@ class TestLogin:
 
     def test_login_window(self, session):
         from src.gui.login_window import LoginWindow
+
         win = LoginWindow()
         try:
             win.update()
@@ -295,6 +322,7 @@ class TestLogin:
     def test_dialogo_cambio_password(self, session, admin_usuario):
         from src.gui.login_window import CambiarPasswordDialog
         from src.services.auth_service import AuthService
+
         auth = AuthService(session)
         padre = ctk.CTkToplevel()
         try:
@@ -312,19 +340,29 @@ class TestLogin:
         finally:
             padre.destroy()
 
-    def test_dialogo_cambio_password_valida(self, session, admin_usuario):
+    def test_dialogo_cambio_password_valida(self, session, admin_usuario, monkeypatch):
         """Contraseñas que no coinciden no guardan nada"""
-        from src.gui.login_window import CambiarPasswordDialog
+        from src.gui import login_window
         from src.services.auth_service import AuthService
+
+        avisos: list[tuple[str, str]] = []
+        monkeypatch.setattr(
+            login_window.messagebox,
+            "showerror",
+            lambda titulo, mensaje: avisos.append((titulo, mensaje)),
+        )
+
         auth = AuthService(session)
         padre = ctk.CTkToplevel()
         try:
-            dlg = CambiarPasswordDialog(padre, auth, admin_usuario)
+            dlg = login_window.CambiarPasswordDialog(padre, auth, admin_usuario)
             dlg.update()
             dlg.new_pass.insert(0, "NuevaClave123")
             dlg.confirm_pass.insert(0, "OtraClave456")
             dlg._on_save()
             assert dlg.cambiado is False
             assert dlg.winfo_exists()  # sigue abierto
+            assert len(avisos) == 1
+            assert "no coinciden" in avisos[0][1]
         finally:
             padre.destroy()

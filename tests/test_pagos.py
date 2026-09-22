@@ -12,16 +12,18 @@ from src.models import Pago, TipoPago, MetodoPago
 @pytest.fixture()
 def empleado(session):
     servicio = EmpleadoService(session)
-    return servicio.crear_empleado({
-        "nombres": "Carlos",
-        "apellidos": "Ruiz",
-        "cedula": "55500112",
-        "tipo_empleado": "docente",
-        "cargo": "Docente de Física",
-        "departamento": "Ciencias",
-        "fecha_contratacion": date(2019, 3, 1),
-        "salario_base": 2000.0,
-    })
+    return servicio.crear_empleado(
+        {
+            "nombres": "Carlos",
+            "apellidos": "Ruiz",
+            "cedula": "55500112",
+            "tipo_empleado": "docente",
+            "cargo": "Docente de Física",
+            "departamento": "Ciencias",
+            "fecha_contratacion": date(2019, 3, 1),
+            "salario_base": 2000.0,
+        }
+    )
 
 
 def _pago_base(empleado_id, **cambios):
@@ -61,11 +63,13 @@ def test_neto_nunca_negativo(session, empleado):
 
 def test_validacion_fechas_periodo(session, empleado):
     servicio = PagoService(session)
-    errores = servicio.validar_datos_pago(_pago_base(
-        empleado.id,
-        periodo_inicio=date(2026, 2, 1),
-        periodo_fin=date(2026, 1, 1),
-    ))
+    errores = servicio.validar_datos_pago(
+        _pago_base(
+            empleado.id,
+            periodo_inicio=date(2026, 2, 1),
+            periodo_fin=date(2026, 1, 1),
+        )
+    )
     assert any("fecha fin" in e.lower() for e in errores)
 
 
@@ -90,8 +94,7 @@ def test_actualizar_pago_recalcula(session, empleado):
 
 def test_generar_nomina_empleado(session, empleado):
     servicio = PagoService(session)
-    pago = servicio.generar_nominas_empleado(
-        empleado.id, date(2026, 2, 1), date(2026, 2, 28))
+    pago = servicio.generar_nominas_empleado(empleado.id, date(2026, 2, 1), date(2026, 2, 28))
     # Proporcional al mes comercial de 30 días (28 días hábiles del periodo)
     assert float(pago.salario_base) == pytest.approx(round(2000 / 30 * 28, 2))
 

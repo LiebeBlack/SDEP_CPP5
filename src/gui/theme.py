@@ -9,9 +9,13 @@ duplicadas en main_window/login_window.
 """
 
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import customtkinter as ctk
+
     _CTK_DISPONIBLE = True
 except Exception:  # pragma: no cover
     _CTK_DISPONIBLE = False
@@ -76,11 +80,12 @@ def aplicar_modo_apariencia(modo: str = "Light") -> None:
     COLORES.update(paleta)
     try:
         import tkinter as tk
-        raiz = tk._default_root
+
+        raiz = getattr(tk, "_default_root", None)
         if raiz is not None:
             configure_ttk_styles(raiz)
     except Exception:
-        pass
+        logger.debug("ajuste visual ignorado", exc_info=True)
 
 
 def enable_windows_dpi_awareness() -> bool:
@@ -108,13 +113,13 @@ def enable_windows_dpi_awareness() -> bool:
             ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)
             return True
         except (AttributeError, OSError):
-            pass
+            logger.debug("Per-Monitor v2 no disponible; probando el siguiente nivel")
         # Per-Monitor (Windows 8.1+)
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
             return True
         except (AttributeError, OSError):
-            pass
+            logger.debug("Per-Monitor no disponible; probando el siguiente nivel")
         # System DPI (Windows Vista+)
         ctypes.windll.user32.SetProcessDPIAware()
         return True
@@ -131,6 +136,7 @@ def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial") ->
     """
     try:
         import tkinter.font as tkfont
+
         familia = tkfont.nametofont(nombre).actual("family")
         return familia or fallback
     except Exception:
@@ -149,10 +155,11 @@ def configure_ttk_styles(root=None) -> None:
         from tkinter import ttk
 
         if root is None:
-            root = ttk._default_root
+            root = getattr(ttk, "_default_root", None)
         if root is None:
             import tkinter as tk
-            root = tk._default_root
+
+            root = getattr(tk, "_default_root", None)
         if root is None:  # pragma: no cover
             return
 
@@ -160,7 +167,7 @@ def configure_ttk_styles(root=None) -> None:
         try:
             style.theme_use("clam")
         except Exception:
-            pass
+            logger.debug("ajuste visual ignorado", exc_info=True)
 
         # --- Treeview (tablas) ---
         # La familia de fuente se resuelve desde la fuente por defecto de
@@ -172,10 +179,9 @@ def configure_ttk_styles(root=None) -> None:
         # la fuente exista siempre en cualquier sistema.
         try:
             from tkinter import font as tkfont
-            _fuente_familia = tkfont.nametofont(
-                "TkDefaultFont", root).actual("family")
-            _fuente_tamano = tkfont.nametofont(
-                "TkDefaultFont", root).actual("size")
+
+            _fuente_familia = tkfont.nametofont("TkDefaultFont", root).actual("family")
+            _fuente_tamano = tkfont.nametofont("TkDefaultFont", root).actual("size")
             _fuente_tabla = (_fuente_familia, _fuente_tamano)
             _fuente_encabezado = (_fuente_familia, _fuente_tamano, "bold")
         except Exception:
@@ -237,8 +243,7 @@ def configure_ttk_styles(root=None) -> None:
         )
         style.map(
             "TCombobox",
-            fieldbackground=[("readonly", COLORES["campo"]),
-                             ("focus", COLORES["campo"])],
+            fieldbackground=[("readonly", COLORES["campo"]), ("focus", COLORES["campo"])],
             foreground=[("readonly", COLORES["texto"])],
             selectbackground=[("readonly", COLORES["campo"])],
             selectforeground=[("readonly", COLORES["texto"])],
@@ -273,7 +278,7 @@ def configure_ttk_styles(root=None) -> None:
                 continue
     except Exception:
         # Nunca impedir que la ventana se muestre por un problema de estilo
-        pass
+        logger.debug("No se pudieron registrar los estilos ttk", exc_info=True)
 
 
 def aplicar_escalado_customtkinter(root=None) -> None:
@@ -287,7 +292,8 @@ def aplicar_escalado_customtkinter(root=None) -> None:
     try:
         if root is None:
             import tkinter as tk
-            root = tk._default_root
+
+            root = getattr(tk, "_default_root", None)
         if root is None:  # pragma: no cover
             return
         # tk devuelve puntos por pulgada; 72 pt = 100 % de escala
@@ -296,7 +302,7 @@ def aplicar_escalado_customtkinter(root=None) -> None:
             ctk.set_widget_scaling(max(0.8, min(1.25, factor)))
             ctk.set_window_scaling(max(0.8, min(1.25, factor)))
     except Exception:
-        pass
+        logger.debug("ajuste visual ignorado", exc_info=True)
 
 
 def centrar_ventana(ventana, ancho: int, alto: int) -> None:
@@ -329,7 +335,7 @@ def cancelar_after_pendientes(root) -> None:
             except Exception:
                 continue
     except Exception:
-        pass
+        logger.debug("ajuste visual ignorado", exc_info=True)
 
 
 def silenciar_errores_fondo(root) -> None:
@@ -342,7 +348,7 @@ def silenciar_errores_fondo(root) -> None:
     try:
         root.tk.call("proc", "bgerror", "msg", "")
     except Exception:
-        pass
+        logger.debug("ajuste visual ignorado", exc_info=True)
 
 
 def configurar_report_callback_exception(root) -> None:
@@ -356,32 +362,36 @@ def configurar_report_callback_exception(root) -> None:
     un fallo silencioso.
     """
     try:
+
         def _manejador(tipo, valor, tb):
             try:
                 from src.utils.audit_logger import get_audit_logger
+
                 audit = get_audit_logger()
                 if audit:
                     audit.log_error(valor, context={"operation": "callback_interfaz"})
             except Exception:
-                pass
+                logger.debug("ajuste visual ignorado", exc_info=True)
             try:
                 import traceback
+
                 traceback.print_exception(tipo, valor, tb)
             except Exception:
-                pass
+                logger.debug("ajuste visual ignorado", exc_info=True)
             try:
                 from tkinter import messagebox
+
                 messagebox.showerror(
                     "Error de interfaz",
                     f"Ocurrió un error en la interfaz:\n{valor}\n\n"
                     "El error quedó registrado en la auditoría del sistema.",
                 )
             except Exception:
-                pass
+                logger.debug("ajuste visual ignorado", exc_info=True)
 
         root.report_callback_exception = _manejador
     except Exception:
-        pass
+        logger.debug("ajuste visual ignorado", exc_info=True)
 
 
 def setup_ui_raiz(root) -> None:

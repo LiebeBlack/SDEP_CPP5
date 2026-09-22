@@ -21,8 +21,8 @@ Ve a `Settings > Branches`:
 - **Función**: Pruebas (pytest) + ejecutable Windows + actualizador automático + instalador (Inno Setup)
   + ejecutable Linux portable (PyInstaller en ubuntu)
 - **Output**: `Setup.exe` (incluye el actualizador automático) + ZIP portable (Windows) + `tar.gz` portable (Linux) + `SDEP_CPP5_AutoUpdater.exe`
-- **Compatibilidad**: el ejecutable Linux se compila en Ubuntu 22.04
-  (glibc 2.35) y funciona en Ubuntu 22.04, Debian 12 y Debian 13
+- **Compatibilidad**: el ejecutable Linux se compila en Debian 13
+  (glibc 2.41) y funciona en Debian 13 y Ubuntu 24.04 LTS o superior
   (verificado en CI dentro de contenedores `ubuntu:22.04`, `debian:12`
   y `debian:13`)
   - Push a **main** → Release automática en GitHub (sin etiqueta)
@@ -48,9 +48,9 @@ git push origin main
 
 ### Release versionada (opcional)
 ```bash
-# Crea una release con nombre y etiqueta versionados (ej: v2.79)
-git tag v2.79
-git push origin v2.79
+# Crea una release con nombre y etiqueta versionados (ej: v2.81)
+git tag v2.81
+git push origin v2.81
 ```
 
 **Resultado:**

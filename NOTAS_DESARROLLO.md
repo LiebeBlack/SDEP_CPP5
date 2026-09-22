@@ -259,6 +259,32 @@ pylint src/
    - Responsividad mejorada en pantallas pequeñas
    - Más temas y acentos de color
 
+## Novedades de la Versión 2.81
+
+### Migración a Python 3.15
+
+- Requisito de intérprete: **Python 3.15** (`requires-python >=3.15` en
+  `pyproject.toml`). Verificado con `3.15.0rc2` en Windows y con la rc
+  más reciente en CI (`allow-prereleases: true` hasta la final del
+  2026-10-01).
+- Dependencias alineadas: SQLAlchemy 2.0.54 (serie 2.1 aún no publicada),
+  customtkinter 6.0.0, reportlab 5.0.1, Pillow 12.3.0, openpyxl 3.1.5,
+  PyInstaller 6.22 (primeras versiones con bootloaders de 3.15).
+- Tipado modernizado en todo `src/`: unions PEP 604 (`X | None`) y
+  contenedores nativos (`list[...]`, `dict[...]`, `tuple[...]`); el
+  repositorio genérico usa sintaxis genérica PEP 695
+  (`class BaseRepository[T]`).
+- Retirados los `from __future__ import annotations` de `updater/`.
+- Robustez: los `except Exception` silenciosos de servicios, repositorios,
+  configuración y utilidades registran ahora `logger.warning(...,
+  exc_info=True)`.
+- `migrar_columnas` valida columna y tipo contra listas blancas antes de
+  ejecutar la DDL de migración.
+- El ejecutable Linux se compila ahora en **Debian 13** (glibc 2.41);
+  deja de garantizarse Ubuntu 22.04 y Debian 12.
+- Versión del sistema: **2.81** (`VERSION`, `pyproject.toml`, instalador,
+  `APP_VERSION_DEFAULT`, `src/__init__.py`).
+
 ## Novedades de la Versión 2.79
 
 ### Actualización automática (cada 2 días)
@@ -381,7 +407,7 @@ pylint src/
 ### Problemas Comunes y Soluciones
 
 1. **Error al iniciar**
-   - Verificar Python 3.10+
+   - Verificar Python 3.15+
    - Reinstalar dependencias
    - Verificar permisos
 
@@ -407,6 +433,6 @@ Para más información, consulte:
 
 ---
 
-**Versión**: 2.79  
+**Versión**: 2.81  
 **Estado**: Estable  
 **Última actualización**: 2026

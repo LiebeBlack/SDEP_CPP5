@@ -14,8 +14,8 @@ import logging
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, List
 from enum import Enum
+from typing import Any
 import traceback
 
 logger = logging.getLogger(__name__)
@@ -23,29 +23,30 @@ logger = logging.getLogger(__name__)
 
 class AuditEventType(Enum):
     """Tipos de eventos de auditoría"""
+
     # Operaciones de datos
     DATA_CREATE = "data_create"
     DATA_UPDATE = "data_update"
     DATA_DELETE = "data_delete"
     DATA_READ = "data_read"
-    
+
     # Operaciones de usuario
     USER_LOGIN = "user_login"
     USER_LOGOUT = "user_logout"
     USER_ACCESS = "user_access"
-    
+
     # Operaciones de sistema
     SYSTEM_START = "system_start"
     SYSTEM_STOP = "system_stop"
     SYSTEM_ERROR = "system_error"
     SYSTEM_BACKUP = "system_backup"
     SYSTEM_RESTORE = "system_restore"
-    
+
     # Operaciones de seguridad
     SECURITY_AUTH_FAILURE = "security_auth_failure"
     SECURITY_PERMISSION_DENIED = "security_permission_denied"
     SECURITY_SUSPICIOUS = "security_suspicious"
-    
+
     # Operaciones de configuración
     CONFIG_CHANGE = "config_change"
     CONFIG_ACCESS = "config_access"
@@ -53,32 +54,35 @@ class AuditEventType(Enum):
 
 class AuditLogger:
     """Sistema de auditoría y logging"""
-    
+
     def __init__(self):
         """Inicializa el sistema de auditoría"""
         # Importar settings aquí para evitar problemas de inicialización
         from src.config import settings
-        
+
         self.audit_dir = Path(settings.logs_dir) / "audit"
         self.error_dir = Path(settings.logs_dir) / "errors"
-        
+
         # La creación de directorios NUNCA debe impedir el arranque
         # (permisos denegados, unidad de solo lectura, etc.)
         try:
             self.audit_dir.mkdir(parents=True, exist_ok=True)
             self.error_dir.mkdir(parents=True, exist_ok=True)
         except (OSError, PermissionError):
-            pass
-        
+            logger.warning(
+                "Sin directorios de auditoría: los eventos no se persistirán a disco",
+                exc_info=True,
+            )
+
         # Configurar loggers
         self._setup_loggers()
-        
+
         # Registros en memoria para alertas
-        self.recent_events = []
+        self.recent_events: list[dict[str, Any]] = []
         self.max_recent_events = 100
 
         # Cache de la configuración 'audit_enabled'
-        self._audit_enabled = True
+        self._audit_enabled: bool = True
         self._audit_cache_ts = None
 
     def _auditoria_habilitada(self) -> bool:
@@ -86,6 +90,7 @@ class AuditLogger:
         Verifica (con caché) si la auditoría está habilitada en la configuración
         """
         import time
+
         try:
             now = time.monotonic()
             if self._audit_cache_ts is None or now - self._audit_cache_ts > 60:
@@ -93,6 +98,7 @@ class AuditLogger:
                 self._audit_enabled = True
                 from src.config import db_config
                 from src.models.configuracion import Configuracion
+
                 # Sesión propia e independiente del registry scoped. Esta
                 # consulta se ejecuta dentro de log_event(), que a su vez
                 # se invoca desde operaciones que están usando la sesión
@@ -105,37 +111,45 @@ class AuditLogger:
                 # quedando la pantalla de inicio colgada.
                 session = db_config.new_session()
                 try:
-                    config = session.query(Configuracion).filter(
-                        Configuracion.clave == "audit_enabled").first()
+                    config = (
+                        session.query(Configuracion)
+                        .filter(Configuracion.clave == "audit_enabled")
+                        .first()
+                    )
                     if config is not None and config.valor is not None:
                         self._audit_enabled = str(config.valor).strip().lower() in (
-                            "true", "1", "yes", "on", "si", "verdadero")
+                            "true",
+                            "1",
+                            "yes",
+                            "on",
+                            "si",
+                            "verdadero",
+                        )
                 finally:
                     try:
                         session.close()
                     except Exception:
-                        pass
+                        logger.debug("operación de auditoría ignorada", exc_info=True)
         except Exception:
             # Si no se puede consultar, se mantiene el último valor conocido
-            pass
+            logger.debug("Config de auditoría no consultable; se usa la cache", exc_info=True)
         return self._audit_enabled
-    
+
     def _setup_loggers(self):
         """Configura los diferentes loggers (a prueba de fallos)"""
+
         # Si un archivo de log está bloqueado (abierto por otro proceso,
         # permisos denegados, disco lleno), se usa NullHandler y la app
         # sigue funcionando sin errores de importación ni cierres.
         def _crear_handler(ruta, nivel):
             try:
-                handler = logging.FileHandler(ruta, encoding='utf-8')
-                handler.setFormatter(logging.Formatter(
-                    '%(asctime)s - %(levelname)s - %(message)s'
-                ))
+                handler = logging.FileHandler(ruta, encoding="utf-8")
+                handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
                 return handler
             except (OSError, PermissionError, ValueError):
                 return logging.NullHandler()
 
-        fecha = datetime.now().strftime('%Y%m%d')
+        fecha = datetime.now().strftime("%Y%m%d")
 
         # Logger de auditoría
         self.audit_logger = logging.getLogger("audit")
@@ -143,7 +157,8 @@ class AuditLogger:
         self.audit_logger.propagate = False
         if not self.audit_logger.handlers:
             self.audit_logger.addHandler(
-                _crear_handler(self.audit_dir / f"audit_{fecha}.log", logging.INFO))
+                _crear_handler(self.audit_dir / f"audit_{fecha}.log", logging.INFO)
+            )
 
         # Logger de errores
         self.error_logger = logging.getLogger("errors")
@@ -151,7 +166,8 @@ class AuditLogger:
         self.error_logger.propagate = False
         if not self.error_logger.handlers:
             self.error_logger.addHandler(
-                _crear_handler(self.error_dir / f"errors_{fecha}.log", logging.ERROR))
+                _crear_handler(self.error_dir / f"errors_{fecha}.log", logging.ERROR)
+            )
 
         # Logger de seguridad
         self.security_logger = logging.getLogger("security")
@@ -159,20 +175,24 @@ class AuditLogger:
         self.security_logger.propagate = False
         if not self.security_logger.handlers:
             self.security_logger.addHandler(
-                _crear_handler(self.audit_dir / f"security_{fecha}.log", logging.WARNING))
-    
-    def log_event(self, event_type: AuditEventType, 
-                  entity_type: str, 
-                  entity_id: Optional[int] = None,
-                  user: Optional[str] = None,
-                  details: Optional[Dict] = None,
-                  ip_address: Optional[str] = None,
-                  success: bool = True,
-                  error_message: Optional[str] = None,
-                  force: bool = False):
+                _crear_handler(self.audit_dir / f"security_{fecha}.log", logging.WARNING)
+            )
+
+    def log_event(
+        self,
+        event_type: AuditEventType,
+        entity_type: str,
+        entity_id: int | None = None,
+        user: str | None = None,
+        details: dict | None = None,
+        ip_address: str | None = None,
+        success: bool = True,
+        error_message: str | None = None,
+        force: bool = False,
+    ):
         """
         Registra un evento de auditoría
-        
+
         Args:
             event_type: Tipo de evento
             entity_type: Tipo de entidad afectada
@@ -196,34 +216,34 @@ class AuditLogger:
             "ip_address": ip_address,
             "success": success,
             "error_message": error_message,
-            "details": details or {}
+            "details": details or {},
         }
-        
+
         # Determinar nivel de log
         log_level = logging.INFO if success else logging.ERROR
-        
+
         # Registrar en el logger apropiado
-        if event_type in [AuditEventType.SECURITY_AUTH_FAILURE, 
-                         AuditEventType.SECURITY_PERMISSION_DENIED,
-                         AuditEventType.SECURITY_SUSPICIOUS]:
+        if event_type in [
+            AuditEventType.SECURITY_AUTH_FAILURE,
+            AuditEventType.SECURITY_PERMISSION_DENIED,
+            AuditEventType.SECURITY_SUSPICIOUS,
+        ]:
             self.security_logger.log(log_level, json.dumps(event_data, ensure_ascii=False))
         elif not success:
             self.error_logger.log(log_level, json.dumps(event_data, ensure_ascii=False))
         else:
             self.audit_logger.log(log_level, json.dumps(event_data, ensure_ascii=False))
-        
+
         # Guardar en memoria
         self._add_to_recent_events(event_data)
-        
+
         # Verificar patrones sospechosos
         self._check_suspicious_patterns(event_data)
-    
-    def log_error(self, error: Exception, 
-                  context: Optional[Dict] = None,
-                  user: Optional[str] = None):
+
+    def log_error(self, error: Exception, context: dict | None = None, user: str | None = None):
         """
         Registra un error con contexto completo
-        
+
         Args:
             error: Excepción ocurrida
             context: Contexto adicional del error
@@ -235,29 +255,32 @@ class AuditLogger:
             "error_message": str(error),
             "traceback": traceback.format_exc(),
             "context": context or {},
-            "user": user or "system"
+            "user": user or "system",
         }
-        
+
         self.error_logger.error(json.dumps(error_data, ensure_ascii=False))
-        
+
         # También registrar como evento de auditoría
         self.log_event(
             event_type=AuditEventType.SYSTEM_ERROR,
             entity_type="system",
             details={"error": error_data},
             success=False,
-            error_message=str(error)
+            error_message=str(error),
         )
-    
-    def log_data_operation(self, operation: str, 
-                          entity_type: str,
-                          entity_id: Optional[int] = None,
-                          user: Optional[str] = None,
-                          data: Optional[Dict] = None,
-                          changes: Optional[Dict] = None):
+
+    def log_data_operation(
+        self,
+        operation: str,
+        entity_type: str,
+        entity_id: int | None = None,
+        user: str | None = None,
+        data: dict | None = None,
+        changes: dict | None = None,
+    ):
         """
         Registra operaciones de datos CRUD
-        
+
         Args:
             operation: Tipo de operación (create, update, delete, read)
             entity_type: Tipo de entidad
@@ -270,135 +293,130 @@ class AuditLogger:
             "create": AuditEventType.DATA_CREATE,
             "update": AuditEventType.DATA_UPDATE,
             "delete": AuditEventType.DATA_DELETE,
-            "read": AuditEventType.DATA_READ
+            "read": AuditEventType.DATA_READ,
         }
-        
+
         event_type = event_type_map.get(operation, AuditEventType.DATA_READ)
-        
-        details = {
-            "operation": operation,
-            "data": data or {},
-            "changes": changes or {}
-        }
-        
+
+        details = {"operation": operation, "data": data or {}, "changes": changes or {}}
+
         self.log_event(
             event_type=event_type,
             entity_type=entity_type,
             entity_id=entity_id,
             user=user,
-            details=details
+            details=details,
         )
-    
-    def log_system_event(self, event_type: AuditEventType,
-                        details: Optional[Dict] = None):
+
+    def log_system_event(self, event_type: AuditEventType, details: dict | None = None):
         """
         Registra eventos del sistema
-        
+
         Args:
             event_type: Tipo de evento de sistema
             details: Detalles del evento
         """
-        self.log_event(
-            event_type=event_type,
-            entity_type="system",
-            details=details
-        )
-    
-    def _add_to_recent_events(self, event_data: Dict):
+        self.log_event(event_type=event_type, entity_type="system", details=details)
+
+    def _add_to_recent_events(self, event_data: dict):
         """Agrega evento a la lista de eventos recientes"""
         self.recent_events.append(event_data)
         if len(self.recent_events) > self.max_recent_events:
             self.recent_events.pop(0)
-    
-    def _check_suspicious_patterns(self, event_data: Dict):
+
+    def _check_suspicious_patterns(self, event_data: dict):
         """Verifica patrones de actividad sospechosa"""
         # Verificar múltiples fallos de autenticación
         if event_data["event_type"] == AuditEventType.SECURITY_AUTH_FAILURE.value:
             recent_failures = [
-                e for e in self.recent_events 
+                e
+                for e in self.recent_events
                 if e["event_type"] == AuditEventType.SECURITY_AUTH_FAILURE.value
                 and e["user"] == event_data["user"]
             ]
-            
+
             if len(recent_failures) >= 5:
                 self.security_logger.warning(
                     f"Múltiples fallos de autenticación para usuario: {event_data['user']}"
                 )
-        
+
         # Verificar operaciones masivas
         if event_data["event_type"] == AuditEventType.DATA_DELETE.value:
             recent_deletes = [
-                e for e in self.recent_events 
+                e
+                for e in self.recent_events
                 if e["event_type"] == AuditEventType.DATA_DELETE.value
                 and e["user"] == event_data["user"]
             ]
-            
+
             if len(recent_deletes) >= 10:
                 self.security_logger.warning(
                     f"Actividad sospechosa: múltiples eliminaciones por usuario: {event_data['user']}"
                 )
-    
-    def get_recent_events(self, limit: int = 50) -> List[Dict]:
+
+    def get_recent_events(self, limit: int = 50) -> list[dict]:
         """
         Obtiene eventos recientes
-        
+
         Args:
             limit: Número máximo de eventos a retornar
-            
+
         Returns:
             Lista de eventos recientes
         """
         return self.recent_events[-limit:]
-    
-    def get_events_by_type(self, event_type: AuditEventType, 
-                          hours: int = 24) -> List[Dict]:
+
+    def get_events_by_type(self, event_type: AuditEventType, hours: int = 24) -> list[dict]:
         """
         Obtiene eventos de un tipo específico
-        
+
         Args:
             event_type: Tipo de evento a buscar
             hours: Número de horas hacia atrás
-            
+
         Returns:
             Lista de eventos del tipo especificado
         """
         cutoff = datetime.now().timestamp() - (hours * 3600)
-        
+
         return [
-            event for event in self.recent_events
+            event
+            for event in self.recent_events
             if event["event_type"] == event_type.value
             and datetime.fromisoformat(event["timestamp"]).timestamp() > cutoff
         ]
-    
-    def get_user_activity(self, user: str, hours: int = 24) -> List[Dict]:
+
+    def get_user_activity(self, user: str, hours: int = 24) -> list[dict]:
         """
         Obtiene actividad de un usuario específico
-        
+
         Args:
             user: Usuario a buscar
             hours: Número de horas hacia atrás
-            
+
         Returns:
             Lista de eventos del usuario
         """
         cutoff = datetime.now().timestamp() - (hours * 3600)
-        
+
         return [
-            event for event in self.recent_events
+            event
+            for event in self.recent_events
             if event["user"] == user
             and datetime.fromisoformat(event["timestamp"]).timestamp() > cutoff
         ]
-    
-    def export_audit_log(self, start_date: str, end_date: str, 
-                        output_file: Optional[str] = None) -> str:
+
+    def export_audit_log(
+        self, start_date: str, end_date: str, output_file: str | None = None
+    ) -> str:
         """
         Exporta logs de auditoría a un archivo JSON
-        
+
         Args:
             start_date: Fecha de inicio (YYYY-MM-DD)
             end_date: Fecha de fin (YYYY-MM-DD)
             output_file: Nombre del archivo de salida (opcional)
-            
+
         Returns:
             Ruta del archivo exportado
         """
@@ -408,6 +426,7 @@ class AuditLogger:
             output_file = f"audit_export_{start_date}_{end_date}.json"
 
         from src.config import settings
+
         # Respetar la ruta de exportaciones configurada (no asumir base_dir)
         output_path = Path(settings.exports_path) / output_file
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -442,40 +461,63 @@ class AuditLogger:
 
         logger.info(f"Auditoría exportada: {len(eventos)} eventos → {output_path}")
         return str(output_path)
-    
-    def get_security_summary(self, hours: int = 24) -> Dict:
+
+    def get_security_summary(self, hours: int = 24) -> dict:
         """
         Obtiene un resumen de eventos de seguridad
-        
+
         Args:
             hours: Número de horas hacia atrás
-            
+
         Returns:
             Diccionario con estadísticas de seguridad
         """
         cutoff = datetime.now().timestamp() - (hours * 3600)
-        
+
         security_events = [
-            event for event in self.recent_events
-            if event["event_type"] in [
+            event
+            for event in self.recent_events
+            if event["event_type"]
+            in [
                 AuditEventType.SECURITY_AUTH_FAILURE.value,
                 AuditEventType.SECURITY_PERMISSION_DENIED.value,
-                AuditEventType.SECURITY_SUSPICIOUS.value
+                AuditEventType.SECURITY_SUSPICIOUS.value,
             ]
             and datetime.fromisoformat(event["timestamp"]).timestamp() > cutoff
         ]
-        
+
         return {
             "total_security_events": len(security_events),
-            "auth_failures": len([e for e in security_events if e["event_type"] == AuditEventType.SECURITY_AUTH_FAILURE.value]),
-            "permission_denied": len([e for e in security_events if e["event_type"] == AuditEventType.SECURITY_PERMISSION_DENIED.value]),
-            "suspicious_activities": len([e for e in security_events if e["event_type"] == AuditEventType.SECURITY_SUSPICIOUS.value]),
-            "affected_users": list(set([e["user"] for e in security_events if e["user"] != "system"]))
+            "auth_failures": len(
+                [
+                    e
+                    for e in security_events
+                    if e["event_type"] == AuditEventType.SECURITY_AUTH_FAILURE.value
+                ]
+            ),
+            "permission_denied": len(
+                [
+                    e
+                    for e in security_events
+                    if e["event_type"] == AuditEventType.SECURITY_PERMISSION_DENIED.value
+                ]
+            ),
+            "suspicious_activities": len(
+                [
+                    e
+                    for e in security_events
+                    if e["event_type"] == AuditEventType.SECURITY_SUSPICIOUS.value
+                ]
+            ),
+            "affected_users": list(
+                set([e["user"] for e in security_events if e["user"] != "system"])
+            ),
         }
 
 
 # Instancia global del logger de auditoría
 audit_logger = AuditLogger()
+
 
 def get_audit_logger():
     """Retorna la instancia del logger de auditoría"""

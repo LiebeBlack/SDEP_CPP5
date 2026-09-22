@@ -10,7 +10,7 @@ from .frames import (
     DocumentosFrame,
     IncidenciasFrame,
     NominaFrame,
-    ConfiguracionFrame
+    ConfiguracionFrame,
 )
 
 __all__ = [
@@ -20,5 +20,5 @@ __all__ = [
     "DocumentosFrame",
     "IncidenciasFrame",
     "NominaFrame",
-    "ConfiguracionFrame"
+    "ConfiguracionFrame",
 ]

@@ -3,8 +3,8 @@ Login Window
 Ventana de inicio de sesión del sistema
 """
 
+import logging
 import tkinter as tk
-from typing import Optional
 
 import customtkinter as ctk
 from tkinter import messagebox
@@ -27,6 +27,8 @@ from src.gui.theme import (
     COLORES,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class CambiarPasswordDialog(ctk.CTkToplevel):
     """Diálogo para cambiar la contraseña (obligatorio en el primer acceso)"""
@@ -44,7 +46,12 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.resizable(False, False)
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
-        self.transient(parent)
+        try:
+            self.transient(parent)
+        except tk.TclError:
+            # El padre puede estar en un estado no mapeable durante el
+            # arranque o el escalado; la modalidad es solo cosmética.
+            logger.debug("transient() falló en CambiarPasswordDialog", exc_info=True)
 
         # Modalidad estricta: el login no puede quedar por delante y el
         # diálogo no se pierde detrás de otras ventanas (una causa común
@@ -52,7 +59,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         try:
             self.grab_set()
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
         # Fallback anti-congelamiento: si el diálogo no llega a mostrarse
         # (escalado o pantalla problemáticos), se cierra solo en lugar de
@@ -69,7 +76,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             self.lift()
             self.focus_force()
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     def _cerrar_si_no_visible(self):
         """Cierra el diálogo si nunca llegó a mostrarse (anti-bloqueo)"""
@@ -77,7 +84,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             if self.winfo_exists() and not self.winfo_viewable():
                 self.destroy()
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     def _create_widgets(self):
         container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
@@ -109,14 +116,16 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             container, text="Nueva contraseña:", text_color=COLORES["texto"], anchor="w"
         ).pack(fill="x", padx=5)
         self.new_pass = ctk.CTkEntry(
-            container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.new_pass.pack(fill="x", padx=5, pady=(2, 8))
 
         ctk.CTkLabel(
             container, text="Confirmar contraseña:", text_color=COLORES["texto"], anchor="w"
         ).pack(fill="x", padx=5)
         self.confirm_pass = ctk.CTkEntry(
-            container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"])
+            container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
         self.confirm_pass.pack(fill="x", padx=5, pady=(2, 6))
 
         ctk.CTkLabel(
@@ -130,35 +139,48 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(container, fg_color="transparent")
         btn_frame.pack(fill="x", pady=(10, 0))
 
-        save_btn = ctk.CTkButton(
-            btn_frame, text="Guardar", command=self._on_save)
+        save_btn = ctk.CTkButton(btn_frame, text="Guardar", command=self._on_save)
         save_btn.pack(side="right", padx=5)
 
         cancel_btn = ctk.CTkButton(
-            btn_frame, text="Cancelar", fg_color="#8a3b3b",
-            hover_color="#a04a4a", command=self._on_cancel)
+            btn_frame,
+            text="Cancelar",
+            fg_color="#8a3b3b",
+            hover_color="#a04a4a",
+            command=self._on_cancel,
+        )
         cancel_btn.pack(side="right", padx=5)
 
-    def _on_save(self):
+    def _on_save(self) -> None:
         nueva = self.new_pass.get()
         confirmacion = self.confirm_pass.get()
         if not nueva:
-            messagebox.showerror("Error", "Debe ingresar la nueva contraseña")
+            self._notificar_error("Debe ingresar la nueva contraseña")
             return
         if nueva != confirmacion:
-            messagebox.showerror("Error", "Las contraseñas no coinciden")
+            self._notificar_error("Las contraseñas no coinciden")
             return
         try:
             self.auth_service.cambiar_password(self.usuario, nueva)
-            self.cambiado = True
-            self.destroy()
         except ValueError as e:
-            messagebox.showerror("Error", str(e))
+            self._notificar_error(str(e))
+            return
         except Exception as e:
             # Nunca dejar el diálogo abierto en silencio ante un error
             # inesperado (base de datos bloqueada, sesión inválida, etc.)
-            messagebox.showerror(
-                "Error", f"No se pudo cambiar la contraseña: {str(e)}")
+            self._notificar_error(f"No se pudo cambiar la contraseña: {e}")
+            return
+        self.cambiado = True
+        self.destroy()
+
+    def _notificar_error(self, mensaje: str) -> None:
+        """Muestra un error al usuario sin que un fallo de Tk rompa el flujo"""
+        try:
+            messagebox.showerror("Error", mensaje)
+        except tk.TclError:
+            # Sin raíz operativa (cierre en curso, sesión no interactiva):
+            # el error se registra y la aplicación sigue viva.
+            logger.error("No se pudo mostrar el diálogo de error: %s", mensaje)
 
     def _on_cancel(self):
         self.destroy()
@@ -178,15 +200,18 @@ class LoginWindow(ctk.CTk):
         super().__init__()
         setup_ui_raiz(self)
 
-        self.user: Optional[Usuario] = None
+        self.user: Usuario | None = None
 
         # Respetar el modo de apariencia guardado por el usuario
         try:
             from src.services.configuracion_service import ConfiguracionService
+
             session = db_config.get_session()
             try:
-                modo = ConfiguracionService(session).obtener_valor(
-                    "apariencia_modo", "Light") or "Light"
+                modo = (
+                    ConfiguracionService(session).obtener_valor("apariencia_modo", "Light")
+                    or "Light"
+                )
             finally:
                 db_config.close_session(session)
             aplicar_modo_apariencia(modo)
@@ -241,21 +266,30 @@ class LoginWindow(ctk.CTk):
             text_color=COLORES["texto"],
         ).pack(pady=(0, 20))
 
-        ctk.CTkLabel(
-            inner, text="Usuario:", text_color=COLORES["texto"], anchor="w"
-        ).pack(fill="x")
+        ctk.CTkLabel(inner, text="Usuario:", text_color=COLORES["texto"], anchor="w").pack(fill="x")
         self.username_entry = ctk.CTkEntry(
-            inner, width=320, height=38, fg_color=COLORES["panel"],
-            text_color=COLORES["texto"], placeholder_text="Nombre de usuario")
+            inner,
+            width=320,
+            height=38,
+            fg_color=COLORES["panel"],
+            text_color=COLORES["texto"],
+            placeholder_text="Nombre de usuario",
+        )
         self.username_entry.pack(pady=(4, 12))
         self.username_entry.bind("<Return>", lambda e: self._focus_password())
 
-        ctk.CTkLabel(
-            inner, text="Contraseña:", text_color=COLORES["texto"], anchor="w"
-        ).pack(fill="x")
+        ctk.CTkLabel(inner, text="Contraseña:", text_color=COLORES["texto"], anchor="w").pack(
+            fill="x"
+        )
         self.password_entry = ctk.CTkEntry(
-            inner, width=320, height=38, show="*", fg_color=COLORES["panel"],
-            text_color=COLORES["texto"], placeholder_text="Contraseña")
+            inner,
+            width=320,
+            height=38,
+            show="*",
+            fg_color=COLORES["panel"],
+            text_color=COLORES["texto"],
+            placeholder_text="Contraseña",
+        )
         self.password_entry.pack(pady=(4, 16))
         self.password_entry.bind("<Return>", lambda e: self._on_login())
 
@@ -302,7 +336,7 @@ class LoginWindow(ctk.CTk):
             finally:
                 db_config.close_session(session)
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     # ------------------------------------------------------------------
     # Autenticación
@@ -352,8 +386,7 @@ class LoginWindow(ctk.CTk):
             messagebox.showerror("Error de Autenticación", str(e))
             self.password_entry.delete(0, tk.END)
         except Exception as e:
-            messagebox.showerror(
-                "Error", f"Error al iniciar sesión: {str(e)}")
+            messagebox.showerror("Error", f"Error al iniciar sesión: {str(e)}")
         finally:
             # La sesión permanece abierta si el inicio de sesión fue exitoso:
             # el Usuario autenticado sigue ligado a ella y la ventana principal
@@ -366,7 +399,7 @@ class LoginWindow(ctk.CTk):
         cancelar_after_pendientes(self)
         self.destroy()
 
-    def run(self) -> Optional[Usuario]:
+    def run(self) -> Usuario | None:
         """Muestra la ventana y devuelve el usuario autenticado o None"""
         self.mainloop()
         return self.user

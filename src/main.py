@@ -9,14 +9,16 @@ from pathlib import Path
 import io
 import signal
 
+logger = logging.getLogger(__name__)
+
 # Configurar UTF-8 para Windows de forma segura
 try:
-    if sys.stdout is not None and hasattr(sys.stdout, 'buffer') and sys.stdout.buffer is not None:
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    if sys.stderr is not None and hasattr(sys.stderr, 'buffer') and sys.stderr.buffer is not None:
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    if sys.stdout is not None and hasattr(sys.stdout, "buffer") and sys.stdout.buffer is not None:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    if sys.stderr is not None and hasattr(sys.stderr, "buffer") and sys.stderr.buffer is not None:
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 except Exception:
-    pass
+    logger.debug("paso de arranque ignorado", exc_info=True)
 
 # Asegurar que el directorio raíz esté en sys.path
 project_root = Path(__file__).resolve().parent.parent
@@ -27,20 +29,17 @@ if str(project_root) not in sys.path:
 # crear cualquier ventana Tk para evitar una UI borrosa o deformada.
 try:
     from src.gui.theme import enable_windows_dpi_awareness
+
     enable_windows_dpi_awareness()
 except Exception:
-    pass
+    logger.debug("paso de arranque ignorado", exc_info=True)
 
 # Configurar logging detallado
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout) if sys.stdout else logging.NullHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout) if sys.stdout else logging.NullHandler()],
 )
-
-logger = logging.getLogger(__name__)
 
 
 # Variable global para manejo de cierre seguro
@@ -51,9 +50,10 @@ def _notificar_error_global(titulo: str, mensaje: str):
     """Intenta informar al usuario del error sin bloquear la consola"""
     try:
         from tkinter import messagebox
+
         messagebox.showerror(titulo, mensaje)
     except Exception:
-        pass
+        logger.debug("paso de arranque ignorado", exc_info=True)
 
 
 def manejar_excepcion_no_capturada(exc_type, exc_value, exc_traceback):
@@ -73,11 +73,12 @@ def manejar_excepcion_no_capturada(exc_type, exc_value, exc_traceback):
     )
     try:
         from src.utils.audit_logger import get_audit_logger
+
         audit = get_audit_logger()
         if audit:
             audit.log_error(exc_value, context={"operation": "excepcion_global"})
     except Exception:
-        pass
+        logger.debug("paso de arranque ignorado", exc_info=True)
     _notificar_error_global(
         "Error inesperado",
         f"Ocurrió un error no controlado:\n{exc_value}\n\n"
@@ -98,9 +99,10 @@ def instalar_manejador_excepciones():
     sys.excepthook = manejar_excepcion_no_capturada
     try:
         import threading
+
         threading.excepthook = manejar_excepcion_no_capturada
     except Exception:
-        pass
+        logger.debug("paso de arranque ignorado", exc_info=True)
     sys._sgp_excepthook_instalado = True
 
 
@@ -120,7 +122,7 @@ def setup_environment():
     try:
         from src.config import settings
         from src.utils.helpers import ensure_directory_exists
-        
+
         # Asegurar que los directorios necesarios existan
         directories = [
             settings.documents_path,
@@ -131,30 +133,33 @@ def setup_environment():
             settings.cache_dir,
             settings.temp_dir,
         ]
-        
+
         for directory in directories:
             ensure_directory_exists(directory)
-        
+
         logger.info("Entorno configurado correctamente")
         try:
             from src.utils.audit_logger import get_audit_logger, AuditEventType
+
             audit = get_audit_logger()
             if audit:
-                audit.log_system_event(AuditEventType.SYSTEM_START, 
-                                       details={"operation": "setup_environment"})
+                audit.log_system_event(
+                    AuditEventType.SYSTEM_START, details={"operation": "setup_environment"}
+                )
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
         return True
-        
+
     except Exception as e:
         logger.error(f"Error al configurar el entorno: {str(e)}")
         try:
             from src.utils.audit_logger import get_audit_logger
+
             audit = get_audit_logger()
             if audit:
                 audit.log_error(e, context={"operation": "setup_environment"})
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
         return False
 
 
@@ -162,34 +167,39 @@ def initialize_database():
     """Inicializa la base de datos con seguridad mejorada"""
     try:
         from src.config import db_config
-        
+
         logger.info("Inicializando base de datos...")
         db_config.init_db()
-        
+
         # Verificar estado de backups
         backup_status = db_config.get_backup_status()
-        logger.info(f"Estado de backups: {backup_status.get('total_backups', 0)} backups disponibles")
-        
+        logger.info(
+            f"Estado de backups: {backup_status.get('total_backups', 0)} backups disponibles"
+        )
+
         logger.info("Base de datos inicializada correctamente")
         try:
             from src.utils.audit_logger import get_audit_logger, AuditEventType
+
             audit = get_audit_logger()
             if audit:
-                audit.log_system_event(AuditEventType.SYSTEM_START, 
-                                       details={"operation": "initialize_database"})
+                audit.log_system_event(
+                    AuditEventType.SYSTEM_START, details={"operation": "initialize_database"}
+                )
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
         return True
-        
+
     except Exception as e:
         logger.error(f"Error al inicializar la base de datos: {str(e)}")
         try:
             from src.utils.audit_logger import get_audit_logger
+
             audit = get_audit_logger()
             if audit:
                 audit.log_error(e, context={"operation": "initialize_database"})
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
         return False
 
 
@@ -216,7 +226,7 @@ def run_application():
                 try:
                     login.destroy()
                 except Exception:
-                    pass
+                    logger.debug("paso de arranque ignorado", exc_info=True)
                 logger.info("Sesión cancelada por el usuario")
                 break
 
@@ -239,24 +249,25 @@ def run_application():
                 try:
                     app.update()
                 except Exception:
-                    pass
+                    logger.debug("paso de arranque ignorado", exc_info=True)
             except Exception:
                 # Fallback: si la construcción falló a mitad de camino,
                 # liberar la sesión scoped del hilo antes de propagar.
                 try:
                     from src.config import db_config
+
                     db_config.SessionLocal.remove()
                 except Exception:
-                    pass
+                    logger.debug("paso de arranque ignorado", exc_info=True)
                 try:
                     login.destroy()
                 except Exception:
-                    pass
+                    logger.debug("paso de arranque ignorado", exc_info=True)
                 raise
             try:
                 login.destroy()
             except Exception:
-                pass
+                logger.debug("paso de arranque ignorado", exc_info=True)
             application_instance = app
             try:
                 status = app.run()
@@ -266,20 +277,22 @@ def run_application():
                 application_instance = None
                 try:
                     from src.config import db_config
+
                     db_config.close_session(app.session)
                 except Exception:
-                    pass
+                    logger.debug("paso de arranque ignorado", exc_info=True)
 
             # 3. Registro de cierre de sesión en auditoría
             try:
                 from src.config import db_config
+
                 session = db_config.get_session()
                 try:
                     AuthService(session).cerrar_sesion(username)
                 finally:
                     db_config.close_session(session)
             except Exception:
-                pass
+                logger.debug("paso de arranque ignorado", exc_info=True)
 
             if status != "logout":
                 logger.info("Aplicación finalizada")
@@ -289,11 +302,12 @@ def run_application():
         logger.error(f"Error al ejecutar la aplicación: {str(e)}")
         try:
             from src.utils.audit_logger import get_audit_logger
+
             audit = get_audit_logger()
             if audit:
                 audit.log_error(e, context={"operation": "run_application"})
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
         raise
 
 
@@ -301,25 +315,26 @@ def cleanup_application():
     """Limpieza segura de recursos antes de cerrar"""
     try:
         from src.config import db_config
-        
+
         logger.info("Iniciando limpieza de recursos...")
-        
+
         # Cerrar sesión de base de datos si existe
-        if application_instance and hasattr(application_instance, 'session'):
+        if application_instance and hasattr(application_instance, "session"):
             try:
                 db_config.close_session(application_instance.session)
                 logger.info("Sesión de base de datos cerrada")
             except Exception as e:
                 logger.warning(f"Error cerrando sesión de base de datos: {e}")
-        
+
         # Crear backup al cerrar (si está habilitado en la configuración)
         try:
             from src.config import db_config as _db
+
             session = _db.get_session()
             try:
                 from src.repositories import ConfiguracionRepository
-                habilitado = ConfiguracionRepository(session).get_valor(
-                    "backup_enabled", True)
+
+                habilitado = ConfiguracionRepository(session).get_valor("backup_enabled", True)
             finally:
                 _db.close_session(session)
 
@@ -327,21 +342,24 @@ def cleanup_application():
                 logger.info("Backup al cerrar omitido (deshabilitado en configuración)")
             else:
                 from src.utils.backup_manager import get_backup_manager
+
                 backup_mgr = get_backup_manager()
                 if backup_mgr:
                     backup_info = backup_mgr.create_backup("auto_shutdown", compress=True)
                     logger.info(f"Backup automático creado: {backup_info.get('name')}")
         except Exception as e:
             logger.warning(f"No se pudo crear backup al cerrar: {e}")
-        
+
         try:
             from src.utils.audit_logger import get_audit_logger, AuditEventType
+
             audit = get_audit_logger()
             if audit:
-                audit.log_system_event(AuditEventType.SYSTEM_STOP, 
-                                       details={"operation": "cleanup_application"})
+                audit.log_system_event(
+                    AuditEventType.SYSTEM_STOP, details={"operation": "cleanup_application"}
+                )
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
 
         # Liberar TODAS las conexiones del pool de la base de datos y el
         # registry de sesiones (anti-fugas de conexiones/archivos).
@@ -352,16 +370,17 @@ def cleanup_application():
             logger.warning(f"Error liberando recursos de base de datos: {e}")
 
         logger.info("Limpieza de recursos completada")
-        
+
     except Exception as e:
         logger.error(f"Error durante limpieza: {e}")
         try:
             from src.utils.audit_logger import get_audit_logger
+
             audit = get_audit_logger()
             if audit:
                 audit.log_error(e, context={"operation": "cleanup_application"})
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
 
 
 def _selftest() -> bool:
@@ -388,6 +407,7 @@ def _selftest() -> bool:
 
         from src.config import settings
         from src.utils.backup_manager import get_backup_manager
+
         get_backup_manager()
         logger.info(f"Selftest OK (v{settings.app_version})")
         return True
@@ -412,23 +432,23 @@ def main():
         if hasattr(signal, "SIGTERM"):
             signal.signal(signal.SIGTERM, signal_handler)
     except Exception:
-        pass
-    
+        logger.debug("paso de arranque ignorado", exc_info=True)
+
     logger.info("=" * 50)
     logger.info("SISTEMA DE GESTIÓN DE PERSONAL Y NÓMINA")
     logger.info("Versión Segura con Backups y Auditoría")
     logger.info("=" * 50)
-    
+
     # Configurar entorno
     if not setup_environment():
         logger.error("No se pudo configurar el entorno. Saliendo...")
         sys.exit(1)
-    
+
     # Inicializar base de datos
     if not initialize_database():
         logger.error("No se pudo inicializar la base de datos. Saliendo...")
         sys.exit(1)
-    
+
     # Ejecutar aplicación
     try:
         run_application()
@@ -447,7 +467,7 @@ def main():
         try:
             logging.shutdown()
         except Exception:
-            pass
+            logger.debug("paso de arranque ignorado", exc_info=True)
 
 
 if __name__ == "__main__":

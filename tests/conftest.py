@@ -48,6 +48,7 @@ def _reset_database(db_config):
 def db_config():
     """Configuración de base de datos aislada (una vez por sesión)"""
     from src.config import db_config
+
     db_config.init_db()
     yield db_config
     db_config.engine.dispose()

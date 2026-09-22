@@ -16,5 +16,5 @@ __all__ = [
     "IncidenciaService",
     "PagoService",
     "ConfiguracionService",
-    "AuthService"
+    "AuthService",
 ]

@@ -3,9 +3,9 @@ Main Window
 Ventana principal de la aplicación (requiere sesión iniciada)
 """
 
-from typing import Optional
-
 import customtkinter as ctk
+import logging
+import tkinter as tk
 from tkinter import messagebox, ttk
 
 from src.config import settings, db_config
@@ -23,9 +23,15 @@ from src.gui.theme import (
     COLORES,
 )
 from src.gui.frames import (
-    DashboardFrame, EmpleadosFrame, DocumentosFrame,
-    IncidenciasFrame, NominaFrame, ConfiguracionFrame,
+    DashboardFrame,
+    EmpleadosFrame,
+    DocumentosFrame,
+    IncidenciasFrame,
+    NominaFrame,
+    ConfiguracionFrame,
 )
+
+logger = logging.getLogger(__name__)
 
 # Módulos del sistema: (nombre interno, título, ícono)
 MODULOS = [
@@ -46,7 +52,7 @@ TITULOS_VENTANA = {
     "configuracion": "Configuración",
 }
 
-FRAME_CLASSES = {
+FRAME_CLASSES: dict[str, type[ctk.CTkFrame]] = {
     "dashboard": DashboardFrame,
     "empleados": EmpleadosFrame,
     "documentos": DocumentosFrame,
@@ -71,13 +77,14 @@ def configure_treeview_style():
     desplegables compartan el mismo tema.
     """
     from src.gui.theme import configure_ttk_styles
+
     configure_ttk_styles()
 
 
 class MainWindow(ctk.CTk):
     """Ventana principal del sistema"""
 
-    def __init__(self, current_user: Optional[Usuario] = None):
+    def __init__(self, current_user: Usuario | None = None):
         enable_windows_dpi_awareness()
         # Tema claro por defecto (coherente con el login). La preferencia
         # guardada del usuario se aplica más abajo, antes de crear la
@@ -121,20 +128,20 @@ class MainWindow(ctk.CTk):
         self.config_service = ConfiguracionService(self.session)
 
         # Cargar el usuario autenticado en la sesión dedicada
-        self.current_user = None
+        self.current_user: Usuario | None = None
         if username_snapshot:
-            self.current_user = self.session.query(Usuario).filter(
-                Usuario.username == username_snapshot).first()
+            self.current_user = (
+                self.session.query(Usuario).filter(Usuario.username == username_snapshot).first()
+            )
 
         # Estado de la interfaz
-        self.current_frame = None
+        self.current_frame: ctk.CTkFrame | None = None
         self.current_frame_name = "dashboard"
-        self.sidebar_buttons = {}
+        self.sidebar_buttons: dict[str, ctk.CTkButton] = {}
 
         # Aplicar el modo de apariencia guardado antes de crear la interfaz
         try:
-            modo = self.config_service.obtener_valor(
-                "apariencia_modo", "Light") or "Light"
+            modo = self.config_service.obtener_valor("apariencia_modo", "Light") or "Light"
             aplicar_modo_apariencia(modo)
         except Exception:
             aplicar_modo_apariencia("Light")
@@ -191,8 +198,7 @@ class MainWindow(ctk.CTk):
         self._bind_atajos()
 
     def _create_sidebar(self):
-        self.sidebar = ctk.CTkFrame(
-            self, width=250, corner_radius=0, fg_color=COLORES["panel"])
+        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color=COLORES["panel"])
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
@@ -229,7 +235,7 @@ class MainWindow(ctk.CTk):
             config = self.config_service.obtener_configuracion_general()
             institution_name = config.get("nombre_institucion") or institution_name
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
         self.institution_label = ctk.CTkLabel(
             self.sidebar,
@@ -259,12 +265,10 @@ class MainWindow(ctk.CTk):
         self.version_label.pack(side="bottom", pady=10)
 
     def _create_main_area(self):
-        self.main_container = ctk.CTkFrame(
-            self, corner_radius=0, fg_color=COLORES["fondo"])
+        self.main_container = ctk.CTkFrame(self, corner_radius=0, fg_color=COLORES["fondo"])
         self.main_container.pack(side="right", fill="both", expand=True)
 
-        self.header = ctk.CTkFrame(
-            self.main_container, height=60, fg_color=COLORES["panel"])
+        self.header = ctk.CTkFrame(self.main_container, height=60, fg_color=COLORES["panel"])
         self.header.pack(side="top", fill="x")
         self.header.pack_propagate(False)
 
@@ -336,15 +340,13 @@ class MainWindow(ctk.CTk):
         )
         self.exit_btn.pack(side="right", padx=5, pady=12)
 
-        self.content_frame = ctk.CTkFrame(
-            self.main_container, fg_color=COLORES["fondo"])
+        self.content_frame = ctk.CTkFrame(self.main_container, fg_color=COLORES["fondo"])
         self.content_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)
 
     def _create_status_bar(self):
         from datetime import datetime
 
-        self.status_bar = ctk.CTkFrame(
-            self.main_container, height=30, fg_color=COLORES["panel"])
+        self.status_bar = ctk.CTkFrame(self.main_container, height=30, fg_color=COLORES["panel"])
         self.status_bar.pack(side="bottom", fill="x")
         self.status_bar.pack_propagate(False)
 
@@ -369,12 +371,12 @@ class MainWindow(ctk.CTk):
     def _update_clock(self):
         try:
             from datetime import datetime
-            if hasattr(self, 'datetime_label') and self.datetime_label.winfo_exists():
-                self.datetime_label.configure(
-                    text=datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+            if hasattr(self, "datetime_label") and self.datetime_label.winfo_exists():
+                self.datetime_label.configure(text=datetime.now().strftime("%Y-%m-%d %H:%M"))
                 self.after(30000, self._update_clock)
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     # ------------------------------------------------------------------
     # Atajos de teclado
@@ -455,7 +457,8 @@ class MainWindow(ctk.CTk):
         """Ctrl+N: abre el diálogo de nuevo registro del módulo activo"""
         if not self.tiene_permiso("create"):
             self.status_label.configure(
-                text="Su rol no tiene permiso para crear registros (Ctrl+N)")
+                text="Su rol no tiene permiso para crear registros (Ctrl+N)"
+            )
             return
         nombre_clase = type(self.current_frame).__name__ if self.current_frame else ""
         metodo = self.METODOS_NUEVO.get(nombre_clase)
@@ -463,21 +466,22 @@ class MainWindow(ctk.CTk):
             self._ejecutar_metodo_frame(metodo)
         elif self.current_frame is not None:
             self.status_label.configure(
-                text="Ctrl+N no aplica en este módulo (use Ayuda para más detalles)")
+                text="Ctrl+N no aplica en este módulo (use Ayuda para más detalles)"
+            )
 
     def _atajo_guardar(self):
         """Ctrl+S: guarda los cambios del módulo activo (si lo soporta)"""
         if not self.tiene_permiso("update"):
             self.status_label.configure(
-                text="Su rol no tiene permiso para guardar cambios (Ctrl+S)")
+                text="Su rol no tiene permiso para guardar cambios (Ctrl+S)"
+            )
             return
         nombre_clase = type(self.current_frame).__name__ if self.current_frame else ""
         metodo = self.METODOS_GUARDAR.get(nombre_clase)
         if metodo:
             self._ejecutar_metodo_frame(metodo)
         elif self.current_frame is not None:
-            self.status_label.configure(
-                text="Ctrl+S solo aplica en el módulo de Configuración")
+            self.status_label.configure(text="Ctrl+S solo aplica en el módulo de Configuración")
 
     def _enfocar_busqueda(self):
         """Ctrl+F: enfoca el campo de búsqueda o filtro del módulo activo"""
@@ -511,13 +515,13 @@ class MainWindow(ctk.CTk):
                     self.status_label.configure(text="Selección eliminada (Esc)")
                     return
             except Exception:
-                pass
-        self.status_label.configure(
-            text="Esc cierra los cuadros de diálogo abiertos")
+                logger.debug("operación de interfaz ignorada", exc_info=True)
+        self.status_label.configure(text="Esc cierra los cuadros de diálogo abiertos")
 
     def _on_ayuda(self):
         """Muestra la guía rápida de uso y atajos de teclado"""
         from src.gui.frames import InfoDialog
+
         texto = (
             "GUÍA RÁPIDA\n"
             "===========\n\n"
@@ -543,6 +547,7 @@ class MainWindow(ctk.CTk):
     def _on_acerca_de(self):
         """Muestra la información de la aplicación"""
         from src.gui.frames import InfoDialog
+
         detalle_build = ""
         if getattr(settings, "build_commit", ""):
             detalle_build = f"Build: {settings.build_commit}"
@@ -583,13 +588,10 @@ class MainWindow(ctk.CTk):
             self._recolorear_chrome()
             # Recrear el frame activo para que tome la paleta nueva
             self._show_frame(self.current_frame_name or "dashboard")
-            self.apariencia_btn.configure(
-                text="☀️ Claro" if nuevo == "Dark" else "🌙 Oscuro")
-            self.status_label.configure(
-                text=f"Tema {nuevo.lower()} aplicado")
+            self.apariencia_btn.configure(text="☀️ Claro" if nuevo == "Dark" else "🌙 Oscuro")
+            self.status_label.configure(text=f"Tema {nuevo.lower()} aplicado")
         except Exception as e:
-            messagebox.showerror(
-                "Error", f"No se pudo cambiar el tema: {str(e)}")
+            messagebox.showerror("Error", f"No se pudo cambiar el tema: {str(e)}")
 
     def _recolorear_chrome(self):
         """Reaplica la paleta a la barra lateral, cabecera y barra de estado"""
@@ -610,17 +612,14 @@ class MainWindow(ctk.CTk):
             self.content_frame.configure(fg_color=COLORES["fondo"])
             # Botones de la cabecera (se recrean con la paleta nueva)
             self.apariencia_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.ayuda_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.about_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.logout_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.exit_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"]
+            )
+            self.ayuda_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.about_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.logout_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.exit_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     # ------------------------------------------------------------------
     # Navegación
@@ -635,15 +634,12 @@ class MainWindow(ctk.CTk):
                     try:
                         metodo(value)
                     except Exception as e:
-                        print(f"Error aplicando parámetro '{key}' al frame: {e}")
+                        logger.error("Error aplicando parámetro '%s' al frame: %s", key, e)
 
     def _show_frame(self, frame_name: str):
         try:
             if not self.puede_ver_modulo(frame_name):
-                messagebox.showwarning(
-                    "Acceso denegado",
-                    "Su rol no tiene permisos para acceder a este módulo",
-                )
+                self._avisar_acceso_denegado()
                 return
 
             self.current_frame_name = frame_name
@@ -653,10 +649,9 @@ class MainWindow(ctk.CTk):
                 try:
                     self.current_frame.destroy()
                 except Exception:
-                    pass
+                    logger.debug("operación de interfaz ignorada", exc_info=True)
 
-            self.frame_title.configure(
-                text=TITULOS_VENTANA.get(frame_name, frame_name))
+            self.frame_title.configure(text=TITULOS_VENTANA.get(frame_name, frame_name))
 
             frame_class = FRAME_CLASSES.get(frame_name)
             if frame_class is not None:
@@ -672,10 +667,10 @@ class MainWindow(ctk.CTk):
                 ).pack(expand=True)
 
             self.status_label.configure(
-                text=f"Mostrando: {TITULOS_VENTANA.get(frame_name, frame_name)}")
+                text=f"Mostrando: {TITULOS_VENTANA.get(frame_name, frame_name)}"
+            )
         except Exception as e:
-            messagebox.showerror(
-                "Error", f"Error al cargar el módulo {frame_name}: {str(e)}")
+            self._avisar_error_modulo(frame_name, str(e))
             self.current_frame = ctk.CTkFrame(self.content_frame)
             self.current_frame.pack(fill="both", expand=True)
             ctk.CTkLabel(
@@ -684,6 +679,25 @@ class MainWindow(ctk.CTk):
                 font=ctk.CTkFont(size=14),
                 text_color="red",
             ).pack(expand=True)
+
+    def _avisar_acceso_denegado(self) -> None:
+        """Avisa al usuario que su rol no permite el módulo solicitado"""
+        try:
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permisos para acceder a este módulo",
+            )
+        except tk.TclError:
+            # Sin raíz operativa (cierre en curso, sesión no interactiva):
+            # el aviso se registra y la aplicación sigue viva.
+            logger.warning("Aviso de acceso denegado no mostrable", exc_info=True)
+
+    def _avisar_error_modulo(self, frame_name: str, detalle: str) -> None:
+        """Informa el fallo de carga de un módulo sin bloquear la interfaz"""
+        try:
+            messagebox.showerror("Error", f"Error al cargar el módulo {frame_name}: {detalle}")
+        except tk.TclError:
+            logger.error("Error al cargar el módulo %s: %s", frame_name, detalle, exc_info=True)
 
     # ------------------------------------------------------------------
     # Sesión
@@ -706,7 +720,7 @@ class MainWindow(ctk.CTk):
                 db_config.close_session(self.session)
                 self.session = None
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     # ------------------------------------------------------------------
     # Respaldos automáticos
@@ -714,14 +728,13 @@ class MainWindow(ctk.CTk):
     def _programar_respaldo_periodico(self):
         """Programa respaldos automáticos según el intervalo configurado"""
         try:
-            intervalo_horas = self.config_service.obtener_valor(
-                "backup_interval_hours", 24) or 24
+            intervalo_horas = self.config_service.obtener_valor("backup_interval_hours", 24) or 24
             intervalo_horas = max(1, int(intervalo_horas))
             self._verificar_respaldo_periodico()
             # Reprogramar en 30 minutos para reaccionar a cambios de configuración
             self.after(30 * 60 * 1000, self._programar_respaldo_periodico)
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     def _verificar_respaldo_periodico(self):
         """Crea un respaldo automático si ha transcurrido el intervalo configurado"""
@@ -729,8 +742,7 @@ class MainWindow(ctk.CTk):
             habilitado = self.config_service.obtener_valor("backup_enabled", True)
             if not habilitado:
                 return
-            intervalo_horas = self.config_service.obtener_valor(
-                "backup_interval_hours", 24) or 24
+            intervalo_horas = self.config_service.obtener_valor("backup_interval_hours", 24) or 24
             intervalo_horas = max(1, int(intervalo_horas))
 
             from src.utils.backup_manager import get_backup_manager
@@ -749,7 +761,7 @@ class MainWindow(ctk.CTk):
             if vencido:
                 gestor.create_backup(f"auto_{get_timestamp()}")
         except Exception:
-            pass
+            logger.debug("operación de interfaz ignorada", exc_info=True)
 
     def run(self) -> str:
         """Ejecuta la ventana y devuelve 'logout' o 'exit' al cerrarse"""

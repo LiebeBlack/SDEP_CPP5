@@ -1,8 +1,10 @@
 """
 Verificación de integridad de la documentación web SDEP.
 """
+
 import json
 from pathlib import Path
+
 
 def main():
     docs_data_path = Path("docs/docs_data.js")
@@ -31,7 +33,9 @@ def main():
         assert d.get("readingTime", 0) > 0, f"readingTime invalido en {d.get('id')}"
         total_words += d.get("wordCount", 0)
         categories.add(d.get("category"))
-        print(f"  [OK] {d.get('badge') or 'DOC':<12} | {d.get('id'):<25} | {d.get('wordCount'):>6} palabras | ~{d.get('readingTime'):>2} min")
+        print(
+            f"  [OK] {d.get('badge') or 'DOC':<12} | {d.get('id'):<25} | {d.get('wordCount'):>6} palabras | ~{d.get('readingTime'):>2} min"
+        )
 
     print(f"\nCategorias encontradas: {categories}")
     print(f"Total palabras en todo el corpus: {total_words:,}")
@@ -48,7 +52,7 @@ def main():
         "docs/vendor/prism-bash.min.js",
         "docs/vendor/prism-sql.min.js",
         "docs/vendor/prism-json.min.js",
-        "docs/vendor/prism-markdown.min.js"
+        "docs/vendor/prism-markdown.min.js",
     ]
 
     print("\nVerificando archivos requeridos de la web...")
@@ -60,6 +64,7 @@ def main():
         print(f"  [OK] {rf:<35} ({size_kb:.1f} KB)")
 
     print("\n[EXITO] Todos los chequeos de integracion pasaron satisfactoriamente!")
+
 
 if __name__ == "__main__":
     main()

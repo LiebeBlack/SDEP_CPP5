@@ -23,6 +23,7 @@ def test_hash_password_formato_pbkdf2():
 def test_verify_password_legado_sha256():
     import hashlib
     import secrets
+
     salt = secrets.token_hex(16)
     viejo_hash = hashlib.sha256(("clave" + salt).encode()).hexdigest()
     assert SecurityValidator.verify_password("clave", f"{salt}${viejo_hash}")

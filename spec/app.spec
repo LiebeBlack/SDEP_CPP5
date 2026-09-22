@@ -93,10 +93,28 @@ else:
 # junto al código; se recolectan explícitamente.
 datas = collect_data_files("customtkinter")
 
-# El binario de Linux se compila dentro de Ubuntu 22.04 (el sistema
-# objetivo más antiguo), de modo que todo lo que PyInstaller empaqueta
-# (libpython, Tcl/Tk 8.6, libstdc++, etc.) exige como máximo glibc 2.35.
+# El binario de Linux se compila en Debian 13 (glibc 2.41) con Python 3.15
+# standalone (uv/python-build-standalone). Ese intérprete guarda Tcl/Tk
+# (libtcl9tk9.0.so, libtk9.0.so, etc.) en <base_prefix>/lib, fuera del
+# árbol estándar de PyInstaller; se añaden explícitamente para que el
+# ejecutable pueda inicializar tkinter.
 binaries = []
+if not IS_WINDOWS:
+    import sysconfig
+
+    _dirs_tcltk = [
+        Path(sysconfig.get_config_var("TCL_LIBRARY") or "").parent,
+        Path(sys.base_prefix) / "lib",
+    ]
+    _vistos: set[Path] = set()
+    for _dir in _dirs_tcltk:
+        if not _dir.is_dir():
+            continue
+        for _patron in ("libtcl9*.so*", "libtk9*.so*", "libtcl8*.so*", "libtk8*.so*"):
+            for _origen in sorted(_dir.glob(_patron)):
+                if _origen not in _vistos:
+                    _vistos.add(_origen)
+                    binaries.append((_origen, "."))
 
 # Importaciones dinámicas/opcionales que conviene garantizar
 hiddenimports = [

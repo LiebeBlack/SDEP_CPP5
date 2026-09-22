@@ -205,3 +205,56 @@ def test_exportar_auditoria_genera_json(session, storage):
 
         eventos = json.load(f)
     assert any(e["user"] == "admin" for e in eventos)
+
+
+def test_log_data_operation_acepta_success(session, storage):
+    """Regresión: base_repository pasa success= a log_data_operation; el
+    evento debe registrarse (no descartarse por TypeError)."""
+    import json
+
+    from src.utils.audit_logger import AuditEventType, get_audit_logger
+
+    auditor = get_audit_logger()
+    auditor.log_data_operation(
+        "create",
+        entity_type="usuario",
+        entity_id=1,
+        data={"prueba": True},
+        success=False,
+    )
+
+    evento = auditor.recent_events[-1]
+    assert evento["event_type"] == AuditEventType.DATA_CREATE.value
+    assert evento["success"] is False
+    assert evento["details"]["operation"] == "create"
+    json.dumps(evento)  # serializable
+
+
+def test_repositorio_registra_auditoria_sin_excepciones(session, storage):
+    """El helper de auditoría del repositorio completo no debe fallar ni
+    emitir warnings de TypeError (regresión del CI: success inesperado)."""
+    import logging
+
+    from src.models import Usuario
+    from src.repositories import UsuarioRepository
+    from src.utils.security import SecurityValidator
+
+    repo = UsuarioRepository(session)
+    registros: list[logging.LogRecord] = []
+
+    handler = logging.Handler()
+    handler.emit = registros.append
+    logging.getLogger("src.repositories.base_repository").addHandler(handler)
+    try:
+        creado = repo.create(
+            Usuario(
+                username="auditoria_ok",
+                password_hash=SecurityValidator.hash_password("Clave#2026"),
+                rol="admin",
+            )
+        )
+        assert creado is not None
+    finally:
+        logging.getLogger("src.repositories.base_repository").removeHandler(handler)
+
+    assert not [r for r in registros if r.levelno >= logging.WARNING]

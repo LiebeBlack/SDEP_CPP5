@@ -313,6 +313,15 @@ pylint src/
 - CI: el contenedor `debian:13` instala `binutils`, requerido por
   PyInstaller (`objdump`); corrige el fallo "On Linux, objdump is
   required" del build Linux.
+- Auditoría funcional: `log_data_operation` acepta ahora el parámetro
+  `success` (los eventos CRUD se descartaban por `TypeError` antes de
+  registrarse) y la serialización JSON de eventos usa `default=str`
+  (los `details` con fechas `datetime` revientan `json.dumps`; todos
+  los eventos de auditoría de repositorios se estaban perdiendo).
+- Empaquetado Linux: el spec añade explícitamente las librerías
+  Tcl/Tk del intérprete standalone de Python 3.15 (`libtcl9tk9.0.so`,
+  `libtk9.0.so`), que viven fuera del árbol de PyInstaller; corrige el
+  fallo del selftest "libtcl9tk9.0.so: cannot open shared object file".
 
 ## Novedades de la Versión 2.79
 

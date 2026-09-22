@@ -23,8 +23,8 @@ Ve a `Settings > Branches`:
 - **Output**: `Setup.exe` (incluye el actualizador automático) + ZIP portable (Windows) + `tar.gz` portable (Linux) + `SDEP_CPP5_AutoUpdater.exe`
 - **Compatibilidad**: el ejecutable Linux se compila en Debian 13
   (glibc 2.41) y funciona en Debian 13 y Ubuntu 24.04 LTS o superior
-  (verificado en CI dentro de contenedores `ubuntu:22.04`, `debian:12`
-  y `debian:13`)
+  (autoverificado en CI con `--selftest` dentro de contenedores
+  `debian:13-slim`, con comprobación de la glibc requerida)
   - Push a **main** → Release automática en GitHub (sin etiqueta)
   - Push a **develop** → solo artefactos
   - Etiqueta `v*` → Release versionada con el nombre de la etiqueta
@@ -39,7 +39,7 @@ git push origin main
 ```
 
 **Resultado:**
-- ✅ Pruebas automatizadas (323 pruebas)
+- ✅ Pruebas automatizadas (324 pruebas)
 - ✅ Ejecutable Windows (onedir, icono, versión)
 - ✅ Instalador `Setup.exe` subido como artefacto
 - ✅ ZIP portable subido como artefacto

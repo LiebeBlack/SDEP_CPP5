@@ -1,7 +1,5 @@
 """Pruebas del módulo de seguridad (security.py)"""
 
-import pytest
-
 from src.utils.security import (
     SecurityValidator,
     PermissionChecker,

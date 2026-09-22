@@ -1,12 +1,12 @@
 """Pruebas del servicio de pagos y nómina"""
 
-from datetime import date, timedelta
+from datetime import date
 
 import pytest
 
+from src.models import MetodoPago, TipoPago
 from src.services.pago_service import PagoService
 from src.services.empleado_service import EmpleadoService
-from src.models import Pago, TipoPago, MetodoPago
 
 
 @pytest.fixture()

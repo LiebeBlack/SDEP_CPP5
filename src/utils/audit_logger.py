@@ -228,11 +228,17 @@ class AuditLogger:
             AuditEventType.SECURITY_PERMISSION_DENIED,
             AuditEventType.SECURITY_SUSPICIOUS,
         ]:
-            self.security_logger.log(log_level, json.dumps(event_data, ensure_ascii=False))
+            self.security_logger.log(
+                log_level, json.dumps(event_data, ensure_ascii=False, default=str)
+            )
         elif not success:
-            self.error_logger.log(log_level, json.dumps(event_data, ensure_ascii=False))
+            self.error_logger.log(
+                log_level, json.dumps(event_data, ensure_ascii=False, default=str)
+            )
         else:
-            self.audit_logger.log(log_level, json.dumps(event_data, ensure_ascii=False))
+            self.audit_logger.log(
+                log_level, json.dumps(event_data, ensure_ascii=False, default=str)
+            )
 
         # Guardar en memoria
         self._add_to_recent_events(event_data)
@@ -277,6 +283,7 @@ class AuditLogger:
         user: str | None = None,
         data: dict | None = None,
         changes: dict | None = None,
+        success: bool = True,
     ):
         """
         Registra operaciones de datos CRUD
@@ -288,6 +295,7 @@ class AuditLogger:
             user: Usuario que realizó la operación
             data: Datos involucrados
             changes: Cambios realizados (para updates)
+            success: Si la operación terminó con éxito
         """
         event_type_map = {
             "create": AuditEventType.DATA_CREATE,
@@ -306,6 +314,7 @@ class AuditLogger:
             entity_id=entity_id,
             user=user,
             details=details,
+            success=success,
         )
 
     def log_system_event(self, event_type: AuditEventType, details: dict | None = None):

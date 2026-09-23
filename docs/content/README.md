@@ -33,10 +33,43 @@ Este sistema proporciona una solución integral para la administración de recur
 
 ### Nómina y Pagos
 - Generación automática de nóminas por periodo
-- Cálculo de deducciones (seguro, pensión, impuesto)
-- Gestión de bonificaciones y horas extra
-- Generación de recibos de pago en PDF
+- Motor de cálculo con **dos modalidades**: porcentual (histórica) y por
+  tramos progresivos de ISR con techos de cotización y aportes patronales
+- Horas extra con recargo por jornada (diurna, nocturna y feriada)
+- Prestaciones: aguinaldo, bono vacacional, prestaciones por antigüedad,
+  indemnización y preaviso proportional al tiempo servido
+- Descuento automático de la cuota del préstamo respetando el tope sobre
+  el neto del empleado
+- Generación de recibos de pago y planilla de nómina en PDF
 - Control de pagos pendientes y realizados
+
+### Control de Asistencia
+- Registro de jornadas con cálculo de horas trabajadas y tardanzas
+- Horarios por empleado y día de la semana (jornada diurna, nocturna o mixta)
+- Horas extra clasificadas por recargo, incluidos feriados y días de descanso
+- Ausencias justificadas automaticamente desde las incidencias aprobadas
+- Reporte PDF de asistencia por período y exportación a Excel
+
+### Contratos Laborales
+- Alta de contratos (indefinido, temporal, por obra o pasantía)
+- Renovación encadenada al contrato anterior y terminación con finiquito
+- Unicidad del contrato vigente y numeración automática
+- Control de contratos por vencer y vencidos
+- Reporte PDF de contratos
+
+### Anticipos y Préstamos
+- Solicitud, aprobación o rechazo y seguimiento del saldo por cuotas
+- Tope de descuento configurable sobre el salario y sobre el neto de la nómina
+- Plan de pagos cuota por cuota y descuento automático en el pago
+- Reporte PDF de la cartera
+
+### Alertas del Sistema
+- Alertas accionables con severidad y acceso directo al módulo donde se resuelven
+- Cubren vencimientos, contratos, asistencia, pendientes, respaldos y credenciales
+
+### Panel Analítico
+- Indicadores clave: nómina del mes, ausentismo, contratos por vencer y saldo por cobrar
+- Gráficos de barras, dona y línea dibujados sobre Canvas (sin dependencias nuevas)
 
 ### Generación de Documentos y Exportación
 - Constancias de trabajo y de estudios
@@ -45,19 +78,24 @@ Este sistema proporciona una solución integral para la administración de recur
 - Reportes de empleados
 - Planilla de nómina por periodo con totales (ISSS, AFP, ISR, neto)
 - Reporte de incidencias y control de vencimientos de documentos
-- Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel)
+- Reportes de **asistencia**, **contratos**, **préstamos** y **alertas**
+- Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel),
+  incluida la exportación multihoja
 
 ### Seguridad y Auditoría
 - Autenticación de usuarios con contraseñas cifradas (PBKDF2)
 - Roles y permisos por módulo (Administrador, Gestor, Usuario, Solo lectura)
 - Cambio de contraseña del usuario logueado
 - Visor de auditoría (solo administradores) con filtro por tipo y exportación
-- Bloqueo de cuenta por intentos fallidos
+- Bloqueo de cuenta por intentos fallidos con desbloqueo administrativo
+- Caducidad de contraseñas, historial de claves y cambio obligatorio
+- Respaldos automáticos programados con verificación de integridad
 
 ### Interfaz y Experiencia de Usuario
 - Tema **oscuro/claro** configurable y persistente (botón ☀️/🌙 en la cabecera)
 - Atajos de teclado para navegar y operar más rápido
-- Panel de control (Dashboard) con tarjetas estadísticas navegables
+- Panel de control (Dashboard) con tarjetas estadísticas navegables,
+  indicadores analíticos, gráficos propios y panel de alertas
 - Ventanas integradas de **Ayuda** (guía rápida) y **Acerca de**
 - Barra de estado con reloj y mensajes de la aplicación
 - Soporte de alta resolución (DPI) en Windows
@@ -395,5 +433,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 2.81  
+**Versión**: 2.82  
 **Última actualización**: 2026

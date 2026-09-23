@@ -27,7 +27,7 @@ load_dotenv()
 # Nombre de la carpeta de datos cuando la app está instalada en Windows
 APP_DATA_DIR_NAME = "SistemaGestionPersonal"
 
-APP_VERSION_DEFAULT = "2.81"
+APP_VERSION_DEFAULT = "2.82"
 
 # Información de compilación incrustada en el build (generada por build.py
 # o por el CI como src/config/build_info.py). En desarrollo, sin ese archivo,

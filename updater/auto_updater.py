@@ -76,7 +76,7 @@ LOCK_MAX_AGE_SECONDS = 30 * 60  # una ejecución no debería durar más de 30 mi
 LOG_MAX_BYTES = 1024 * 1024  # rotación simple del log (1 MB)
 
 USER_AGENT = (
-    "Mozilla/5.0 (compatible; SDEP_CPP5-AutoUpdater/2.81; "
+    "Mozilla/5.0 (compatible; SDEP_CPP5-AutoUpdater/2.82; "
     "+https://github.com/LiebeBlack/SDEP_CPP5)"
 )
 
@@ -617,7 +617,7 @@ def main() -> int:
     args = sys.argv[1:]
 
     if "--version" in args:
-        print("SDEP_CPP5 AutoUpdater 2.81")
+        print("SDEP_CPP5 AutoUpdater 2.82")
         return 0
 
     if "--unregister" in args:

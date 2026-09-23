@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 import webbrowser
-from datetime import date
+from datetime import date, timedelta
 
 from src.models import Empleado, EstadoIncidencia
 from src.utils.helpers import format_date, format_currency, parse_date, mantener_ventana_al_frente
@@ -21,7 +21,9 @@ from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
 from src.utils.audit_logger import audit_logger, AuditEventType
 from src.services.auth_service import AuthService, LONGITUD_MINIMA_PASSWORD
+from src.gui.alertas_panel import PanelAlertas
 from src.gui.theme import COLORES
+from src.gui.widgets import GraficoBarras, GraficoDona, GraficoLinea, TarjetaIndicador
 
 logger = logging.getLogger(__name__)
 
@@ -186,18 +188,23 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _create_widgets(self):
         """Crea los widgets del dashboard"""
+        # El panel reúne indicadores, gráficos y alertas: necesita
+        # desplazamiento para caber en ventanas pequeñas.
+        contenedor = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        contenedor.pack(fill="both", expand=True)
+
         # Título
         title = ctk.CTkLabel(
-            self,
+            contenedor,
             text="Panel de Control",
             font=ctk.CTkFont(size=24, weight="bold"),
             text_color=COLORES["texto"],
         )
-        title.pack(pady=20)
+        title.pack(pady=(16, 8))
 
         # Contenedor de tarjetas
-        cards_container = ctk.CTkFrame(self, fg_color=COLORES["panel"])
-        cards_container.pack(fill="x", padx=20, pady=10)
+        cards_container = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
+        cards_container.pack(fill="x", padx=20, pady=6)
 
         # Tarjetas de estadísticas
         self.stats_cards = {}
@@ -215,9 +222,14 @@ class DashboardFrame(ctk.CTkFrame):
             card.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
             cards_container.grid_columnconfigure(i, weight=1)
 
+        # Indicadores analíticos y gráficos
+        self._crear_indicadores(contenedor)
+        self._crear_graficos(contenedor)
+        self._crear_alertas(contenedor)
+
         # Sección de acciones rápidas
-        actions_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
-        actions_frame.pack(fill="x", padx=20, pady=20)
+        actions_frame = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
+        actions_frame.pack(fill="x", padx=20, pady=(6, 16))
 
         actions_title = ctk.CTkLabel(
             actions_frame, text="Acciones Rápidas", font=ctk.CTkFont(size=18, weight="bold")
@@ -240,11 +252,19 @@ class DashboardFrame(ctk.CTkFrame):
         def go_to_nomina():
             self.main_window._show_frame("nomina")
 
+        def go_to_asistencia():
+            self.main_window._show_frame("asistencia")
+
+        def go_to_contratos():
+            self.main_window._show_frame("contratos")
+
         # Solo se muestran accesos a módulos permitidos por el rol del usuario
         acciones = [
             ("Ir a Empleados", go_to_empleados, "empleados"),
             ("Ir a Documentos", go_to_documentos, "documentos"),
             ("Ir a Incidencias", go_to_incidencias, "incidencias"),
+            ("Ir a Asistencia", go_to_asistencia, "asistencia"),
+            ("Ir a Contratos", go_to_contratos, "contratos"),
             ("Ir a Nómina", go_to_nomina, "nomina"),
         ]
         acciones = [
@@ -254,9 +274,73 @@ class DashboardFrame(ctk.CTkFrame):
         ]
 
         for i, (text, command) in enumerate(acciones):
-            btn = ctk.CTkButton(actions_container, text=text, height=50, command=command)
-            btn.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
-            actions_container.grid_columnconfigure(i, weight=1)
+            btn = ctk.CTkButton(actions_container, text=text, height=46, command=command)
+            btn.grid(row=(i // 3), column=(i % 3), padx=8, pady=8, sticky="nsew")
+            actions_container.grid_columnconfigure(i % 3, weight=1)
+
+    # ------------------------------------------------------------------
+    # Indicadores y gráficos
+    # ------------------------------------------------------------------
+    def _crear_indicadores(self, contenedor) -> None:
+        """Crea la fila de indicadores clave (KPI)"""
+        marco = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
+        marco.pack(fill="x", padx=20, pady=6)
+
+        self.indicadores: dict[str, TarjetaIndicador] = {}
+        definiciones = [
+            ("nomina_mes", "Nómina del mes", "💵", "nomina"),
+            ("ausentismo", "Ausentismo del mes", "📉", "asistencia"),
+            ("por_vencer", "Contratos por vencer", "📜", "contratos"),
+            ("prestamos", "Saldo por cobrar", "🏦", "prestamos"),
+        ]
+        for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
+            tarjeta = TarjetaIndicador(
+                marco,
+                titulo=titulo,
+                icono=icono,
+                comando=lambda m=modulo: self._navegar(m),
+            )
+            tarjeta.grid(row=0, column=indice, padx=8, pady=8, sticky="nsew")
+            marco.grid_columnconfigure(indice, weight=1)
+            self.indicadores[clave] = tarjeta
+
+    def _crear_graficos(self, contenedor) -> None:
+        """Crea los gráficos analíticos dibujados sobre Canvas"""
+        marco = ctk.CTkFrame(contenedor, fg_color="transparent")
+        marco.pack(fill="x", padx=20, pady=6)
+
+        self.grafico_departamentos = GraficoBarras(
+            marco, titulo="Empleados activos por departamento", alto=210
+        )
+        self.grafico_departamentos.grid(row=0, column=0, padx=(0, 6), pady=0, sticky="nsew")
+
+        self.grafico_contratos = GraficoDona(
+            marco, titulo="Contratos por tipo", alto=210
+        )
+        self.grafico_contratos.grid(row=0, column=1, padx=6, pady=0, sticky="nsew")
+
+        self.grafico_egresos = GraficoLinea(
+            marco, titulo="Egresos netos por mes", alto=210
+        )
+        self.grafico_egresos.grid(row=0, column=2, padx=(6, 0), pady=0, sticky="nsew")
+
+        for columna in range(3):
+            marco.grid_columnconfigure(columna, weight=1)
+
+    def _crear_alertas(self, contenedor) -> None:
+        """Crea el panel de alertas accionables"""
+        self.panel_alertas = PanelAlertas(contenedor, self.main_window, maximo=4)
+        self.panel_alertas.pack(fill="x", padx=20, pady=6)
+
+    def _navegar(self, modulo: str) -> None:
+        """Navega a un módulo si el rol lo permite"""
+        if self.main_window.puede_ver_modulo(modulo):
+            self.main_window._show_frame(modulo)
+        else:
+            messagebox.showwarning(
+                "Acceso denegado",
+                "Su rol no tiene permisos para acceder a este módulo",
+            )
 
     def _create_stat_card(
         self, parent, title: str, icon: str, key: str, modulo: str = ""
@@ -339,10 +423,138 @@ class DashboardFrame(ctk.CTkFrame):
             except Exception:
                 self.stats_cards["pagos"].configure(text="0")
 
+            self._cargar_analitica()
+
         except Exception:
             # Error general, establecer todos en 0
             for key in self.stats_cards:
                 self.stats_cards[key].configure(text="0")
+
+    # ------------------------------------------------------------------
+    # Analítica
+    # ------------------------------------------------------------------
+    def _cargar_analitica(self) -> None:
+        """Carga los indicadores y los gráficos del panel"""
+        self._cargar_indicadores()
+        self._cargar_graficos()
+
+    def _cargar_indicadores(self) -> None:
+        """Actualiza los KPI del dashboard"""
+        hoy = date.today()
+        inicio_mes = hoy.replace(day=1)
+
+        try:
+            resumen = self.main_window.pago_service.obtener_resumen_periodo(inicio_mes, hoy)
+            self.indicadores["nomina_mes"].establecer_valor(
+                format_currency(float(resumen.get("total_neto", 0))),
+                f"{int(resumen.get('cantidad_pagos', 0))} pago(s) del mes",
+            )
+        except Exception:
+            logger.debug("Sin datos de nómina del mes para el panel", exc_info=True)
+            self.indicadores["nomina_mes"].establecer_valor("Sin datos", "sin pagos registrados")
+
+        try:
+            from src.services import AsistenciaService
+
+            stats = AsistenciaService(self.main_window.session).obtener_estadisticas(
+                inicio_mes, hoy
+            )
+            self.indicadores["ausentismo"].establecer_valor(
+                f"{float(stats.get('ausentismo_porcentaje', 0)):.1f}%",
+                f"{int(stats.get('faltas', 0))} falta(s) de "
+                f"{int(stats.get('total_registros', 0))} registro(s)",
+            )
+        except Exception:
+            logger.debug("Sin datos de asistencia para el panel", exc_info=True)
+            self.indicadores["ausentismo"].establecer_valor("—", "sin registros")
+
+        try:
+            from src.services import ContratoService
+
+            servicio = ContratoService(self.main_window.session)
+            por_vencer = servicio.listar_por_vencer()
+            self.indicadores["por_vencer"].establecer_valor(
+                str(len(por_vencer)),
+                f"{len(servicio.empleados_sin_contrato())} empleado(s) sin contrato",
+            )
+        except Exception:
+            logger.debug("Sin datos de contratos para el panel", exc_info=True)
+            self.indicadores["por_vencer"].establecer_valor("—", "sin datos")
+
+        try:
+            from src.services import PrestamoService
+
+            stats = PrestamoService(self.main_window.session).obtener_estadisticas()
+            self.indicadores["prestamos"].establecer_valor(
+                format_currency(float(stats.get("saldo_pendiente", 0))),
+                f"{int(stats.get('activos', 0))} operación(es) activa(s)",
+            )
+        except Exception:
+            logger.debug("Sin datos de préstamos para el panel", exc_info=True)
+            self.indicadores["prestamos"].establecer_valor("Sin datos", "sin operaciones")
+
+    def _cargar_graficos(self) -> None:
+        """Actualiza los tres gráficos del panel"""
+        self._grafico_departamentos()
+        self._grafico_contratos()
+        self._grafico_egresos()
+
+    def _grafico_departamentos(self) -> None:
+        """Empleados activos por departamento"""
+        try:
+            stats = self.main_window.empleado_service.obtener_estadisticas()
+            por_departamento = stats.get("por_departamento") or {}
+            datos = sorted(
+                ((str(area), float(cantidad)) for area, cantidad in por_departamento.items()),
+                key=lambda par: par[1],
+                reverse=True,
+            )[:8]
+            self.grafico_departamentos.establecer_datos(datos)
+        except Exception:
+            logger.debug("No se pudo dibujar el gráfico de departamentos", exc_info=True)
+            self.grafico_departamentos.mostrar_vacio()
+
+    def _grafico_contratos(self) -> None:
+        """Distribución de contratos por tipo"""
+        try:
+            from src.services import ContratoService
+
+            stats = ContratoService(self.main_window.session).obtener_estadisticas()
+            por_tipo = stats.get("por_tipo") or {}
+            datos = sorted(
+                (
+                    (str(tipo).capitalize(), float(cantidad))
+                    for tipo, cantidad in por_tipo.items()
+                ),
+                key=lambda par: par[1],
+                reverse=True,
+            )
+            self.grafico_contratos.establecer_datos(datos)
+        except Exception:
+            logger.debug("No se pudo dibujar el gráfico de contratos", exc_info=True)
+            self.grafico_contratos.mostrar_vacio()
+
+    def _grafico_egresos(self) -> None:
+        """Egresos netos por mes de los últimos seis meses"""
+        try:
+            hoy = date.today()
+            meses: list[tuple[str, float]] = []
+            for desplazamiento in range(5, -1, -1):
+                anio = hoy.year
+                mes = hoy.month - desplazamiento
+                while mes <= 0:
+                    mes += 12
+                    anio -= 1
+                inicio = date(anio, mes, 1)
+                siguiente = date(anio + (mes // 12), (mes % 12) + 1, 1)
+                fin = siguiente - timedelta(days=1)
+                resumen = self.main_window.pago_service.obtener_resumen_periodo(inicio, fin)
+                etiqueta = inicio.strftime("%m/%Y")
+                meses.append((etiqueta, float(resumen.get("total_neto", 0))))
+            self.grafico_egresos.establecer_datos(meses)
+        except Exception:
+            logger.debug("No se pudo dibujar el gráfico de egresos", exc_info=True)
+            self.grafico_egresos.mostrar_vacio()
 
 
 class EmpleadosFrame(ctk.CTkFrame):

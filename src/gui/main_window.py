@@ -5,7 +5,9 @@ Ventana principal de la aplicación (requiere sesión iniciada)
 
 import customtkinter as ctk
 import logging
+import threading
 import tkinter as tk
+from datetime import datetime, timedelta
 from tkinter import messagebox, ttk
 
 from src.config import settings, db_config
@@ -30,6 +32,10 @@ from src.gui.frames import (
     NominaFrame,
     ConfiguracionFrame,
 )
+from src.gui.asistencia_frame import AsistenciaFrame
+from src.gui.contratos_frame import ContratosFrame
+from src.gui.prestamos_frame import PrestamosFrame
+from src.gui.alertas_frame import AlertasFrame
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +45,11 @@ MODULOS = [
     ("empleados", "Empleados", "👥"),
     ("documentos", "Documentos", "📁"),
     ("incidencias", "Incidencias", "📅"),
+    ("asistencia", "Asistencia", "📋"),
+    ("contratos", "Contratos", "📜"),
+    ("prestamos", "Préstamos", "🏦"),
     ("nomina", "Nómina", "💰"),
+    ("alertas", "Alertas", "🔔"),
     ("configuracion", "Configuración", "⚙️"),
 ]
 
@@ -48,7 +58,11 @@ TITULOS_VENTANA = {
     "empleados": "Gestión de Empleados",
     "documentos": "Gestión Documental",
     "incidencias": "Incidencias y Permisos",
+    "asistencia": "Control de Asistencia",
+    "contratos": "Contratos Laborales",
+    "prestamos": "Anticipos y Préstamos",
     "nomina": "Nómina y Pagos",
+    "alertas": "Alertas del Sistema",
     "configuracion": "Configuración",
 }
 
@@ -57,7 +71,11 @@ FRAME_CLASSES: dict[str, type[ctk.CTkFrame]] = {
     "empleados": EmpleadosFrame,
     "documentos": DocumentosFrame,
     "incidencias": IncidenciasFrame,
+    "asistencia": AsistenciaFrame,
+    "contratos": ContratosFrame,
+    "prestamos": PrestamosFrame,
     "nomina": NominaFrame,
+    "alertas": AlertasFrame,
     "configuracion": ConfiguracionFrame,
 }
 
@@ -104,6 +122,22 @@ class MainWindow(ctk.CTk):
 
         # Confirmar salida antes de cerrar
         self.protocol("WM_DELETE_WINDOW", self._on_exit)
+
+        # Estado de respaldo automático: evita respaldos solapados y el cierre
+        # de la aplicación a mitad de una copia de la base de datos.
+        self._backup_en_curso = threading.Event()
+        self._backup_timer: str | None = None
+
+        # Resultados del respaldo automático: el hilo de respaldo encola el
+        # evento y este hilo principal muestra el aviso al usuario.
+        self.bind(
+            "<<RespaldoAutomaticoCompletado>>",
+            lambda _evento: self._on_respaldo_completado(),
+        )
+        self.bind(
+            "<<RespaldoAutomaticoFallado>>",
+            lambda _evento: self._on_respaldo_fallado(),
+        )
 
         # Copiar el nombre de usuario MIENTRAS el objeto sigue ligado a la
         # sesión de login; cualquier cierre de sesión scoped posterior lo
@@ -218,12 +252,12 @@ class MainWindow(ctk.CTk):
             btn = ctk.CTkButton(
                 self.sidebar,
                 text=f"{icono} {titulo}",
-                font=ctk.CTkFont(size=14),
-                height=46,
+                font=ctk.CTkFont(size=13),
+                height=38,
                 anchor="w",
                 command=lambda fn=frame_name: self._show_frame(fn),
             )
-            btn.pack(pady=4, padx=10, fill="x")
+            btn.pack(pady=2, padx=10, fill="x")
             self.sidebar_buttons[frame_name] = btn
 
         separator = ctk.CTkFrame(self.sidebar, height=2)
@@ -387,7 +421,11 @@ class MainWindow(ctk.CTk):
         "EmpleadosFrame": "_load_empleados",
         "DocumentosFrame": "_load_documentos",
         "IncidenciasFrame": "_load_data",
+        "AsistenciaFrame": "_load_data",
+        "ContratosFrame": "_load_data",
+        "PrestamosFrame": "_load_data",
         "NominaFrame": "_load_pagos",
+        "AlertasFrame": "_load_data",
         "ConfiguracionFrame": "_load_configuracion",
     }
 
@@ -396,6 +434,9 @@ class MainWindow(ctk.CTk):
         "EmpleadosFrame": "_on_new_empleado",
         "DocumentosFrame": "_on_new_documento",
         "IncidenciasFrame": "_on_new_incidencia",
+        "AsistenciaFrame": "_nueva_jornada",
+        "ContratosFrame": "_nuevo_contrato",
+        "PrestamosFrame": "_nueva_solicitud",
         "NominaFrame": "_on_new_pago",
         "ConfiguracionFrame": "_on_new_usuario",
     }
@@ -419,10 +460,12 @@ class MainWindow(ctk.CTk):
         self.bind("<Control-f>", lambda e: self._enfocar_busqueda())
         self.bind("<Control-s>", lambda e: self._atajo_guardar())
         self.bind("<Escape>", lambda e: self._atajo_escape())
-        # Navegación directa a cada módulo con Ctrl+1..6
-        for indice, (frame_name, _titulo, _icono) in enumerate(MODULOS):
+        # Navegación directa a cada módulo con Ctrl+1..9 y Ctrl+0 para el
+        # décimo: Tk no admite secuencias como <Control-10>.
+        teclas = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+        for tecla, (frame_name, _titulo, _icono) in zip(teclas, MODULOS):
             self.bind(
-                f"<Control-{indice + 1}>",
+                f"<Control-Key-{tecla}>",
                 lambda e, fn=frame_name: self._show_frame(fn),
             )
 
@@ -709,10 +752,24 @@ class MainWindow(ctk.CTk):
             self.destroy()
 
     def _on_exit(self):
-        if messagebox.askyesno("Salir", "¿Desea salir de la aplicación?"):
-            self._cleanup()
-            self._exit_status = "exit"
-            self.destroy()
+        if not messagebox.askyesno("Salir", "¿Desea salir de la aplicación?"):
+            return
+        self._cancelar_respaldo_programado()
+        if self._backup_en_curso.is_set():
+            # No cerrar con una copia de la base de datos a medias: se espera
+            # (de forma acotada) a que el respaldo en curso termine.
+            try:
+                messagebox.showinfo(
+                    "Respaldo en curso",
+                    "Se está creando una copia de seguridad.\n"
+                    "La aplicación se cerrará al terminar.",
+                )
+            except tk.TclError:
+                pass
+            self._backup_en_curso.wait(timeout=30)
+        self._cleanup()
+        self._exit_status = "exit"
+        self.destroy()
 
     def _cleanup(self):
         try:
@@ -725,29 +782,38 @@ class MainWindow(ctk.CTk):
     # ------------------------------------------------------------------
     # Respaldos automáticos
     # ------------------------------------------------------------------
+    def _cancelar_respaldo_programado(self) -> None:
+        """Cancela la próxima verificación de respaldo pendiente"""
+        if self._backup_timer is not None:
+            try:
+                self.after_cancel(self._backup_timer)
+            except Exception:
+                logger.debug("operación de interfaz ignorada", exc_info=True)
+            self._backup_timer = None
+
     def _programar_respaldo_periodico(self):
-        """Programa respaldos automáticos según el intervalo configurado"""
+        """Verifica el respaldo automático y se reprograma cada 30 minutos"""
+        if self.winfo_exists():
+            self._backup_timer = self.after(
+                30 * 60 * 1000, self._programar_respaldo_periodico
+            )
         try:
-            intervalo_horas = self.config_service.obtener_valor("backup_interval_hours", 24) or 24
-            intervalo_horas = max(1, int(intervalo_horas))
             self._verificar_respaldo_periodico()
-            # Reprogramar en 30 minutos para reaccionar a cambios de configuración
-            self.after(30 * 60 * 1000, self._programar_respaldo_periodico)
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
 
     def _verificar_respaldo_periodico(self):
         """Crea un respaldo automático si ha transcurrido el intervalo configurado"""
         try:
-            habilitado = self.config_service.obtener_valor("backup_enabled", True)
-            if not habilitado:
+            if not self.config_service.obtener_valor("backup_enabled", True):
                 return
-            intervalo_horas = self.config_service.obtener_valor("backup_interval_hours", 24) or 24
-            intervalo_horas = max(1, int(intervalo_horas))
+            intervalo_horas = max(
+                1,
+                int(self.config_service.obtener_valor("backup_interval_hours", 24) or 24),
+            )
 
             from src.utils.backup_manager import get_backup_manager
             from src.utils.helpers import get_timestamp
-            from datetime import datetime, timedelta
 
             gestor = get_backup_manager()
             respaldos = gestor.list_backups()
@@ -758,10 +824,66 @@ class MainWindow(ctk.CTk):
                 ultima_fecha = datetime.strptime(str(ultimo), "%Y%m%d_%H%M%S")
                 vencido = datetime.now() - ultima_fecha > timedelta(hours=intervalo_horas)
 
-            if vencido:
-                gestor.create_backup(f"auto_{get_timestamp()}")
+            if vencido and not self._backup_en_curso.is_set():
+                # La copia (gzip + checksum + rotación) se ejecuta fuera del
+                # hilo de la interfaz para no congelar la ventana.
+                self._backup_en_curso.set()
+                threading.Thread(
+                    target=self._ejecutar_respaldo_en_segundo_plano,
+                    args=(gestor, f"auto_{get_timestamp()}"),
+                    name="respaldo-automatico",
+                    daemon=True,
+                ).start()
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
+
+    def _ejecutar_respaldo_en_segundo_plano(self, gestor, nombre):
+        """Ejecuta el respaldo fuera del hilo de la interfaz"""
+        try:
+            gestor.create_backup(nombre)
+        except Exception:
+            # Un fallo del respaldo automático deja los datos sin protección:
+            # se registra como error y se avisa en la interfaz.
+            logger.error("El respaldo automático falló", exc_info=True)
+            self._notificar_hilo_principal("<<RespaldoAutomaticoFallado>>")
+        else:
+            self._notificar_hilo_principal("<<RespaldoAutomaticoCompletado>>")
+        finally:
+            self._backup_en_curso.clear()
+
+    def _notificar_hilo_principal(self, evento: str) -> None:
+        """Encola un evento virtual para que lo procese el hilo principal
+
+        ``when="tail"`` garantiza que el manejador se ejecute en el bucle
+        principal, nunca dentro del hilo de respaldo.
+        """
+        try:
+            self.event_generate(evento, when="tail")
+        except Exception:
+            # La ventana pudo cerrarse durante el respaldo; el aviso es
+            # prescindible en ese escenario.
+            logger.debug("no se pudo notificar %s: ventana cerrada", evento)
+
+    def _mostrar_aviso_respaldo(self, titulo: str, mensaje: str) -> None:
+        """Muestra el resultado del respaldo automático desde el hilo principal"""
+        try:
+            if self.winfo_exists():
+                messagebox.showinfo(titulo, mensaje)
+        except tk.TclError:
+            logger.debug("aviso de respaldo omitido: ventana cerrada")
+
+    def _on_respaldo_completado(self) -> None:
+        self._mostrar_aviso_respaldo(
+            "Respaldo automático",
+            "Se creó una copia de seguridad de la base de datos.",
+        )
+
+    def _on_respaldo_fallado(self) -> None:
+        self._mostrar_aviso_respaldo(
+            "Respaldo automático",
+            "No se pudo crear la copia de seguridad.\n"
+            "Revise el registro para más detalles.",
+        )
 
     def run(self) -> str:
         """Ejecuta la ventana y devuelve 'logout' o 'exit' al cerrarse"""

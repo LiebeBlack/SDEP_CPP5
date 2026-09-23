@@ -63,8 +63,9 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
 
         # Fallback anti-congelamiento: si el diálogo no llega a mostrarse
         # (escalado o pantalla problemáticos), se cierra solo en lugar de
-        # dejar el login esperándolo para siempre.
-        self.after(8000, self._cerrar_si_no_visible)
+        # dejar el login esperándolo para siempre. Se guarda el identificador
+        # para cancelarlo en cuanto el diálogo termina por la vía normal.
+        self._fallback_timer: str = self.after(8000, self._cerrar_si_no_visible)
 
         self._create_widgets()
 
@@ -75,6 +76,13 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             self.deiconify()
             self.lift()
             self.focus_force()
+        except Exception:
+            logger.debug("operación de interfaz ignorada", exc_info=True)
+
+    def _cancelar_fallback(self) -> None:
+        """Cancela el cierre automático pendiente (diálogo ya operativo)"""
+        try:
+            self.after_cancel(self._fallback_timer)
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
 
@@ -171,6 +179,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             self._notificar_error(f"No se pudo cambiar la contraseña: {e}")
             return
         self.cambiado = True
+        self._cancelar_fallback()
         self.destroy()
 
     def _notificar_error(self, mensaje: str) -> None:
@@ -183,6 +192,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             logger.error("No se pudo mostrar el diálogo de error: %s", mensaje)
 
     def _on_cancel(self):
+        self._cancelar_fallback()
         self.destroy()
 
 

@@ -18,6 +18,10 @@ if TYPE_CHECKING:
     from .documento import Documento
     from .incidencia import Incidencia
     from .pago import Pago
+    from .horario import Horario
+    from .asistencia import Asistencia
+    from .contrato import Contrato
+    from .prestamo import Prestamo
 
 
 class Empleado(Base, BaseModel):
@@ -165,6 +169,18 @@ class Empleado(Base, BaseModel):
     )
     pagos: Mapped[list["Pago"]] = relationship(
         "Pago", back_populates="empleado", cascade="all, delete-orphan"
+    )
+    horarios: Mapped[list["Horario"]] = relationship(
+        "Horario", back_populates="empleado", cascade="all, delete-orphan"
+    )
+    asistencias: Mapped[list["Asistencia"]] = relationship(
+        "Asistencia", back_populates="empleado", cascade="all, delete-orphan"
+    )
+    contratos: Mapped[list["Contrato"]] = relationship(
+        "Contrato", back_populates="empleado", cascade="all, delete-orphan"
+    )
+    prestamos: Mapped[list["Prestamo"]] = relationship(
+        "Prestamo", back_populates="empleado", cascade="all, delete-orphan"
     )
 
     @property

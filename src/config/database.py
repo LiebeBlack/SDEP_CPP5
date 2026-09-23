@@ -7,6 +7,7 @@ settings.database_path (absoluta y única), evitando la creación de
 archivos .db duplicados según el directorio de trabajo.
 """
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -37,10 +38,72 @@ MIGRACIONES_EMPLEADOS = {
     "hijos": "TEXT",
 }
 
+# Registro de migraciones por tabla: cada entrada describe las columnas que
+# versiones posteriores agregaron a una tabla ya existente. Las tablas nuevas
+# no se listan aquí porque las crea Base.metadata.create_all en el arranque.
+MIGRACIONES: dict[str, dict[str, str]] = {
+    "empleados": MIGRACIONES_EMPLEADOS,
+    "usuarios": {
+        "fecha_cambio_password": "DATETIME",
+        "password_historial": "TEXT",
+        "bloqueado_hasta": "DATETIME",
+    },
+    "pagos": {
+        "modalidad_calculo": "VARCHAR(20)",
+        "base_gravable": "NUMERIC(10, 2)",
+        "horas_extra_diurnas": "NUMERIC(10, 2)",
+        "horas_extra_nocturnas": "NUMERIC(10, 2)",
+        "horas_extra_feriadas": "NUMERIC(10, 2)",
+        "deduccion_prestamo": "NUMERIC(10, 2)",
+        "aguinaldo": "NUMERIC(10, 2)",
+        "bono_vacacional": "NUMERIC(10, 2)",
+        "aporte_seguro_patronal": "NUMERIC(10, 2)",
+        "aporte_pension_patronal": "NUMERIC(10, 2)",
+        "isr_tramo": "VARCHAR(50)",
+        "prestamo_id": "INTEGER",
+    },
+}
+
+
+def _columnas_pendientes(engine) -> dict[str, list[tuple[str, str]]]:
+    """
+    Columnas nuevas que faltan en cada tabla ya existente
+
+    Solo considera tablas presentes en la base: en una base recién creada
+    create_all ya dejó el esquema completo y no hay nada que migrar.
+
+    Returns:
+        dict: tabla -> lista de pares (columna, tipo) por agregar
+    """
+    pendientes: dict[str, list[tuple[str, str]]] = {}
+    try:
+        with engine.connect() as conn:
+            for tabla, columnas in MIGRACIONES.items():
+                existe = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name = :tabla"),
+                    {"tabla": tabla},
+                ).fetchone()
+                if not existe:
+                    continue
+                existentes = {
+                    fila[1] for fila in conn.execute(text(f"PRAGMA table_info({tabla})"))
+                }
+                faltantes = [
+                    (columna, tipo)
+                    for columna, tipo in columnas.items()
+                    if columna not in existentes
+                ]
+                if faltantes:
+                    pendientes[tabla] = faltantes
+    except SQLAlchemyError as e:
+        logger.warning(f"No se pudo leer el esquema actual de la base de datos: {e}")
+        return {}
+    return pendientes
+
 
 def migrar_columnas(engine) -> int:
     """
-    Agrega a la tabla empleados las columnas nuevas que falten.
+    Agrega a las tablas existentes las columnas nuevas que falten.
 
     Se ejecuta en cada arranque (create_tables) para que las bases de datos
     creadas con versiones anteriores ganen los campos nuevos sin perder datos.
@@ -55,48 +118,313 @@ def migrar_columnas(engine) -> int:
     # Lista blanca: nombre de columna y tipos SQL permitidos en la DDL
     patron_columna = re.compile(r"^[a-z_][a-z0-9_]*$")
     patron_tipo = re.compile(
-        r"^(VARCHAR\(\d+\)|TEXT|INTEGER|REAL|BLOB|NUMERIC\(\d+(,\s*\d+)?\))$",
+        r"^(VARCHAR\(\d+\)|TEXT|INTEGER|REAL|BLOB|DATETIME|DATE|TIME|"
+        r"NUMERIC\(\d+(,\s*\d+)?\))$",
         re.IGNORECASE,
     )
-    for columna, tipo in MIGRACIONES_EMPLEADOS.items():
-        if not patron_columna.fullmatch(columna) or not patron_tipo.fullmatch(tipo):
-            raise ValueError(
-                f"MIGRACIONES_EMPLEADOS contiene una entrada no válida: " f"{columna!r} -> {tipo!r}"
-            )
+    for tabla, columnas in MIGRACIONES.items():
+        if not patron_columna.fullmatch(tabla):
+            raise ValueError(f"MIGRACIONES contiene una tabla no válida: {tabla!r}")
+        for columna, tipo in columnas.items():
+            if not patron_columna.fullmatch(columna) or not patron_tipo.fullmatch(tipo):
+                raise ValueError(
+                    f"MIGRACIONES contiene una entrada no válida: "
+                    f"{tabla}.{columna!r} -> {tipo!r}"
+                )
+    pendientes = _columnas_pendientes(engine)
+    if not pendientes:
+        return 0
+
+    # Respaldo automático ANTES de modificar el esquema: si la
+    # migración falla a mitad de camino (disco lleno, corte de
+    # energía, archivo bloqueado), la base nunca queda en un
+    # estado a medio migrar sin recuperación posible.
+    try:
+        from src.utils.backup_manager import get_backup_manager
+
+        get_backup_manager().create_backup("pre_migracion", compress=True)
+    except Exception as e:
+        logger.warning(f"No se pudo crear backup antes de migrar el esquema: {e}")
+
+    agregadas = 0
     try:
         with engine.begin() as conn:
-            existe = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='empleados'")
-            ).fetchone()
-            if not existe:
-                return 0
-            existentes = {row[1] for row in conn.execute(text("PRAGMA table_info(empleados)"))}
-            faltantes = [
-                (columna, tipo)
-                for columna, tipo in MIGRACIONES_EMPLEADOS.items()
-                if columna not in existentes
-            ]
-            if not faltantes:
-                return 0
-
-            # Respaldo automático ANTES de modificar el esquema: si la
-            # migración falla a mitad de camino (disco lleno, corte de
-            # energía, archivo bloqueado), la base nunca queda en un
-            # estado a medio migrar sin recuperación posible.
-            try:
-                from src.utils.backup_manager import get_backup_manager
-
-                get_backup_manager().create_backup("pre_migracion", compress=True)
-            except Exception as e:
-                logger.warning(f"No se pudo crear backup antes de migrar el esquema: {e}")
-
-            for columna, tipo in faltantes:
-                conn.execute(text(f"ALTER TABLE empleados ADD COLUMN {columna} {tipo}"))
-                logger.info(f"Migración: columna empleados.{columna} agregada")
-            return len(faltantes)
+            for tabla, faltantes in pendientes.items():
+                for columna, tipo in faltantes:
+                    conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}"))
+                    logger.info(f"Migración: columna {tabla}.{columna} agregada")
+                    agregadas += 1
     except SQLAlchemyError as e:
         logger.warning(f"No se pudo migrar el esquema de la base de datos: {e}")
         return 0
+    return agregadas
+
+
+# Parámetros de configuración que llegaron después de la primera versión del
+# sistema. Se declaran aquí una sola vez y los consumen dos caminos:
+#   * _seed_initial_data()         -> instalación nueva: los siembra junto a los históricos
+#   * _sincronizar_configuracion() -> instalación existente: agrega solo los que faltan
+# Todos son editables desde el módulo de Configuración de la aplicación.
+CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
+    # --- Nómina: modalidad de cálculo y parámetros legales ---
+    {
+        "clave": "modo_calculo_nomina",
+        "valor": "porcentaje",
+        "descripcion": (
+            "Modalidad de deducciones: 'porcentaje' (cálculo histórico) o "
+            "'tramos' (motor con tabla de ISR, techos y recargos)"
+        ),
+        "tipo_dato": "string",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "techo_seguro",
+        "valor": "0.0",
+        "descripcion": "Techo mensual del aporte al seguro social (0 = sin techo)",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "techo_pension",
+        "valor": "0.0",
+        "descripcion": "Techo mensual del aporte a pensión (0 = sin techo)",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "porcentaje_seguro_patronal",
+        "valor": "9.0",
+        "descripcion": "Aporte patronal al seguro social (no se descuenta al empleado)",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "porcentaje_pension_patronal",
+        "valor": "7.5",
+        "descripcion": "Aporte patronal a pensión (no se descuenta al empleado)",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "isr_tramos",
+        "valor": json.dumps(
+            [
+                {
+                    "limite_inferior": 0.0,
+                    "limite_superior": 1000.0,
+                    "tasa": 0.0,
+                    "cuota_fija": 0.0,
+                },
+                {
+                    "limite_inferior": 1000.0,
+                    "limite_superior": 2000.0,
+                    "tasa": 15.0,
+                    "cuota_fija": 0.0,
+                },
+                {
+                    "limite_inferior": 2000.0,
+                    "limite_superior": 3000.0,
+                    "tasa": 20.0,
+                    "cuota_fija": 150.0,
+                },
+                {
+                    "limite_inferior": 3000.0,
+                    "limite_superior": None,
+                    "tasa": 30.0,
+                    "cuota_fija": 350.0,
+                },
+            ],
+            ensure_ascii=False,
+        ),
+        "descripcion": "Tabla progresiva de ISR por tramos (editables en Configuración)",
+        "tipo_dato": "json",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "horas_jornada_diaria",
+        "valor": "8",
+        "descripcion": "Horas de una jornada diaria ordinaria",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "recargo_hora_extra_diurna",
+        "valor": "25.0",
+        "descripcion": "Recargo porcentual de la hora extra diurna",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "recargo_hora_extra_nocturna",
+        "valor": "50.0",
+        "descripcion": "Recargo porcentual de la hora extra nocturna o mixta",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "recargo_hora_extra_feriada",
+        "valor": "100.0",
+        "descripcion": "Recargo porcentual de la hora extra en día feriado",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "dias_aguinaldo",
+        "valor": "15",
+        "descripcion": "Días de aguinaldo al año",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "dias_bono_vacacional",
+        "valor": "15",
+        "descripcion": "Días de bono vacacional al año",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "dias_prestaciones_por_ano",
+        "valor": "30",
+        "descripcion": "Días de prestaciones acumulados por año de servicio",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "dias_preaviso",
+        "valor": "30",
+        "descripcion": "Días de preaviso considerados en el finiquito",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "max_cuotas_prestamo",
+        "valor": "24",
+        "descripcion": "Máximo de cuotas permitidas en un préstamo",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    {
+        "clave": "max_porcentaje_cuota_prestamo",
+        "valor": "30.0",
+        "descripcion": "Tope porcentual del neto que puede descontarse por préstamos",
+        "tipo_dato": "float",
+        "categoria": "nomina",
+    },
+    # --- Recursos humanos: asistencia, contratos y vencimientos ---
+    {
+        "clave": "hora_entrada_default",
+        "valor": "07:00",
+        "descripcion": "Hora de entrada por defecto al crear horarios",
+        "tipo_dato": "string",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "hora_salida_default",
+        "valor": "15:00",
+        "descripcion": "Hora de salida por defecto al crear horarios",
+        "tipo_dato": "string",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "tolerancia_asistencia_minutos",
+        "valor": "10",
+        "descripcion": "Minutos de tolerancia por defecto antes de marcar tardanza",
+        "tipo_dato": "int",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "umbral_ausentismo_alerta",
+        "valor": "10.0",
+        "descripcion": "Porcentaje de ausentismo a partir del cual se genera una alerta",
+        "tipo_dato": "float",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "umbral_contrato_por_vencer_dias",
+        "valor": "30",
+        "descripcion": "Días de anticipación para avisar de contratos por vencer",
+        "tipo_dato": "int",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "dias_alerta_documento",
+        "valor": "30",
+        "descripcion": "Días de anticipación para avisar de documentos por vencer",
+        "tipo_dato": "int",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "max_horas_extra_semana",
+        "valor": "10",
+        "descripcion": "Horas extra semanales a partir de las cuales se genera una alerta",
+        "tipo_dato": "int",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "dias_descanso",
+        "valor": "[5, 6]",
+        "descripcion": "Días de descanso semanal (0 = lunes ... 6 = domingo)",
+        "tipo_dato": "json",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "feriados",
+        "valor": "[]",
+        "descripcion": "Fechas feriadas en formato AAAA-MM-DD usadas al calcular horas extra",
+        "tipo_dato": "json",
+        "categoria": "recursos_humanos",
+    },
+    {
+        "clave": "dias_alerta_pago_antiguo",
+        "valor": "30",
+        "descripcion": "Días tras los cuales un pago pendiente genera una alerta",
+        "tipo_dato": "int",
+        "categoria": "nomina",
+    },
+    # --- Seguridad: política de credenciales y respaldos ---
+    {
+        "clave": "password_dias_caducidad",
+        "valor": "90",
+        "descripcion": "Días de vigencia de una contraseña (0 = sin caducidad)",
+        "tipo_dato": "int",
+        "categoria": "seguridad",
+    },
+    {
+        "clave": "password_historial",
+        "valor": "3",
+        "descripcion": "Contraseñas anteriores que no se pueden repetir",
+        "tipo_dato": "int",
+        "categoria": "seguridad",
+    },
+    {
+        "clave": "password_min_longitud",
+        "valor": "6",
+        "descripcion": "Longitud mínima de contraseña exigida por el sistema",
+        "tipo_dato": "int",
+        "categoria": "seguridad",
+    },
+    {
+        "clave": "max_intentos_fallidos",
+        "valor": "5",
+        "descripcion": "Intentos fallidos antes de bloquear temporalmente la cuenta",
+        "tipo_dato": "int",
+        "categoria": "seguridad",
+    },
+    {
+        "clave": "bloqueo_minutos",
+        "valor": "15",
+        "descripcion": "Minutos que dura el bloqueo temporal por intentos fallidos",
+        "tipo_dato": "int",
+        "categoria": "seguridad",
+    },
+    {
+        "clave": "backup_max_copias",
+        "valor": "30",
+        "descripcion": "Máximo de respaldos automáticos conservados",
+        "tipo_dato": "int",
+        "categoria": "seguridad",
+    },
+)
 
 
 class DatabaseConfig:
@@ -253,6 +581,7 @@ class DatabaseConfig:
             self.create_tables()
             self._check_integrity()
             self._seed_initial_data()
+            self._sincronizar_configuracion()
             self._seed_initial_user()
 
             # Crear backup inicial una sola vez (si la BD es nueva)
@@ -405,6 +734,9 @@ class DatabaseConfig:
                     categoria="seguridad",
                 ),
             ]
+            configuraciones.extend(
+                Configuracion(**datos) for datos in CONFIGURACION_ADICIONAL
+            )
             session.add_all(configuraciones)
             session.commit()
             logger.info(f"Configuraciones iniciales insertadas: {len(configuraciones)}")
@@ -413,6 +745,40 @@ class DatabaseConfig:
             logger.error(f"Error insertando configuraciones iniciales: {e}")
             self._safe_log_error(e, context={"operation": "seed_initial_data"})
             raise
+        finally:
+            self.close_session(session)
+
+    def _sincronizar_configuracion(self) -> int:
+        """
+        Agrega los parámetros de configuración nuevos que falten
+
+        Nunca modifica ni elimina valores existentes: una instalación ya
+        configurada conserva su configuración y solo gana los parámetros que
+        las versiones nuevas necesitan para funcionar.
+
+        Returns:
+            int: Cantidad de parámetros agregados
+        """
+        from src.models.configuracion import Configuracion
+
+        session = self.get_session()
+        try:
+            existentes = {fila.clave for fila in session.query(Configuracion).all()}
+            nuevas = [
+                Configuracion(**datos)
+                for datos in CONFIGURACION_ADICIONAL
+                if datos["clave"] not in existentes
+            ]
+            if not nuevas:
+                return 0
+            session.add_all(nuevas)
+            session.commit()
+            logger.info(f"Parámetros de configuración agregados: {len(nuevas)}")
+            return len(nuevas)
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.warning(f"No se pudieron agregar los parámetros de configuración: {e}")
+            return 0
         finally:
             self.close_session(session)
 

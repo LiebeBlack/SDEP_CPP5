@@ -7,14 +7,32 @@ generación de pagos y emisión de recibos, integrándose con incidencias
 para el cálculo de días trabajados.
 """
 
-from collections.abc import Callable
+import logging
 from datetime import date
+
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.models import Pago, TipoPago, MetodoPago
-from src.repositories import PagoRepository, EmpleadoRepository, ConfiguracionRepository
+from src.models import Pago, Prestamo, TipoPago, MetodoPago
+from src.nomina import (
+    DeduccionesManuales,
+    EntradaNomina,
+    HorasExtra,
+    ParametrosNomina,
+    ResultadoNomina,
+    calcular_nomina,
+    cargar_parametros_desde,
+    validar_parametros,
+)
+from src.nomina.tipos import CERO, a_decimal, redondear
+from src.repositories import (
+    AsistenciaRepository,
+    ConfiguracionRepository,
+    EmpleadoRepository,
+    PagoRepository,
+    PrestamoRepository,
+)
 from src.utils.helpers import parse_date
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -39,27 +57,60 @@ class PagoService:
         self.pago_repository = PagoRepository(session)
         self.empleado_repository = EmpleadoRepository(session)
         self.config_repository = ConfiguracionRepository(session)
+        self.prestamo_repository = PrestamoRepository(session)
+        self.asistencia_repository = AsistenciaRepository(session)
 
     def crear_pago(self, datos: dict) -> Pago:
-        """Crea un nuevo pago calculando deducciones y montos netos"""
+        """
+        Crea un nuevo pago calculando deducciones y montos netos
+
+        El cálculo lo realiza el motor de nómina (src/nomina). En la
+        modalidad porcentual se reproduce exactamente el cálculo
+        histórico del sistema; en la modalidad por tramos se aplican los
+        techos de cotización, los aportes patronales y la tabla
+        progresiva de ISR. Las deducciones capturadas explícitamente para
+        un pago concreto siempre tienen prioridad sobre el cálculo.
+        """
         periodo_inicio, periodo_fin, fecha_pago = self._normalizar_fechas_pago(datos)
 
         salario_base = round(float(datos["salario_base"]), 2)
-        deduccion_seguro, deduccion_pension, deduccion_impuesto = self._resolver_deducciones(
-            datos, salario_base
+        horas_extra_desglosadas = self._horas_extra(datos)
+        resultado = self.calcular_con_motor(
+            salario_base=salario_base,
+            datos=datos,
+            horas_extra=horas_extra_desglosadas,
         )
 
-        # Calcular montos
-        descuentos = round(float(datos.get("descuentos", 0) or 0), 2)
-        bonificaciones = round(float(datos.get("bonificaciones", 0) or 0), 2)
-        horas_extra = round(float(datos.get("horas_extra", 0) or 0), 2)
-        otras_deducciones = round(float(datos.get("otras_deducciones", 0) or 0), 2)
+        # El monto de horas extra capturado a mano manda cuando no se
+        # clasificaron horas por tipo (comportamiento histórico).
+        monto_horas_extra = (
+            float(resultado.monto_horas_extra)
+            if horas_extra_desglosadas.hay_horas
+            else round(float(datos.get("horas_extra", 0) or 0), 2)
+        )
+
+        deduccion_seguro = float(resultado.deduccion_seguro)
+        deduccion_pension = float(resultado.deduccion_pension)
+        deduccion_impuesto = float(resultado.deduccion_impuesto)
+        otras_deducciones = float(resultado.otras_deducciones)
+        descuentos = float(resultado.descuentos)
+        deduccion_prestamo = float(resultado.deduccion_prestamo)
+        bonificaciones = float(resultado.bonificaciones)
+        aguinaldo = float(resultado.aguinaldo)
+        bono_vacacional = float(resultado.bono_vacacional)
 
         total_deducciones = round(
-            deduccion_seguro + deduccion_pension + deduccion_impuesto + otras_deducciones, 2
+            deduccion_seguro
+            + deduccion_pension
+            + deduccion_impuesto
+            + otras_deducciones
+            + deduccion_prestamo,
+            2,
         )
 
-        monto_bruto = round(salario_base + bonificaciones + horas_extra, 2)
+        monto_bruto = round(
+            salario_base + bonificaciones + monto_horas_extra + aguinaldo + bono_vacacional, 2
+        )
         monto_neto = round(max(0.0, monto_bruto - total_deducciones - descuentos), 2)
 
         tipo_p = datos["tipo_pago"]
@@ -86,19 +137,196 @@ class PagoService:
             monto_neto=monto_neto,
             descuentos=descuentos,
             bonificaciones=bonificaciones,
-            horas_extra=horas_extra,
+            horas_extra=monto_horas_extra,
             salario_base=salario_base,
             deduccion_seguro=deduccion_seguro,
             deduccion_pension=deduccion_pension,
             deduccion_impuesto=deduccion_impuesto,
             otras_deducciones=otras_deducciones,
+            modalidad_calculo=resultado.modalidad,
+            base_gravable=float(resultado.base_gravable),
+            horas_extra_diurnas=float(resultado.horas_extra.diurnas),
+            horas_extra_nocturnas=float(resultado.horas_extra.nocturnas),
+            horas_extra_feriadas=float(resultado.horas_extra.feriadas),
+            deduccion_prestamo=deduccion_prestamo,
+            aguinaldo=aguinaldo,
+            bono_vacacional=bono_vacacional,
+            aporte_seguro_patronal=float(resultado.aporte_seguro_patronal),
+            aporte_pension_patronal=float(resultado.aporte_pension_patronal),
+            isr_tramo=resultado.isr_tramo,
+            prestamo_id=self._prestamo_id(datos),
             descripcion=datos.get("descripcion"),
             referencia_pago=ref_pago,
             observaciones=datos.get("observaciones"),
             pagado=int(datos.get("pagado", 0)),
         )
 
-        return self.pago_repository.create(pago)
+        creado = self.pago_repository.create(pago)
+        if creado.prestamo_id and deduccion_prestamo > 0:
+            self._registrar_descuento_prestamo(creado)
+        return creado
+
+    # ------------------------------------------------------------------
+    # Motor de nómina
+    # ------------------------------------------------------------------
+    def parametros_nomina(self) -> ParametrosNomina:
+        """Parámetros de cálculo vigentes según la configuración del sistema"""
+        try:
+            return cargar_parametros_desde(self.config_repository.get_valor)
+        except (ValueError, TypeError):
+            logger.warning(
+                "No se pudieron leer los parámetros de nómina; se usan los valores por defecto",
+                exc_info=True,
+            )
+            return cargar_parametros_desde(lambda clave, por_defecto: por_defecto)
+
+    def validar_parametros_nomina(self) -> list[str]:
+        """Revisa la coherencia de los parámetros de nómina configurados"""
+        return validar_parametros(self.parametros_nomina())
+
+    def calcular_con_motor(
+        self,
+        salario_base: float,
+        datos: dict | None = None,
+        horas_extra: HorasExtra | None = None,
+    ) -> ResultadoNomina:
+        """
+        Calcula un pago con el motor de nómina sin persistirlo
+
+        Útil para la vista previa de la interfaz y para generar recibos
+        sin crear registros.
+        """
+        datos = datos or {}
+        return calcular_nomina(
+            EntradaNomina(
+                salario_base=a_decimal(salario_base),
+                horas_extra=horas_extra or HorasExtra(),
+                bonificaciones=a_decimal(datos.get("bonificaciones")),
+                otras_deducciones=a_decimal(datos.get("otras_deducciones")),
+                descuentos=a_decimal(datos.get("descuentos")),
+                aguinaldo=a_decimal(datos.get("aguinaldo")),
+                bono_vacacional=a_decimal(datos.get("bono_vacacional")),
+                cuota_prestamo=a_decimal(
+                    datos.get("deduccion_prestamo") or datos.get("cuota_prestamo")
+                ),
+                dias_trabajados=int(datos.get("dias_trabajados") or 30),
+                dias_periodo=int(datos.get("dias_periodo") or 30),
+                prorratear=bool(datos.get("prorratear")),
+                deducciones_manuales=self._deducciones_manuales(datos),
+            ),
+            self.parametros_nomina(),
+        )
+
+    def previsualizar_deducciones(self, salario_base: float) -> dict:
+        """
+        Deducciones que corresponderían a un salario con los parámetros vigentes
+
+        Permite mostrar en pantalla, antes de guardar, cuánto se
+        descontaría; es el mismo cálculo que aplica crear_pago.
+        """
+        resultado = self.calcular_con_motor(salario_base)
+        seguro, pension, impuesto = self._resolver_deducciones({}, salario_base)
+        return {
+            "modalidad": resultado.modalidad,
+            "deduccion_seguro": seguro,
+            "deduccion_pension": pension,
+            "deduccion_impuesto": impuesto,
+            "total_deducciones": float(resultado.total_deducciones),
+            "monto_neto": float(resultado.monto_neto),
+            "base_gravable": float(resultado.base_gravable),
+            "isr_tramo": resultado.isr_tramo,
+        }
+
+    @staticmethod
+    def _horas_extra(datos: dict) -> HorasExtra:
+        """Desglose de horas extra clasificadas, si el usuario las capturó así"""
+        diurnas = a_decimal(datos.get("horas_extra_diurnas"))
+        nocturnas = a_decimal(datos.get("horas_extra_nocturnas"))
+        feriadas = a_decimal(datos.get("horas_extra_feriadas"))
+        if diurnas <= 0 and nocturnas <= 0 and feriadas <= 0:
+            return HorasExtra()
+        return HorasExtra(diurnas=diurnas, nocturnas=nocturnas, feriadas=feriadas)
+
+    @staticmethod
+    def _deducciones_manuales(datos: dict) -> DeduccionesManuales | None:
+        """Deducciones capturadas a mano que deben prevalecer sobre el cálculo"""
+        seguro = datos.get("deduccion_seguro")
+        pension = datos.get("deduccion_pension")
+        impuesto = datos.get("deduccion_impuesto")
+        if seguro is None and pension is None and impuesto is None:
+            return None
+        return DeduccionesManuales(
+            seguro=a_decimal(seguro) if seguro is not None else None,
+            pension=a_decimal(pension) if pension is not None else None,
+            impuesto=a_decimal(impuesto) if impuesto is not None else None,
+        )
+
+    @staticmethod
+    def _prestamo_id(datos: dict) -> int | None:
+        """Identificador de préstamo asociado al pago, si se indicó"""
+        valor = datos.get("prestamo_id")
+        if valor in (None, ""):
+            return None
+        try:
+            return int(valor)
+        except (TypeError, ValueError):
+            return None
+
+    def _registrar_descuento_prestamo(self, pago: Pago) -> bool:
+        """Aplica al préstamo la cuota descontada en un pago"""
+        from src.services.prestamo_service import PrestamoService
+
+        prestamo_id = pago.prestamo_id
+        if prestamo_id is None:
+            return False
+        servicio = PrestamoService(self.session)
+        return servicio.registrar_descuento(
+            int(prestamo_id), float(pago.deduccion_prestamo or 0), pago.fecha_pago
+        )
+
+    def aplicar_cuota_prestamo(self, pago: Pago, prestamo_id: int | None = None) -> bool:
+        """
+        Descuenta en un pago la cuota del préstamo activo del empleado
+
+        Busca la cuota pendiente (o el préstamo indicado), la recorta al
+        tope configurado sobre el neto y actualiza tanto el pago como el
+        saldo del préstamo. Devuelve False si no había nada que descontar.
+        """
+        from src.services.prestamo_service import PrestamoService
+
+        if pago is None or not pago.empleado_id:
+            return False
+        servicio = PrestamoService(self.session)
+        prestamo: Prestamo | None
+        cuota: object = 0
+        if prestamo_id is not None:
+            prestamo = servicio.obtener_prestamo(int(prestamo_id))
+            if prestamo is not None:
+                cuota = prestamo.monto_cuota
+        else:
+            prestamo, cuota = servicio.descuento_para_pago(
+                pago.empleado_id, float(pago.monto_neto or 0)
+            )
+        descuento = redondear(a_decimal(cuota))
+        if prestamo is None or descuento <= 0:
+            return False
+
+        # Las columnas monetarias son Numeric: se escriben en Decimal para
+        # no perder precisión al pasar por float.
+        neto = redondear(
+            max(
+                CERO,
+                a_decimal(pago.monto_bruto)
+                - a_decimal(pago.total_deducciones)
+                - a_decimal(pago.descuentos),
+            )
+        )
+        pago.prestamo_id = prestamo.id
+        pago.deduccion_prestamo = descuento
+        pago.monto_neto = neto
+        self.pago_repository.update(pago)
+        servicio.registrar_descuento(prestamo.id, float(descuento), pago.fecha_pago)
+        return True
 
     @staticmethod
     def _normalizar_fechas_pago(datos: dict) -> tuple[date | None, date | None, date]:
@@ -120,18 +348,18 @@ class PagoService:
         return periodo_inicio, periodo_fin, fecha_pago
 
     def _resolver_deducciones(self, datos: dict, salario_base: float) -> tuple[float, float, float]:
-        """Toma las deducciones explícitas o las calcula según el salario"""
+        """
+        Deducciones del pago: las capturadas a mano o las calculadas
 
-        def deduccion(clave: str, calculadora: Callable[[float], float]) -> float:
-            valor = datos.get(clave)
-            if valor is not None:
-                return round(float(valor), 2)
-            return round(calculadora(salario_base), 2)
-
+        Delega en el motor de nómina, que ya distingue entre el cálculo
+        porcentual histórico y el cálculo por tramos, y respeta las
+        deducciones explícitas si vienen en los datos.
+        """
+        resultado = self.calcular_con_motor(salario_base, datos)
         return (
-            deduccion("deduccion_seguro", self._calcular_deduccion_seguro),
-            deduccion("deduccion_pension", self._calcular_deduccion_pension),
-            deduccion("deduccion_impuesto", self._calcular_deduccion_impuesto),
+            round(float(resultado.deduccion_seguro), 2),
+            round(float(resultado.deduccion_pension), 2),
+            round(float(resultado.deduccion_impuesto), 2),
         )
 
     @staticmethod
@@ -249,9 +477,23 @@ class PagoService:
         return self.pago_repository.marcar_pendiente(pago_id)
 
     def generar_nominas_empleado(
-        self, empleado_id: int, periodo_inicio: date, periodo_fin: date
+        self,
+        empleado_id: int,
+        periodo_inicio: date,
+        periodo_fin: date,
+        incluir_asistencia: bool = True,
+        aplicar_prestamo: bool = True,
     ) -> Pago:
-        """Genera automáticamente la nómina de un empleado para un periodo"""
+        """
+        Genera automáticamente la nómina de un empleado para un periodo
+
+        Args:
+            empleado_id: Empleado a liquidar
+            periodo_inicio: Inicio del período
+            periodo_fin: Fin del período
+            incluir_asistencia: Suma las horas extra registradas en asistencia
+            aplicar_prestamo: Descuenta automáticamente la cuota del préstamo activo
+        """
         from src.utils.helpers import parse_date
 
         if isinstance(periodo_inicio, str):
@@ -288,17 +530,52 @@ class PagoService:
         salario_diario = float(empleado.salario_base) / 30.0
         salario_base_periodo = round(salario_diario * min(dias_trabajados, 30), 2)
 
-        # Crear pago
+        # Horas extra clasificadas que registró el módulo de asistencia
+        horas_extra = (
+            self._horas_extra_periodo(empleado_id, periodo_inicio, periodo_fin)
+            if incluir_asistencia
+            else HorasExtra()
+        )
+
         datos_pago = {
             "empleado_id": empleado_id,
             "tipo_pago": TipoPago.SALARIO_BASE.value,
             "periodo_inicio": periodo_inicio,
             "periodo_fin": periodo_fin,
             "salario_base": salario_base_periodo,
+            "horas_extra_diurnas": float(horas_extra.diurnas),
+            "horas_extra_nocturnas": float(horas_extra.nocturnas),
+            "horas_extra_feriadas": float(horas_extra.feriadas),
             "descripcion": f"Nómina {periodo_inicio.strftime('%Y-%m-%d')} a {periodo_fin.strftime('%Y-%m-%d')}",
         }
 
-        return self.crear_pago(datos_pago)
+        pago = self.crear_pago(datos_pago)
+        if aplicar_prestamo:
+            self.aplicar_cuota_prestamo(pago)
+        return pago
+
+    def _horas_extra_periodo(
+        self, empleado_id: int, periodo_inicio: date, periodo_fin: date
+    ) -> HorasExtra:
+        """
+        Horas extra clasificadas de un período según el módulo de asistencia
+
+        Si el módulo no está disponible, la nómina se genera igual sin
+        horas extra en lugar de fallar.
+        """
+        try:
+            from src.services.asistencia_service import AsistenciaService
+
+            return AsistenciaService(self.session).horas_extra_periodo(
+                empleado_id, periodo_inicio, periodo_fin
+            )
+        except (SQLAlchemyError, ValueError, TypeError):
+            logger.warning(
+                "No se pudieron obtener las horas extra del empleado %s: se continúa sin ellas",
+                empleado_id,
+                exc_info=True,
+            )
+            return HorasExtra()
 
     def generar_nominas_periodo(self, periodo_inicio: date, periodo_fin: date) -> list[Pago]:
         """Genera nóminas para todos los empleados activos en un periodo"""
@@ -354,28 +631,16 @@ class PagoService:
         }
 
     def _calcular_deduccion_seguro(self, salario_base: float) -> float:
-        """Calcula la deducción de seguro social"""
-        porcentaje = self.config_repository.get_valor("porcentaje_seguro", 4.5)
-        try:
-            return round(float(salario_base) * (float(porcentaje) / 100.0), 2)
-        except (ValueError, TypeError):
-            return 0.0
+        """Deducción por seguro social con la configuración vigente"""
+        return float(self.calcular_con_motor(salario_base).deduccion_seguro)
 
     def _calcular_deduccion_pension(self, salario_base: float) -> float:
-        """Calcula la deducción de pensión"""
-        porcentaje = self.config_repository.get_valor("porcentaje_pension", 5.0)
-        try:
-            return round(float(salario_base) * (float(porcentaje) / 100.0), 2)
-        except (ValueError, TypeError):
-            return 0.0
+        """Deducción por pensión con la configuración vigente"""
+        return float(self.calcular_con_motor(salario_base).deduccion_pension)
 
     def _calcular_deduccion_impuesto(self, salario_base: float) -> float:
-        """Calcula la deducción de impuesto"""
-        porcentaje = self.config_repository.get_valor("porcentaje_impuesto", 0.0)
-        try:
-            return round(float(salario_base) * (float(porcentaje) / 100.0), 2)
-        except (ValueError, TypeError):
-            return 0.0
+        """Retención de impuesto con la configuración vigente"""
+        return float(self.calcular_con_motor(salario_base).deduccion_impuesto)
 
     def validar_datos_pago(self, datos: dict) -> list[str]:
         """Valida los datos de un pago"""

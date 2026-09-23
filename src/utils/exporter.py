@@ -14,7 +14,7 @@ import csv
 import re
 from datetime import date, datetime
 from pathlib import Path
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from src.utils.helpers import ensure_directory_exists, format_date
 
@@ -91,6 +91,44 @@ def escribir_csv(datos: Sequence[dict], ruta: str) -> str:
     return str(destino)
 
 
+def _estilizar_pagina(pagina, encabezados: list[str]) -> None:
+    """
+    Aplica el formato común de una hoja de cálculo
+
+    Encabezado en negrita centrado, montos con separador de miles, anchos
+    de columna automáticos y panel superior congelado.
+    """
+    for celda in pagina[1]:
+        celda.font = Font(bold=True)
+        celda.alignment = Alignment(horizontal="center")
+
+    for fila in pagina.iter_rows(min_row=2, max_col=len(encabezados)):
+        for celda in fila:
+            if isinstance(celda.value, float):
+                celda.number_format = "#,##0.00"
+
+    for indice, _ in enumerate(encabezados, start=1):
+        letra = get_column_letter(indice)
+        ancho = max(
+            (len(str(celda.value or "")) for celda in pagina[letra]),
+            default=10,
+        )
+        pagina.column_dimensions[letra].width = min(max(ancho + 2, 10), 60)
+
+    pagina.freeze_panes = "A2"
+
+
+def _nombre_hoja_valido(nombre: str, indice: int) -> str:
+    """
+    Nombre de hoja válido para Excel
+
+    Excel rechaza los caracteres [ ] : * ? / \\ y limita el nombre a 31
+    caracteres; en lugar de fallar, se sanean.
+    """
+    limpio = re.sub(r"[\[\]:*?/\\]", "-", str(nombre)).strip()
+    return (limpio[:31] or f"Hoja{indice}")
+
+
 def escribir_xlsx(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:
     """
     Escribe un libro Excel (.xlsx) con openpyxl.
@@ -121,43 +159,74 @@ def escribir_xlsx(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:
     for fila in filas:
         pagina.append(fila)
 
-    # Estilo del encabezado
-    for celda in pagina[1]:
-        celda.font = Font(bold=True)
-        celda.alignment = Alignment(horizontal="center")
-
-    # Formato numérico para montos y anchos automáticos
-    for fila in pagina.iter_rows(min_row=2, max_col=len(encabezados)):
-        for celda in fila:
-            if isinstance(celda.value, float):
-                celda.number_format = "#,##0.00"
-
-    for indice, _ in enumerate(encabezados, start=1):
-        letra = get_column_letter(indice)
-        ancho = max(
-            (len(str(celda.value or "")) for celda in pagina[letra]),
-            default=10,
-        )
-        pagina.column_dimensions[letra].width = min(max(ancho + 2, 10), 60)
-
-    pagina.freeze_panes = "A2"
+    _estilizar_pagina(pagina, encabezados)
 
     libro.save(destino)
     return str(destino)
 
 
-def exportar_archivo(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:
+def escribir_xlsx_multihoja(hojas: Mapping[str, Sequence[dict]], ruta: str) -> str:
+    """
+    Escribe un libro Excel con una hoja por conjunto de datos
+
+    Args:
+        hojas: Diccionario {nombre de hoja: filas}. Las hojas sin filas se
+            omiten para no generar páginas vacías.
+        ruta:  Ruta de salida (.xlsx)
+
+    Returns:
+        Ruta del archivo generado
+
+    Raises:
+        ValueError: Si no hay datos o openpyxl no está disponible
+    """
+    if not _OPENPYXL_DISPONIBLE:
+        raise ValueError("openpyxl no está instalado. Instale el paquete para exportar a Excel.")
+
+    contenidos: dict[str, Sequence[dict]] = {}
+    for indice, (nombre, filas) in enumerate(hojas.items(), start=1):
+        if filas:
+            contenidos[_nombre_hoja_valido(nombre, indice)] = filas
+    if not contenidos:
+        raise ValueError("No hay datos para exportar")
+
+    destino = Path(ruta)
+    if destino.parent != Path("."):
+        ensure_directory_exists(str(destino.parent))
+
+    libro = Workbook()
+    libro.remove(libro.active)
+    for nombre, filas in contenidos.items():
+        pagina = libro.create_sheet(title=nombre)
+        encabezados = _encabezados(filas)
+        pagina.append(encabezados)
+        for fila in _filas_normalizadas(filas):
+            pagina.append(fila)
+        _estilizar_pagina(pagina, encabezados)
+
+    libro.save(destino)
+    return str(destino)
+
+
+def exportar_archivo(
+    datos: Sequence[dict] | Mapping[str, Sequence[dict]], ruta: str, hoja: str = "Datos"
+) -> str:
     """
     Exporta datos al formato indicado por la extensión de la ruta.
 
     Args:
-        datos: Lista de diccionarios (clave = encabezado)
+        datos: Lista de diccionarios (clave = encabezado) o, para generar
+            un libro con varias hojas, un diccionario {hoja: filas}.
         ruta:  Ruta de salida (.csv o .xlsx)
-        hoja:  Nombre de hoja para archivos Excel
+        hoja:  Nombre de hoja para archivos Excel de una sola hoja
 
     Returns:
         Ruta del archivo generado
     """
+    if isinstance(datos, Mapping):
+        if Path(ruta).suffix.lower() != ".xlsx":
+            raise ValueError("La exportación de varias hojas requiere un archivo .xlsx")
+        return escribir_xlsx_multihoja(datos, ruta)
     extension = Path(ruta).suffix.lower()
     if extension == ".csv":
         return escribir_csv(datos, ruta)

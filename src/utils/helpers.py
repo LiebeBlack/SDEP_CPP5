@@ -7,6 +7,7 @@ el sistema para formateo, validación y manipulación de datos.
 """
 
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -439,6 +440,46 @@ def leer_archivo_seguro(ruta: str, reintentos: int = 3) -> bytes | None:
             if intento < reintentos - 1:
                 time.sleep(0.2 * (intento + 1))
     return None
+
+
+def abrir_con_aplicacion_predeterminada(ruta: str | Path) -> bool:
+    """
+    Abre un archivo con la aplicación predeterminada del sistema
+
+    Se usa para mostrar los reportes generados sin obligar al usuario a
+    buscarlos manualmente. Nunca lanza excepciones: si el archivo no
+existe o el sistema no tiene una aplicación asociada, devuelve False y
+    la interfaz lo informa.
+
+    Args:
+        ruta: Ruta del archivo a abrir
+
+    Returns:
+        bool: True si el sistema aceptó la orden de abrir el archivo
+    """
+    archivo = Path(ruta)
+    if not archivo.exists():
+        logger.warning("No se puede abrir un archivo inexistente: %s", archivo)
+        return False
+    try:
+        if sys.platform.startswith("win"):
+            # os.startfile solo existe en Windows: se resuelve de forma
+            # dinámica para no depender del sistema operativo al importar.
+            abrir = getattr(os, "startfile", None)
+            if abrir is None:
+                return False
+            abrir(str(archivo))
+            return True
+        comando = (
+            ["open", str(archivo)]
+            if sys.platform == "darwin"
+            else ["xdg-open", str(archivo)]
+        )
+        subprocess.Popen(comando, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except OSError as e:
+        logger.warning("No se pudo abrir %s: %s", archivo, e)
+        return False
 
 
 def utcnow() -> datetime:

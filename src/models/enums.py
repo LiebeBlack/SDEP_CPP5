@@ -7,6 +7,18 @@ para mantener la consistencia y tipado de los datos.
 """
 
 from enum import Enum
+from typing import Self
+
+
+def valores_sql(enum_cls: type[Enum]) -> list[str]:
+    """
+    Valores de un enum listos para SQLEnum(values_callable=...)
+
+    SQLAlchemy guarda el valor de cada miembro (no su nombre), que es
+    justo lo que devuelve este helper evitando repetir la comprensión
+    en cada modelo.
+    """
+    return [item.value if hasattr(item, "value") else str(item) for item in enum_cls]
 
 
 class BaseEnum(str, Enum):
@@ -21,6 +33,33 @@ class BaseEnum(str, Enum):
     def has_value(cls, val):
         """Verifica si un valor existe en el enum"""
         return val in cls.values()
+
+    @classmethod
+    def coerce(cls, valor: object) -> Self:
+        """
+        Normaliza un valor al miembro correspondiente del enum
+
+        Las columnas de los modelos se declaran con el tipo del enum, así
+        que al asignarles datos que llegan como texto (formularios,
+        configuración o JSON) conviene convertir de una vez: acepta el
+        propio miembro, su valor y su nombre.
+
+        Raises:
+            ValueError: Si el valor no pertenece al enum
+        """
+        if isinstance(valor, cls):
+            return valor
+        texto = str(valor)
+        try:
+            return cls(texto)
+        except ValueError:
+            pass
+        try:
+            return cls[texto.upper()]
+        except KeyError:
+            raise ValueError(
+                f"{texto!r} no es un valor válido de {cls.__name__}"
+            ) from None
 
 
 class TipoEmpleado(BaseEnum):
@@ -119,6 +158,7 @@ class TipoPago(BaseEnum):
     DESCUENTO = "descuento"
     HORAS_EXTRA = "horas_extra"
     COMISION = "comision"
+    LIQUIDACION = "liquidacion"
 
 
 class MetodoPago(BaseEnum):
@@ -146,3 +186,89 @@ class RolUsuario(BaseEnum):
     MANAGER = "manager"
     USER = "user"
     VIEWER = "viewer"
+
+
+class TipoAsistencia(BaseEnum):
+    """
+    Tipos de registro de asistencia
+
+    Clasifica cada registro diario de jornada, desde la presencia
+    normal hasta las ausencias justificadas.
+    """
+
+    PRESENTE = "presente"
+    TARDANZA = "tardanza"
+    AUSENTE = "ausente"
+    PERMISO = "permiso"
+    VACACIONES = "vacaciones"
+    REPOSO = "reposo"
+    FERIADO = "feriado"
+
+
+class TipoJornada(BaseEnum):
+    """
+    Tipos de jornada laboral
+
+    Determina el recargo aplicable a las horas extra calculadas sobre
+    el horario correspondiente.
+    """
+
+    DIURNA = "diurna"
+    NOCTURNA = "nocturna"
+    MIXTA = "mixta"
+
+
+class TipoContrato(BaseEnum):
+    """Tipos de contrato laboral"""
+
+    INDEFINIDO = "indefinido"
+    TEMPORAL = "temporal"
+    OBRA = "obra"
+    PASANTIA = "pasantia"
+
+
+class EstadoContrato(BaseEnum):
+    """Estados del ciclo de vida de un contrato"""
+
+    VIGENTE = "vigente"
+    RENOVADO = "renovado"
+    VENCIDO = "vencido"
+    TERMINADO = "terminado"
+
+
+class TipoPrestamo(BaseEnum):
+    """Tipos de descuento diferido al empleado"""
+
+    ANTICIPO = "anticipo"
+    PRESTAMO = "prestamo"
+
+
+class EstadoPrestamo(BaseEnum):
+    """Estados por los que pasa un anticipo o préstamo"""
+
+    SOLICITADO = "solicitado"
+    APROBADO = "aprobado"
+    ACTIVO = "activo"
+    PAGADO = "pagado"
+    CANCELADO = "cancelado"
+
+
+class ModoCalculoNomina(BaseEnum):
+    """
+    Modo de cálculo de las deducciones de nómina
+
+    PORCENTAJE conserva el cálculo histórico (porcentajes planos de
+    configuración) y TRAMOS activa el motor con tabla progresiva de
+    ISR, techos de aportes y recargos de horas extra.
+    """
+
+    PORCENTAJE = "porcentaje"
+    TRAMOS = "tramos"
+
+
+class SeveridadAlerta(BaseEnum):
+    """Severidad de las alertas mostradas al usuario"""
+
+    INFO = "info"
+    ADVERTENCIA = "advertencia"
+    CRITICA = "critica"

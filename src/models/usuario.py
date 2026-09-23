@@ -3,8 +3,10 @@ Usuario Model
 Modelo de datos para usuarios del sistema (autenticación y roles)
 """
 
+import json
 from datetime import datetime
-from sqlalchemy import Integer, String, DateTime
+
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +41,57 @@ class Usuario(Base, BaseModel):
     ultimo_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     intentos_fallidos: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     bloqueado: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fecha_cambio_password: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    password_historial: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def historial_hashes(self) -> list[str]:
+        """
+        Hashes de las contraseñas anteriores de la cuenta
+
+        Se guardan como texto JSON; una entrada ilegible se ignora en
+        lugar de impedir el cambio de contraseña.
+        """
+        if not self.password_historial:
+            return []
+        try:
+            datos = json.loads(self.password_historial)
+        except (ValueError, TypeError):
+            return []
+        if not isinstance(datos, list):
+            return []
+        return [str(item) for item in datos]
+
+    def recordar_password(self, hash_anterior: str, limite: int) -> None:
+        """
+        Agrega un hash al historial conservando solo los últimos N
+
+        Args:
+            hash_anterior: Hash de la contraseña que se está reemplazando
+            limite: Cuántos hashes anteriores se conservan (0 = ninguno)
+        """
+        if limite <= 0:
+            self.password_historial = None
+            return
+        historial = [hash_anterior] + self.historial_hashes
+        self.password_historial = json.dumps(historial[:limite])
+
+    def password_vigente(self, dias_caducidad: int, referencia: datetime | None = None) -> bool:
+        """
+        Indica si la contraseña sigue vigente
+
+        Sin caducidad configurada (0 o negativo) la contraseña no expira.
+        Si nunca se registró un cambio, se usa la fecha de creación de la
+        cuenta y, si tampoco existe, se considera vigente.
+        """
+        if dias_caducidad <= 0:
+            return True
+        desde = self.fecha_cambio_password or self.created_at
+        if desde is None:
+            return True
+        momento = referencia or datetime.now()
+        return (momento - desde).days <= dias_caducidad
 
     @property
     def rol_valor(self) -> str:

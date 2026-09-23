@@ -3,7 +3,9 @@ Configuracion Model
 Modelo de datos para configuración del sistema
 """
 
+import json
 from typing import Any
+
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,12 +29,21 @@ class Configuracion(Base, BaseModel):
 
     @property
     def valor_typed(self):
-        """Retorna el valor con el tipo de dato correcto"""
+        """
+        Retorna el valor con el tipo de dato correcto
+
+        Los parámetros compuestos (por ejemplo la tabla de tramos de ISR) se
+        guardan como JSON y se devuelven ya deserializados. Si el contenido no
+        es JSON válido se devuelve el texto tal cual, para que la interfaz
+        pueda mostrarlo y el usuario corregirlo sin que nada falle.
+        """
         if self.valor is None:
             return None
 
         try:
-            if self.tipo_dato == "int":
+            if self.tipo_dato == "json":
+                return json.loads(self.valor)
+            elif self.tipo_dato == "int":
                 return int(self.valor)
             elif self.tipo_dato == "float":
                 return float(self.valor)
@@ -47,13 +58,18 @@ class Configuracion(Base, BaseModel):
                 )
             else:
                 return self.valor
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, json.JSONDecodeError):
             return self.valor
 
     def set_valor(self, valor: Any) -> None:
         """Establece el valor convirtiéndolo al tipo correcto"""
         if valor is None:
             self.valor = None
+        elif self.tipo_dato == "json":
+            if isinstance(valor, str):
+                self.valor = valor
+            else:
+                self.valor = json.dumps(valor, ensure_ascii=False)
         elif self.tipo_dato == "bool":
             if isinstance(valor, str):
                 self.valor = (

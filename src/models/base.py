@@ -7,8 +7,9 @@ heredan, proporcionando campos comunes y métodos utilitarios.
 """
 
 from datetime import datetime, timezone
+from typing import Any
 
-from sqlalchemy import Integer, DateTime
+from sqlalchemy import Integer, DateTime, FromClause
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,7 +19,7 @@ class Base(DeclarativeBase):
     pass
 
 
-def _utcnow():
+def _utcnow() -> datetime:
     """Fecha/hora UTC actual SIN zona horaria (naive).
 
     Sustituye a datetime.utcnow() (deprecado desde Python 3.12) y la base
@@ -42,13 +43,17 @@ class BaseModel:
         updated_at: Fecha y hora de última actualización
     """
 
+    # La tabla la construye SQLAlchemy al combinar este mixin con Base en
+    # cada modelo concreto; se declara aquí para poder tipar to_dict().
+    __table__: FromClause
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=_utcnow, onupdate=_utcnow, nullable=False
     )
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         Convierte el modelo a diccionario
 
@@ -57,7 +62,7 @@ class BaseModel:
         """
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Representación string del modelo
 

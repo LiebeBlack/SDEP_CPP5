@@ -7,6 +7,9 @@ Maneja el inicio y cierre de sesión, la verificación de credenciales
 cuentas con roles. Registra en auditoría cada operación.
 """
 
+from datetime import timedelta
+
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import Usuario, RolUsuario
@@ -57,22 +60,31 @@ class AuthService:
             raise ValueError("Usuario o contraseña incorrectos")
 
         if usuario.bloqueado:
-            self._audit_fallido(username, "cuenta bloqueada")
-            raise ValueError("La cuenta está bloqueada. Contacte al administrador.")
+            # El bloqueo puede ser permanente (lo levanta un administrador)
+            # o temporal, en cuyo caso se libera solo al cumplirse el plazo.
+            if self._bloqueo_temporal_cumplido(usuario):
+                logger.info("Bloqueo temporal cumplido para %s: cuenta liberada", username)
+            else:
+                self._audit_fallido(username, "cuenta bloqueada")
+                raise ValueError("La cuenta está bloqueada. Contacte al administrador.")
 
         if not usuario.activo:
             self._audit_fallido(username, "cuenta inactiva")
             raise ValueError("La cuenta está desactivada. Contacte al administrador.")
 
+        max_intentos = self.max_intentos_fallidos()
         if not SecurityValidator.verify_password(password, usuario.password_hash):
             usuario.intentos_fallidos = (usuario.intentos_fallidos or 0) + 1
-            if usuario.intentos_fallidos >= MAX_INTENTOS_FALLIDOS:
+            if usuario.intentos_fallidos >= max_intentos:
                 usuario.bloqueado = 1
+                usuario.bloqueado_hasta = self._now() + timedelta(
+                    minutes=self.bloqueo_minutos()
+                )
                 self.session.commit()
                 self._audit_fallido(username, "cuenta bloqueada por intentos fallidos")
                 raise ValueError("Demasiados intentos fallidos. La cuenta ha sido bloqueada.")
             self.session.commit()
-            restantes = MAX_INTENTOS_FALLIDOS - usuario.intentos_fallidos
+            restantes = max_intentos - usuario.intentos_fallidos
             self._audit_fallido(username, "contraseña incorrecta")
             raise ValueError(
                 f"Usuario o contraseña incorrectos. " f"Intentos restantes: {restantes}"
@@ -109,13 +121,30 @@ class AuthService:
             if not SecurityValidator.verify_password(actual_password, usuario.password_hash):
                 raise ValueError("La contraseña actual es incorrecta")
 
-        if len(nueva_password or "") < LONGITUD_MINIMA_PASSWORD:
+        minimo = self.longitud_minima_password()
+        if len(nueva_password or "") < minimo:
             raise ValueError(
-                f"La nueva contraseña debe tener al menos " f"{LONGITUD_MINIMA_PASSWORD} caracteres"
+                f"La nueva contraseña debe tener al menos {minimo} caracteres"
             )
 
+        # Rotar por obligación no tiene sentido si se repite la vigente, así
+        # que se compara también contra la contraseña actual.
+        if SecurityValidator.verify_password(nueva_password, usuario.password_hash):
+            raise ValueError("La nueva contraseña no puede ser igual a la actual")
+
+        historial = self.historial_password()
+        if historial > 0 and self._password_repetida(usuario, nueva_password, historial):
+            raise ValueError(
+                f"No puede reutilizar ninguna de sus últimas {historial} contraseñas"
+            )
+
+        hash_anterior = usuario.password_hash
         usuario.password_hash = SecurityValidator.hash_password(nueva_password)
+        usuario.recordar_password(hash_anterior, historial)
+        usuario.fecha_cambio_password = self._now()
         usuario.debe_cambiar_password = 0
+        usuario.intentos_fallidos = 0
+        usuario.bloqueado_hasta = None
         self.session.commit()
         self._audit_exitoso(
             AuditEventType.DATA_UPDATE,
@@ -144,10 +173,9 @@ class AuthService:
         if self.repository.get_by_username(username):
             raise ValueError("Ya existe un usuario con ese nombre")
 
-        if len(password or "") < LONGITUD_MINIMA_PASSWORD:
-            raise ValueError(
-                f"La contraseña debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres"
-            )
+        minimo = self.longitud_minima_password()
+        if len(password or "") < minimo:
+            raise ValueError(f"La contraseña debe tener al menos {minimo} caracteres")
 
         if rol not in RolUsuario.values():
             raise ValueError(f"Rol inválido. Roles válidos: {', '.join(RolUsuario.values())}")
@@ -159,6 +187,7 @@ class AuthService:
             rol=rol,
             activo=1,
             debe_cambiar_password=1 if debe_cambiar_password else 0,
+            fecha_cambio_password=self._now(),
         )
         creado = self.repository.create(usuario)
         self._audit_exitoso(
@@ -232,6 +261,113 @@ class AuthService:
     # ------------------------------------------------------------------
     # Utilidades
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Política de credenciales
+    # ------------------------------------------------------------------
+    def _config(self, clave: str, por_defecto):
+        """Lee un parámetro de configuración de seguridad sin romperse"""
+        try:
+            from src.repositories import ConfiguracionRepository
+
+            valor = ConfiguracionRepository(self.session).get_valor(clave, por_defecto)
+            return por_defecto if valor is None else valor
+        except (SQLAlchemyError, ValueError, TypeError):
+            logger.debug("No se pudo leer la configuración %s", clave, exc_info=True)
+            return por_defecto
+
+    def _config_int(self, clave: str, por_defecto: int) -> int:
+        """Lee un parámetro entero de seguridad"""
+        try:
+            return int(self._config(clave, por_defecto))
+        except (TypeError, ValueError):
+            return por_defecto
+
+    def max_intentos_fallidos(self) -> int:
+        """Intentos fallidos permitidos antes de bloquear la cuenta"""
+        return max(1, self._config_int("max_intentos_fallidos", MAX_INTENTOS_FALLIDOS))
+
+    def bloqueo_minutos(self) -> int:
+        """Minutos que dura el bloqueo temporal por intentos fallidos"""
+        return max(1, self._config_int("bloqueo_minutos", 15))
+
+    def longitud_minima_password(self) -> int:
+        """Longitud mínima exigida a una contraseña"""
+        return max(1, self._config_int("password_min_longitud", LONGITUD_MINIMA_PASSWORD))
+
+    def historial_password(self) -> int:
+        """Contraseñas anteriores que no se pueden repetir"""
+        return max(0, self._config_int("password_historial", 3))
+
+    def dias_caducidad_password(self) -> int:
+        """Días de vigencia de una contraseña (0 = sin caducidad)"""
+        return max(0, self._config_int("password_dias_caducidad", 90))
+
+    def _bloqueo_temporal_cumplido(self, usuario: Usuario) -> bool:
+        """
+        Libera la cuenta si su bloqueo temporal ya venció
+
+        Un bloqueo sin fecha de expiración es definitivo y solo lo levanta
+        un administrador.
+        """
+        if usuario.bloqueado_hasta is None:
+            return False
+        if self._now() < usuario.bloqueado_hasta:
+            return False
+        usuario.bloqueado = 0
+        usuario.bloqueado_hasta = None
+        usuario.intentos_fallidos = 0
+        self.session.commit()
+        return True
+
+    def _password_repetida(self, usuario: Usuario, nueva_password: str, historial: int) -> bool:
+        """Indica si la nueva contraseña ya fue usada recientemente"""
+        if historial <= 0:
+            return False
+        for hash_anterior in usuario.historial_hashes[:historial]:
+            if SecurityValidator.verify_password(nueva_password, hash_anterior):
+                return True
+        return False
+
+    def password_caducada(self, usuario: Usuario) -> bool:
+        """Indica si la contraseña del usuario superó su vigencia"""
+        return not usuario.password_vigente(self.dias_caducidad_password())
+
+    def marcar_cambio_obligatorio_si_caducada(self, usuario: Usuario) -> bool:
+        """
+        Marca la cuenta para cambio obligatorio cuando la contraseña expiró
+
+        Returns:
+            bool: True si la cuenta quedó marcada para cambiar contraseña.
+        """
+        if usuario.debe_cambiar_password or not self.password_caducada(usuario):
+            return False
+        usuario.debe_cambiar_password = 1
+        self.session.commit()
+        self._audit_exitoso(
+            AuditEventType.SECURITY_PERMISSION_DENIED,
+            usuario.username,
+            entity_id=usuario.id,
+            details={"motivo": "contraseña caducada"},
+        )
+        return True
+
+    def desbloquear_usuario(self, usuario_id: int) -> Usuario:
+        """Levanta el bloqueo de una cuenta (acción de administrador)"""
+        usuario = self.repository.get_by_id(usuario_id)
+        if not usuario:
+            raise ValueError("Usuario no encontrado")
+        usuario.bloqueado = 0
+        usuario.bloqueado_hasta = None
+        usuario.intentos_fallidos = 0
+        self.session.commit()
+        self._audit_exitoso(
+            AuditEventType.DATA_UPDATE,
+            usuario.username,
+            entity_id=usuario.id,
+            details={"operacion": "desbloquear_usuario"},
+        )
+        return usuario
+
     def usuario_por_id(self, usuario_id: int) -> Usuario | None:
         return self.repository.get_by_id(usuario_id)
 

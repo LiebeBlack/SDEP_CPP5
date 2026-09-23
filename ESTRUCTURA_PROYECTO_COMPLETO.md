@@ -103,37 +103,46 @@
 
 ### 3.1 Estructura de Directorios (Python EXE)
 ```
-project/
+SDEP_CPP5/
 ├── docs/                 # Documentación
-├── src/                  # Código fuente
+├── src/                  # Código fuente (estructura real, versión 2.82)
 │   ├── __init__.py
-│   ├── gui/              # Componentes GUI
-│   │   ├── __init__.py
-│   │   ├── main_window.py
-│   │   ├── dialogs/
-│   │   ├── widgets/
-│   │   └── resources/    # Icons, images, UI assets
-│   ├── models/           # Modelos de datos
-│   │   ├── __init__.py
-│   │   ├── user_model.py
-│   │   └── data_model.py
-│   ├── services/         # Lógica de negocio
-│   │   ├── __init__.py
-│   │   ├── user_service.py
-│   │   └── data_service.py
-│   ├── repositories/     # Data access layer
-│   │   ├── __init__.py
-│   │   ├── user_repository.py
-│   │   └── data_repository.py
-│   ├── utils/            # Utilidades
-│   │   ├── __init__.py
-│   │   ├── helpers.py
-│   │   └── validators.py
-│   ├── config/           # Configuración
-│   │   ├── __init__.py
+│   ├── config/           # Configuración y siembra de parámetros
 │   │   ├── settings.py
 │   │   └── database.py
-│   └── main.py           # Entry point principal
+│   ├── gui/              # Interfaz gráfica
+│   │   ├── main_window.py     # Ventana principal, módulos y permisos
+│   │   ├── frames.py          # Módulos históricos (empleados, documentos…)
+│   │   ├── asistencia_frame.py
+│   │   ├── contratos_frame.py
+│   │   ├── prestamos_frame.py
+│   │   ├── alertas_frame.py
+│   │   ├── alertas_panel.py   # Panel de alertas del Dashboard
+│   │   ├── login_window.py
+│   │   ├── theme.py           # Paleta clara/oscura y estilos ttk
+│   │   └── widgets/           # Gráficos (barras, dona, línea) y KPIs
+│   ├── models/           # Modelos de datos (SQLAlchemy 2.x)
+│   │   ├── empleado.py, documento.py, incidencia.py, pago.py
+│   │   ├── horario.py, asistencia.py, contrato.py, prestamo.py
+│   │   └── configuracion.py, usuario.py, enums.py, base.py
+│   ├── nomina/           # Motor de cálculo puro (sin BD ni interfaz)
+│   │   ├── tipos.py, parametros.py, motor.py
+│   │   ├── isr.py, seguridad_social.py, horas_extra.py
+│   │   └── prestaciones.py, prestamos.py, finiquito.py
+│   ├── repositories/     # Acceso a datos (repositorio genérico + dominio)
+│   ├── services/         # Lógica de negocio por dominio
+│   │   ├── empleado, documento, incidencia, pago y configuración
+│   │   ├── asistencia, contrato y prestamo
+│   │   ├── alerta_service.py  # Alertas accionables
+│   │   └── auth_service.py    # Usuarios y política de credenciales
+│   ├── utils/            # Utilidades transversales
+│   │   ├── helpers.py, validators.py, security.py
+│   │   ├── jornada.py         # Cálculos de jornada laboral
+│   │   ├── pdf_generator.py   # Reportes y recibos PDF
+│   │   ├── exporter.py        # Exportación Excel/CSV (multihoja)
+│   │   ├── audit_logger.py    # Auditoría
+│   │   └── backup_manager.py, backup_scheduler.py
+│   └── main.py           # Punto de entrada y selftest
 ├── tests/                # Tests
 │   ├── __init__.py
 │   ├── unit/

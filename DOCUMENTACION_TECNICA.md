@@ -86,6 +86,43 @@ Registra los pagos y nóminas:
 - **Desglose**: Salario base, deducciones (seguro, pensión, impuesto)
 - **Estado**: Pagado/pendiente, fecha de registro
 
+### Modelo Horario
+
+Define la jornada semanal de un empleado:
+- Día de la semana, hora de inicio y fin, descanso y tolerancia
+- Tipo de jornada (diurna, nocturna o mixta), que determina el recargo de
+  las horas extra
+- Cálculo de minutos y horas de la jornada
+
+### Modelo Asistencia
+
+Registro diario de la jornada:
+- Fecha, horas de entrada y salida, horas trabajadas y minutos de tardanza
+- Horas extra clasificadas (diurnas, nocturnas y feriadas)
+- Tipo (presente, tardanza, ausente, permiso, vacaciones, reposo, feriado),
+  marca de justificada y vínculo con la incidencia que la respalda
+- Propiedades `es_falta`, `tiene_tardanza` y `total_horas_extra`
+
+### Modelo Contrato
+
+Contrato laboral con su ciclo de vida:
+- Número, tipo (indefinido, temporal, por obra o pasantía), cargo,
+  departamento, salario pactado y horas semanales
+- Fechas de inicio, fin y terminación, estado, renovación automática y
+  enlace al contrato anterior
+- Liquidación registrada, motivo de terminación y cláusulas
+- Propiedades `esta_vigente`, `por_vencer()`, `dias_para_vencer`,
+  `dias_vigencia` y salario diario y por hora
+
+### Modelo Prestamo
+
+Anticipo o préstamo al empleado:
+- Tipo, estado, monto, número de cuotas, monto de cuota, cuotas pagadas y
+  saldo (fuente de verdad de la amortización)
+- Fechas de solicitud, aprobación y descuentos, motivo y usuario aprobador
+- Propiedades `esta_activo`, `se_puede_descontar`, `porcentaje_pagado` y
+  `monto_pagado`
+
 ### Modelo Usuario
 
 Gestiona el acceso al sistema (autenticación y roles):
@@ -138,10 +175,52 @@ Administra permisos y ausencias:
 
 Procesa nóminas y pagos:
 - Generación automática de nóminas
-- Cálculo de deducciones
-- Gestión de pagos pendientes
-- Reportes por periodo
-- Integración con incidencias
+- Delega el cálculo en el motor de nómina (`src/nomina`) y conserva el
+  cálculo porcentual histórico cuando esa modalidad está activa
+- Descuento de la cuota de préstamo respetando el tope sobre el neto
+- Toma las horas extra del período desde el servicio de asistencia
+- Gestión de pagos pendientes y pagos de liquidación
+- Reportes por periodo e integración con incidencias
+
+### AsistenciaService
+
+Registra la jornada real del personal:
+- Alta y edición de jornadas con horas trabajadas, tardanzas y horas
+  extra clasificadas (diurnas, nocturnas, feriadas)
+- Cálculo contra el horario del empleado o contra la jornada por defecto
+- Ausencias justificadas automáticas desde las incidencias aprobadas
+  (operación idempotente)
+- Totales y resumen por período para la nómina y los reportes
+- Empleados con exceso de horas extra semanales
+
+### ContratoService
+
+Administra el ciclo de vida contractual:
+- Alta con validaciones y numeración automática; un solo contrato vigente
+  por empleado
+- Renovación encadenada (arranca el día siguiente al vencimiento y enlaza
+  con el contrato anterior)
+- Terminación con cálculo del finiquito y registro del pago de liquidación
+- Sincronización de estados (vencidos y renovables) y listados por vencer
+- Sincronización del cargo, departamento y salario pactados con el empleado
+
+### PrestamoService
+
+Controla anticipos y préstamos:
+- Solicitud con validación del tope de descuento sobre el salario
+- Aprobación, rechazo y cancelación con auditoría
+- Cuota pendiente y descuento aplicable al neto del pago
+- Amortización (saldo, cuotas pagadas y cierre automático)
+- Plan de pagos y estadísticas de la cartera
+
+### AlertaService
+
+Genera las alertas accionables del sistema:
+- Documentos, contratos (vencidos y por vencer), empleados sin contrato
+- Incidencias pendientes antiguas, asistencia sin registrar y ausentismo
+- Préstamos por aprobar, pagos pendientes antiguos y respaldos atrasados
+- Credenciales caducadas y cuentas bloqueadas
+- Orden por severidad y `resumen()` para la barra lateral y el panel
 
 ### ConfiguracionService
 
@@ -150,6 +229,37 @@ Controla la configuración del sistema:
 - Configuración por categorías
 - Validación de valores
 - Recuperación de configuraciones
+
+## Motor de Nómina (`src/nomina`)
+
+Paquete de **cálculo puro**: no accede a la base de datos ni a la interfaz,
+recibe datos ya cargados y devuelve un resultado verificable. Todas las
+operaciones usan `Decimal` con redondeo comercial (`ROUND_HALF_UP`) a dos
+decimales, de modo que un recibo nunca queda con centavos imposibles.
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `tipos.py` | Datos de entrada/salida (`EntradaNomina`, `ResultadoNomina`, `HorasExtra`, `TramoISR`, `ParametrosNomina`, `EntradaFiniquito`, `ResultadoFiniquito`) y utilidades `a_decimal`/`redondear` |
+| `parametros.py` | Carga de los parámetros desde la configuración, valores por defecto, construcción de la tabla de tramos y validación de coherencia |
+| `seguridad_social.py` | Base afectada con techos, aportes del empleado y del patrono |
+| `isr.py` | Tramo aplicable, impuesto del período, ajuste anual y tasa efectiva |
+| `horas_extra.py` | Valor de la hora ordinaria y montos por tipo de recargo |
+| `prestaciones.py` | Antigüedad, aguinaldo, bono vacacional, vacaciones, prestaciones, indemnización y preaviso |
+| `prestamos.py` | Cuota, plan de amortización, descuento y validación de solicitudes |
+| `finiquito.py` | Liquidación completa y días de vacaciones pendientes |
+| `motor.py` | Orquestador: `calcular_nomina`, `lineas_recibo` y `resumen_costo_empleador` |
+
+**Modalidades** (`ParametrosNomina.modo`):
+
+- `porcentaje`: aplica los porcentajes configurados sobre el salario base y
+  reproduce exactamente el cálculo histórico del sistema.
+- `tramos`: cálculo completo con techos de cotización, tabla progresiva de
+  ISR (cuota fija + tasa sobre el excedente), base gravable = ingresos menos
+  aportes exentos, aportes patronales y recargos de horas extra.
+
+Invariantes garantizadas: el neto nunca es negativo, el impuesto nunca
+supera la base y un dato sucio en la configuración cae al valor por defecto
+en lugar de romper el cálculo.
 
 ## Utilidades del Sistema
 
@@ -201,6 +311,29 @@ Registro persistente de eventos del sistema en archivos JSON:
 - Consulta de eventos recientes y exportación a Excel/CSV desde la GUI
 - Se activa/desactiva desde Configuración > Seguridad y Respaldo
 
+### Jornada
+
+`src/utils/jornada.py` reúne los cálculos puros de jornada laboral:
+- Minutos y horas entre marcas de entrada y salida (incluidos los turnos
+  que cruzan la medianoche) y descuento del descanso
+- Minutos de tardanza sobre la hora prevista, aplicando la tolerancia
+- Reconocimiento de feriados (desde lista o JSON) y de días de descanso
+  configurables
+- Clasificación de las horas extra por tipo de jornada y de los registros
+  de asistencia (presente, tardanza o ausente)
+
+### BackupScheduler
+
+`src/utils/backup_scheduler.py` programa los respaldos automáticos:
+- Intervalo en horas e interruptor de habilitación desde la configuración
+- ``ultima_ejecucion``realmente usada (incluye los respaldos ya guardados,
+  de modo que reiniciar la aplicación no respalde antes de tiempo)
+- Verificación de integridad del archivo generado y estado consultable
+- ``comprobar_y_ejecutar``con callback para avisar a la interfaz y
+  ``programar``/``cancelar``sobre el bucle de eventos de Tk
+- ``ejecutar(forzar=True)``para el botón "Respaldar ahora", y nunca lanza
+  excepciones: un respaldo fallido no debe tumbar la aplicación
+
 ### BackupManager
 
 Copias de seguridad de la base de datos:
@@ -237,10 +370,23 @@ Exportación de listados a archivos:
 7. **NominaFrame**: Procesamiento de nóminas, recibos y planillas PDF
 8. **ConfiguracionFrame**: Configuración institucional, de nómina, RRHH,
    seguridad/respaldos, usuarios y auditoría
-9. **Diálogos (Toplevel)**: `EmpleadoDialog`, `EmpleadoDetailsDialog`,
-   `DocumentoDialog`, `IncidenciaDialog`, `ApprovalDialog`, `PagoDialog`,
-   `UsuarioDialog`, `CambiarPasswordDialog`, `InfoDialog` (texto extenso
-   para Ayuda/Acerca de). Todos se cierran con **Esc**
+9. **AsistenciaFrame**: registro de jornadas, horarios, aplicación de
+   incidencias aprobadas, totales del período y reporte PDF
+10. **ContratosFrame**: alta, renovación, terminación con finiquito y
+    control de vencimientos
+11. **PrestamosFrame**: solicitudes, aprobación o rechazo, plan de pagos y
+    cartera
+12. **AlertasFrame** y **PanelAlertas**: alertas accionables por severidad
+    con navegación al módulo y exportación PDF
+13. **Widgets de gráficos** (`src/gui/widgets/graficos.py`): barras, dona,
+    línea y tarjetas de indicador dibujadas sobre `Canvas`, sin
+    dependencias externas de gráficos
+14. **Diálogos (Toplevel)**: `EmpleadoDialog`, `EmpleadoDetailsDialog`,
+    `DocumentoDialog`, `IncidenciaDialog`, `ApprovalDialog`, `PagoDialog`,
+    `JornadaDialog`, `ContratoDialog`, `RenovacionDialog`,
+    `TerminacionDialog`, `SolicitudDialog`, `UsuarioDialog`,
+    `CambiarPasswordDialog`, `InfoDialog` (texto extenso para
+    Ayuda/Acerca de). Todos se cierran con **Esc**
 
 ### Theme (Apariencia)
 

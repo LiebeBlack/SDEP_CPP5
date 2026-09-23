@@ -50,7 +50,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-MODULOS = ["dashboard", "empleados", "documentos", "incidencias", "nomina", "configuracion"]
+MODULOS = [
+    "dashboard",
+    "empleados",
+    "documentos",
+    "incidencias",
+    "asistencia",
+    "contratos",
+    "prestamos",
+    "nomina",
+    "alertas",
+    "configuracion",
+]
 
 
 @pytest.fixture()
@@ -110,6 +121,20 @@ class TestMainWindow:
             "incidencias",
             "pagos",
         }
+        # Los indicadores analíticos y los gráficos también se construyen
+        assert set(main_window.current_frame.indicadores) == {
+            "nomina_mes",
+            "ausentismo",
+            "por_vencer",
+            "prestamos",
+        }
+        for grafico in (
+            main_window.current_frame.grafico_departamentos,
+            main_window.current_frame.grafico_contratos,
+            main_window.current_frame.grafico_egresos,
+        ):
+            assert grafico.winfo_exists()
+        assert main_window.current_frame.panel_alertas.winfo_exists()
         assert main_window.current_frame.winfo_ismapped()
 
     def test_permisos_admin(self, main_window):
@@ -120,6 +145,9 @@ class TestMainWindow:
         assert main_window.rol_label() == "Administrador"
 
     def test_navegacion_todos_los_modulos(self, main_window):
+        from src.gui.alertas_frame import AlertasFrame
+        from src.gui.asistencia_frame import AsistenciaFrame
+        from src.gui.contratos_frame import ContratosFrame
         from src.gui.frames import (
             DashboardFrame,
             EmpleadosFrame,
@@ -128,13 +156,18 @@ class TestMainWindow:
             NominaFrame,
             ConfiguracionFrame,
         )
+        from src.gui.prestamos_frame import PrestamosFrame
 
         esperados = {
             "dashboard": DashboardFrame,
             "empleados": EmpleadosFrame,
             "documentos": DocumentosFrame,
             "incidencias": IncidenciasFrame,
+            "asistencia": AsistenciaFrame,
+            "contratos": ContratosFrame,
+            "prestamos": PrestamosFrame,
             "nomina": NominaFrame,
+            "alertas": AlertasFrame,
             "configuracion": ConfiguracionFrame,
         }
         for nombre, clase in esperados.items():
@@ -149,7 +182,11 @@ class TestMainWindow:
             "empleados": "tree",
             "documentos": "tree",
             "incidencias": "tree",
+            "asistencia": "tree",
+            "contratos": "tree",
+            "prestamos": "tree",
             "nomina": "tree",
+            "alertas": "tree",
             "configuracion": "audit_tree",
         }
         for modulo, attr in casos.items():

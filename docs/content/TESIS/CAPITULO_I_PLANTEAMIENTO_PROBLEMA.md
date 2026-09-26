@@ -2,265 +2,134 @@
 
 ## 1.1 INTRODUCCIÓN
 
-La gestión eficiente de recursos humanos representa un componente fundamental para el funcionamiento adecuado de cualquier organización, y las instituciones educativas no constituyen una excepción a este principio. En el contexto contemporáneo, caracterizado por la digitalización acelerada de procesos administrativos, las instituciones educativas enfrentan el desafío de modernizar sus sistemas de gestión de personal mientras mantienen la calidad del servicio educativo y optimizan el uso de recursos disponibles.
+La gestión de recursos humanos constituye una función administrativa crítica en cualquier organización y, de manera particular, en las instituciones educativas, donde la continuidad del servicio depende de que el personal perciba su remuneración con oportunidad y exactitud. En el contexto contemporáneo, marcado por la digitalización de los procesos administrativos, las instituciones educativas enfrentan el desafío de modernizar esa función sin comprometer la calidad del servicio educativo ni la estabilidad de sus finanzas.
 
-Este capítulo presenta el problema de investigación que motiva el desarrollo del Sistema de Gestión de Personal y Nómina para instituciones educativas, describiendo la realidad problemática, formulando las interrogantes de investigación, estableciendo los objetivos del estudio y justificando su relevancia académica, social y práctica.
+El presente capítulo delimita el problema que dio origen a la investigación. Expone, en primer lugar, la realidad problemática observada en instituciones educativas de recursos limitados; en segundo lugar, formula las interrogantes que orientaron el estudio; en tercer lugar, establece los objetivos general y específicos; y, finalmente, justifica la investigación desde las perspectivas teórica, práctica, metodológica, social y económica, además de analizar su viabilidad y delimitar sus alcances y limitaciones.
 
 ## 1.2 REALIDAD PROBLEMÁTICA
 
 ### 1.2.1 Contexto General
 
-Las instituciones educativas contemporáneas operan en un entorno cada vez más complejo y competitivo, donde la eficiencia administrativa se ha convertido en un factor determinante para la calidad del servicio educativo. La gestión de recursos humanos en estos contextos involucra múltiples procesos interrelacionados: registro y actualización de información de empleados, procesamiento de nóminas, control de documentos, gestión de incidencias y permisos, y generación de reportes para la toma de decisiones.
+La transformación digital ha modificado de manera sustantiva los procesos administrativos del sector educativo, aunque su efecto ha sido desigual entre instituciones y regiones. La revisión sistemática de Benavides et al. (2020) sobre instituciones de educación superior identifica, entre los impulsores de esa transformación, la demanda de nuevos servicios, la presión competitiva y la madurez tecnológica disponible; y advierte que las barreras más frecuentes son la resistencia al cambio, las limitaciones presupuestarias y las brechas de competencia digital del personal. Esa caracterización resulta pertinente para comprender el caso que aquí se estudia: mientras las instituciones con mayor capacidad financiera adoptan plataformas integradas de gestión, las instituciones con recursos limitados permanecen en procesos manuales o en aplicaciones aisladas que no cubren la totalidad del ciclo administrativo.
 
-La transformación digital ha impactado significativamente el sector educativo, sin embargo, muchas instituciones, particularmente aquellas con recursos limitados o en contextos rurales y suburbanos, continúan dependiendo de procesos manuales o sistemas informáticos obsoletos para la gestión de personal. Esta situación genera ineficiencias operativas que afectan tanto la calidad del servicio educativo como las condiciones laborales del personal.
+La gestión de recursos humanos en el ámbito educativo comprende, según los componentes descritos por Johnson, Carlson y Kavanagh (2021), el registro y la actualización de la información del personal, el procesamiento de la remuneración, el control del tiempo y la asistencia, la administración de prestaciones y la producción de reportes para la toma de decisiones. Cuando estos componentes se sostienen con instrumentos dispersos —planillas de cálculo, registros físicos y archivos personales de cada departamento—, la función administrativa queda expuesta a errores acumulativos y a una carga de trabajo que crece con el tamaño de la institución.
 
 ### 1.2.2 Diagnóstico de la Situación Actual
 
-A través de la investigación preliminar realizada en instituciones educativas de la región, se identificaron los siguientes problemas críticos en la gestión de personal:
+El diagnóstico que se presenta a continuación resulta de tres fuentes convergentes. La primera es la observación directa de los procesos de gestión de personal, registrada conforme al procedimiento del apartado 3.4.1.2. La segunda son las entrevistas semiestructuradas aplicadas al personal directivo, administrativo y de recursos humanos con el instrumento del Anexo 1, cuyo contenido indagó los procesos vigentes, las dificultades recurrentes y las expectativas frente a una solución informática. La tercera es la literatura especializada, que permite contrastar si los obstáculos identificados en el ámbito local corresponden a patrones documentados en otros contextos o si constituyen particularidades del caso. Las cinco situaciones que se describen a continuación fueron las más mencionadas y las que concentran el mayor efecto sobre la operación diaria.
 
-#### 1.2.2.1 Gestión Ineficiente de Información de Empleados
+#### 1.2.2.1 Gestión Ineficiente de la Información del Personal
 
-El registro, actualización y consulta de información de empleados se realiza predominantemente mediante procesos manuales que involucran:
+El registro, la actualización y la consulta de la información de los empleados se apoyan de manera predominante en instrumentos manuales. Los legajos se conservan en formato físico, lo que consume espacio y los expone a deterioro, extravío o daño; las planillas de cálculo utilizadas no siguen un formato común entre departamentos, lo que dificulta consolidar la información; y cada modificación en los datos de un empleado obliga a actualizar varios archivos, circunstancia que multiplica las oportunidades de inconsistencia. La consecuencia inmediata es que la búsqueda de un dato concreto exige un tiempo desproporcionado respecto de su valor, y que la institución carece de una fuente única de verdad sobre su propio personal.
 
-- **Registros en papel:** Archivos físicos que ocupan espacio significativo y son susceptibles a deterioro, pérdida o daño.
-- **Hojas de cálculo no estandarizadas:** Cada departamento utiliza formatos diferentes, dificultando la consolidación de información.
-- **Procesos manuales de actualización:** Los cambios en la información de empleados requieren modificaciones manuales en múltiples archivos, incrementando el riesgo de inconsistencias.
-- **Dificultades en la búsqueda:** La recuperación de información específica consume tiempo considerable debido a la falta de sistemas de búsqueda eficientes.
+#### 1.2.2.2 Procesamiento Manual de la Nómina
 
-**Consecuencias:** Estas prácticas resultan en tiempos de procesamiento excesivos, errores en la información, dificultades para generar reportes y falta de integridad en los datos.
-
-#### 1.2.2.2 Procesamiento Manual de Nóminas
-
-El cálculo y procesamiento de nóminas representa uno de los procesos más críticos y complejos en la gestión de personal, y actualmente se realiza de manera manual con las siguientes características:
-
-- **Cálculos manuales de deducciones:** Los porcentajes de seguro social, pensión e impuestos se calculan manualmente para cada empleado.
-- **Ausencia de automatización:** No existen sistemas que calculen automáticamente días trabajados, considerando incidencias y permisos.
-- **Riesgo de errores financieros:** La manipulación manual de cifras monetarias incrementa significativamente el riesgo de errores con consecuencias económicas y legales.
-- **Dificultad en auditoría:** La falta de registros detallados dificulta la auditoría de procesos financieros.
-
-**Consecuencias:** Errores en pagos, insatisfacción laboral, riesgos legales, consumo excesivo de tiempo administrativo y falta de transparencia financiera.
+El cálculo y el procesamiento de la remuneración constituyen el proceso de mayor criticidad, tanto por su efecto económico directo como por sus implicaciones legales. En las instituciones observadas, las deducciones de seguridad social, pensión e impuesto se calculan de forma individual para cada empleado; la determinación de los días efectivamente trabajados, cuando existen incidencias o permisos, se resuelve con criterio del operador y no mediante un procedimiento verificable; y la ausencia de registros detallados dificulta la revisión posterior. La literatura sobre gestión electrónica de recursos humanos ya advertía que los procesos de esta naturaleza son los que concentran el mayor riesgo operativo cuando carecen de automatización, y que su corrección posterior resulta más costosa que la prevención (Bondarouk & Ruël, 2009).
 
 #### 1.2.2.3 Control Documental Deficiente
 
-La gestión de documentos de empleados (cédulas, títulos, certificados, reposos médicos) presenta múltiples deficiencias:
-
-- **Almacenamiento físico:** Los documentos se almacenan físicamente, ocupando espacio y siendo susceptibles a pérdida o deterioro.
-- **Falta de control de vencimientos:** No existen sistemas automatizados para alertar sobre documentos próximos a vencer o vencidos.
-- **Dificultad de acceso:** La recuperación de documentos específicos requiere búsqueda manual en archivos físicos.
-- **Ausencia de digitalización:** La falta de documentos digitalizados dificulta el acceso remoto y la compartición de información.
-
-**Consecuencias:** Pérdida de documentos importantes, incumplimiento de normativas legales, dificultades en auditorías y riesgos administrativos.
+La documentación laboral y académica del personal —documentos de identidad, títulos, certificados y reposos médicos— se administra sin un control sistemático de vigencia. Los documentos se almacenan físicamente y su recuperación depende de quien conozca la ubicación exacta del expediente; no existe un mecanismo que advierta sobre títulos próximos a vencer o certificaciones caducadas; y la verificación de completitud de un legajo exige una revisión manual en cada ocasión. El efecto de esta deficiencia es doble: por un lado, la institución queda expuesta a incumplimientos normativos derivados de documentación vencida; por otro, la auditoría interna se vuelve inviable en la práctica.
 
 #### 1.2.2.4 Gestión Inadecuada de Incidencias
 
-El control de permisos, reposos médicos, ausencias y vacaciones se realiza de manera desorganizada:
+El control de permisos, reposos médicos, ausencias y vacaciones carece de un procedimiento uniforme. Las solicitudes se registran en papel o en formatos que varían entre dependencias, sin un estado formal que permita saber si una solicitud fue aprobada, rechazada o quedó pendiente; y la repercusión de cada incidencia sobre el cálculo de la remuneración se resuelve por separado, sin vínculo con el registro de la solicitud. Esta desarticulación produce dos efectos: la institución no conoce con certeza la disponibilidad real de su personal en un momento dado, y las incidencias se traducen en ajustes de nómina que nadie puede reconstruir después.
 
-- **Registros manuales:** Las incidencias se registran en papel o formatos no estandarizados.
-- **Falta de seguimiento:** No existe un sistema centralizado para seguimiento del estado de incidencias (pendientes, aprobadas, rechazadas).
-- **Dificultad en cálculo de días:** El cálculo de días trabajados considerando incidencias se realiza manualmente.
-- **Ausencia de flujo de aprobación:** No existen procesos formalizados para aprobación o rechazo de solicitudes.
+#### 1.2.2.5 Limitaciones en la Generación de Reportes
 
-**Consecuencias:** Inconsistencias en el cálculo de nóminas, falta de control sobre ausencias, dificultades en planificación de recursos y posibles conflictos laborales.
+La producción de información consolidada se resuelve mediante compilaciones manuales que consumen tiempo y rara vez llegan a tiempo. No existen datos actualizados sobre la composición del personal; la elaboración de una constancia de trabajo o de ingresos requiere la intervención de quien conoce el expediente; y la información histórica, cuando existe, no se encuentra estructurada para análisis comparativo. En consecuencia, las decisiones sobre plantilla, costos de personal y planificación de contrataciones se adoptan con información incompleta, y la institución depende de la memoria de sus funcionarios más antiguos para reconstruir su propia historia administrativa.
 
-#### 1.2.2.5 Limitaciones en Generación de Reportes
-
-La incapacidad para generar reportes oportunos y detallados representa una barrera significativa para la toma de decisiones:
-
-- **Reportes manuales:** La generación de reportes estadísticos requiere compilación manual de información dispersa.
-- **Falta de datos en tiempo real:** No existen sistemas que proporcionen información actualizada sobre el estado del personal.
-- **Dificultad en análisis de tendencias:** La ausencia de datos históricos estructurados dificulta el análisis de tendencias y patrones.
-- **Limitaciones en documentación oficial:** La generación de documentos oficiales (constancias, recibos) requiere procesos manuales extensos.
-
-**Consecuencias:** Toma de decisiones basada en información incompleta, incapacidad para planificación estratégica y dificultades en cumplimiento de requisitos legales.
+Los obstáculos descritos no constituyen una particularidad aislada. Pelgrum (2001), a partir de una evaluación educativa de alcance mundial, documentó que la insuficiencia de equipos y programas, la capacitación limitada del personal y la falta de tiempo para familiarizarse con herramientas nuevas figuran entre las principales barreras para la incorporación de tecnología en el ámbito educativo. Voogt y Pieters (2019) añadieron que la disponibilidad de sistemas de información confiables es condición necesaria pero no suficiente para mejorar la gestión educativa, pues se requiere además capacidad institucional para interpretar los datos y traducirlos en decisiones. Ambos hallazgos orientan la estrategia adoptada en esta investigación: una solución tecnológica sencilla, acompañada de formación y de documentación.
 
 ### 1.2.3 Impacto de la Problemática
 
-La situación descrita anteriormente tiene impactos significativos en múltiples dimensiones:
-
-#### Impacto en la Calidad Educativa
-
-El tiempo excesivo dedicado a procesos administrativos manuales representa un costo de oportunidad para las instituciones educativas. Personal administrativo que podría dedicarse a actividades de apoyo académico y pedagógico se encuentra consumido en tareas rutinarias que podrían automatizarse.
-
-#### Impacto en Condiciones Laborales
-
-Los errores en nóminas, retrasos en pagos y dificultades en el acceso a información personal generan insatisfacción laboral entre el personal educativo. Esta situación puede afectar la motivación, el compromiso organizacional y la retención de talento.
-
-#### Impacto en Transparencia y Control
-
-La falta de sistemas automatizados dificulta la auditoría de procesos administrativos y financieros, incrementando el riesgo de irregularidades y reduciendo la transparencia en la gestión de recursos.
-
-#### Impacto en Sostenibilidad Institucional
-
-La ineficiencia administrativa genera costos operativos adicionales que podrían destinarse a mejoras educativas. Además, la falta de sistemas modernos de gestión puede afectar la capacidad de las instituciones para cumplir con normativas legales y estándares de calidad.
+El efecto de las deficiencias descritas se extiende a cuatro dimensiones. En la dimensión pedagógica, el tiempo que el personal administrativo destina a tareas que podrían automatizarse constituye un costo de oportunidad: son horas que dejan de orientarse al acompañamiento académico. En la dimensión laboral, los errores de liquidación, los atrasos y la dificultad para acceder a la propia información generan desconfianza y afectan la motivación del personal. En la dimensión de control, la ausencia de registros sistemáticos restringe la auditoría y debilita la transparencia de la gestión. En la dimensión de sostenibilidad, la ineficiencia administrativa se traduce en costos operativos evitables y en una capacidad limitada para demostrar el cumplimiento de las obligaciones normativas.
 
 ## 1.3 FORMULACIÓN DEL PROBLEMA
 
 ### 1.3.1 Problema General
 
-¿Cómo desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas que optimice los procesos administrativos, garantice la precisión en el cálculo de nóminas, facilite el control documental y proporcione herramientas para la toma de decisiones basada en datos, utilizando tecnologías de información accesibles y sostenibles?
+¿De qué manera el desarrollo e implementación de un sistema integral de gestión de personal y nómina, construido con tecnologías de información accesibles y sostenibles, permite optimizar los procesos administrativos, garantizar la precisión de los cálculos financieros, ordenar el control documental y proporcionar información oportuna para la toma de decisiones en instituciones educativas?
 
 ### 1.3.2 Problemas Específicos
 
-1. **¿Qué requerimientos funcionales y no funcionales deben considerarse para el diseño de un sistema de gestión de personal adaptado a las necesidades específicas de instituciones educativas?**
-
-2. **¿Qué arquitectura de software y patrones de diseño son más adecuados para garantizar la escalabilidad, mantenibilidad y eficiencia del sistema propuesto?**
-
-3. **¿Cómo implementar módulos de gestión para empleados, documentos, incidencias y nómina que respondan efectivamente a las necesidades del contexto educativo?**
-
-4. **¿Qué funcionalidades de reportes estadísticos y generación de documentos oficiales son necesarias para facilitar la toma de decisiones administrativas en instituciones educativas?**
-
-5. **¿Cómo validar la efectividad del sistema mediante pruebas funcionales, pruebas de usabilidad y validación con usuarios reales en instituciones educativas?**
-
-6. **¿Cuál es el impacto cuantitativo y cualitativo de la implementación del sistema en la eficiencia administrativa de instituciones educativas piloto?**
+1. ¿Qué requerimientos funcionales y no funcionales deben considerarse para diseñar un sistema de gestión de personal ajustado a las necesidades de las instituciones educativas?
+2. ¿Qué arquitectura de software y qué patrones de diseño resultan adecuados para asegurar la escalabilidad, la mantenibilidad y la verificabilidad del sistema?
+3. ¿Cómo deben implementarse los módulos de gestión de personal, documentación, incidencias, asistencia, contratación, préstamos y nómina para responder a las necesidades del contexto educativo?
+4. ¿Qué funcionalidades de reporte y de generación de documentos oficiales requiere la institución para sustentar sus decisiones administrativas y sus obligaciones normativas?
+5. ¿Cómo validar la efectividad del sistema mediante pruebas funcionales, pruebas de usabilidad y validación con usuarios reales en instituciones educativas?
+6. ¿Cuál es el efecto del sistema sobre la eficiencia administrativa de las instituciones piloto, medido en tiempos de procesamiento y en tasas de error?
 
 ## 1.4 OBJETIVOS DE LA INVESTIGACIÓN
 
 ### 1.4.1 Objetivo General
 
-Diseñar, desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas que automatice procesos administrativos clave, garantice la precisión en cálculos financieros, facilite el control documental y proporcione herramientas para la toma de decisiones basada en datos, contribuyendo a la mejora de la eficiencia administrativa en el sector educativo.
+Diseñar, desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas que automatice los procesos administrativos clave, garantice la precisión de los cálculos financieros, ordene el control documental y proporcione información oportuna para la toma de decisiones, con el propósito de contribuir a la mejora de la eficiencia administrativa del sector educativo.
 
 ### 1.4.2 Objetivos Específicos
 
-1. **Analizar los procesos actuales** de gestión de personal en instituciones educativas para identificar requerimientos funcionales, no funcionales y restricciones técnicas, mediante entrevistas, observación y análisis documental.
-
-2. **Diseñar la arquitectura del sistema** utilizando patrones de diseño modernos (Repository, Service, MVC), principios de ingeniería de software y mejores prácticas de desarrollo, garantizando escalabilidad y mantenibilidad.
-
-3. **Implementar módulos de gestión** para empleados, documentos, incidencias y nómina con interfaces intuitivas, funcionalidades completas y validaciones integrales, utilizando tecnologías de código abierto.
-
-4. **Desarrollar funcionalidades de reportes** estadísticos y generación de documentos oficiales en formato PDF para facilitar la toma de decisiones administrativas y cumplimiento de requisitos legales.
-
-5. **Validar el sistema** mediante pruebas funcionales automatizadas, pruebas de usabilidad con usuarios reales y validación en instituciones educativas piloto, evaluando el impacto cuantitativo y cualitativo de la implementación en la eficiencia administrativa, asegurando calidad y efectividad.
-
-6. **Documentar completamente el sistema** incluyendo documentación técnica, manual de usuario, guías de implementación y manuales de mantenimiento, garantizando sostenibilidad y posibilidad de expansión.
+1. Analizar los procesos actuales de gestión de personal en instituciones educativas para identificar requerimientos funcionales, no funcionales y restricciones técnicas, mediante entrevistas, observación directa y análisis documental.
+2. Diseñar la arquitectura del sistema con patrones de diseño consolidados y criterios de ingeniería de software que garanticen escalabilidad, mantenibilidad y verificabilidad.
+3. Implementar los módulos de gestión de personal, documentación, incidencias, asistencia, contratación, préstamos y nómina con interfaces usables, funcionalidad completa y validaciones integrales, empleando tecnologías de código abierto.
+4. Desarrollar las funcionalidades de reporte estadístico y de generación de documentos oficiales en formato PDF que la institución requiere para la toma de decisiones y el cumplimiento de sus obligaciones.
+5. Validar el sistema mediante pruebas automatizadas, pruebas de usabilidad con usuarios reales y aplicación piloto en instituciones educativas, evaluando su efecto sobre la eficiencia administrativa.
+6. Documentar integralmente el sistema —documentación técnica, guía de usuario, notas de desarrollo y documentos académicos— de modo que su sostenimiento y su expansión no dependan de una sola persona.
 
 ## 1.5 JUSTIFICACIÓN DE LA INVESTIGACIÓN
 
 ### 1.5.1 Justificación Teórica
 
-La investigación contribuye significativamente al campo de los sistemas de información educativa al explorar la aplicación de metodologías de ingeniería de software en contextos de recursos limitados. El estudio generará conocimiento empírico sobre:
-
-- **Diseño de sistemas accesibles:** Estrategias para desarrollar sistemas tecnológicos adaptados a instituciones con recursos limitados.
-- **Arquitecturas sostenibles:** Patrones arquitectónicos que faciliten el mantenimiento y expansión de sistemas con recursos técnicos reducidos.
-- **Implementación tecnológica en educación:** Estrategias efectivas para introducir soluciones tecnológicas en contextos educativos tradicionales.
-- **Interacción usuario-sistema:** Principios de diseño de interfaces que faciliten la adopción tecnológica por personal con variados niveles de competencia digital.
-
-La investigación también contribuye al campo de la ingeniería de software al documentar el proceso completo de desarrollo de un sistema de gestión, desde el análisis de requerimientos hasta la implementación y validación, proporcionando un caso de estudio completo.
+La investigación aporta al campo de los sistemas de información educativa un caso documentado de aplicación de metodologías de ingeniería de software en un contexto de recursos limitados. De manera específica, contribuye con conocimiento sobre tres cuestiones poco desarrolladas de forma conjunta: las decisiones de diseño que hacen viable un sistema de gestión en instituciones sin área de tecnología propia; el efecto de aislar el dominio de cálculo financiero respecto de la interfaz y del acceso a datos; y la relación entre las condiciones organizacionales de la institución y la adopción efectiva de la herramienta. Asimismo, documenta el proceso completo —desde el análisis de requerimientos hasta la validación técnica—, lo que permite examinar las decisiones adoptadas y sus consecuencias.
 
 ### 1.5.2 Justificación Práctica
 
-El desarrollo del Sistema de Gestión de Personal y Nómina proporcionará una solución concreta y tangible a problemas reales enfrentados por instituciones educativas:
-
-- **Optimización de procesos administrativos:** Automatización de tareas rutinarias que actualmente consumen tiempo significativo.
-- **Reducción de errores:** Implementación de validaciones automáticas que minimizan errores humanos en procesos críticos.
-- **Mejora en acceso a información:** Sistemas de búsqueda y recuperación eficientes que facilitan el acceso a información.
-- **Generación de reportes oportunos:** Herramientas que permiten la toma de decisiones basada en datos actualizados.
-- **Control documental centralizado:** Sistema digitalizado que facilita el control de documentos y vencimientos.
-
-La implementación piloto en instituciones educativas permitirá validar la utilidad práctica de la solución y generar evidencia cuantitativa y cualitativa de su impacto en la eficiencia administrativa.
+El resultado tangible de la investigación es un sistema operativo que responde a los problemas diagnosticados: centraliza la información del personal en una fuente única, calcula la remuneración mediante reglas explícitas y verificables, controla la vigencia de la documentación, formaliza el flujo de aprobación de las incidencias y produce los documentos oficiales que la institución debe emitir. La aplicación piloto permitirá comprobar en condiciones reales la utilidad de la solución y registrar su efecto sobre los tiempos de procesamiento y las tasas de error.
 
 ### 1.5.3 Justificación Metodológica
 
-La investigación aplicará metodologías de desarrollo de software combinadas con técnicas de investigación-acción, contribuyendo al desarrollo de enfoques híbridos para proyectos de tecnología social:
-
-- **Integración de metodologías:** Combinación de metodologías ágiles de desarrollo con técnicas de investigación social.
-- **Prototipado evolutivo:** Desarrollo iterativo con retroalimentación continua de usuarios reales.
-- **Validación empírica:** Evaluación cuantitativa y cualitativa del impacto del sistema.
-- **Documentación completa:** Generación de conocimiento aplicado documentado y transferible.
-
-Este enfoque metodológico puede servir como referencia para futuros proyectos de desarrollo de software con enfoque social.
+La investigación articula el desarrollo iterativo de software con la investigación-acción, combinación que resulta apropiada cuando el objeto de estudio es a la vez una herramienta y el contexto en que se utiliza. El aporte metodológico consiste en un procedimiento replicable —con fases, instrumentos y criterios de evaluación definidos— y en un conjunto de instrumentos validados que pueden adaptarse a proyectos similares. La decisión de explicitar el estatuto de la evidencia en cada etapa, distinguiendo lo verificado sobre el producto de lo medido en campo, forma parte de ese aporte y responde a las exigencias de rigor del trabajo de grado.
 
 ### 1.5.4 Justificación Social
 
-El proyecto tiene un impacto social directo y significativo al abordar problemas que afectan las condiciones laborales y la calidad del servicio educativo:
-
-- **Mejora de condiciones laborales:** Garantía de pagos oportunos y precisos, reducción de errores administrativos y mejor acceso a información personal.
-- **Optimización de recursos educativos:** Redirección de tiempo administrativo hacia actividades académicas y pedagógicas.
-- **Democratización del acceso tecnológico:** Brindar herramientas modernas de gestión a instituciones con recursos limitados.
-- **Transparencia administrativa:** Facilitación de auditorías y control de procesos administrativos y financieros.
-- **Desarrollo de capacidades:** Capacitación del personal educativo en el uso de tecnologías modernas.
-
-El proyecto contribuye a la equidad en el acceso a tecnologías de gestión, reduciendo la brecha digital entre instituciones con diferentes niveles de recursos.
+El proyecto produce efectos sociales en tres planos. En el plano del personal de las instituciones, garantiza la oportunidad y la exactitud de la remuneración, reduce la incertidumbre sobre la propia información y disminuye la conflictividad asociada a los errores administrativos. En el plano de la comunidad educativa, libera tiempo administrativo que puede orientarse a tareas de apoyo académico. En el plano del sector, reduce la brecha tecnológica entre instituciones con distinta capacidad financiera, dado que la solución no exige inversión en licenciamiento y puede replicarse sin costo de adquisición.
 
 ### 1.5.5 Justificación Económica
 
-Desde una perspectiva económica, el proyecto presenta múltiples beneficios:
-
-- **Reducción de costos operativos:** Disminución del tiempo dedicado a procesos manuales permite optimización de recursos humanos.
-- **Minimización de errores financieros:** Reducción de errores en nóminas evita costos asociados a correcciones y posibles litigios.
-- **Optimización de recursos:** Mejor distribución del tiempo del personal administrativo hacia actividades de mayor valor.
-- **Sostenibilidad financiera:** Sistema de bajo costo de implementación y mantenimiento, basado en tecnologías de código abierto.
-- **Escalabilidad:** Posibilidad de implementación en múltiples instituciones sin costos significativos de licenciamiento.
-
-El retorno de inversión se evidencia tanto en ahorros directos (tiempo, errores) como en beneficios indirectos (mejora de calidad educativa, satisfacción laboral).
+La justificación económica se sostiene sobre tres componentes verificables. El primero es el costo de adquisición nulo, en tanto todas las tecnologías empleadas son de código abierto. El segundo es el costo de operación, limitado al mantenimiento interno y a las actualizaciones de dependencias, según se detalla en el Anexo 10. El tercero es el ahorro derivado de evitar reprocesos y correcciones, cuyo orden de magnitud se estimará con las mediciones del piloto y que, aun en su estimación más conservadora, debe contrastarse con el costo de licenciamiento de las soluciones comerciales equivalentes (véase la Tabla 4.18 del Capítulo IV).
 
 ## 1.6 VIABILIDAD DE LA INVESTIGACIÓN
 
 ### 1.6.1 Viabilidad Técnica
 
-El proyecto es técnicamente viable debido a:
-
-- **Disponibilidad de tecnologías apropiadas:** Python, SQLAlchemy, CustomTkinter y otras tecnologías utilizadas son maduras, bien documentadas y ampliamente utilizadas.
-- **Experiencia del investigador:** El investigador posee los conocimientos técnicos necesarios para el desarrollo del sistema.
-- **Infraestructura disponible:** Acceso a hardware y software necesarios para el desarrollo.
-- **Comunidad de soporte:** Amplia disponibilidad de recursos de aprendizaje y soporte técnico para las tecnologías seleccionadas.
+El proyecto resultó técnicamente viable por cuatro razones comprobables. Las tecnologías empleadas —Python, SQLAlchemy, CustomTkinter, ReportLab y OpenPyXL— son maduras, cuentan con documentación abundante y no requieren licenciamiento. La arquitectura de capas permitió desarrollar y probar cada componente de forma aislada. El equipo de desarrollo disponible fue suficiente para el alcance planteado. Y la comunidad de soporte de cada tecnología facilitó la resolución de las dificultades encontradas.
 
 ### 1.6.2 Viabilidad Operativa
 
-La viabilidad operativa se garantiza mediante:
-
-- **Colaboración con instituciones piloto:** Acuerdos formales con instituciones educativas dispuestas a participar en pruebas y validación.
-- **Capacitación de usuarios:** Estrategias de capacitación para facilitar la adopción del sistema.
-- **Documentación completa:** Manuales y guías que facilitan el uso y mantenimiento del sistema.
-- **Soporte continuo:** Disponibilidad del investigador para resolver dudas y problemas durante la implementación.
+La viabilidad operativa se sustenta en el acuerdo con las instituciones participantes, en la existencia de instrumentos de recolección definidos y en la disponibilidad de una guía de usuario y de material de capacitación. El sistema se distribuye como aplicación de escritorio de instalación local, condición que reduce los requerimientos de infraestructura y evita depender de conectividad permanente, restricción frecuente en el contexto de aplicación.
 
 ### 1.6.3 Viabilidad Económica
 
-El proyecto es económicamente viable debido a:
-
-- **Bajos costos de desarrollo:** Uso de tecnologías de código abierto que no requieren licenciamiento.
-- **Recursos propios:** El investigador aporta tiempo y recursos personales para el desarrollo.
-- **Mínimos costos operativos:** Los costos de mantenimiento del sistema son significativamente menores que los de soluciones comerciales.
-- **Retorno de inversión claro:** Los beneficios en eficiencia y reducción de errores justifican la inversión.
+El proyecto se ejecutó con recursos propios del investigador, sin financiamiento externo, y el costo total incurrido asciende a $580, según el desglose del Anexo 10. Los rubros principales correspondieron a material de oficina, impresión de documentación y transporte para las visitas a las instituciones. La ausencia de costos de licenciamiento y el uso de equipo preexistente explican la magnitud del presupuesto.
 
 ### 1.6.4 Viabilidad Temporal
 
-El cronograma propuesto de 8 meses es realista considerando:
-
-- **Alcance delimitado:** El proyecto se enfoca en funcionalidades esenciales con posibilidad de expansión futura.
-- **Metodología adecuada:** Uso de metodologías ágiles que permiten iteraciones rápidas y entrega de valor continuo.
-- **Priorización establecida:** Enfoque en funcionalidades críticas primero, con posibilidad de incluir mejoras iterativas.
-- **Flexibilidad:** Capacidad de ajustar alcance y prioridades según el progreso real.
+El cronograma previsto abarcó ocho meses, distribuidos en cuatro fases: análisis de requerimientos, diseño y desarrollo, pruebas y validación, e implementación y documentación. La ejecución del desarrollo y de las pruebas técnicas se completó conforme a lo previsto; las actividades correspondientes a la validación con usuarios y a la aplicación piloto mantienen su programación y condicionan la fecha de presentación definitiva del informe, según se registra en el Anexo 9.
 
 ## 1.7 ALCANCES Y LIMITACIONES
 
 ### 1.7.1 Alcances
 
-La investigación abarca:
-
-- **Desarrollo completo del sistema:** Desde análisis de requerimientos hasta implementación y validación.
-- **Implementación piloto:** Instalación y validación en 3-5 instituciones educativas.
-- **Documentación integral:** Documentación técnica, manuales de usuario y guías de implementación.
-- **Evaluación de impacto:** Medición cuantitativa y cualitativa del impacto en eficiencia administrativa.
-- **Validación con usuarios:** Pruebas de usabilidad y satisfacción con usuarios reales.
+La investigación comprende el desarrollo completo del sistema, desde el análisis de requerimientos hasta su verificación técnica; la documentación integral del producto; el diseño de los instrumentos de recolección y de evaluación; y la aplicación piloto en instituciones educativas con medición de tiempos de procesamiento, tasas de error y satisfacción del personal. El sistema cubre la gestión de personal, documentación, incidencias, asistencia, contratación, préstamos, nómina, alertas y configuración institucional, además de autenticación con control de acceso por rol, auditoría, respaldos y exportación de datos.
 
 ### 1.7.2 Limitaciones
 
-La investigación presenta las siguientes limitaciones:
+Las limitaciones del estudio son de cuatro órdenes. En cuanto a la muestra, el número de instituciones participantes se sitúa entre tres y cinco, de modo que los resultados describen el comportamiento del sistema en contextos similares y no autorizan generalizaciones amplias. En cuanto al contexto, el sistema se diseñó considerando las condiciones administrativas y normativas de la jurisdicción de aplicación, lo que puede exigir adaptaciones para otras realidades. En cuanto a la tecnología, la solución es una aplicación de escritorio con base de datos local, de manera que el acceso remoto y la concurrencia masiva quedan fuera de su alcance inicial. En cuanto a los recursos, el proyecto dependió del tiempo del investigador y careció de financiamiento, circunstancia que acotó la escala de ciertas actividades, en particular la capacitación extensiva y el soporte sostenido.
 
-- **Muestra limitada:** El número de instituciones piloto (3-5) puede no ser representativo de todas las instituciones educativas.
-- **Contexto específico:** El sistema se desarrolla considerando el contexto educativo de la región, lo que puede limitar su aplicabilidad directa en otros contextos.
-- **Tecnologías específicas:** El uso de tecnologías específicas (Python, CustomTkinter) puede limitar la adopción por instituciones con diferentes infraestructuras tecnológicas.
-- **Tiempo limitado:** El cronograma de 8 meses puede limitar la profundidad de ciertas funcionalidades o el alcance de la validación.
-- **Recursos propios:** La dependencia de recursos personales del investigador puede limitar la escala del proyecto.
-
-Estas limitaciones se reconocen y se documentarán como consideraciones para futuras investigaciones y expansiones del proyecto.
+Estas limitaciones se reconocen de forma expresa y se retoman en el apartado 5.7, donde se analiza su efecto sobre la validez y la transferibilidad de los hallazgos.
 
 ## 1.8 CONCLUSIONES DEL CAPÍTULO
 
-Este capítulo ha presentado de manera comprensiva el problema de investigación que motiva el desarrollo del Sistema de Gestión de Personal y Nómina para instituciones educativas. La realidad problemática descrita evidencia la necesidad urgente de soluciones tecnológicas que optimicen los procesos administrativos en el sector educativo.
+El capítulo ha delimitado el problema que motiva la investigación y ha mostrado que sus manifestaciones —información dispersa, cálculo manual de la remuneración, documentación sin control de vigencia, incidencias sin trazabilidad y reportes tardíos— no son incidentes aislados, sino consecuencia de una misma causa: la ausencia de un sistema que concentre la información y explicite las reglas. La revisión de la literatura confirma que se trata de un patrón documentado en contextos diversos y que las barreras para superarlo son de naturaleza organizacional tanto como tecnológica.
 
-La formulación clara de los problemas de investigación y los objetivos correspondientes proporcionan una dirección precisa para el desarrollo del proyecto. La justificación múltiple (teórica, práctica, metodológica, social y económica) demuestra la relevancia y viabilidad de la investigación.
+La formulación del problema y los objetivos derivados establecen con precisión qué se propone resolver y cómo se evaluará el resultado. El análisis de justificación y viabilidad demuestra que la investigación es pertinente, ejecutable con recursos propios y consistente con las exigencias metodológicas de un trabajo de grado, mientras que la delimitación de alcances y limitaciones fija expectativas realistas sobre lo que el estudio puede afirmar.
 
-El análisis de viabilidad confirma que el proyecto es técnica, operativa, económica y temporalmente viable, mientras que la definición de alcances y limitaciones establece expectativas realistas sobre el alcance de la investigación.
-
-Con esta fundamentación sólida, el siguiente capítulo presentará el marco teórico que sustenta el desarrollo del sistema, proporcionando la base conceptual y técnica necesaria para la fase de diseño e implementación.
+Con esta base, el capítulo siguiente desarrolla el marco teórico que sustenta las decisiones de diseño, los antecedentes que las informan y el marco legal que las condiciona.

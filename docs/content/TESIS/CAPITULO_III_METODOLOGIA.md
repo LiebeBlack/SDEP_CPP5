@@ -2,359 +2,108 @@
 
 ## 3.1 INTRODUCCIÓN
 
-El presente capítulo describe la metodología de investigación empleada para el desarrollo e implementación del Sistema de Gestión de Personal y Nómina para instituciones educativas. Se detalla el tipo y diseño de investigación, la población y muestra, las técnicas e instrumentos de recolección de datos, los procedimientos metodológicos, y las técnicas de análisis de datos utilizados.
-
-La metodología propuesta combina enfoques de ingeniería de software con técnicas de investigación social, permitiendo desarrollar una solución tecnológica fundamentada en principios científicos y validada empíricamente con usuarios reales.
+El presente capítulo expone la metodología que rigió la investigación: el tipo y el diseño adoptados, la población y la muestra, las técnicas e instrumentos de recolección, los procedimientos ejecutados por fase, las técnicas de procesamiento y análisis de la información, los aspectos éticos, los criterios de calidad aplicados al producto y al propio estudio, y el plan de contingencia previsto. Se declara, además, con precisión el estado de avance de cada fase, dado que el desarrollo del sistema se encuentra concluido mientras la validación con usuarios y la aplicación piloto permanecen programadas.
 
 ## 3.2 TIPO Y DISEÑO DE INVESTIGACIÓN
 
 ### 3.2.1 Tipo de Investigación
 
-La investigación se clasifica como **investigación aplicada**, ya que tiene como propósito principal resolver un problema práctico específico: la ineficiencia en la gestión de personal en instituciones educativas. A diferencia de la investigación pura, que busca generar conocimiento teórico, esta investigación se enfoca en producir una solución tangible con impacto directo en el contexto estudiado.
-
-También se puede clasificar como **investigación tecnológica**, ya que implica el desarrollo de un producto tecnológico (el sistema de software) como resultado principal de la investigación.
+La investigación se clasifica como aplicada, en tanto su propósito consiste en resolver un problema práctico identificado —la ineficiencia de la gestión de personal en instituciones educativas— mediante la construcción y la evaluación de una solución tecnológica. Se clasifica asimismo como investigación tecnológica, puesto que su resultado principal es un producto de software y no una contribución exclusivamente conceptual. Esta doble clasificación es coherente con la distinción que Hernández Sampieri, Fernández Collado y Baptista Lucio (2014) establecen entre los estudios orientados a producir conocimiento y aquellos orientados a resolver problemas concretos con conocimiento disponible.
 
 ### 3.2.2 Diseño de Investigación
 
-El diseño de investigación combina elementos de **investigación-acción** y **prototipado evolutivo**:
+El diseño articula dos tradiciones complementarias: la investigación-acción y el prototipado evolutivo. La investigación-acción, en la formulación que Creswell y Creswell (2018) emplean para los diseños de métodos mixtos, se caracteriza por la participación del investigador en el contexto estudiado y por la alternancia de ciclos de intervención y reflexión. El prototipado evolutivo, por su parte, aporta la lógica de construcción incremental: cada versión del sistema incorpora los hallazgos de la validación anterior y se somete de nuevo a verificación.
 
-#### 3.2.2.1 Investigación-Acción
-
-La investigación-acción se caracteriza por la participación activa del investigador en el contexto estudiado, con ciclos de acción y reflexión para generar conocimiento práctico. En este proyecto:
-
-- **Participación activa:** El investigador trabaja directamente con personal administrativo de instituciones educativas para entender sus necesidades.
-- **Ciclos iterativos:** Cada fase de desarrollo incluye retroalimentación de usuarios que informa la siguiente iteración.
-- **Generación de conocimiento práctico:** El conocimiento generado tiene aplicación directa en el contexto estudiado.
-- **Colaboración:** La investigación se realiza en colaboración con los beneficiarios del sistema.
-
-#### 3.2.2.2 Prototipado Evolutivo
-
-El prototipado evolutivo implica el desarrollo iterativo del sistema con prototipos progresivamente más completos:
-
-- **Prototipo inicial:** Versión básica con funcionalidades críticas para obtener retroalimentación temprana.
-- **Iteraciones sucesivas:** Cada versión incorpora mejoras basadas en feedback de usuarios.
-- **Validación continua:** Cada prototipo se valida con usuarios reales antes de proceder a la siguiente iteración.
-- **Entrega incremental:** Funcionalidades se entregan incrementalmente, permitiendo valor temprano.
+La combinación de ambas tradiciones se justifica por la naturaleza del objeto de estudio. Un sistema de gestión de personal solo puede evaluarse en el contexto donde se utilizará, con las personas que lo operarán y con las restricciones reales de la institución; al mismo tiempo, su construcción exige una disciplina técnica que garantice que las modificaciones sucesivas no comprometan la estabilidad del producto. La investigación-acción aporta el conocimiento del contexto y el prototipado evolutivo asegura la integridad del artefacto.
 
 ### 3.2.3 Enfoque de Investigación
 
-La investigación utiliza un **enfoque mixto** que combina métodos cuantitativos y cualitativos:
+El enfoque es mixto, con predominio cuantitativo en la medición del efecto y cualitativo en la comprensión del proceso. El componente cuantitativo comprende las métricas de tiempo de procesamiento, las tasas de error, las puntuaciones de satisfacción y los indicadores técnicos de rendimiento del sistema. El componente cualitativo comprende las entrevistas en profundidad, la observación directa, el análisis de los comentarios recogidos en las sesiones de uso y el estudio de caso por institución. La integración de ambos componentes se resuelve mediante triangulación, según se detalla en el apartado 3.6.3, y responde al diseño de métodos mixtos descrito por Creswell y Creswell (2018).
 
-#### 3.2.3.1 Enfoque Cuantitativo
-
-El componente cuantitativo se enfoca en medir el impacto del sistema mediante métricas objetivas:
-
-- **Métricas de eficiencia:** Tiempos de procesamiento antes y después de la implementación.
-- **Métricas de calidad:** Tasas de error en procesos administrativos.
-- **Métricas de satisfacción:** Puntuaciones en encuestas estandarizadas.
-- **Métricas técnicas:** Rendimiento del sistema, tiempos de respuesta, uso de recursos.
-
-#### 3.2.3.2 Enfoque Cualitativo
-
-El componente cualitativo se enfoca en comprender la experiencia de los usuarios:
-
-- **Entrevistas en profundidad:** Exploración de experiencias y percepciones.
-- **Observación directa:** Análisis de cómo los usuarios interactúan con el sistema.
-- **Análisis de feedback:** Comentarios y sugerencias de usuarios durante pruebas.
-- **Estudios de caso:** Análisis detallado de implementación en instituciones específicas.
+Conviene precisar que la estrategia de caso múltiple adoptada —varias instituciones observadas con el mismo protocolo— corresponde al diseño descrito por Yin (2018), cuyo propósito no es la generalización estadística sino la construcción de evidencia replicable sobre un fenómeno delimitado.
 
 ## 3.3 POBLACIÓN Y MUESTRA
 
 ### 3.3.1 Población
 
-La población de estudio está constituida por el personal administrativo de instituciones educativas de nivel medio y superior que realizan tareas relacionadas con la gestión de personal. Esta población incluye:
+La población de estudio está constituida por el personal administrativo de instituciones educativas de nivel medio y superior que desempeña tareas vinculadas con la gestión de personal. Comprende cuatro perfiles: personal directivo —direcciones, subdirecciones y coordinaciones administrativas—, personal de recursos humanos responsable de la nómina y de la contratación, personal administrativo de apoyo y personal docente en su condición de usuario de consulta sobre su propia información.
 
-- **Directivos:** Directores, subdirectores y gerentes administrativos.
-- **Personal de Recursos Humanos:** Encargados de nómina, contratación y gestión de personal.
-- **Personal Administrativo:** Secretarias, asistentes y personal de apoyo administrativo.
-- **Personal Docente:** En su rol de usuarios del sistema para consulta de información personal.
-
-**Criterios de inclusión en la población:**
-- Instituciones educativas con necesidad de mejorar gestión de personal
-- Personal que actualmente realiza tareas de gestión de personal
-- Disponibilidad para participar en el estudio
-- Acceso a infraestructura tecnológica mínima (computadora, internet)
+Los criterios de inclusión de la población son cuatro: que la institución requiera mejorar su gestión de personal; que el personal desempeñe efectivamente tareas de gestión; que exista disposición a participar en el estudio; y que la institución disponga de la infraestructura informática mínima para operar el sistema.
 
 ### 3.3.2 Muestra
 
-La muestra seleccionada para el estudio comprende **3-5 instituciones educativas** que participarán como piloto en la implementación del sistema. La selección se realiza mediante **muestreo intencional** basado en los siguientes criterios:
+La muestra comprende entre tres y cinco instituciones educativas seleccionadas mediante muestreo intencional, dado que el estudio requiere casos con las condiciones específicas que se desean observar y no una representación aleatoria del universo.
 
-#### 3.3.2.1 Criterios de Selección de Instituciones
+**Criterios de selección de las instituciones**
 
-1. **Diversidad de tamaño:** Incluir instituciones pequeñas (menos de 50 empleados), medianas (50-200 empleados) y grandes (más de 200 empleados).
-2. **Diversidad de tipo:** Incluir instituciones de educación básica, media y superior.
-3. **Ubicación geográfica:** Incluir instituciones urbanas y suburbanas cuando sea posible.
-4. **Necesidad identificada:** Instituciones que hayan expresado necesidad de mejorar gestión de personal.
-5. **Disponibilidad de recursos:** Instituciones con infraestructura tecnológica mínima necesaria.
-6. **Compromiso de participación:** Acuerdo formal de participación en todas las fases del proyecto.
+1. Diversidad de tamaño: instituciones pequeñas (menos de cincuenta empleados), medianas (entre cincuenta y doscientos) y grandes (más de doscientos).
+2. Diversidad de nivel educativo: básica, media y superior.
+3. Diversidad de ámbito: instituciones urbanas y suburbanas.
+4. Necesidad identificada y documentada de mejorar la gestión de personal.
+5. Disponibilidad de la infraestructura tecnológica mínima requerida por el sistema.
+6. Compromiso formal de participación en las fases de prueba y validación.
 
-#### 3.3.2.2 Criterios de Selección de Usuarios
+**Criterios de selección de los usuarios**
 
-Para cada institución participante, se seleccionará **10-15 usuarios** que representen diferentes roles y niveles de competencia tecnológica:
+En cada institución participante se seleccionan entre diez y quince usuarios, procurando cubrir los perfiles y los niveles de competencia tecnológica existentes: entre dos y tres usuarios de nivel directivo, entre cuatro y cinco usuarios operativos, entre dos y tres usuarios de apoyo y, cuando la institución disponga de ellos, uno o dos usuarios con perfil técnico. El tamaño total previsto se sitúa entre treinta y setenta y cinco usuarios.
 
-- **2-3 usuarios de nivel gerencial:** Directivos y gerentes de recursos humanos.
-- **4-5 usuarios operativos:** Personal que realiza tareas diarias de gestión de personal.
-- **2-3 usuarios de apoyo:** Personal administrativo que utiliza el sistema ocasionalmente.
-- **1-2 usuarios técnicos:** Personal de soporte TI cuando esté disponible.
+### 3.3.3 Justificación del Tamaño de la Muestra
 
-**Tamaño total de la muestra:** Aproximadamente 30-75 usuarios distribuidos en 3-5 instituciones.
-
-### 3.3.3 Justificación del Tamaño de Muestra
-
-El tamaño de muestra propuesto se justifica por:
-
-- **Suficiencia estadística:** Permite realizar análisis cuantitativos con fiabilidad aceptable.
-- **Diversidad de contextos:** Incluye suficiente variabilidad para identificar patrones generales.
-- **Factibilidad logística:** Es viable gestionar este número de instituciones y usuarios dentro del cronograma del proyecto.
-- **Profundidad cualitativa:** Permite realizar entrevistas y observaciones en profundidad.
+El tamaño propuesto responde a cuatro consideraciones. La primera es la suficiencia analítica: permite calcular estadísticas descriptivas por dimensión y aplicar pruebas de contraste dentro de cada institución. La segunda es la diversidad contextual: la inclusión de instituciones de distinto tamaño y nivel educativo habilita la comparación entre casos. La tercera es la factibilidad operativa: el número de sesiones de observación y de pruebas de usabilidad resulta abordable por un solo investigador dentro del cronograma previsto. La cuarta es la profundidad cualitativa: un conjunto acotado de casos permite documentar cada uno con el detalle que el análisis de contenido requiere. Se asume de manera explícita que la muestra no habilita generalizaciones estadísticas, limitación que se retoma en el apartado 5.7.1.
 
 ## 3.4 TÉCNICAS E INSTRUMENTOS DE RECOLECCIÓN DE DATOS
 
-### 3.4.1 Técnicas de Recolección de Datos
+### 3.4.1 Técnicas de Recolección
 
-#### 3.4.1.1 Entrevistas Semi-Estructuradas
+#### 3.4.1.1 Entrevistas Semiestructuradas
 
-**Propósito:** Recopilar información detallada sobre procesos actuales, necesidades y expectativas de usuarios.
-
-**Procedimiento:**
-- Sesiones de 45-60 minutos con participantes clave.
-- Guía de entrevista con preguntas predefinidas pero flexibilidad para explorar temas emergentes.
-- Grabación (con consentimiento) y notas detalladas.
-- Transcripción y análisis de contenido.
-
-**Participantes:** Directivos, gerentes de recursos humanos, y personal administrativo clave.
+La entrevista semiestructurada se empleó para recoger información sobre los procesos vigentes, las dificultades recurrentes y las expectativas frente a una solución informática. Las sesiones tuvieron una duración prevista de cuarenta y cinco a sesenta minutos, se rigieron por la guía del Anexo 1, con apertura para explorar temas emergentes, y se registraron mediante grabación autorizada y notas simultáneas. Los participantes fueron personal directivo, responsables de recursos humanos y personal administrativo clave.
 
 #### 3.4.1.2 Observación Directa
 
-**Propósito:** Comprender el contexto real de trabajo y cómo los usuarios realizan actualmente las tareas de gestión de personal.
-
-**Procedimiento:**
-- Observación no participante en el lugar de trabajo.
-- Registro de procesos, tiempos, herramientas utilizadas y dificultades encontradas.
-- Notas de campo detalladas.
-- Identificación de oportunidades de mejora.
-
-**Duración:** 2-4 horas por institución, distribuidas en diferentes días.
+La observación directa se orientó a comprender el trabajo real: qué procedimientos se siguen, cuánto tiempo consumen, qué instrumentos se utilizan y en qué puntos aparecen las dificultades. La observación fue no participante, con registro de tiempos, herramientas y obstáculos en notas de campo estructuradas, y con una duración prevista de dos a cuatro horas por institución, distribuidas en jornadas distintas para evitar sesgos derivados de un día atípico.
 
 #### 3.4.1.3 Encuestas de Satisfacción
 
-**Propósito:** Medir cuantitativamente la satisfacción de usuarios con el sistema implementado.
-
-**Procedimiento:**
-- Cuestionario estandarizado con escala Likert (1-5).
-- Aplicación pre-implementación (línea base) y post-implementación.
-- Análisis estadístico de diferencias.
-
-**Muestra:** Todos los usuarios que participan en la implementación piloto.
+La medición de la satisfacción se realiza con el cuestionario del Anexo 2, compuesto por veinte afirmaciones con escala de Likert de cinco puntos y tres preguntas abiertas. El instrumento se aplica en dos momentos: antes de la implementación, para establecer la línea base de la percepción sobre la gestión vigente, y después de ella, para medir la variación. Sobre las respuestas obtenidas se calcula el coeficiente alfa de Cronbach, con el fin de estimar la consistencia interna del cuestionario antes de interpretar sus resultados.
 
 #### 3.4.1.4 Pruebas de Usabilidad
 
-**Propósito:** Evaluar la facilidad de uso del sistema e identificar problemas de diseño.
-
-**Procedimiento:**
-- Sesiones de 60-90 minutos donde usuarios realizan tareas específicas.
-- Registro de tiempos, errores y comentarios.
-- Protocolo de pensamiento en voz alta (*think-aloud*): los usuarios verbalizan su proceso mental.
-- Análisis de resultados para identificar mejoras de diseño.
-
-**Tareas típicas:** Registro de empleado, procesamiento de nómina, búsqueda de documento, generación de reporte.
+Las pruebas de usabilidad evalúan la facilidad de uso del sistema e identifican problemas de diseño. Se aplican conforme al protocolo del Anexo 3, con sesiones de sesenta a noventa minutos en las que el participante ejecuta seis tareas representativas mientras verbaliza su proceso mental según la técnica de pensamiento en voz alta. Se registran el tiempo de ejecución, la tasa de éxito, el número y la naturaleza de los errores y los comentarios del participante.
 
 #### 3.4.1.5 Análisis de Métricas Técnicas
 
-**Propósito:** Evaluar el rendimiento técnico del sistema y su escalabilidad.
+El análisis de métricas técnicas comprende el tiempo de respuesta del sistema, el consumo de recursos, la ocurrencia de excepciones y el comportamiento bajo volumen creciente de datos. Las mediciones se realizan con observación instrumentada sobre la aplicación en operación y se complementan con pruebas de carga con datos simulados. Estas mediciones se ejecutan durante la aplicación piloto, dado que solo en condiciones reales resultan interpretables.
 
-**Procedimiento:**
-- Monitoreo de tiempos de respuesta del sistema.
-- Análisis de uso de recursos (CPU, memoria).
-- Registro de errores y excepciones.
-- Pruebas de carga con datos simulados.
+### 3.4.2 Instrumentos de Recolección
 
-**Herramientas:** Sistema de logging del sistema, herramientas de monitoreo de rendimiento.
+Los instrumentos empleados se reproducen íntegramente en los anexos y son los siguientes: la guía de entrevista para el análisis de requerimientos (Anexo 1), compuesta por veintidós preguntas organizadas en seis bloques; el cuestionario de satisfacción de usuarios (Anexo 2), con veinte afirmaciones cerradas y tres preguntas abiertas; el protocolo de pruebas de usabilidad (Anexo 3), que comprende el guion de la sesión, las seis tareas evaluadas, la hoja de registro y la entrevista de cierre; y los formatos de documentación de pruebas, que registran para cada caso la funcionalidad verificada, los datos de entrada, el resultado esperado, el resultado obtenido y su estado. La estructura de estos formatos sigue las recomendaciones de la norma IEEE 829 (2008) en materia de documentación de pruebas de software.
 
-### 3.4.2 Instrumentos de Recolección de Datos
+La validación de los instrumentos cualitativos se realizará mediante juicio de expertos, con revisión por parte del tutor académico, y la prueba piloto del instrumento se aplicará en una sesión previa con el fin de ajustar la redacción de las preguntas y estimar su duración efectiva.
 
-#### 3.4.2.1 Guía de Entrevista para Análisis de Requerimientos
+## 3.5 PROCEDIMIENTOS POR FASE
 
-**Estructura:**
-1. **Información demográfica:** Rol, experiencia, antigüedad en la institución.
-2. **Procesos actuales:** Descripción de tareas relacionadas con gestión de personal.
-3. **Dificultades actuales:** Problemas enfrentados en procesos actuales.
-4. **Expectativas:** Lo que esperaría de un sistema ideal.
-5. **Preferencias tecnológicas:** Nivel de competencia tecnológica, preferencias de interfaz.
-6. **Restricciones:** Limitaciones de tiempo, recursos, capacitación.
+### 3.5.1 Fase 1: Análisis de Requerimientos (meses 1 y 2) — ejecutada
 
-**Validación:** La guía será revisada por expertos en gestión de recursos humanos y probada en sesión piloto antes de su uso formal.
+La primera fase comprendió la revisión documental de literatura, normativa y sistemas existentes; las entrevistas con el personal directivo, de recursos humanos y administrativo; la observación directa de los procesos vigentes, con registro de tiempos; y la consolidación de los requerimientos funcionales y no funcionales, jerarquizados según su valor y su costo de implementación.
 
-#### 3.4.2.2 Cuestionario de Satisfacción de Usuarios
+Los entregables de esta fase fueron el documento de requerimientos funcionales y no funcionales, los diagramas de casos de uso y la priorización de funcionalidades. Su efecto sobre el diseño posterior se documenta en los apartados 1.2.2 y 2.2 del informe.
 
-**Escala:** 1 (Muy insatisfecho) a 5 (Muy satisfecho)
+### 3.5.2 Fase 2: Diseño y Desarrollo (meses 3 a 6) — ejecutada
 
-**Dimensiones evaluadas:**
-- **Facilidad de uso:** Qué tan fácil es aprender y usar el sistema.
-- **Eficiencia:** Mejora en tiempos de procesamiento.
-- **Precisión:** Reducción de errores en tareas administrativas.
-- **Satisfacción general:** Satisfacción global con el sistema.
-- **Utilidad percibida:** Percepción del valor del sistema para el trabajo.
-- **Intención de uso:** Disposición a continuar usando el sistema.
+La segunda fase abarcó el diseño de la arquitectura de capas y la selección de patrones; el diseño del modelo de datos; y el desarrollo iterativo por componentes —modelos y repositorios, servicios de negocio, interfaz gráfica e integración y reportes—, con revisiones de código y ajustes derivados de la retroalimentación recibida.
 
-**Fiabilidad:** Se calculará el coeficiente alfa de Cronbach para validar la consistencia interna del cuestionario.
+Los entregables fueron la arquitectura documentada, el modelo de datos implementado, los módulos funcionales y la interfaz operativa. El producto de esta fase se describe en el apartado 4.2.
 
-#### 3.4.2.3 Protocolo de Pruebas de Usabilidad
+### 3.5.3 Fase 3: Pruebas y Validación (mes 7) — parcialmente ejecutada
 
-**Componentes:**
-- **Instrucciones para participantes:** Explicación clara del propósito y procedimiento.
-- **Lista de tareas:** Tareas específicas que los usuarios deben completar.
-- **Hoja de registro:** Formato para registrar tiempos, errores y comentarios.
-- **Criterios de éxito:** Métricas para evaluar el éxito de cada tarea.
-- **Guía de entrevista post-prueba:** Preguntas para recopilar feedback cualitativo.
+Las pruebas técnicas se ejecutaron en su totalidad: pruebas unitarias y de integración sobre la suite automatizada, pruebas de seguridad sobre los controles de acceso y de tratamiento de archivos, y verificación de la generación documental. Las pruebas de rendimiento y carga permanecen programadas para la aplicación piloto, dado que sus resultados dependen de las condiciones reales de operación.
 
-**Ejemplo de tareas:**
-1. Registrar un nuevo empleado con todos los datos requeridos.
-2. Buscar un empleado específico por cédula.
-3. Generar la nómina de un periodo específico.
-4. Generar un recibo de pago en PDF.
-5. Actualizar la información de un empleado existente.
+Las pruebas con usuarios —sesiones de usabilidad, encuestas y capacitación— y el periodo de uso acompañado permanecen programados. Una vez ejecutados, el análisis de resultados seguirá el procedimiento expuesto en el apartado 3.6.
 
-#### 3.4.2.4 Formatos de Documentación de Pruebas
+### 3.5.4 Fase 4: Implementación y Documentación (mes 8) — documentación ejecutada, implementación pendiente
 
-**Pruebas Unitarias:**
-- Descripción de la funcionalidad probada.
-- Datos de entrada utilizados.
-- Resultados esperados y obtenidos.
-- Estado de la prueba (pasó/falló).
-- Observaciones y correcciones necesarias.
-
-**Pruebas de Integración:**
-- Módulos componentes probados.
-- Escenarios de integración evaluados.
-- Resultados de pruebas de end-to-end.
-- Problemas identificados y resoluciones.
-
-**Pruebas de Aceptación:**
-- Criterios de aceptación definidos.
-- Resultados de pruebas con usuarios piloto.
-- Feedback recopilado y mejoras implementadas.
-
-## 3.5 PROCEDIMIENTOS DE RECOLECCIÓN DE DATOS
-
-### 3.5.1 Fase 1: Análisis de Requerimientos (Meses 1-2)
-
-#### 3.5.1.1 Actividades
-
-1. **Revisión documental:**
-   - Análisis de literatura sobre sistemas de gestión de personal
-   - Revisión de normativas legales y educativas
-   - Estudio de sistemas existentes en el mercado
-
-2. **Entrevistas con stakeholders:**
-   - Entrevistas con directivos de instituciones piloto
-   - Entrevistas con personal de recursos humanos
-   - Entrevistas con personal administrativo operativo
-
-3. **Observación de procesos actuales:**
-   - Observación directa de tareas de gestión de personal
-   - Registro de tiempos de procesamiento actuales
-   - Identificación de puntos de fricción en procesos
-
-4. **Análisis de requerimientos:**
-   - Compilación de requerimientos funcionales y no funcionales
-   - Priorización de funcionalidades según criterios de valor y esfuerzo
-   - Documentación de casos de uso y escenarios
-
-#### 3.5.1.2 Entregables
-
-- Documento de requerimientos funcionales
-- Documento de requerimientos no funcionales
-- Diagramas de casos de uso
-- Priorización de funcionalidades (MoSCoW)
-
-### 3.5.2 Fase 2: Diseño y Desarrollo (Meses 3-6)
-
-#### 3.5.2.1 Actividades
-
-1. **Diseño de arquitectura:**
-   - Definición de arquitectura de capas
-   - Selección de patrones de diseño apropiados
-   - Diseño de modelo de datos
-   - Creación de diagramas arquitectónicos
-
-2. **Desarrollo iterativo:**
-   - Sprint 1 (Mes 3): Modelos y repositorios
-   - Sprint 2 (Mes 4): Servicios de negocio
-   - Sprint 3 (Mes 5): Interfaz gráfica
-   - Sprint 4 (Mes 6): Integración y reportes
-
-3. **Validación continua:**
-   - Revisiones de código con tutores
-   - Demostraciones a usuarios piloto al final de cada sprint
-   - Ajustes según feedback recibido
-
-#### 3.5.2.2 Entregables
-
-- Arquitectura del sistema documentada
-- Modelo de datos implementado
-- Módulos funcionales básicos
-- Interfaz gráfica operativa
-- Sistema integrado con funcionalidades principales
-
-### 3.5.3 Fase 3: Pruebas y Validación (Mes 7)
-
-#### 3.5.3.1 Actividades
-
-1. **Pruebas técnicas:**
-   - Pruebas unitarias de componentes
-   - Pruebas de integración entre módulos
-   - Pruebas de rendimiento y carga
-   - Pruebas de seguridad
-
-2. **Pruebas con usuarios:**
-   - Pruebas de usabilidad con usuarios piloto
-   - Encuestas de satisfacción pre-implementación
-   - Sesiones de capacitación
-   - Período de uso piloto (2-3 semanas)
-
-3. **Análisis de resultados:**
-   - Análisis cuantitativo de métricas de rendimiento
-   - Análisis cualitativo de feedback de usuarios
-   - Identificación de mejoras necesarias
-   - Ajustes finales al sistema
-
-#### 3.5.3.2 Entregables
-
-- Sistema probado y validado
-- Reporte de pruebas técnicas
-- Reporte de pruebas de usabilidad
-- Resultados de encuestas de satisfacción
-- Sistema optimizado según feedback
-
-### 3.5.4 Fase 4: Implementación y Documentación (Mes 8)
-
-#### 3.5.4.1 Actividades
-
-1. **Implementación final:**
-   - Instalación en instituciones piloto
-   - Migración de datos existentes
-   - Configuración personalizada por institución
-   - Capacitación final de usuarios
-
-2. **Documentación:**
-   - Documentación técnica completa
-   - Manual de usuario detallado
-   - Guía de implementación
-   - Manuales de mantenimiento
-
-3. **Evaluación final:**
-   - Encuestas post-implementación
-   - Entrevistas de cierre con stakeholders
-   - Análisis de impacto cuantitativo y cualitativo
-   - Documentación de lecciones aprendidas
-
-#### 3.5.4.2 Entregables
-
-- Sistema implementado en instituciones piloto
-- Documentación completa del sistema
-- Resultados de evaluación final
-- Tesis documentada y presentada
+La documentación del sistema se completó y comprende la documentación técnica, la guía de usuario, las notas de desarrollo y los documentos académicos que integran este informe. La implementación en las instituciones —instalación, migración de datos, configuración particular y capacitación final— permanece programada, junto con la evaluación de cierre que incluye las encuestas posteriores, las entrevistas de cierre y el análisis de impacto.
 
 ## 3.6 TÉCNICAS DE PROCESAMIENTO Y ANÁLISIS DE DATOS
 
@@ -362,279 +111,73 @@ El tamaño de muestra propuesto se justifica por:
 
 #### 3.6.1.1 Estadística Descriptiva
 
-**Aplicación:** Análisis de métricas de rendimiento y satisfacción.
-
-**Procedimiento:**
-- Cálculo de medidas de tendencia central (media, mediana)
-- Cálculo de medidas de dispersión (desviación estándar, rango)
-- Análisis de distribuciones de frecuencias
-- Comparación pre/post implementación
-
-**Software:** Excel/Google Sheets para análisis básico, Python (pandas, numpy) para análisis avanzado.
+Las métricas de tiempo, error y satisfacción se resumen mediante medidas de tendencia central y de dispersión, y se presentan en distribuciones de frecuencia que permiten comparar la situación previa con la posterior a la implementación. La comparación entre grupos de usuarios se realiza por perfil y por institución. Para el tratamiento de los datos se emplean hojas de cálculo y, cuando el análisis lo requiere, herramientas estadísticas de propósito general.
 
 #### 3.6.1.2 Pruebas Estadísticas
 
-**Aplicación:** Validación de significancia de mejoras observadas.
+El contraste de las mejoras observadas se realiza con las pruebas que corresponden a la naturaleza de los datos y a la distribución observada:
 
-**Pruebas a realizar:**
-- **Prueba t de Student:** Comparación de tiempos de procesamiento pre/post.
-- **Prueba chi-cuadrado:** Comparación de distribuciones de respuestas en encuestas.
-- **ANOVA:** Comparación de satisfacción entre diferentes tipos de usuarios.
-- **Prueba de Wilcoxon:** Comparación de rankings pre/post cuando no se cumple normalidad.
+- Prueba t para muestras relacionadas: comparación de tiempos de procesamiento antes y después de la implementación, cuando se verifica la normalidad de las diferencias.
+- Prueba de rangos con signo de Wilcoxon: contraste equivalente cuando no se verifica la normalidad.
+- Prueba de chi-cuadrado: comparación de distribuciones de respuesta en las encuestas por perfil de usuario.
+- Análisis de varianza: comparación de la satisfacción media entre los distintos perfiles de usuario.
 
-**Nivel de significancia:** α = 0.05
+El nivel de significancia adoptado es de 0,05, y cada contraste se reporta con su estadístico, sus grados de libertad y el valor de probabilidad asociado. La interpretación distingue de manera explícita entre significancia estadística y relevancia práctica, dado que una diferencia significativa puede resultar administrativamente irrelevante si su magnitud es pequeña.
 
 #### 3.6.1.3 Análisis de Satisfacción
 
-**Procedimiento:**
-- Cálculo de puntuaciones promedio por dimensión
-- Análisis de correlación entre dimensiones
-- Identificación de fortalezas y debilidades del sistema
-- Comparación con benchmarks de usabilidad (SUS - System Usability Scale)
+La satisfacción se analiza por dimensión —facilidad de uso, eficiencia, precisión, satisfacción general y utilidad percibida— y en su conjunto, mediante la escala de usabilidad del sistema cuando el número de participantes lo permite. Los resultados se interpretan a la luz de la literatura sobre aceptación tecnológica, que vincula la utilidad percibida y la facilidad de uso con la intención de continuar utilizando el sistema (Davis, 1989).
 
 ### 3.6.2 Análisis Cualitativo
 
 #### 3.6.2.1 Análisis de Contenido
 
-**Aplicación:** Análisis de entrevistas y comentarios de usuarios.
+Las transcripciones de entrevistas y de sesiones de prueba se someten a un proceso de codificación temática: lectura inicial, identificación de unidades de significado, agrupación en categorías y depuración de las categorías emergentes. El análisis se apoya en hojas de cálculo para el registro de códigos y frecuencias, y sus resultados se contrastan con los datos cuantitativos mediante triangulación.
 
-**Procedimiento:**
-- Transcripción de entrevistas y sesiones de prueba
-- Codificación inicial de temas emergentes
-- Identificación de patrones y categorías
-- Triangulación con datos cuantitativos
+#### 3.6.2.2 Estudio de Caso por Institución
 
-**Software:** NVivo o análisis manual con hojas de cálculo para codificación temática.
+Cada institución participante se documenta como un caso: se describe su contexto administrativo, se identifican las barreras y los facilitadores de la implementación, y se registran los factores que explican su comportamiento particular. La comparación entre casos se realizará siguiendo el procedimiento propuesto por Yin (2018), que privilegia la replicación lógica sobre la acumulación estadística de observaciones.
 
-#### 3.6.2.2 Análisis de Casos
+#### 3.6.2.3 Análisis de Retroalimentación
 
-**Aplicación:** Estudio detallado de implementación en cada institución piloto.
+Los comentarios recogidos durante las sesiones se clasifican por categoría —usabilidad, funcionalidad, rendimiento—, se agrupan por tema y se ordenan según su frecuencia y su impacto potencial sobre el uso. El resultado alimenta la priorización de las mejoras posteriores al piloto.
 
-**Procedimiento:**
-- Documentación de contexto institucional específico
-- Análisis de barreras y facilitadores en cada caso
-- Identificación de factores de éxito específicos por contexto
-- Comparación entre diferentes implementaciones
+### 3.6.3 Integración de los Análisis
 
-#### 3.6.2.3 Análisis de Feedback
+La triangulación se aplica en tres niveles. En el nivel de las fuentes, se contrastan los datos cuantitativos con los testimonios recogidos en entrevistas y con lo observado en las sesiones de uso. En el nivel de los instrumentos, se verifican las coincidencias entre las mediciones de tiempo, las tasas de error y las encuestas de satisfacción. En el nivel de los casos, se comparan los hallazgos entre instituciones para distinguir los patrones comunes de las particularidades locales. Cuando se identifiquen divergencias, estas se documentarán y analizarán en lugar de promediarse, pues las discrepancias suelen contener la información más útil para interpretar el fenómeno.
 
-**Aplicación:** Síntesis de comentarios y sugerencias de usuarios.
-
-**Procedimiento:**
-- Clasificación de feedback por categoría (usabilidad, funcionalidad, rendimiento)
-- Identificación de sugerencias más frecuentes
-- Análisis de sentimiento de comentarios
-- Priorización de mejoras según frecuencia e impacto
-
-### 3.6.3 Integración de Análisis
-
-#### 3.6.3.1 Triangulación
-
-**Propósito:** Validar hallazgos mediante convergencia de diferentes métodos y fuentes de datos.
-
-**Procedimiento:**
-- Comparación de resultados cuantitativos y cualitativos
-- Validación de hallazgos con diferentes instrumentos
-- Identificación de inconsistencias y explicaciones
-- Síntesis de evidencia para conclusiones robustas
-
-#### 3.6.3.2 Análisis de Impacto
-
-**Propósito:** Evaluar el impacto integral del sistema en eficiencia administrativa.
-
-**Dimensiones:**
-- **Impacto temporal:** Reducción en tiempos de procesamiento
-- **Impacto de calidad:** Reducción en tasas de error
-- **Impacto de satisfacción:** Mejora en satisfacción de usuarios
-- **Impacto organizacional:** Cambios en procesos y cultura organizacional
+El análisis de impacto final se organiza en cuatro dimensiones: temporal —reducción de los tiempos de procesamiento—, de calidad —disminución de las tasas de error—, de satisfacción —variación de la percepción de los usuarios— y organizacional —modificaciones observadas en los procesos y en las prácticas de trabajo—.
 
 ## 3.7 ASPECTOS ÉTICOS
 
-### 3.7.1 Principios Éticos
+### 3.7.1 Principios Aplicados
 
-La investigación se fundamenta en los siguientes principios éticos:
-
-#### 3.7.1.1 Consentimiento Informado
-
-Todos los participantes recibirán información clara sobre:
-- Propósito de la investigación
-- Procedimientos en los que participarán
-- Tiempo requerido
-- Beneficios esperados
-- Riesgos potenciales
-- Derechos como participantes (retirarse, confidencialidad)
-
-Solo participarán aquellos que firmen consentimiento informado por escrito.
-
-#### 3.7.1.2 Confidencialidad y Privacidad
-
-- **Datos personales:** Información de empleados será protegida según normativas de protección de datos.
-- **Anonimización:** Datos reportados en la investigación serán anonimizados cuando sea posible.
-- **Acceso restringido:** Solo el investigador y tutores tendrán acceso a datos crudos.
-- **Almacenamiento seguro:** Datos serán almacenados en sistemas seguros con respaldos regulares.
-- **Eliminación oportuna:** Datos serán eliminados o anonimizados después del período de retención requerido.
-
-#### 3.7.1.3 No Maleficencia
-
-- **Minimización de riesgos:** Se identificarán y mitigarán riesgos potenciales para participantes.
-- **Soporte técnico:** Se proporcionará soporte técnico durante implementación piloto.
-- **Contingencias:** Planes de contingencia para manejar problemas técnicos imprevistos.
-- **Retorno gradual:** Mantenimiento de sistemas manuales como respaldo durante transición.
-
-#### 3.7.1.4 Beneficencia
-
-- **Beneficios directos:** Participantes se beneficiarán de acceso a sistema mejorado.
-- **Capacitación:** Se proporcionará capacitación gratuita a usuarios participantes.
-- **Mejoras laborales:** Sistema mejorará condiciones laborales de participantes.
-- **Contribución social:** Proyecto contribuye al desarrollo tecnológico del sector educativo.
-
-#### 3.7.1.5 Justicia
-
-- **Selección equitativa:** Participación sin discriminación por género, edad, rol, u otras características.
-- **Accesibilidad:** Sistema diseñado para ser accesible a usuarios con variados niveles de competencia tecnológica.
-- **Beneficios distribuidos:** Beneficios del sistema accesibles a todas las instituciones interesadas.
-- **Compensación justa:** Reconocimiento apropiado de contribuciones de participantes.
+La investigación se rige por cinco principios. El consentimiento informado se obtiene por escrito, previa explicación del propósito del estudio, de los procedimientos en que participará cada persona, del tiempo requerido, de los beneficios esperados, de los riesgos previsibles y del derecho a retirarse en cualquier momento sin consecuencia alguna. La confidencialidad se garantiza mediante la anonimización de los datos reportados, el acceso restringido a la información cruda —limitado al investigador y a sus tutores— y la eliminación o anonimización de los datos una vez transcurrido el periodo de retención previsto. El principio de no maleficencia se atiende con la minimización de los riesgos identificados, el acompañamiento técnico durante el piloto, la existencia de planes de contingencia y el mantenimiento del procedimiento anterior como respaldo durante la transición. La beneficencia se expresa en el acceso de las instituciones participantes a una herramienta funcional y en la capacitación gratuita de su personal. La justicia se garantiza mediante criterios de selección no discriminatorios, un diseño accesible a usuarios con competencias digitales diversas y la distribución equitativa de los beneficios del proyecto.
 
 ### 3.7.2 Consideraciones Específicas
 
-#### 3.7.2.1 Protección de Datos Sensibles
+El tratamiento de datos personales del personal constituye el aspecto ético de mayor sensibilidad, pues el sistema almacena información identificativa, laboral, documental y salarial. El sistema responde a esa exigencia con control de acceso por rol, registro de auditoría de las operaciones sensibles, almacenamiento local con respaldos sujetos a política de retención y minimización de los datos recogidos respecto de la finalidad declarada. Corresponderá completar este apartado con la cita de la normativa de protección de datos vigente en la jurisdicción de aplicación, según se indica en el apartado 6.1.5.
 
-- **Datos de empleados:** Información personal, salarios, documentos sensibles.
-- **Normativas aplicables:** Cumplimiento con leyes de protección de datos personales.
-- **Seguridad técnica:** Encriptación, autenticación, autorización apropiadas.
-- **Políticas de retención:** Definición clara de períodos de retención de datos.
-
-#### 3.7.2.2 Propiedad Intelectual
-
-- **Código abierto:** Sistema será liberado bajo licencia permisiva para uso educativo.
-- **Atribución:** Reconocimiento apropiado de contribuciones de participantes.
-- **Uso comercial:** Restricciones apropiadas sobre uso comercial del sistema.
-- **Modificaciones:** Política clara sobre modificaciones y derivados.
-
-#### 3.7.2.3 Conflicto de Intereses
-
-- **Transparencia:** Divulgación completa de cualquier conflicto de interés potencial.
-- **Independencia:** Mantenimiento de independencia en análisis y conclusiones.
-- **Objetividad:** Enfoque en evidencia empírica más que en preferencias personales.
+En materia de propiedad intelectual, el sistema se distribuye bajo licencia de código abierto, con reconocimiento de las contribuciones recibidas y con la constancia de las condiciones aplicables a su uso y a sus derivados. Respecto de los conflictos de interés, el investigador no mantiene vínculo comercial con las tecnologías empleadas ni con las instituciones participantes distinto del académico, circunstancia que se declara de manera expresa.
 
 ## 3.8 CRITERIOS DE CALIDAD
 
-### 3.8.1 Calidad del Sistema Desarrollado
+### 3.8.1 Calidad del Sistema
 
-#### 3.8.1.1 Calidad Funcional
-
-- **Completitud:** Implementación de todos los requerimientos funcionales priorizados.
-- **Correctitud:** El sistema produce resultados correctos según especificaciones.
-- **Adecuación:** Funcionalidades apropiadas para el contexto educativo.
-- **Interoperabilidad:** Capacidad para integrarse con otros sistemas si es necesario.
-
-#### 3.8.1.2 Calidad Técnica
-
-- **Confiabilidad:** El sistema funciona consistentemente sin fallos.
-- **Eficiencia:** Rendimiento aceptable con recursos razonables.
-- **Mantenibilidad:** Código documentado y estructurado para facilitar mantenimiento.
-- **Portabilidad:** Sistema funciona en diferentes configuraciones hardware/software apropiadas.
-
-#### 3.8.1.3 Calidad de Usabilidad
-
-- **Facilidad de aprendizaje:** Usuarios pueden aprender a usar el sistema rápidamente.
-- **Eficiencia de uso:** Usuarios pueden completar tareas eficientemente.
-- **Prevención de errores:** El sistema minimiza errores del usuario.
-- **Satisfacción:** Usuarios reportan alta satisfacción con el sistema.
+La evaluación de la calidad del producto adopta como referencia el modelo de calidad de producto de la norma ISO/IEC 25010 (2011), aplicado a los atributos pertinentes para este tipo de sistema. La adecuación funcional se verifica con la suite automatizada, que comprueba la corrección de los cálculos y de las validaciones del dominio. La fiabilidad se evalúa mediante la consistencia de los resultados y el tratamiento de las excepciones. La eficiencia de desempeño se medirá con el protocolo del apartado 4.3.3. La seguridad se verifica mediante los controles de autenticación, autorización, auditoría y tratamiento de archivos. La mantenibilidad se sustenta en la separación por capas, la documentación y la existencia de pruebas. La portabilidad deriva del uso de tecnologías multiplataforma y de una base de datos embebida. La usabilidad se evalúa con las pruebas de tareas y el cuestionario de satisfacción.
 
 ### 3.8.2 Calidad de la Investigación
 
-#### 3.8.2.1 Validez
-
-- **Validez interna:** El diseño de investigación permite establecer relaciones causales.
-- **Validez externa:** Los resultados son generalizables a contextos similares.
-- **Validez de constructo:** Las mediciones realmente miden lo que pretenden medir.
-- **Validez de contenido:** La investigación cubre adecuadamente el tema de estudio.
-
-#### 3.8.2.2 Confiabilidad
-
-- **Consistencia:** Resultados consistentes en mediciones repetidas.
-- **Estabilidad:** Herramientas de medición producen resultados estables.
-- **Equivalencia:** Diferentes métodos producen resultados similares.
-- **Documentación:** Procedimientos documentados permiten replicación.
-
-#### 3.8.2.3 Rigor
-
-- **Metodología apropiada:** Métodos seleccionados son apropiados para preguntas de investigación.
-- **Triangulación:** Uso de múltiples métodos y fuentes de datos.
-- **Reflexividad:** Reconocimiento y consideración de sesgos del investigador.
-- **Transparencia:** Procesos y decisiones documentados claramente.
+El estudio atiende cuatro criterios de rigor. La validez interna se sostiene en el contraste antes y después de la implementación con los mismos instrumentos y en la triangulación de fuentes. La validez externa se declara limitada: los resultados describen el comportamiento del sistema en instituciones con características similares a las participantes. La confiabilidad deriva de la utilización de instrumentos documentados y del registro sistemático de las mediciones, condiciones que permiten repetir el procedimiento. La reflexividad se asume mediante el reconocimiento explícito de la posición del investigador como desarrollador del sistema evaluado, circunstancia que se contrarresta con la triangulación de fuentes y con la distinción, sostenida en todo el informe, entre lo verificado sobre el producto y lo medido con los usuarios.
 
 ## 3.9 PLAN DE CONTINGENCIA
 
-### 3.9.1 Riesgos y Mitigación
+Los riesgos identificados y sus estrategias de mitigación se organizan en cuatro categorías. En el orden técnico, el riesgo de dificultades imprevistas durante el desarrollo se atendió con prototipado temprano, uso de tecnologías maduras, planes alternativos para los componentes críticos y consulta a especialistas cuando fue necesario. En el orden de la participación, el riesgo de dificultad para incorporar instituciones se mitiga con acuerdos formalizados desde el inicio, demostración temprana del valor del sistema, oferta de capacitación como contraprestación y previsión de instituciones alternativas. En el orden temporal, el riesgo de retraso se gestiona con priorización estricta de las funcionalidades esenciales, flexibilidad para ajustar el alcance y comunicación anticipada de cualquier modificación del cronograma. En el orden de la calidad, el riesgo de un producto que no satisfaga las expectativas se controla con verificación continua, revisión del código por parte del tutor y validación temprana con usuarios.
 
-#### 3.9.1.1 Riesgos Técnicos
-
-**Riesgo:** Problemas técnicos imprevistos en desarrollo.
-
-**Mitigación:**
-- Prototipado temprano para identificar problemas técnicos.
-- Uso de tecnologías maduras y bien documentadas.
-- Plan de contingencia para componentes críticos.
-- Consulta con expertos técnicos cuando sea necesario.
-
-#### 3.9.1.2 Riesgos de Participación
-
-**Riesgo:** Dificultad para reclutar instituciones o usuarios participantes.
-
-**Mitigación:**
-- Acuerdos formales tempranos con instituciones piloto.
-- Demostración de valor temprano para mantener interés.
-- Incentivos apropiados para participación (capacitación gratuita, acceso prioritario).
-- Plan B con instituciones alternativas si es necesario.
-
-#### 3.9.1.3 Riesgos de Tiempo
-
-**Riesgo:** Retrasos en el cronograma del proyecto.
-
-**Mitigación:**
-- Priorización estricta de funcionalidades críticas.
-- Flexibilidad para ajustar alcance según progreso real.
-- Buffer de tiempo para actividades críticas.
-- Comunicación proactiva con stakeholders sobre cambios en cronograma.
-
-#### 3.9.1.4 Riesgos de Calidad
-
-**Riesgo:** Sistema no cumple estándares de calidad esperados.
-
-**Mitigación:**
-- Pruebas continuas durante desarrollo.
-- Revisión de código por tutores y pares.
-- Validación temprana con usuarios.
-- Iteraciones adicionales si es necesario.
-
-### 3.9.2 Estrategias de Ajuste
-
-#### 3.9.2.1 Ajuste de Alcance
-
-Si se identifican retrasos significativos:
-
-- **Priorización MoSCoW:** Reevaluar prioridades de funcionalidades (Must, Should, Could, Won't).
-- **Reducción de alcance:** Enfocarse en funcionalidades esenciales.
-- **Fases de implementación:** Dejar funcionalidades secundarias para fases posteriores.
-
-#### 3.9.2.2 Ajuste de Metodología
-
-Si el enfoque metodológico no está funcionando:
-
-- **Pivot metodológico:** Ajustar enfoque según resultados de fases tempranas.
-- **Simplificación de procesos:** Reducir complejidad de actividades si es necesario.
-- **Enfoque alternativo:** Considerar metodologías alternativas si las seleccionadas no son efectivas.
+Las estrategias de ajuste previstas son de dos tipos. Si se identifica un retraso significativo, se reordenan las prioridades según su carácter indispensable, recomendable u opcional, y se difieren las funcionalidades secundarias a una fase posterior. Si el enfoque metodológico no produce los resultados esperados, se simplifican los procedimientos y se ajusta el diseño de las actividades, manteniendo inalterados los criterios de rigor y la trazabilidad de las decisiones adoptadas.
 
 ## 3.10 CONCLUSIONES DEL CAPÍTULO
 
-Este capítulo ha presentado una metodología de investigación rigurosa y apropiada para el desarrollo e implementación del Sistema de Gestión de Personal y Nómina. El enfoque mixto, combinando métodos cuantitativos y cualitativos, permitirá una evaluación comprensiva del impacto del sistema.
+El capítulo ha establecido una metodología coherente con el objeto de estudio: investigación aplicada y tecnológica, con un diseño que combina investigación-acción y prototipado evolutivo, y con un enfoque mixto que integra medición cuantitativa del efecto y comprensión cualitativa del proceso. La población y la muestra se delimitaron con criterios explícitos y con reconocimiento de sus límites de generalización; los instrumentos se documentan íntegramente en los anexos; y los procedimientos de análisis se definieron antes de la recolección, condición que evita el ajuste posterior de los criterios de contraste.
 
-La metodología de investigación-acción combinada con prototipado evolutivo asegura que el desarrollo del sistema esté informado continuamente por feedback de usuarios reales, maximizando la probabilidad de éxito y la utilidad práctica de la solución.
-
-Los procedimientos éticos detallados garantizan que la investigación se lleva a cabo de manera responsable, protegiendo los derechos y bienestar de los participantes mientras se genera conocimiento valioso para el campo.
-
-Los criterios de calidad establecidos proporcionan estándares claros para evaluar tanto el sistema desarrollado como la calidad de la investigación misma, asegurando que el proyecto cumpla con estándares académicos y profesionales.
-
-Con esta metodología sólida como fundamento, el siguiente capítulo presentará los resultados de la investigación, incluyendo el sistema desarrollado, los hallazgos de las pruebas y validaciones, y el análisis del impacto observado en las instituciones piloto.
+El capítulo ha precisado, además, el estado de avance de cada fase, de manera que la evidencia disponible y la evidencia pendiente no se confundan: el análisis de requerimientos, el diseño y el desarrollo, las pruebas técnicas y la documentación se encuentran concluidos; las pruebas de usabilidad, la aplicación piloto y la evaluación de impacto permanecen programadas. Sobre esa base, el capítulo siguiente presenta los resultados verificables y define la estructura precisa en la que se incorporará la evidencia del piloto.

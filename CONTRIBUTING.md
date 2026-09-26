@@ -347,16 +347,27 @@ Brief description of changes
 
 ### Workflow Overview
 
-The CI/CD pipeline consists of a single workflow:
+The CI/CD pipeline consists of two complementary workflows:
 
-1. **Build & Release** (`build.yml`)
+1. **Integration & packaging** (`build.yml`)
    - Runs on every push to main/develop, on `v*` tags, and manually
    - Job 1 (`tests`): runs the pytest suite and uploads coverage
-   - Job 2 (`build`, Windows): compiles the executable with PyInstaller,
-     verifies it with `--selftest`, builds the Inno Setup installer,
-     uploads artifacts, and publishes a GitHub Release on **every push
-     to main** (continuous release, no tag required) or on `v*` tags
-     (versioned release)
+   - Job 2 (`build-linux`): compiles the portable Linux build inside
+     Debian 13, verifies it with `--selftest` and checks its glibc
+     requirements
+   - Job 3 (`build`, Windows): compiles the executable and the auto-updater
+     with PyInstaller, verifies them with `--selftest`, builds the Inno Setup
+     installer and uploads all artifacts. It does **not** publish releases.
+
+2. **Signed release** (`release.yml`)
+   - Runs on every push to main, on `v*` tags, and manually
+   - Signs every signable file in two passes, audits the signatures and
+     publishes the GitHub Release with the signed installer
+     (`SistemaGestionPersonal-Setup-<version>.exe`) as its only asset
+   - Continuous releases on `main` use the tag
+     `continuous-v<version>.<run number>`; `v*` tags produce versioned
+     releases
+   - Requires the `PFX_BASE64` and `PFX_PASSWORD` repository secrets
 
 ### CI/CD Best Practices
 
@@ -387,11 +398,11 @@ gh run view <run-id> --log
 # Trigger build manually
 gh workflow run build.yml
 
-# Every push to main publishes a Release automatically (no tag needed)
+# Every push to main publishes a signed Release automatically (no tag needed)
 git push origin main
 
 # Optional: versioned release from a tag
-git tag v2.81 && git push origin v2.81
+git tag v2.82 && git push origin v2.82
 ```
 
 ---

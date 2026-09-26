@@ -2,660 +2,475 @@
 
 ## 6.1 BIBLIOGRAFÍA
 
-### 6.1.1 Libros
+### 6.1.1 Nota sobre el uso de las fuentes
 
-**Ingeniería de Software:**
+La presente bibliografía se compone exclusivamente de fuentes existentes y localizables: libros con edición identificable, artículos con volumen, número y paginación, normas técnicas con código y año, y documentación oficial de los proyectos de software utilizados. Cada referencia incluida aparece citada en el cuerpo de la tesis y, recíprocamente, toda cita del cuerpo remite a una entrada de esta lista, de modo que no exista en el documento una atribución sin respaldo ni un respaldo inutilizado.
 
-- Pressman, R. S., & Maxim, B. R. (2019). *Software Engineering: A Practitioner's Approach* (9na ed.). McGraw-Hill Education.
-- Sommerville, I. (2015). *Software Engineering* (10ma ed.). Pearson.
-- Beck, K., Beedle, M., van Bennekum, A., Cockburn, A., Cunningham, W., Fowler, M., et al. (2001). *Manifesto for Agile Software Development*. https://agilemanifesto.org/
+Dos secciones requieren completación antes de la presentación definitiva. La primera es la de normativas legales, donde deben sustituirse los marcadores por las leyes vigentes en la jurisdicción de aplicación, con su denominación oficial, número y año. La segunda es la de tesis y trabajos de grado, que debe nutrirse con trabajos reales del repositorio institucional relacionados con sistemas de información, gestión de personal o nómina en el ámbito educativo. Ambas secciones se identifican de forma explícita para evitar atribuciones no verificadas.
+
+### 6.1.2 Libros
+
+**Ingeniería de software**
+
+- Pressman, R. S., & Maxim, B. R. (2019). *Software Engineering: A Practitioner's Approach* (9.ª ed.). McGraw-Hill Education.
+- Sommerville, I. (2015). *Software Engineering* (10.ª ed.). Pearson.
 - Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley.
 
-**Sistemas de Información:**
+**Sistemas de información**
 
-- Laudon, K. C., & Laudon, J. P. (2018). *Management Information Systems: Managing the Digital Firm* (15ta ed.). Pearson.
-- Johnson, R. D., Carlson, K. D., & Kavanagh, M. J. (Eds.). (2021). *Human Resource Information Systems: Basics, Applications, and Future Directions* (5ta ed.). SAGE Publications.
-- Picciano, A. G. (2011). *Educational Leadership and Planning for Technology* (5ta ed.). Pearson.
+- Laudon, K. C., & Laudon, J. P. (2018). *Management Information Systems: Managing the Digital Firm* (15.ª ed.). Pearson.
+- Johnson, R. D., Carlson, K. D., & Kavanagh, M. J. (Eds.). (2021). *Human Resource Information Systems: Basics, Applications, and Future Directions* (5.ª ed.). SAGE Publications.
+- Picciano, A. G. (2011). *Educational Leadership and Planning for Technology* (5.ª ed.). Pearson.
 
-**Bases de Datos:**
+**Bases de datos y diseño de software**
 
-- Date, C. J. (2003). *An Introduction to Database Systems* (8va ed.). Addison-Wesley.
-- Elmasri, R., & Navathe, S. B. (2015). *Fundamentals of Database Systems* (7ma ed.). Pearson.
+- Date, C. J. (2003). *An Introduction to Database Systems* (8.ª ed.). Addison-Wesley.
+- Elmasri, R., & Navathe, S. B. (2015). *Fundamentals of Database Systems* (7.ª ed.). Pearson.
+- Booch, G. (2007). *Object-Oriented Analysis and Design with Applications* (3.ª ed.). Addison-Wesley.
+- Shneiderman, B., Plaisant, C., Cohen, M. S., Jacobs, S. M., & Elmqvist, N. (2016). *Designing the User Interface: Strategies for Effective Human-Computer Interaction* (6.ª ed.). Pearson.
+- Ambler, S. W. (2002). *Agile Modeling: Effective Practices for eXtreme Programming and the Unified Process*. Wiley.
 
-**Desarrollo de Software:**
+**Gestión de recursos humanos**
 
-- Booch, G. (2007). *Object-Oriented Analysis and Design with Applications* (3ra ed.). Addison-Wesley.
-- Shneiderman, B., Plaisant, C., Cohen, M. S., Jacobs, S. M., & Elmqvist, N. (2016). *Designing the User Interface: Strategies for Effective Human-Computer Interaction* (6ta ed.). Pearson.
+- Dessler, G. (2020). *Human Resource Management* (16.ª ed.). Pearson.
+- Mathis, R. L., Jackson, J. H., Valentine, S. R., & Meglich, P. (2016). *Human Resource Management* (15.ª ed.). Cengage Learning.
+- Guffey, M. E., & Loewy, D. (2021). *Business Communication: Process and Product* (10.ª ed.). Cengage Learning.
 
-**Gestión de Recursos Humanos:**
+**Metodología de la investigación**
 
-- Dessler, G. (2020). *Human Resource Management* (16ta ed.). Pearson.
-- Mathis, R. L., Jackson, J. H., Valentine, S. R., & Meglich, P. (2016). *Human Resource Management* (15ta ed.). Cengage Learning.
-- Guffey, M. E., & Loewy, D. (2021). *Business Communication: Process and Product* (10ma ed.). Cengage Learning.
+- Hernández Sampieri, R., Fernández Collado, C., & Baptista Lucio, P. (2014). *Metodología de la investigación* (6.ª ed.). McGraw-Hill Education.
+- Creswell, J. W., & Creswell, J. D. (2018). *Research Design: Qualitative, Quantitative, and Mixed Methods Approaches* (5.ª ed.). SAGE Publications.
+- Yin, R. K. (2018). *Case Study Research and Applications: Design and Methods* (6.ª ed.). SAGE Publications.
 
-**Metodología de Investigación:**
+### 6.1.3 Artículos científicos
 
-- Hernández, R., Fernández, C., & Baptista, P. (2014). *Metodología de la Investigación* (6ta ed.). McGraw-Hill Education.
-- Creswell, J. W., & Creswell, J. D. (2018). *Research Design: Qualitative, Quantitative, and Mixed Methods Approaches* (5ta ed.). Sage Publications.
-- Yin, R. K. (2018). *Case Study Research and Applications: Design and Methods* (6ta ed.). Sage Publications.
+- Bondarouk, T. V., & Ruël, H. J. M. (2009). Electronic Human Resource Management: Challenges in the Digital Era. *The International Journal of Human Resource Management*, 20(3), 505-514. https://doi.org/10.1080/09585190802707235
+- Pollock, N., & Cornford, J. (2004). ERP Systems and the University as a "Unique" Organisation. *Information Technology & People*, 17(1), 31-52.
+- Benavides, L. M. C., Tamayo Arias, J. A., Arango Serna, M. D., Branch Bedoya, J. W., & Burgos, D. (2020). Digital Transformation in Higher Education Institutions: A Systematic Literature Review. *Sensors*, 20(11), 3291. https://doi.org/10.3390/s20113291
+- Voogt, J., & Pieters, J. (2019). Data-based Decision Making in Developing Countries: The Influence of System and Culture. *Journal of Professional Capital and Community*, 4(3), 260-268.
+- Pelgrum, W. J. (2001). Obstacles to the Integration of ICT in Education: Results from a Worldwide Educational Assessment. *Computers & Education*, 37(2), 163-178. https://doi.org/10.1016/S0360-1315(01)00045-8
+- Lakhan, S. E., & Jhunjhunwala, K. (2008). Open Source Software in Education. *EDUCAUSE Quarterly*, 31(2), 32-40.
+- Davis, F. D. (1989). Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology. *MIS Quarterly*, 13(3), 319-340. https://doi.org/10.2307/249008
+- Beck, K., Beedle, M., van Bennekum, A., Cockburn, A., Cunningham, W., Fowler, M., Grenning, J., Highsmith, J., Hunt, A., Jeffries, R., Kern, J., Marick, B., Martin, R. C., Mellor, S., Schwaber, K., Sutherland, J., & Thomas, D. (2001). *Manifesto for Agile Software Development*. https://agilemanifesto.org/
 
-### 6.1.2 Artículos Científicos
+### 6.1.4 Normas técnicas y documentación de software
 
-**Gestión Electrónica de Recursos Humanos:**
-
-- Bondarouk, T. V., & Ruël, H. J. M. (2009). "Electronic Human Resource Management: Challenges in the Digital Era". *The International Journal of Human Resource Management*, 20(3), 505-514. https://doi.org/10.1080/09585190802707235
-
-**Sistemas ERP en Educación:**
-
-- Pollock, N., & Cornford, J. (2004). "ERP Systems and the University as a 'Unique' Organisation". *Information Technology & People*, 17(1), 31-52.
-
-**Transformación Digital en Educación:**
-
-- Benavides, L. M. C., Tamayo Arias, J. A., Arango Serna, M. D., Branch Bedoya, J. W., & Burgos, D. (2020). "Digital Transformation in Higher Education Institutions: A Systematic Literature Review". *Sensors*, 20(11), 3291. https://doi.org/10.3390/s20113291
-
-**Toma de Decisiones Basada en Datos en Países en Desarrollo:**
-
-- Voogt, J., & Pieters, J. (2019). "Data-based Decision Making in Developing Countries: The Influence of System and Culture". *Journal of Professional Capital and Community*, 4(3), 260-268.
-
-**Integración de TIC en Educación:**
-
-- Pelgrum, W. J. (2001). "Obstacles to the Integration of ICT in Education: Results from a Worldwide Educational Assessment". *Computers & Education*, 37(2), 163-178. https://doi.org/10.1016/S0360-1315(01)00045-8
-
-**Software de Código Abierto en Educación:**
-
-- Lakhan, S. E., & Jhunjhunwala, K. (2008). "Open Source Software in Education". *EDUCAUSE Quarterly*, 31(2), 32-40.
-
-**Aceptación de Tecnología:**
-
-- Davis, F. D. (1989). "Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology". *MIS Quarterly*, 13(3), 319-340. https://doi.org/10.2307/249008
-
-### 6.1.3 Recursos Web y Documentación Técnica
-
-**Tecnologías Utilizadas:**
-
-- Python Software Foundation. (2023). *Python 3.10 Documentation*. https://docs.python.org/3.10/
+- International Organization for Standardization. (2011). *ISO/IEC 25010:2011. Systems and Software Engineering — Systems and Software Quality Requirements and Evaluation (SQuaRE) — System and Software Quality Models*.
+- Institute of Electrical and Electronics Engineers. (2008). *IEEE 829-2008. IEEE Standard for Software and System Test Documentation*.
+- Python Software Foundation. (2023). *Python Documentation*. https://docs.python.org/
+- Python Software Foundation. (2023). *PEP 8 — Style Guide for Python Code*. https://peps.python.org/pep-0008/
 - SQLAlchemy Project. (2023). *SQLAlchemy 2.0 Documentation*. https://docs.sqlalchemy.org/en/20/
 - CustomTkinter. (2023). *CustomTkinter Documentation*. https://customtkinter.tomschimansky.com/
 - ReportLab. (2023). *ReportLab Documentation*. https://www.reportlab.com/documentation/
-
-**Estándares y Normativas:**
-
-- ISO/IEC 25010:2011. (2011). *Systems and Software Engineering — Systems and Software Quality Requirements and Evaluation (SQuaRE)*. International Organization for Standardization.
-- IEEE 829-2008. (2008). *IEEE Standard for Software and System Test Documentation*. Institute of Electrical and Electronics Engineers.
-
-**Documentación de Desarrollo:**
-
-- Python Software Foundation. (2023). *PEP 8 -- Style Guide for Python Code*. https://peps.python.org/pep-0008/
 - Schwaber, K., & Sutherland, J. (2020). *The Scrum Guide*. https://scrumguides.org/
-- Ambler, S. W. (2002). *Agile Modeling: Effective Practices for eXtreme Programming and the Unified Process*. Wiley.
 
-### 6.1.4 Normativas Legales
+### 6.1.5 Normativas legales
 
-**Protección de Datos:**
+**Nota de completación:** esta sección debe consignar las disposiciones vigentes en la jurisdicción de aplicación del sistema, con su denominación oficial, número y año. Las entradas siguientes señalan el tipo de norma requerida y el aspecto que el sistema debe cumplir; no deben permanecer como marcadores en la versión definitiva.
 
-- [País]. Ley de Protección de Datos Personales. [Año de publicación].
+- *Ley de protección de datos personales de [jurisdicción].* Norma aplicable al tratamiento de datos de los empleados: consentimiento, finalidad, seguridad y derechos de acceso, rectificación y supresión. El sistema atiende estos extremos mediante control de acceso por rol, registro de auditoría, respaldos protegidos y minimización de los datos almacenados.
+- *Código del trabajo de [jurisdicción].* Norma aplicable al cálculo de remuneraciones, deducciones, jornada, horas extra, vacaciones y prestaciones. El sistema implementa estas reglas en el dominio `src/nomina` mediante parámetros configurables por institución.
+- *Ley orgánica de educación de [jurisdicción].* Norma aplicable a los requisitos documentales y de titulación del personal educativo, así como a los reportes obligatorios ante la autoridad educativa.
+- *Reglamento de seguridad de la información aplicable a [jurisdicción].* Referencia para los controles de autenticación, autorización, respaldo y auditoría implementados.
 
-**Laboral:**
+### 6.1.6 Tesis y trabajos de grado
 
-- [País]. Código del Trabajo. [Año de publicación].
+**Nota de completación:** esta sección se reserva para trabajos de grado, tesis de maestría y tesis doctorales reales, preferentemente procedentes del repositorio institucional de la universidad, relacionados con sistemas de información, gestión de personal o nómina en el ámbito educativo. El formato de consignación es el siguiente:
 
-**Educativa:**
+> Apellido, N. (Año). *Título del trabajo*. [Trabajo de grado / Tesis de maestría / Tesis doctoral], Nombre de la Universidad. Enlace al repositorio.
 
-- [País]. Ley Orgánica de Educación. [Año de publicación].
-
-### 6.1.5 Tesis y Trabajos de Grado
-
-> **Instrucción:** Completar esta sección con trabajos de grado y tesis reales, preferiblemente del repositorio institucional de la universidad, relacionados con sistemas de información, gestión de personal o nómina en el ámbito educativo. Cada entrada debe incluir autor, año, título, grado académico y universidad. Ejemplo de formato:
->
-> - [Apellido, N.]. ([Año]). *[Título del trabajo de grado]*. [Trabajo de Grado/Maestría/Doctorado], [Nombre de la Universidad]. [Enlace al repositorio]
->
-> Las referencias a trabajos de grado no verificados deben evitarse en la versión final de la tesis; solo se incluirán fuentes existentes y localizables.
+No se incluirán entradas cuya existencia o localización no pueda comprobarse.
 
 ## 6.2 ANEXOS
 
-### 6.2.1 Anexo 1: Guía de Entrevista para Análisis de Requerimientos
+### 6.2.1 Anexo 1: Guía de Entrevista para el Análisis de Requerimientos
 
-**Propósito:** Recopilar información detallada sobre procesos actuales de gestión de personal y necesidades del sistema.
+**Propósito.** Recopilar información sobre los procesos actuales de gestión de personal, las dificultades que enfrenta el personal y las expectativas respecto del sistema propuesto.
 
-**Instrucciones para el Entrevistador:**
-- La entrevista durará aproximadamente 45-60 minutos
-- Grabar con consentimiento del participante
-- Tomar notas detalladas además de la grabación
-- Seguir la guía pero permitir exploración de temas emergentes
-- Mantener un tono profesional y empático
+**Instrucciones para quien entrevista.** La sesión tiene una duración prevista de cuarenta y cinco a sesenta minutos; se solicita autorización para grabar y se toman notas simultáneas; se sigue la guía sin cerrar la posibilidad de explorar temas emergentes; se mantiene un tono profesional y respetuoso, evitando inducir respuestas o valorar las prácticas descritas.
 
-**Guía de Entrevista:**
+**Parte 1. Información general**
 
-**Parte 1: Información Demográfica**
 1. ¿Cuál es su rol actual en la institución?
-2. ¿Cuánto tiempo lleva en este rol?
-3. ¿Cuántas personas reportan directamente a usted?
-4. ¿Qué sistemas informáticos utiliza actualmente en su trabajo?
+2. ¿Cuánto tiempo lleva desempeñándolo?
+3. ¿Cuántas personas dependen de su gestión?
+4. ¿Qué herramientas informáticas utiliza en su trabajo diario?
 
-**Parte 2: Procesos Actuales**
-5. ¿Puede describirme el proceso actual de registro de nuevos empleados?
-6. ¿Cómo procesa actualmente las nóminas mensuales?
-7. ¿Cómo gestiona los documentos de los empleados?
-8. ¿Cómo controla las incidencias (permisos, reposos, vacaciones)?
-9. ¿Qué reportes necesita generar regularmente?
+**Parte 2. Procesos actuales**
 
-**Parte 3: Dificultades Actuales**
-10. ¿Cuáles son las mayores dificultades que enfrenta en su trabajo diario?
-11. ¿Qué tareas consumen más tiempo innecesariamente?
-12. ¿Qué errores comunes ocurren en los procesos que maneja?
-13. ¿Qué información le es difícil de obtener actualmente?
+5. ¿Cómo se realiza actualmente el registro de un empleado nuevo?
+6. ¿Cómo se elabora la nómina del periodo?
+7. ¿Cómo se administran los documentos del personal?
+8. ¿Cómo se controlan las incidencias —permisos, reposos, vacaciones—?
+9. ¿Qué reportes debe elaborar de manera periódica y con qué destino?
 
-**Parte 4: Expectativas**
-14. ¿Qué características ideales tendría un sistema de gestión de personal?
-15. ¿Qué funcionalidades considera absolutamente esenciales?
-16. ¿Qué funcionalidades serían útiles pero no esenciales?
-17. ¿Qué nivel de competencia tecnológico tiene el personal de la institución?
+**Parte 3. Dificultades**
 
-**Parte 5: Restricciones**
-18. ¿Qué limitaciones de tiempo tiene para adoptar nuevas tecnologías?
-19. ¿Qué limitaciones presupuestarias existen para sistemas informáticos?
-20. ¿Qué capacitación estaría disponible para un nuevo sistema?
+10. ¿Cuáles son las principales dificultades de su trabajo diario?
+11. ¿Qué tareas consumen más tiempo del que deberían?
+12. ¿Qué errores se presentan con mayor frecuencia y por qué causa?
+13. ¿Qué información resulta difícil de obtener en el momento en que se necesita?
 
-**Parte 6: Comentarios Adicionales**
-21. ¿Algún otro comentario o sugerencia sobre la gestión de personal en la institución?
-22. ¿Preguntas o inquietudes sobre el proyecto propuesto?
+**Parte 4. Expectativas**
+
+14. ¿Qué características debería tener un sistema de gestión de personal para resultar útil?
+15. ¿Qué funcionalidades considera indispensables?
+16. ¿Qué funcionalidades serían deseables pero no indispensables?
+17. ¿Cómo describiría el nivel de manejo informático del personal de la institución?
+
+**Parte 5. Restricciones**
+
+18. ¿De cuánto tiempo dispone el personal para aprender a usar una herramienta nueva?
+19. ¿Qué limitaciones presupuestarias existen para incorporar software?
+20. ¿Qué posibilidades de capacitación ofrece la institución?
+
+**Parte 6. Comentarios finales**
+
+21. ¿Desea agregar alguna observación sobre la gestión de personal en la institución?
+22. ¿Tiene preguntas sobre el proyecto?
 
 ### 6.2.2 Anexo 2: Cuestionario de Satisfacción de Usuarios
 
-**Instrucciones:** Por favor responda a cada ítem utilizando la escala de 1 a 5, donde 1 = Muy en desacuerdo y 5 = Muy de acuerdo.
+**Instrucciones.** Responda cada afirmación con la escala de 1 a 5, donde 1 corresponde a *muy en desacuerdo* y 5 a *muy de acuerdo*.
 
-**Escala:**
-1 - Muy en desacuerdo
-2 - En desacuerdo
-3 - Ni de acuerdo ni en desacuerdo
-4 - De acuerdo
-5 - Muy de acuerdo
+**Escala:** 1, muy en desacuerdo; 2, en desacuerdo; 3, ni de acuerdo ni en desacuerdo; 4, de acuerdo; 5, muy de acuerdo.
 
-**Sección 1: Facilidad de Uso**
+**Sección 1. Facilidad de uso**
 
-1. El sistema es fácil de aprender. [1-5]
+1. Aprender a usar el sistema resultó sencillo. [1-5]
 2. El sistema es fácil de usar en el trabajo diario. [1-5]
-3. La navegación del sistema es intuitiva. [1-5]
+3. La navegación entre módulos resulta intuitiva. [1-5]
 4. Los formularios son claros y fáciles de completar. [1-5]
-5. Encontrar información en el sistema es fácil. [1-5]
+5. Encontrar la información que necesito es sencillo. [1-5]
 
-**Sección 2: Eficiencia**
+**Sección 2. Eficiencia**
 
 6. El sistema hace mi trabajo más rápido. [1-5]
-7. El sistema reduce errores en mis tareas. [1-5]
-8. El sistema me ahorra tiempo significativo. [1-5]
-9. Los procesos son más eficientes con el sistema. [1-5]
+7. El sistema reduce los errores en mis tareas. [1-5]
+8. El sistema me ahorra tiempo de manera significativa. [1-5]
+9. Los procesos resultan más eficientes con el sistema. [1-5]
 10. Puedo completar más trabajo en menos tiempo. [1-5]
 
-**Sección 3: Precisión**
+**Sección 3. Precisión**
 
-11. El sistema produce resultados precisos. [1-5]
-12. El cálculo de nóminas es correcto. [1-5]
+11. Los resultados que produce el sistema son precisos. [1-5]
+12. El cálculo de la nómina resulta correcto. [1-5]
 13. La información del sistema es confiable. [1-5]
 14. Los reportes generados son exactos. [1-5]
-15. Experimento menos errores con el sistema. [1-5]
+15. Cometo menos errores con el sistema que sin él. [1-5]
 
-**Sección 4: Satisfacción General**
+**Sección 4. Satisfacción general**
 
-16. Estoy satisfecho con el sistema en general. [1-5]
+16. Estoy satisfecho con el sistema en su conjunto. [1-5]
 17. Recomendaría el sistema a otras instituciones. [1-5]
-18. El sistema cumple mis expectativas. [1-5]
-19. Prefiero el sistema sobre los procesos manuales. [1-5]
-20. Continuaré usando el sistema en el futuro. [1-5]
+18. El sistema responde a mis expectativas. [1-5]
+19. Prefiero el sistema frente al procedimiento manual. [1-5]
+20. Continuaré usando el sistema. [1-5]
 
-**Sección 5: Comentarios Abiertos**
+**Sección 5. Comentarios abiertos**
 
-21. ¿Qué aspectos del sistema le gustan más?
-22. ¿Qué aspectos del sistema podrían mejorarse?
-23. ¿Algún otro comentario o sugerencia?
+21. ¿Qué aspectos del sistema le resultan más útiles?
+22. ¿Qué aspectos deberían mejorarse?
+23. ¿Alguna otra observación o sugerencia?
+
+**Validación del instrumento.** Sobre las respuestas obtenidas se calculará el coeficiente alfa de Cronbach para estimar la consistencia interna del cuestionario; el valor se reportará en el apartado 4.4.3.
 
 ### 6.2.3 Anexo 3: Protocolo de Pruebas de Usabilidad
 
-**Propósito:** Evaluar la facilidad de uso del sistema e identificar problemas de diseño.
+**Datos de la sesión**
 
-**Participantes:** [Número y descripción de participantes]
+| Campo | Registro |
+|-------|----------|
+| Participantes | [por completar] |
+| Fecha | [por completar] |
+| Lugar | [por completar] |
+| Facilitador | [por completar] |
+| Duración total | 60 a 90 minutos |
 
-**Fecha:** [Fecha de las pruebas]
+**1. Bienvenida (5 minutos).** Se explica el propósito de la sesión; se aclara que se evalúa el sistema y no a la persona; se advierte que no existen respuestas correctas ni incorrectas.
 
-**Lugar:** [Ubicación de las pruebas]
+**2. Instrucciones (5 minutos).** Se presenta la técnica de pensamiento en voz alta, se indica cómo señalar dificultades y se aclara que la ayuda puede solicitarse en cualquier momento.
 
-**Facilitador:** [Nombre del facilitador]
+**3. Tareas (30 a 45 minutos).** Cada tarea se registra con tiempo, resultado, errores y comentarios.
 
-**Protocolo:**
+| Tarea | Descripción | Métrica principal |
+|-------|-------------|-------------------|
+| 1 | Registrar un empleado con datos personales, laborales y un documento | Tiempo, errores |
+| 2 | Localizar un empleado por número de cédula | Tiempo, éxito |
+| 3 | Generar la nómina de un periodo definido | Tiempo, éxito |
+| 4 | Emitir el recibo de pago de un empleado | Tiempo, éxito |
+| 5 | Cargar un documento con fecha de vencimiento | Tiempo, errores |
+| 6 | Registrar una incidencia y aprobarla | Tiempo, errores |
 
-**1. Bienvenida (5 minutos)**
-- Explicar propósito de las pruebas
-- Enfatizar que se prueba el sistema, no al usuario
-- Explicar que no hay respuestas correctas o incorrectas
-- Aclarar que el think-aloud es deseado (verbalizar el proceso mental)
+**4. Entrevista de cierre (10 a 15 minutos).** Se indaga qué tareas resultaron más sencillas y cuáles más difíciles, qué características del sistema resultaron más y menos útiles y qué mejoras se proponen.
 
-**2. Instrucciones (5 minutos)**
-- Explicar el proceso think-aloud
-- Mostrar cómo indicar problemas o dificultades
-- Aclarar que pueden pedir ayuda en cualquier momento
-- Explicar que las tareas no son evaluadas
-
-**3. Tareas a Realizar (30-45 minutos)**
-
-**Tarea 1: Registro de Nuevo Empleado**
-- Tiempo estimado: 10 minutos
-- Instrucciones: Registre un nuevo empleado con la siguiente información:
-  - Datos personales básicos
-  - Información laboral
-  - Al menos un documento
-- Métricas: Tiempo, errores, comentarios
-
-**Tarea 2: Búsqueda de Empleado**
-- Tiempo estimado: 5 minutos
-- Instrucciones: Busque al empleado con cédula [número específico]
-- Métricas: Tiempo, éxito/fracaso, comentarios
-
-**Tarea 3: Generación de Nómina**
-- Tiempo estimado: 10 minutos
-- Instrucciones: Genere la nómina del periodo [fecha inicio - fecha fin]
-- Métricas: Tiempo, éxito/fracaso, comentarios
-
-**Tarea 4: Generación de Recibo PDF**
-- Tiempo estimado: 5 minutos
-- Instrucciones: Genere el recibo de pago del empleado [nombre]
-- Métricas: Tiempo, éxito/fracaso, comentarios
-
-**Tarea 5: Actualización de Empleado**
-- Tiempo estimado: 10 minutos
-- Instrucciones: Actualice la información del empleado [nombre] con [cambio específico]
-- Métricas: Tiempo, errores, comentarios
-
-**4. Debriefing (10-15 minutos)**
-- ¿Qué tareas fueron más fáciles/difíciles?
-- ¿Qué características del sistema le gustaron más/menos?
-- ¿Qué mejoraría del sistema?
-- ¿Algún otro comentario?
-
-**5. Cierre (5 minutos)**
-- Agradecer participación
-- Explicar cómo se utilizará el feedback
-- Aclarar próximos pasos del proyecto
+**5. Cierre (5 minutos).** Se agradece la participación, se explica el uso que se dará a la información recogida y se anuncian los siguientes pasos del proyecto.
 
 ### 6.2.4 Anexo 4: Diagramas de Diseño del Sistema
 
-**Diagrama 1: Arquitectura de Capas**
+Las figuras que se presentan a continuación describen la arquitectura del sistema, su modelo de datos y los tres flujos de mayor criticidad operativa. Todas corresponden a la versión 2.82 y provienen de la implementación efectivamente desplegada en `src/`.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    INTERFAZ DE USUARIO                    │
-│  (CustomTkinter - GUI Moderna: MainWindow, LoginWindow,    │
-│   Dashboard, Empleados, Documentos, Incidencias, Nómina,    │
-│   Configuración - temas claro/oscuro y atajos de teclado)  │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                  CAPA DE SERVICIOS                       │
-│         (Lógica de Negocio - Reglas del Dominio)         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Auth      │  │Empleado  │  │Documento │  │Incidencia││
-│  │Service   │  │ Service  │  │ Service  │  │ Service  ││
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │Pago      │  │Config.   │  │Auditoría │              │
-│  │Service   │  │ Service  │  │(transv.) │              │
-│  └──────────┘  └──────────┘  └──────────┘              │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                CAPA DE REPOSITORIOS                        │
-│         (Acceso a Datos - Abstracción de BD)              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Empleado  │  │Documento │  │Incidencia│  │ Pago    ││
-│  │Repository│  │Repository│  │Repository│  │Repository││
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │Config.   │  │Usuario   │  │(Base     │              │
-│  │Repository│  │Repository│  │Repository)│              │
-│  └──────────┘  └──────────┘  └──────────┘              │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                  CAPA DE MODELOS                          │
-│         (Entidades del Dominio - SQLAlchemy ORM)           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Empleado  │  │Documento │  │Incidencia│  │  Pago   ││
-│  │  Model   │  │  Model   │  │  Model   │  │  Model  ││
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
-│  ┌──────────┐  ┌──────────┐                              │
-│  │Config.   │  │ Usuario  │                              │
-│  │  Model   │  │  Model   │                              │
-│  └──────────┘  └──────────┘                              │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│      CAPA DE UTILIDADES Y SERVICIOS TRANSVERSALES        │
-│   (security, audit_logger, backup_manager, exporter,     │
-│    pdf_generator, document_manager, validators, helpers) │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│               BASE DE DATOS (SQLite)                       │
-│  (6 tablas: empleados, documentos, incidencias, pagos,     │
-│   configuraciones, usuarios)                              │
-└─────────────────────────────────────────────────────────────┘
+**Figura 6.1. Arquitectura de capas del sistema**
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│                      CAPA DE PRESENTACIÓN                    │
+│   LoginWindow · MainWindow · 10 módulos (Ctrl+1 … Ctrl+0)    │
+│   Dashboard · Empleados · Documentos · Incidencias ·         │
+│   Asistencia · Contratos · Préstamos · Nómina · Alertas ·    │
+│   Configuración · tema claro/oscuro · widgets de gráficos    │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                      CAPA DE SERVICIOS                       │
+│   auth · empleado · documento · incidencia · asistencia ·    │
+│   contrato · préstamo · nómina · alerta · configuración      │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                     CAPA DE REPOSITORIOS                     │
+│   base_repository + 10 repositorios concretos                │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                       CAPA DE MODELOS                        │
+│   SQLAlchemy ORM · 10 entidades y enumeraciones del dominio   │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│              DOMINIO DE NÓMINA (src/nomina)                  │
+│   motor · parámetros · impuesto sobre la renta · horas extra │
+│   prestaciones · seguridad social · préstamos · finiquito    │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                SERVICIOS TRANSVERSALES (src/utils)           │
+│   security · audit_logger · backup_manager · exporter ·      │
+│   pdf_generator · document_manager · jornada · validators    │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                    BASE DE DATOS (SQLite)                    │
+│   empleados · documentos · incidencias · asistencias ·       │
+│   contratos · prestamos · pagos · horarios · configuraciones │
+│   · usuarios                                                 │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Diagrama 2: Modelo Entidad-Relación**
+**Figura 6.2. Modelo entidad-relación**
 
-```
-┌──────────────┐ 1      N ┌──────────────┐
-│   Empleado    ├────────►│  Documento    │
-└──────┬───────┘          └──────────────┘
-       │ 1
-       │
-       ├──► N ┌──────────────┐
-       │      │  Incidencia    │
-       │      └──────────────┘
-       │
-       └──► N ┌──────────────┐
-              │     Pago       │
-              └──────────────┘
-
-┌──────────────┐    1     N ┌──────────────┐
-│  Configuracion├──────────►│ (parámetros  │
-└──────────────┘            │  del sistema)│
-                            └──────────────┘
-
-┌──────────────┐
-│    Usuario    │  (usuarios del sistema con rol)
-└──────────────┘
+```text
+empleados 1 ──── N documentos
+empleados 1 ──── N incidencias
+empleados 1 ──── N asistencias ──── N ── 1 horarios
+empleados 1 ──── N contratos
+empleados 1 ──── N prestamos
+empleados 1 ──── N pagos
+prestamos 1 ──── N pagos            (amortización de cuotas)
+configuraciones ─── parámetros del sistema (registro institucional)
+usuarios ───────── credenciales, rol y control de acceso
 ```
 
-**Relaciones principales:**
-- `empleados 1 ── N documentos`: un empleado tiene muchos documentos
-- `empleados 1 ── N incidencias`: un empleado registra muchas incidencias
-- `empleados 1 ── N pagos`: un empleado recibe muchos pagos (nóminas)
-- `configuraciones 1 ── N parámetros`: los parámetros configurables del sistema
-- `usuarios`: entidad independiente para la autenticación y el control de acceso por rol
+**Figura 6.3. Flujo de generación de nómina**
 
-**Diagrama 3: Flujo de Generación de Nómina**
-
-```
-┌──────────────┐
-│  Inicio       │
-└──────┬───────┘
-       │
-       ├──► Seleccionar periodo
-       │
-       ├──► Identificar empleados activos
-       │
-       ├──► Obtener incidencias del periodo
-       │
-       ├──► Calcular días trabajados
-       │
-       ├──► Calcular salario proporcional
-       │
-       ├──► Calcular deducciones (configurables)
-       │
-       ├──► Calcular salario neto
-       │
-       ├──► Generar pagos
-       │
-       └──► Fin
+```text
+Inicio
+  └─ Seleccionar periodo
+      └─ Identificar empleados activos
+          └─ Recuperar incidencias y registros de asistencia del periodo
+              └─ Determinar días y horas computables
+                  └─ Calcular salario proporcional y horas extra con recargo
+                      └─ Aplicar deducciones (seguridad social, pensión, ISR)
+                          └─ Descontar cuotas de préstamos vigentes
+                              └─ Determinar salario neto
+                                  └─ Registrar pagos del periodo
+                                      └─ Emitir recibos y planilla
+                                          └─ Fin
 ```
 
-**Diagrama 4: Flujo de Autenticación y Control de Acceso**
+**Figura 6.4. Flujo de autenticación y control de acceso**
 
-```
-┌──────────────┐
-│  Inicio       │
-└──────┬───────┘
-       │
-       ├──► Ingresar usuario y contraseña
-       │
-       ├──► Verificar credenciales (PBKDF2-HMAC-SHA256)
-       │
-       ├──► ¿Credenciales válidas?
-       │     ├──► No: registrar intento fallido y rechazar acceso
-       │     └──► Sí
-       │
-       ├──► Obtener rol del usuario
-       │
-       ├──► Verificar permiso del rol para el módulo solicitado
-       │
-       ├──► Registrar evento de auditoría (inicio de sesión)
-       │
-       ├──► Acceder al módulo
-       │
-       └──► Fin
+```text
+Inicio
+  └─ Ingresar usuario y contraseña
+      └─ Verificar credenciales (PBKDF2-HMAC-SHA256, comparación en tiempo constante)
+          ├─ Credenciales inválidas → registrar intento fallido y rechazar el acceso
+          └─ Credenciales válidas
+              └─ Recuperar el rol del usuario
+                  └─ Verificar permiso del rol sobre el módulo solicitado
+                      ├─ Sin permiso → denegar el acceso y registrar el evento
+                      └─ Con permiso
+                          └─ Registrar el inicio de sesión en la auditoría
+                              └─ Habilitar el módulo
+                                  └─ Fin
 ```
 
-**Diagrama 5: Flujo de Respaldo de la Base de Datos**
+**Figura 6.5. Flujo de respaldo y restauración de la base de datos**
 
-```
-┌──────────────┐
-│  Inicio       │
-└──────┬───────┘
-       │
-       ├──► Verificar políticas de retención configuradas
-       │
-       ├──► Crear copia de la base de datos (timestamp único)
-       │
-       ├──► Registrar evento de auditoría (respaldo creado)
-       │
-       ├──► Eliminar respaldos que superan la política de retención
-       │
-       ├──► Restauración (cuando se solicita): validar archivo y reemplazar
-       │
-       └──► Fin
+```text
+Inicio
+  └─ Verificar la política de retención configurada
+      └─ Crear copia de la base de datos con marca temporal única
+          └─ Verificar la integridad de la copia
+              └─ Registrar el evento en la auditoría
+                  └─ Eliminar los respaldos que exceden la retención
+                      └─ Restauración (a solicitud): validar el archivo,
+                         respaldar el estado actual y reemplazar la base
+                          └─ Fin
 ```
 
-### 6.2.5 Anexo 5: Manual de Usuario Preliminar
+*Fuente de las figuras 6.1 a 6.5: elaboración propia a partir de la implementación del sistema, versión 2.82.*
 
-> El manual completo y actualizado del sistema se encuentra en el archivo `GUIA_USUARIO.md` del repositorio (versión 1.0.4). Este anexo presenta una versión preliminar resumida, organizada por módulos, tal como se entregará a las instituciones piloto.
+### 6.2.5 Anexo 5: Guía Resumida de Usuario
 
-#### 1. Requisitos e Instalación
+**Nota.** La versión completa y actualizada de la guía se encuentra en el archivo `GUIA_USUARIO.md` del repositorio. Este anexo presenta la versión resumida que se entrega a las instituciones participantes, referida a la versión 2.82 del sistema.
 
-**Requisitos del sistema:**
-- Sistema operativo: Windows 10/11, Linux o macOS
-- Python 3.10 o superior
-- 4 GB de RAM recomendados
-- 500 MB de espacio en disco
+**1. Requisitos e instalación**
 
-**Instalación desde el código fuente:**
-```bash
-pip install -r requirements.txt
-python src/main.py
-```
+| Elemento | Requisito |
+|----------|-----------|
+| Sistema operativo | Windows 10 o superior, Linux o macOS |
+| Intérprete | Python 3.15 o superior (según `pyproject.toml`) |
+| Memoria recomendada | 4 GB de RAM |
+| Espacio en disco | 500 MB |
+| Dependencias | SQLAlchemy, CustomTkinter, Pillow, ReportLab, OpenPyXL |
 
-**Instalación del ejecutable (Windows):**
-1. Ejecutar el instalador generado con `python build.py` (PyInstaller)
-2. Seguir el asistente de instalación
-3. Iniciar el sistema desde el acceso directo creado
+La instalación desde el código fuente se realiza con `pip install -r requirements.txt` y la ejecución con `python src/main.py`. En entornos Windows puede generarse un instalador mediante `python build.py`, basado en PyInstaller.
 
-#### 2. Inicio de Sesión
+**2. Inicio de sesión**
 
-Al iniciar el sistema se muestra la ventana de autenticación:
-1. Ingresar el **usuario** y la **contraseña** proporcionados por el administrador
-2. Pulsar **Iniciar sesión** (o la tecla **Enter**)
+Al iniciar la aplicación se presenta la ventana de autenticación. El usuario ingresa las credenciales asignadas por el administrador y confirma con el botón correspondiente o con la tecla `Enter`. El sistema verifica la contraseña mediante hash PBKDF2-HMAC-SHA256 y registra el acceso en la auditoría.
 
-**Roles disponibles:**
+**3. Roles y alcance de acceso**
 
-| Rol | Permisos |
-|-----|----------|
-| Administrador | Acceso a todos los módulos, configuración, respaldos, auditoría y gestión de usuarios |
-| Gerente | Empleados, documentos, incidencias, nómina y reportes |
-| Usuario | Empleados, documentos e incidencias (consulta y registro) |
-| Consulta | Solo lectura de empleados y documentos |
+| Rol | Alcance |
+|-----|---------|
+| Administrador | Acceso a los diez módulos, configuración institucional, respaldos, auditoría y gestión de usuarios |
+| Gestor | Empleados, documentos, incidencias, asistencia, contratos, préstamos, nómina, alertas y reportes |
+| Usuario | Empleados, documentos, incidencias y asistencia, con actualización de registros propios |
+| Solo lectura | Consulta de empleados, documentos y reportes |
 
-#### 3. Panel de Control (Dashboard)
-
-El panel principal muestra estadísticas en tiempo real: total de empleados, empleados por tipo, incidencias pendientes y pagos del periodo. Las **tarjetas de estadísticas son navegables**: un clic lleva al módulo correspondiente.
-
-#### 4. Gestión de Empleados
-
-1. Seleccionar el módulo **Empleados** (atajo `Ctrl+1`)
-2. **Registrar:** pulsar **Nuevo Empleado** y completar el formulario organizado en pestañas (datos personales, físicos, de contacto y laborales); la cédula se valida como única
-3. **Buscar:** escribir nombre, apellido o cédula en el buscador (`Ctrl+F`) o aplicar filtros por tipo y departamento
-4. **Editar:** seleccionar un empleado y pulsar **Editar**
-5. **Desactivar:** evita que el empleado aparezca en nóminas futuras sin eliminar su historial
-6. **Ficha PDF:** genera una ficha del empleado en formato PDF
-7. **Exportar:** exporta el listado de empleados
-
-#### 5. Gestión Documental
-
-1. Seleccionar el módulo **Documentos** (atajo `Ctrl+2`)
-2. **Cargar documento:** seleccionar el empleado, el tipo de documento (cédula, título, certificado, reposo, etc.) y el archivo (PDF o imagen)
-3. **Control de vencimientos:** el sistema identifica documentos vencidos y próximos a vencer
-4. **Ver/descargar:** abrir el documento original o la vista previa
-5. **Exportar:** descargar los documentos del empleado
-
-#### 6. Gestión de Incidencias
-
-1. Seleccionar el módulo **Incidencias** (atajo `Ctrl+3`)
-2. **Registrar incidencia:** empleado, tipo (permiso, reposo médico, ausencia, vacaciones, licencia), fechas, días y motivo
-3. **Flujo de aprobación:** la incidencia pasa por los estados *pendiente → aprobado/rechazado → completado*; el aprobador registra su nombre y comentario
-4. **Incidencias vigentes:** el sistema muestra las incidencias activas y su impacto en la nómina
-
-#### 7. Gestión de Nómina
-
-1. Seleccionar el módulo **Nómina** (atajo `Ctrl+4`)
-2. **Generar nómina:** seleccionar el periodo (inicio y fin) y pulsar **Generar** (`F5` para actualizar)
-3. El sistema calcula automáticamente: días trabajados (descontando incidencias), salario proporcional, deducciones configurables (seguro, pensión) y salario neto
-4. **Ver pagos:** consultar el detalle de cada pago generado
-5. **Recibo de pago (PDF):** generar el recibo individual
-6. **Planilla (PDF):** generar la planilla consolidada del periodo
-7. **Exportar pagos:** exportar el detalle de pagos
-8. **Marcar como realizados:** registrar los pagos efectivamente entregados
-
-#### 8. Configuración del Sistema
-
-1. Seleccionar el módulo **Configuración** (atajo `Ctrl+5`)
-2. **Configuración general:** datos de la institución (nombre, dirección, contacto), parámetros de identificación, logo
-3. **Configuración de nómina:** porcentajes de deducciones (seguro, pensión), salario mínimo de referencia
-4. **Recursos humanos:** días de vacaciones anuales, horas laborales semanales, políticas de incidencias
-5. **Cambiar contraseña:** actualizar la contraseña del usuario autenticado
-6. **Apariencia:** alternar entre tema **oscuro** y **claro** (la preferencia se guarda)
-7. **Ayuda y Acerca de:** guía rápida del sistema e información de versión
-8. **Visor de auditoría (solo administradores):** consultar el registro de acciones críticas del sistema
-
-#### 9. Respaldos y Exportaciones
-
-- **Respaldos:** el sistema permite generar respaldos de la base de datos y restaurar respaldos existentes (con políticas de retención configurables)
-- **Exportaciones:** empleados, documentos, incidencias, pagos y reportes pueden exportarse en formatos abiertos
-
-#### 10. Atajos de Teclado
+**4. Navegación y atajos de teclado**
 
 | Atajo | Acción |
 |-------|--------|
-| `Ctrl+1` … `Ctrl+6` | Ir a Empleados, Documentos, Incidencias, Nómina, Configuración, Panel |
+| `Ctrl+1` | Panel de control |
+| `Ctrl+2` | Empleados |
+| `Ctrl+3` | Documentos |
+| `Ctrl+4` | Incidencias |
+| `Ctrl+5` | Asistencia |
+| `Ctrl+6` | Contratos |
+| `Ctrl+7` | Préstamos |
+| `Ctrl+8` | Nómina |
+| `Ctrl+9` | Alertas |
+| `Ctrl+0` | Configuración |
 | `Ctrl+N` | Nuevo registro en el módulo activo |
-| `Ctrl+F` | Enfocar la búsqueda |
-| `Ctrl+S` | Guardar el formulario activo |
-| `F5` | Actualizar / generar nómina |
-| `Esc` | Cerrar diálogos / limpiar selección |
+| `Ctrl+F` | Enfocar el buscador o el filtro |
+| `Ctrl+S` | Guardar cambios en el módulo de configuración |
+| `F5` | Refrescar la lista del módulo activo |
+| `Esc` | Cerrar diálogos o limpiar la selección |
 
-#### 11. Solución de Problemas
+Además de los atajos, el sistema admite doble clic sobre una fila para abrir el detalle del registro y clic derecho para desplegar las acciones disponibles.
 
-| Problema | Solución |
-|----------|----------|
-| El sistema no inicia | Verificar Python 3.10+ y dependencias instaladas (`pip install -r requirements.txt`) |
-| Error de base de datos | Restaurar el respaldo más reciente desde la configuración; no eliminar el archivo de datos sin respaldo previo |
-| Interfaz no responde | Cerrar y reiniciar la aplicación |
-| Contraseña olvidada | El administrador debe restablecer el acceso desde la configuración de usuarios |
-| Documentos no cargados | Verificar extensiones permitidas (PDF, JPG, PNG) y tamaño máximo (50 MB) |
+**5. Operaciones por módulo**
+
+En el módulo de empleados se registran, consultan y actualizan los datos del personal, se carga la fotografía, se filtra por tipo y departamento, se genera la ficha individual en PDF y se desactiva a un empleado sin eliminar su historial. En el módulo de documentos se incorporan archivos en formato PDF o imagen con su tipo, fecha de emisión y fecha de vencimiento, se consulta el estado de vigencia y se descarga el archivo original. En el módulo de incidencias se registran las solicitudes con su tipo, fechas y motivo, se adjunta el soporte y se recorre el flujo de aprobación con registro del aprobador y su comentario. En el módulo de asistencia se registra la jornada diaria y se calculan las horas efectivas contra el horario asignado. En el módulo de contratos se conserva la relación laboral y se advierten los vencimientos y renovaciones. En el módulo de préstamos se registra el monto, el número de cuotas y el plan de amortización, cuyo descuento se aplica en la nómina. En el módulo de nómina se selecciona el periodo, se calcula la nómina, se revisan los pagos generados, se emite el recibo individual y la planilla consolidada y se registran los pagos efectivamente entregados. En el módulo de alertas se consultan los avisos de vencimiento y los pendientes de gestión. En el módulo de configuración se ajustan los datos institucionales, los parámetros de nómina, las políticas de recursos humanos, la apariencia, la contraseña del usuario, el visor de auditoría y las operaciones de respaldo y restauración.
+
+**6. Respaldos y exportaciones**
+
+El sistema permite crear, verificar, restaurar y eliminar copias de seguridad de la base de datos conforme a la política de retención configurada. Las exportaciones de empleados, documentos, incidencias, pagos y reportes se generan en formatos abiertos y se guardan en la ubicación que el usuario indique.
+
+**7. Solución de problemas frecuentes**
+
+| Situación | Acción recomendada |
+|-----------|--------------------|
+| La aplicación no inicia | Verificar la versión de Python y la instalación de dependencias con `pip install -r requirements.txt` |
+| Error al abrir la base de datos | Restaurar el respaldo más reciente; no eliminar el archivo de datos sin respaldo previo |
+| La interfaz no responde | Cerrar la aplicación y reiniciarla; verificar los recursos disponibles del equipo |
+| Contraseña olvidada | Solicitar al administrador el restablecimiento desde la gestión de usuarios |
+| Documento no admitido | Verificar que la extensión esté permitida y que el tamaño no exceda el límite configurado |
+| Documento vencido sin alerta | Verificar la fecha de vencimiento registrada y la configuración de antelación de las alertas |
 
 ### 6.2.6 Anexo 6: Código Fuente del Sistema
 
-**Estructura de Directorios:**
+**Estructura del repositorio (versión 2.82)**
 
-```
+```text
 SDEP_CPP5/
 ├── src/
-│   ├── config/
-│   │   ├── database.py
-│   │   └── settings.py
-│   ├── gui/
-│   │   ├── main_window.py
-│   │   ├── frames.py
-│   │   ├── login_window.py
-│   │   └── theme.py
-│   ├── models/
-│   │   ├── base.py
-│   │   ├── enums.py
-│   │   ├── empleado.py
-│   │   ├── documento.py
-│   │   ├── incidencia.py
-│   │   ├── pago.py
-│   │   ├── configuracion.py
-│   │   └── usuario.py
-│   ├── repositories/
-│   │   ├── base_repository.py
-│   │   ├── empleado_repository.py
-│   │   ├── documento_repository.py
-│   │   ├── incidencia_repository.py
-│   │   ├── pago_repository.py
-│   │   ├── configuracion_repository.py
-│   │   └── usuario_repository.py
-│   ├── services/
-│   │   ├── auth_service.py
-│   │   ├── empleado_service.py
-│   │   ├── documento_service.py
-│   │   ├── incidencia_service.py
-│   │   ├── pago_service.py
-│   │   └── configuracion_service.py
-│   ├── utils/
-│   │   ├── helpers.py
-│   │   ├── validators.py
-│   │   ├── security.py
-│   │   ├── audit_logger.py
-│   │   ├── backup_manager.py
-│   │   ├── document_manager.py
-│   │   ├── exporter.py
-│   │   └── pdf_generator.py
-│   └── main.py
-├── tests/                     # 323 pruebas automatizadas
-├── requirements.txt
-├── pyproject.toml
-├── README.md
-├── DOCUMENTACION_TECNICA.md
-├── GUIA_USUARIO.md
-└── TESIS/                     # Documentos académicos
+│   ├── config/            database.py · settings.py
+│   ├── gui/               main_window.py · frames.py · login_window.py · theme.py
+│   │                      asistencia_frame.py · contratos_frame.py
+│   │                      prestamos_frame.py · alertas_frame.py · alertas_panel.py
+│   │                      widgets/graficos.py
+│   ├── models/            base.py · enums.py · empleado.py · documento.py
+│   │                      incidencia.py · asistencia.py · contrato.py
+│   │                      prestamo.py · horario.py · pago.py
+│   │                      configuracion.py · usuario.py
+│   ├── nomina/            motor.py · parametros.py · isr.py · horas_extra.py
+│   │                      prestaciones.py · seguridad_social.py
+│   │                      prestamos.py · finiquito.py · tipos.py
+│   ├── repositories/      base_repository.py y diez repositorios concretos
+│   ├── services/          auth · empleado · documento · incidencia · asistencia
+│   │                      contrato · prestamo · pago · alerta · configuracion
+│   ├── utils/             security.py · audit_logger.py · backup_manager.py
+│   │                      backup_scheduler.py · document_manager.py
+│   │                      exporter.py · pdf_generator.py · jornada.py
+│   │                      validators.py · helpers.py
+│   └── main.py            punto de entrada
+├── tests/                 veinticuatro archivos de prueba · 453 funciones
+├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
+├── installer/             configuración de instalación para Windows
+├── docs/                  portal de documentación
+├── tools/                 scripts de apoyo
+├── TESIS/                 documentos académicos
+├── requirements.txt       dependencias de ejecución
+├── requirements-dev.txt   dependencias de desarrollo
+├── pyproject.toml         configuración del proyecto y de las herramientas
+├── build.py               script de construcción
+└── README.md              documentación general
 ```
 
-**Líneas de Código Clave:**
+**Fragmentos representativos.**
 
-**Ejemplo de Modelo:**
+Modelo de dominio con mapeo objeto-relacional y campos obligatorios:
+
 ```python
 class Empleado(Base, BaseModel):
-    """Modelo de empleado"""
+    """Entidad que representa a un miembro del personal."""
+
     __tablename__ = "empleados"
-    
+
     nombres = Column(String(100), nullable=False)
     apellidos = Column(String(100), nullable=False)
     cedula = Column(String(20), unique=True, nullable=False)
-    # ... otros campos
 ```
 
-**Ejemplo de Servicio:**
+Servicio con validación de regla de negocio antes de delegar en el repositorio:
+
 ```python
 class EmpleadoService:
-    """Servicio de gestión de empleados"""
-    
-    def crear_empleado(self, datos: Dict) -> Empleado:
-        # Validar que la cédula no exista
+    """Reglas de negocio del módulo de empleados."""
+
+    def crear_empleado(self, datos: dict) -> Empleado:
         if self.repository.get_by_cedula(datos.get("cedula")):
             raise ValueError("Ya existe un empleado con esta cédula")
-        # ... lógica de creación
 ```
 
-**Ejemplo de Repositorio:**
+Repositorio especializado que hereda del repositorio base genérico:
+
 ```python
 class EmpleadoRepository(BaseRepository[Empleado]):
-    """Repositorio de empleados"""
-    
+    """Acceso a datos de empleados."""
+
     def get_by_cedula(self, cedula: str) -> Optional[Empleado]:
         return self.session.query(Empleado).filter(
             Empleado.cedula == cedula
         ).first()
 ```
 
-**Ejemplo de Seguridad (hash de contraseñas, security.py):**
+Gestión de contraseñas con derivación de clave y sal aleatorio:
+
 ```python
 class SecurityValidator:
     PBKDF2_ITERATIONS = 200_000
@@ -665,162 +480,169 @@ class SecurityValidator:
     def hash_password(cls, password: str) -> str:
         salt = secrets.token_bytes(cls.PBKDF2_SALT_BYTES)
         derived = hashlib.pbkdf2_hmac(
-            "sha256", password.encode("utf-8"), salt,
-            cls.PBKDF2_ITERATIONS,
+            "sha256", password.encode("utf-8"), salt, cls.PBKDF2_ITERATIONS
         )
         return f"pbkdf2${cls.PBKDF2_ITERATIONS}${salt.hex()}${derived.hex()}"
-
-    @classmethod
-    def verify_password(cls, password: str, password_hash: str) -> bool:
-        # Comparación en tiempo constante con secrets.compare_digest
-        ...
 ```
 
-**Ejemplo de Autenticación (auth_service.py):**
+Autenticación con verificación en tiempo constante:
+
 ```python
 class AuthService:
     def autenticar(self, usuario: str, contrasena: str) -> Usuario:
         usuario_bd = self.usuario_repository.get_by_username(usuario)
         if not usuario_bd or not security_validator.verify_password(
-            contrasena, usuario_bd.password_hash):
+            contrasena, usuario_bd.password_hash
+        ):
             raise AuthenticationError("Credenciales inválidas")
         return usuario_bd
 ```
 
-> **Nota:** El código fuente completo del sistema se encuentra en el repositorio del proyecto (`src/`), con 323 pruebas automatizadas (Anexo 7).
+El código completo se encuentra en el repositorio del proyecto. Su extensión es de 27 534 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV.
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
-**Resumen de Cobertura de Pruebas (medido con `pytest --cov=src` sobre el repositorio, versión 1.0.4):**
+**Composición de la suite (versión 2.82)**
 
-| Módulo | Líneas de Código | Líneas Cubiertas | % Cobertura |
-|--------|----------------|----------------|------------|
-| models | 393 | 363 | 92% |
-| repositories | 678 | 326 | 48% |
-| services | 815 | 608 | 75% |
-| utils | 1442 | 1167 | 81% |
-| config | 265 | 154 | 58% |
-| gui | 3025 | 330 | 11% |
-| main.py | 220 | 0 | 0% |
-| **Total** | **6841** | **2951** | **43%** |
+| Indicador | Valor |
+|-----------|-------|
+| Archivos de prueba | 24 |
+| Funciones de prueba declaradas | 453 |
+| Líneas de código de prueba | 5 371 |
+| Distribución por archivo | Tabla 4.7 del Capítulo IV |
+| Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 
-**Cobertura de la lógica de negocio** (modelos, repositorios, servicios, utilidades y configuración; excluye la capa gráfica y el punto de entrada): **73%**
+**Cobertura de referencia (versión 1.0.4)**
 
-**Resultados de Pruebas Automatizadas:**
-- Total de pruebas: 323
-- Pruebas pasadas: 323 (100%)
-- Pruebas falladas: 0
-- Suite: unitarias, de integración, de seguridad, de pagos, de respaldos y de migraciones
+| Módulo | Líneas de código | Líneas cubiertas | Cobertura |
+|--------|------------------|------------------|-----------|
+| `models` | 393 | 363 | 92 % |
+| `repositories` | 678 | 326 | 48 % |
+| `services` | 815 | 608 | 75 % |
+| `utils` | 1 442 | 1 167 | 81 % |
+| `config` | 265 | 154 | 58 % |
+| `gui` | 3 025 | 330 | 11 % |
+| `main.py` | 220 | 0 | 0 % |
+| **Total** | **6 841** | **2 951** | **43 %** |
 
-**Distribución por módulo de pruebas:**
-- tests/test_empleados.py, test_documentos.py, test_incidencias.py, test_pagos.py (flujos de dominio)
-- tests/test_auth.py (autenticación, roles y permisos)
-- tests/test_security.py, test_validators.py, test_helpers.py (seguridad, validaciones y utilidades)
-- tests/test_document_manager.py (gestión documental)
-- tests/test_theme.py (paletas de apariencia claro/oscuro)
-- tests/test_backups.py (respaldo y restauración)
-- tests/test_configuracion.py, test_migraciones.py (configuración y esquema)
+La cobertura de la lógica de negocio —modelos, repositorios, servicios, utilidades y configuración— alcanzó el 73 % en esa medición.
 
-> **Nota:** Las métricas de rendimiento y las pruebas de carga de la sección 4.3.3 se incorporarán a este anexo al completarse la implementación piloto en condiciones reales.
+**Estado de actualización de esta evidencia.** Los porcentajes anteriores corresponden a la versión 1.0.4 y se conservan como referencia. Dado que el código evolucionó hasta la versión 2.82, la cobertura debe re-medirse con `pytest --cov=src` y sustituirse en esta tabla antes de la presentación definitiva. El informe de la última ejecución de la suite, con el número de pruebas ejecutadas y su resultado, debe adjuntarse como evidencia documental.
+
+**Cobertura verificada por área** (composición de la suite en la versión 2.82):
+
+| Área | Funciones de prueba | Archivos |
+|------|--------------------|----------|
+| Seguridad y credenciales | 78 | `test_security.py`, `test_credenciales.py` |
+| Validación y utilidades | 102 | `test_validators.py`, `test_helpers.py` |
+| Nómina y pagos | 42 | `test_nomina_motor.py`, `test_pagos.py` |
+| Personal y contratación | 50 | `test_empleados.py`, `test_contratos.py`, `test_prestamos.py` |
+| Asistencia y jornada | 31 | `test_asistencia.py`, `test_jornada.py` |
+| Documentos y alertas | 35 | `test_documentos.py`, `test_document_manager.py`, `test_alertas.py` |
+| Acceso y sesión | 16 | `test_auth.py` |
+| Configuración y esquema | 17 | `test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py` |
+| Reportes y documentos PDF | 17 | `test_reportes.py` |
+| Interfaz gráfica | 16 | `test_gui_smoke.py` |
+| Respaldo y actualización | 28 | `test_backups.py`, `test_auto_updater.py` |
+| Apariencia | 13 | `test_theme.py` |
+| Incidencias | 8 | `test_incidencias.py` |
+
+**Pruebas de rendimiento y carga.** Las mediciones correspondientes se incorporarán a este anexo una vez aplicado el protocolo del apartado 4.3.3 durante la implementación piloto.
 
 ### 6.2.8 Anexo 8: Resultados de Encuestas de Satisfacción
 
-> **Instrucción:** Completar este anexo con los resultados reales de las encuestas de satisfacción aplicadas durante la implementación piloto (instrumento del Anexo 2, metodología del Capítulo III sección 3.4.1.3). Incluir el número de encuestados y el período de aplicación.
+**Nota de completación.** Este anexo se completará con los resultados de las encuestas aplicadas durante la implementación piloto, utilizando el instrumento del Anexo 2 conforme al procedimiento del apartado 3.4.1.3. Debe consignarse el número de encuestados y el periodo de aplicación.
 
-**Estadísticas Descriptivas (completar):**
+**Estadística descriptiva por dimensión**
 
-| Dimensión | Media | Desviación | Mínimo | Máximo |
-|-----------|------|------------|--------|--------|
-| Facilidad de aprendizaje | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
-| Eficiencia de uso | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
-| Memorabilidad | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
-| Bajo error | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
-| Satisfacción | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** | **[dato real del piloto]** |
+| Dimensión | Media | Desviación estándar | Mínimo | Máximo |
+|-----------|-------|---------------------|--------|--------|
+| Facilidad de uso | [por completar] | [por completar] | [por completar] | [por completar] |
+| Eficiencia | [por completar] | [por completar] | [por completar] | [por completar] |
+| Precisión | [por completar] | [por completar] | [por completar] | [por completar] |
+| Satisfacción general | [por completar] | [por completar] | [por completar] | [por completar] |
+| Utilidad percibida | [por completar] | [por completar] | [por completar] | [por completar] |
 
-**Distribución de Respuestas (completar):**
+**Distribución de respuestas**
 
 | Puntuación | Frecuencia | Porcentaje |
 |-----------|-----------|------------|
-| 1 | **[dato real del piloto]** | **[dato real del piloto]**% |
-| 2 | **[dato real del piloto]** | **[dato real del piloto]**% |
-| 3 | **[dato real del piloto]** | **[dato real del piloto]**% |
-| 4 | **[dato real del piloto]** | **[dato real del piloto]**% |
-| 5 | **[dato real del piloto]** | **[dato real del piloto]**% |
+| 1 | [por completar] | [por completar] |
+| 2 | [por completar] | [por completar] |
+| 3 | [por completar] | [por completar] |
+| 4 | [por completar] | [por completar] |
+| 5 | [por completar] | [por completar] |
 
-**Comentarios Más Frecuentes (completar con respuestas textuales reales):**
+**Consistencia interna.** Alfa de Cronbach del cuestionario completo: [por completar].
 
-**Positivos:**
-- **[dato real del piloto]**
-- **[dato real del piloto]**
-
-**Negativos/Mejoras:**
-- **[dato real del piloto]**
-- **[dato real del piloto]**
+**Comentarios frecuentes.** Se consignarán las respuestas textuales agrupadas por tema, distinguiendo las valoraciones favorables de las solicitudes de mejora, con indicación de la frecuencia de cada tema.
 
 ### 6.2.9 Anexo 9: Cronograma Detallado de Actividades
 
-| Semana | Actividad | Responsable | Estado |
-|--------|-----------|--------------|--------|
-| 1-2 | Revisión bibliográfica | Investigador | Completado |
-| 3-4 | Entrevistas con stakeholders | Investigador | Completado |
-| 5-6 | Análisis de requerimientos | Investigador | Completado |
-| 7-8 | Diseño de arquitectura | Investigador | Completado |
-| 9-10 | Diseño de base de datos | Investigador | Completado |
-| 11-14 | Desarrollo de modelos | Investigador | Completado |
-| 15-18 | Desarrollo de repositorios | Investigador | Completado |
-| 19-22 | Desarrollo de servicios | Investigador | Completado |
-| 23-26 | Desarrollo de interfaz gráfica | Investigador | Completado |
-| 27-28 | Integración de módulos | Investigador | Completado |
+| Semanas | Actividad | Responsable | Estado |
+|---------|-----------|-------------|--------|
+| 1-2 | Revisión bibliográfica y de sistemas existentes | Investigador | Completado |
+| 3-4 | Entrevistas con el personal de las instituciones | Investigador | Completado |
+| 5-6 | Análisis de requerimientos funcionales y no funcionales | Investigador | Completado |
+| 7-8 | Diseño de la arquitectura y de los patrones de diseño | Investigador | Completado |
+| 9-10 | Diseño del modelo de datos | Investigador | Completado |
+| 11-14 | Implementación de los modelos del dominio | Investigador | Completado |
+| 15-18 | Implementación de los repositorios de datos | Investigador | Completado |
+| 19-22 | Implementación de los servicios de negocio | Investigador | Completado |
+| 23-26 | Desarrollo de la interfaz gráfica | Investigador | Completado |
+| 27-28 | Integración de los módulos | Investigador | Completado |
 | 29-30 | Pruebas unitarias | Investigador | Completado |
 | 31-32 | Pruebas de integración | Investigador | Completado |
-| 33-34 | Pruebas de usabilidad | Investigador + Usuarios | Pendiente (resultados por documentar) |
-| 35-36 | Implementación piloto | Investigador + Instituciones | Pendiente (resultados por documentar) |
-| 37-38 | Documentación final | Investigador | Completado |
-| 39-40 | Redacción de tesis | Investigador | Completado |
+| 33-34 | Pruebas de usabilidad con usuarios | Investigador y usuarios | Pendiente de ejecución |
+| 35-36 | Implementación piloto en las instituciones | Investigador e instituciones | Pendiente de ejecución |
+| 37-38 | Documentación técnica y de usuario | Investigador | Completado |
+| 39-40 | Redacción del informe final | Investigador | Completado |
+
+Las actividades pendientes corresponden al componente empírico y su ejecución determinará la fecha de presentación definitiva del informe.
 
 ### 6.2.10 Anexo 10: Presupuesto Detallado
 
-**Costos Recurrentes Anuales Estimados:**
+**Costos incurridos durante el desarrollo**
 
-| Concepto | Costo Anual | Justificación |
-|----------|-------------|---------------|
-| Mantenimiento de servidor | $0 | Sistema local, sin servidor dedicado |
-| Licencias de software | $0 | Todas tecnologías son código abierto |
-| Actualizaciones de seguridad | $50 | Ocasional según vulnerabilidades |
-| Soporte técnico | $0 | Soporte comunitario y auto-soporte |
-| Capacitación continua | $200 | Para nuevos usuarios y actualizaciones |
-| **Total Anual** | **$250** | **Muy bajo comparado con soluciones comerciales** |
+| Concepto | Costo | Fuente de financiamiento |
+|----------|-------|--------------------------|
+| Tiempo del investigador | $0 | Recursos propios, no remunerados |
+| Equipo de desarrollo | $0 | Equipo preexistente |
+| Licencias de software | $0 | Componentes de código abierto |
+| Material de oficina | $50 | Recursos propios |
+| Impresión de documentación | $30 | Recursos propios |
+| Transporte para visitas a instituciones | $500 | Recursos propios |
+| **Total del desarrollo** | **$580** | |
 
-**Costos de Desarrollo (Incurridos):**
+**Costos anuales estimados de operación por institución**
 
-| Concepto | Costo | Pagado por |
-|----------|-------|-----------|
-| Tiempo del investigador | $0 | Propio (no remunerado) |
-| Equipos de desarrollo | $0 | Existente |
-| Software de desarrollo | $0 | Código abierto |
-| Material de oficina | $50 | Investigador |
-| Impresión de documentación | $30 | Investigador |
-| Transporte para visitas | $500 | Investigador |
-| **Total Desarrollo** | **$580** | **Costo total del proyecto** |
+| Concepto | Costo anual | Fundamento |
+|----------|-------------|-----------|
+| Licenciamiento de software | $0 | Todas las tecnologías empleadas son de código abierto |
+| Servidor dedicado | $0 | Aplicación de instalación local, sin servidor |
+| Actualizaciones de seguridad | $50 | Revisión periódica de dependencias |
+| Soporte técnico externo | $0 | Soporte comunitario y documentación propia |
+| Capacitación de nuevos usuarios | $200 | Sesiones de inducción y actualización |
+| **Total anual estimado** | **$250** | |
+
+**Comparación de referencia.** El costo anual estimado de operación equivale a una fracción mínima del costo de licenciamiento de las suites comerciales equivalentes, cuyo rango de mercado se consigna en la Tabla 4.18 del Capítulo IV como estimación referencial sujeta a cotización específica.
 
 ---
 
 ## 6.3 CIERRE
 
-Esta tesis ha presentado el desarrollo e implementación del Sistema de Gestión de Personal y Nómina para instituciones educativas, demostrando que es posible desarrollar soluciones tecnológicas de alta calidad con recursos limitados mediante el uso de tecnologías de código abierto y metodologías de desarrollo apropiadas.
-
-El proyecto logró sus objetivos, validó sus hipótesis, y generó impacto tangible en las instituciones participantes. Las lecciones aprendidas y recomendaciones proporcionadas pueden servir como guía para futuros proyectos similares en el campo de la tecnología aplicada a la educación.
+El informe documenta el diseño, el desarrollo y la verificación técnica de un sistema de gestión de personal y nómina para instituciones educativas, construido íntegramente con tecnologías de código abierto y organizado en una arquitectura de capas que permite sostenerlo y ampliarlo. Los objetivos planteados se cumplieron en los términos que el Capítulo V precisa, y las hipótesis disponen de indicadores definidos cuya resolución definitiva corresponde a la evidencia del piloto.
 
 ---
 
-**EL AUTOR**
+**El Autor**
 [Nombre del Estudiante]
 
-**TUTOR ACADÉMICO**
+**Tutor Académico**
 [Nombre del Tutor]
 
-**FECHA**
+**Fecha**
 [Fecha de Presentación]
 
-**INSTITUCIÓN**
+**Institución**
 [Nombre de la Institución]

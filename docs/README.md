@@ -1,12 +1,12 @@
 # Plataforma de Documentación Web SDEP
 
-Plataforma web moderna, seria, elegante y ultra-minimalista para el **Sistema de Gestión de Personal y Nómina (SDEP)**. Incorpora un visor interactivo de Markdown integrado directamente en el navegador, catálogo centralizado de 17 documentos técnicos y académicos, buscador instantáneo (`Ctrl+K`) y soporte 100% offline.
+Plataforma web moderna, seria, elegante y ultra-minimalista para el **Sistema de Gestión de Personal y Nómina (SDEP)**. Incorpora un visor interactivo de Markdown integrado directamente en el navegador, catálogo centralizado de 20 documentos técnicos y académicos, buscador instantáneo (`Ctrl+K`) y soporte 100% offline.
 
 ---
 
 ## 🎨 Características Principales
 
-- **Lector Integrado de Markdown en Web**: Renderiza en tiempo real los 10 documentos de la tesis y los 7 documentos técnicos con tipografía editorial de alta precisión, sin redirigir a archivos planos ni requerir herramientas externas.
+- **Lector Integrado de Markdown en Web**: Renderiza en tiempo real los 13 documentos de la tesis y los 7 documentos técnicos con tipografía editorial de alta precisión, sin redirigir a archivos planos ni requerir herramientas externas.
 - **Formato Markdown Avanzado**:
   - Resaltado de sintaxis con Prism (Python, Bash, SQL, JSON, Markdown).
   - Botón de copia de bloques de código con confirmación visual.
@@ -15,7 +15,7 @@ Plataforma web moderna, seria, elegante y ultra-minimalista para el **Sistema de
   - Encabezados con anclas y enlaces directos compartibles.
 - **Tabla de Contenidos Dinámica (TOC)**: Extracción automática de encabezados (`H2`, `H3`) con *Scrollspy* para indicar visualmente la sección activa.
 - **Métricas de Lectura**: Cálculo automático de tiempo estimado de lectura (WPM) y conteo de palabras por documento.
-- **Buscador Instantáneo & Paleta de Comandos (`Ctrl+K` / `⌘K`)**: Búsqueda en tiempo real sobre títulos, resúmenes y cuerpo completo de los 17 documentos con fragmentos destacados.
+- **Buscador Instantáneo & Paleta de Comandos (`Ctrl+K` / `⌘K`)**: Búsqueda en tiempo real sobre títulos, resúmenes y cuerpo completo de los 20 documentos con fragmentos destacados.
 - **Diseño Ultra-Minimalista**:
   - Tema claro y tema oscuro profundo (*Slate/Zinc*) con persistencia en `localStorage`.
   - Tipografía cuidada basada en *Inter* y *JetBrains Mono*.
@@ -77,7 +77,8 @@ docs/
 ├── index.html              # Estructura HTML de la plataforma y del visor web
 ├── styles.css              # Sistema de diseño, temas claro/oscuro y estilos Markdown
 ├── script.js               # Motor de renderizado Markdown, TOC, scrollspy y buscador
-├── docs_data.js            # Corpus centralizado con los 17 documentos precompilados
+├── docs_data.js            # Corpus centralizado con los 20 documentos precompilados
+├── content/                # Copias Markdown servidas al lector web
 ├── README.md               # Esta documentación
 └── vendor/                 # Dependencias JavaScript locales (100% offline)
     ├── marked.min.js       # Parser de Markdown de alto rendimiento
@@ -100,10 +101,19 @@ python tools/generate_docs_bundle.py
 ```
 
 Este script:
-1. Lee los 17 archivos `.md` en codificación UTF-8.
+1. Lee los 20 archivos `.md` declarados en su manifiesto, en codificación UTF-8.
 2. Extrae títulos, resúmenes, categorías y badges.
 3. Calcula el conteo de palabras y minutos de lectura estimados.
 4. Genera el bundle optimizado `docs/docs_data.js`.
+
+Cada documento del catálogo se mantiene duplicado en `docs/content/` porque el
+lector intenta primero esa copia local (`./content/<archivo>`) y solo recurre a
+GitHub cuando no la encuentra. Para comprobar que el catálogo y sus copias
+están íntegros y sincronizados:
+
+```bash
+python tools/verify_docs.py
+```
 
 ---
 

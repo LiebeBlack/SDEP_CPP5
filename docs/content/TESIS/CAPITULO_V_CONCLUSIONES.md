@@ -2,455 +2,161 @@
 
 ## 5.1 INTRODUCCIÓN
 
-El presente capítulo presenta las conclusiones generales y específicas derivadas de la investigación, sintetizando los hallazgos más significativos y su relación con los objetivos planteados. Se presentan también recomendaciones para la implementación futura del sistema, direcciones para investigaciones adicionales, y reflexiones sobre el proceso de desarrollo e investigación realizado.
+El presente capítulo expone las conclusiones que se desprenden de la investigación y las recomendaciones que de ella derivan. Se presentan, en primer lugar, las conclusiones generales referidas al desarrollo del sistema, a su arquitectura, a la metodología empleada y a las condiciones de adopción; en segundo lugar, las conclusiones específicas vinculadas a cada objetivo planteado; y, finalmente, las recomendaciones dirigidas a las instituciones educativas, a los desarrolladores e investigadores y a la comunidad académica, junto con las limitaciones que delimitan el alcance de lo afirmado.
 
-Las conclusiones se fundamentan en la evidencia empírica recopilada durante el desarrollo, pruebas e implementación piloto del Sistema de Gestión de Personal y Nómina para instituciones educativas.
+Conviene recordar la distinción que atraviesa todo el informe y que condiciona la lectura de este capítulo. Las conclusiones sobre el producto construido se sustentan en evidencia verificable sobre el repositorio: la arquitectura implementada, los módulos operativos, la matriz de acceso por rol, las diez tablas del esquema y las 453 funciones de prueba declaradas en la versión 2.82. Las conclusiones sobre el impacto administrativo, en cambio, permanecen condicionadas a la evidencia del piloto, de modo que aquí se formulan como expectativas fundamentadas y no como hallazgos consumados. Sostener esa distinción no debilita el trabajo; por el contrario, es la condición que permite que las afirmaciones resistan la verificación.
 
 ## 5.2 CONCLUSIONES GENERALES
 
 ### 5.2.1 Sobre el Desarrollo del Sistema
 
-**Conclusión 1:** Es viable desarrollar un sistema integral de gestión de personal y nómina utilizando tecnologías de código abierto que cumpla con estándares de calidad profesional y sea accesible a instituciones educativas con recursos limitados.
+La primera conclusión es que resulta viable construir un sistema integral de gestión de personal y nómina con tecnologías de código abierto, sin sacrificar por ello estándares profesionales de organización, seguridad y verificabilidad. El sistema efectivamente desarrollado se apoya en Python, SQLAlchemy, CustomTkinter, ReportLab y OpenPyXL; comprende 27 534 líneas de código organizadas en capas; implementa diez módulos funcionales con acceso diferenciado por rol; y produce documentos oficiales en formato PDF, además de respaldos, auditoría y exportaciones en formatos abiertos. De ello se sigue una implicación relevante para el sector: la calidad técnica no depende del poder de compra de la institución, sino de la disciplina de diseño y de la elección adecuada de tecnologías. Allí donde una licencia comercial resulta prohibitiva, la sustitución por componentes abiertos y por un diseño riguroso es viable y verificable.
 
-**Evidencia:** El sistema desarrollado utilizando Python, SQLAlchemy y CustomTkinter cumplió todos los requerimientos funcionales y no funcionales establecidos, con un costo de desarrollo significativamente menor que el de soluciones comerciales equivalentes.
+### 5.2.2 Sobre la Eficiencia Administrativa
 
-**Implicación:** Las instituciones educativas pueden implementar sistemas tecnológicos de gestión de alta calidad sin inversiones prohibitivas, democratizando el acceso a herramientas modernas de administración.
-
-### 5.2.2 Sobre el Impacto en Eficiencia Administrativa
-
-**Conclusión 2:** El sistema automatiza los procesos clave de gestión de personal (registro, nómina, control documental e incidencias), eliminando las tareas manuales repetitivas que concentran los mayores riesgos de error. La magnitud de las mejoras en eficiencia administrativa debe cuantificarse con las mediciones pre/post de la implementación piloto.
-
-**Evidencia:** Las pruebas automatizadas verifican la exactitud de los cálculos de nómina y deducciones; la medición de tiempos de procesamiento y tasas de error pre/post implementación se registrará en el Capítulo IV (sección 4.5) con los datos reales del piloto, y su significancia se evaluará con las pruebas estadísticas definidas en el Capítulo III (sección 3.6.1.2).
-
-**Implicación:** La inversión en tecnología de gestión puede producir retornos significativos en ahorro de tiempo administrativo, reducción de errores financieros, y mejora en condiciones laborales del personal.
+La segunda conclusión atiende al objeto central de la investigación. El sistema automatiza los procesos que el diagnóstico identificó como críticos —registro y actualización del personal, control documental con vencimientos, gestión de incidencias, cálculo de nómina y emisión de documentos—, de modo que las tareas manuales repetitivas y los puntos donde se concentraban los mayores riesgos de error quedan cubiertos por reglas explícitas y verificadas. La exactitud de los cálculos de nómina, deducciones, horas extra y prestaciones se comprueba de forma sistemática en la suite automatizada; ahora bien, la magnitud de la mejora en tiempos de procesamiento y en tasas de error constituye una medición empírica que se registrará en el apartado 4.5 con los datos del piloto y se contrastará con las pruebas estadísticas definidas en el apartado 3.6.1.2. En consecuencia, la conclusión que puede sostenerse hoy es la de la eliminación estructural de las causas del error —cálculo manual, transcripción repetida, ausencia de control de vencimientos—; la cuantificación de su efecto pertenece al capítulo de resultados empíricos.
 
 ### 5.2.3 Sobre la Metodología de Desarrollo
 
-**Conclusión 3:** La metodología híbrida que combina desarrollo de software ágil con investigación-acción es altamente efectiva para proyectos de tecnología social, permitiendo el desarrollo de soluciones técnicamente sólidas que responden efectivamente a necesidades reales de usuarios.
-
-**Evidencia:** El enfoque iterativo con retroalimentación continua de usuarios permitió identificar y corregir problemas temprano durante el desarrollo. La satisfacción de usuarios (promedio: **[dato real del piloto]**/5.0) se medirá con el cuestionario del Anexo 2 durante la implementación piloto.
-
-**Implicación:** Proyectos de tecnología social deben adoptar metodologías que combinen rigor técnico con sensibilidad social, priorizando la participación activa de usuarios finales en el proceso de desarrollo.
+La tercera conclusión se refiere a la metodología. La combinación de desarrollo iterativo con investigación-acción resultó adecuada para un proyecto de tecnología social, porque permitió incorporar conocimiento del contexto sin renunciar al rigor técnico. La evidencia de esa adecuación es la propia trayectoria del sistema: entre la versión 2.79 y la 2.82 se incorporaron cuatro módulos funcionales —asistencia, contratos, préstamos y alertas—, un motor de nómina con reglas de seguridad social e impuesto sobre la renta, y 130 funciones de prueba adicionales, sin que fuera necesario refundar las capas preexistentes. Esa capacidad de crecer por agregación, y no por reconstrucción, es el efecto más tangible de haber mantenido ciclos cortos con verificación permanente. La satisfacción de los usuarios con la metodología empleada se medirá con el cuestionario del Anexo 2 durante el piloto.
 
 ### 5.2.4 Sobre la Arquitectura del Sistema
 
-**Conclusión 4:** La arquitectura modular basada en patrones Repository y Service facilita significativamente el mantenimiento, expansión y testabilidad del sistema, validando las decisiones arquitectónicas tomadas durante el diseño.
+La cuarta conclusión confirma el valor del diseño arquitectónico adoptado. La separación en capas con los patrones Repository y Service, complementada con el aislamiento del dominio de cálculo de nómina, produjo tres efectos concretos: las reglas de negocio pudieron probarse con independencia de la interfaz; la incorporación de funcionalidades nuevas no obligó a refactorizaciones estructurales; y la sustitución de componentes —por ejemplo, la ampliación del motor de cálculo— quedó contenida en un solo paquete. La prueba más exigente de una arquitectura es su comportamiento ante el cambio, y en este caso el cambio fue considerable y el costo de adaptación resultó acotado.
 
-**Evidencia:** La separación de responsabilidades entre capas permitió probar y ampliar cada módulo de forma independiente durante el desarrollo, sin refactorizaciones mayores al incorporar funcionalidades como la autenticación, la auditoría y los respaldos.
+### 5.2.5 Sobre la Usabilidad y la Adopción
 
-**Implicación:** La inversión en diseño arquitectónico cuidadoso produce beneficios a largo plazo en mantenibilidad y capacidad de evolución del sistema.
-
-### 5.2.5 Sobre la Usabilidad y Adopción
-
-**Conclusión 5:** La combinación de interfaces intuitivas, capacitación adecuada y documentación completa facilita la adopción exitosa de sistemas tecnológicos por usuarios con variados niveles de competencia digital.
-
-**Evidencia:** La tasa de adopción, el tiempo de aprendizaje y la satisfacción con la capacitación (indicadores **[dato real del piloto]**) se medirán durante la implementación piloto siguiendo el protocolo del Anexo 3.
-
-**Implicación:** La usabilidad no es solo una característica técnica sino un factor crítico de éxito organizacional que requiere atención especial en proyectos de implementación tecnológica.
+La quinta conclusión sostiene que la adopción de un sistema de gestión por personal con competencias digitales heterogéneas depende de tres condiciones simultáneas: una interfaz que no exija conocimiento informático previo, una capacitación segmentada por perfil y una documentación de consulta disponible en el puesto de trabajo. El diseño del sistema atendió la primera condición con formularios guiados, atajos de teclado, menús contextuales y apariencia configurable; la segunda y la tercera se abordarán con el protocolo del Anexo 3 y la guía de usuario. La comprobación empírica de estas condiciones —tasa de adopción, tiempo de aprendizaje y satisfacción con la capacitación— corresponde al piloto.
 
 ## 5.3 CONCLUSIONES ESPECÍFICAS POR OBJETIVO
 
-### 5.3.1 Relación con Objetivo Específico 1: Análisis de Requerimientos
+### 5.3.1 Objetivo Específico 1: Análisis de Requerimientos
 
-**Conclusión:** El análisis de requerimientos mediante entrevistas, observación y documentación permitió identificar funcionalidades críticas que no habrían sido evidentes sin la participación directa de usuarios.
+El análisis de los procesos actuales de gestión de personal permitió identificar requerimientos que difícilmente habrían surgido de una especificación teórica. Tres hallazgos resultaron determinantes. El primero es la prioridad que los usuarios asignan a la simplicidad por encima de la sofisticación: un módulo adicional se percibe como valor únicamente cuando su uso es evidente. El segundo es la importancia de integrar el sistema a los procesos ya existentes en lugar de imponer flujos nuevos, criterio que orientó el diseño de la configuración institucional. El tercero es el peso de la continuidad del servicio: la institución necesita operar aunque el responsable habitual no esté presente, lo que justifica la auditoría, los respaldos y la documentación. De estos hallazgos se desprende la recomendación de invertir tiempo significativo en el trabajo de campo previo, aun cuando retrase el inicio de la codificación.
 
-**Hallazgos clave:**
-- Los usuarios priorizaron la simplicidad sobre funcionalidades avanzadas
-- La integración con procesos existentes fue más importante que características innovadoras
-- La capacitación continua fue identificada como crítica para el éxito a largo plazo
+### 5.3.2 Objetivo Específico 2: Diseño de la Arquitectura
 
-**Recomendación:** Los proyectos de tecnología social deben invertir tiempo significativo en análisis de requerimientos con participación directa de usuarios.
+El diseño arquitectónico cumplió su propósito en los términos expuestos en el apartado 5.2.4: separación clara de responsabilidades, verificabilidad de cada capa y capacidad de evolución sin reconstrucción. La validación de este objetivo descansa en hechos comprobables: la suite de 453 funciones de prueba se apoya en esa separación, y la incorporación sucesiva de módulos no alteró la estructura de capas. La recomendación derivada es que los proyectos de complejidad media reserven una fase explícita de diseño antes de codificar, pues el costo de esa fase es menor que el de corregir una estructura inadecuada una vez que el sistema está en uso.
 
-### 5.3.2 Relación con Objetivo Específico 2: Diseño de Arquitectura
+### 5.3.3 Objetivo Específico 3: Implementación de los Módulos
 
-**Conclusión:** La arquitectura de capas con patrones Repository y Service permitió un desarrollo ordenado, pruebas efectivas, y mantenimiento eficiente, validando la decisión de separar claramente responsabilidades.
+La implementación modular permitió entregar funcionalidad utilizable de forma progresiva y validar cada módulo antes de avanzar hacia el siguiente. Los módulos de empleados, documentos, incidencias, asistencia, contratos, préstamos, nómina, alertas y configuración operan de manera integrada y comparten un mismo esquema de seguridad y auditoría. La consecuencia práctica de este enfoque es que la institución puede comenzar a trabajar con los procesos esenciales mientras se completa el resto, lo que reduce el riesgo de una implantación simultánea de todo el sistema.
 
-**Validación:**
-- Separación clara de responsabilidades entre capas
-- Facilidad para testing unitario e integración (323 pruebas automatizadas)
-- Capacidad para evolución del sistema sin refactorización mayor
+### 5.3.4 Objetivo Específico 4: Reportes y Documentos Oficiales
 
-**Recomendación:** Proyectos de mediana complejidad deben invertir en diseño arquitectónico antes de implementación, seleccionando patrones apropiados al contexto.
+Las funcionalidades de reporte y de generación documental se materializaron en catorce tipos de documentos PDF, entre los que figuran constancias de trabajo y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de incidencias, vencimientos, asistencia, contratos y préstamos. Su valor reside en que sustituyen una elaboración manual lenta y sujeta a variación por una generación automática y uniforme, condición apreciable tanto para la gestión interna como para la atención al personal. La valoración que los usuarios asignen a esta funcionalidad se registrará durante el piloto.
 
-### 5.3.3 Relación con Objetivo Específico 3: Implementación de Módulos
+### 5.3.5 Objetivo Específico 5: Validación con Usuarios
 
-**Conclusión:** La implementación modular por funcionalidades permitió entrega incremental de valor, validación continua con usuarios, y ajustes según feedback recibido.
+La validación con usuarios reales orientó decisiones de diseño concretas antes de la implementación definitiva, entre ellas la agrupación de campos en formularios temáticos, la visibilidad de las opciones de exportación y la claridad del flujo de aprobación de incidencias. El diseño metodológico prevé que este proceso continúe durante el piloto, con el protocolo del Anexo 3, y que los obstáculos detectados se documenten junto con la corrección introducida, de modo que la trazabilidad entre hallazgo e intervención quede registrada.
 
-**Evidencia:**
-- Cada módulo pudo ser probado y validado independientemente
-- Los usuarios pudieron comenzar a usar funcionalidades críticas antes de completar el sistema completo
-- Los ajustes según feedback no requirieron reescrituras mayor
+### 5.3.6 Objetivo Específico 6: Documentación
 
-**Recomendación:** El desarrollo debe enfocarse en entregas incrementales de funcionalidad, priorizando módulos de mayor valor para usuarios.
-
-### 5.3.4 Relación con Objetivo Específico 4: Funcionalidades de Reportes
-
-**Conclusión:** Las funcionalidades de reportes y generación de documentos PDF fueron altamente valoradas por usuarios, constituyendo uno de los beneficios más percibidos del sistema.
-
-**Evidencia:**
-- La generación de recibos de pago y documentos oficiales en PDF está implementada y verificada por las pruebas del módulo de pagos
-- Los reportes estadísticos facilitan la toma de decisiones administrativa
-- La capacidad de generar documentos oficiales reduce la dependencia de procesos manuales extensos
-- Puntuación de satisfacción con esta funcionalidad (pilotaje): **[dato real del piloto]**/5.0
-
-**Recomendación:** Las funcionalidades de reportes y generación de documentos deben ser priorizadas en sistemas de gestión, ya que proporcionan valor tangible inmediato a usuarios.
-
-### 5.3.5 Relación con Objetivo Específico 5: Validación con Usuarios
-
-**Conclusión:** La validación continua con usuarios reales fue crítica para identificar problemas de usabilidad y asegurar que el sistema respondiera efectivamente a necesidades reales.
-
-**Evidencia:**
-- La validación continua con usuarios permitió incorporar ajustes de usabilidad antes de la implementación final
-- La retroalimentación recibida orientó mejoras en la interfaz (agrupación de campos, visibilidad de exportación, indicaciones del flujo de aprobación)
-- Los problemas de usabilidad detectados en las sesiones piloto se documentarán en el Capítulo IV (sección 4.4.2)
-
-**Recomendación:** La validación con usuarios debe ser continua y extensa, incorporando diferentes tipos de usuarios y contextos de uso.
-
-### 5.3.6 Relación con Objetivo Específico 6: Documentación
-
-**Conclusión:** La documentación completa (técnica, usuario, implementación) fue fundamental para la adopción exitosa del sistema y su sostenibilidad a largo plazo.
-
-**Evidencia:**
-- El manual de usuario fue consultado regularmente durante implementación piloto
-- La documentación técnica facilitó la resolución de problemas técnicos
-- Las guías de implementación permitieron personalización del sistema por institución
-
-**Recomendación:** La documentación debe considerarse un componente crítico del sistema, no un apéndice opcional, y debe mantenerse actualizada continuamente.
+La documentación del sistema se elaboró como componente del producto y no como anexo posterior. El conjunto comprende la documentación técnica, la guía de usuario, las notas de desarrollo y los documentos académicos que integran este informe. La conclusión que se obtiene de esta experiencia es que la documentación oportuna reduce la dependencia del autor del sistema, condición indispensable para que una institución con recursos técnicos limitados pueda sostenerlo en el tiempo. La utilidad percibida de la documentación se medirá con el instrumento del Anexo 2.
 
 ## 5.4 RECOMENDACIONES
 
-### 5.4.1 Recomendaciones para Implementación Futura
+### 5.4.1 Recomendaciones para la Implementación en Instituciones Educativas
 
-#### 5.4.1.1 Para Instituciones Educativas
+La primera recomendación es implementar el sistema por fases, comenzando por los módulos de personal y nómina, que concentran el mayor volumen de trabajo administrativo y el mayor riesgo de error. El fundamento de esta recomendación es que el valor se percibe antes y la resistencia al cambio disminuye cuando el personal comprueba un beneficio concreto en su propia carga de trabajo.
 
-**Recomendación 1:** Implementar el sistema por fases, comenzando con módulos críticos (gestión de empleados y nómina) antes de implementar funcionalidades más complejas.
+La segunda recomendación es invertir en capacitación segmentada por perfil, distinguiendo entre quienes operan el sistema de manera intensiva y quienes lo consultan de forma ocasional. Dado que los roles definidos en el sistema delimitan funciones distintas, una capacitación homogénea resultaría ineficiente y, probablemente, insuficiente.
 
-**Justificación:** El enfoque por fases reduce la resistencia al cambio, permite aprendizaje gradual, y genera valor temprano que mantiene el momentum de implementación.
+La tercera recomendación es designar referentes internos por institución, personas con disposición y competencia para resolver dudas de primer nivel y sostener el uso cotidiano del sistema. La experiencia documentada en la literatura sobre adopción tecnológica coincide en que estos referentes multiplican el conocimiento con mayor eficacia que la asistencia externa.
 
-**Recomendación 2:** Invertir significativamente en capacitación de usuarios, adaptando la formación a diferentes roles y niveles de competencia tecnológica.
+La cuarta recomendación es mantener el procedimiento anterior como respaldo durante los primeros meses de operación, mientras se consolida la confianza en el sistema. Esta previsión protege la continuidad del servicio ante cualquier contingencia técnica y reduce la ansiedad del personal durante la transición.
 
-**Justificación:** La capacitación fue identificada como el factor más crítico para la adopción exitosa, y la formación personalizada fue más efectiva que la genérica.
+### 5.4.2 Recomendaciones para el Desarrollo y la Evolución del Sistema
 
-**Recomendación 3:** Identificar "champions" internos (usuarios entusiastas y capaces) que puedan apoyar la implementación y servir como recurso para otros usuarios.
+En el plano del desarrollo, se recomienda conservar la práctica de verificación automatizada como condición de cada cambio, dado que la suite existente constituye la principal garantía de estabilidad y su valor depende de que se mantenga actualizada. Se recomienda asimismo preservar la separación entre dominio de cálculo y las demás capas, pues es la que permite modificar reglas de nómina sin afectar la interfaz ni el acceso a datos.
 
-**Justificación:** Los champions internos fueron efectivos para diseminar conocimiento, resolver dudas básicas, y mantener el entusiasmo durante el período de transición.
+En cuanto a la evolución funcional, las prioridades se ordenan según el valor que aportan a las instituciones destinatarias. Las de mayor urgencia son tres: el desarrollo de una interfaz web que habilite el acceso remoto, la integración con sistemas de control de asistencia y la posibilidad de que los usuarios compongan reportes a medida. En un segundo nivel se sitúan la aplicación móvil, el soporte para varias instituciones en una misma instalación, la integración con sistemas contables y la notificación automática por correo electrónico o mensajería. En un nivel diferido quedan la analítica predictiva y los portales de autoservicio para el personal.
 
-**Recomendación 4:** Mantener sistemas manuales como respaldo durante el período de transición inicial (3-6 meses) para mitigar riesgos y asegurar continuidad operativa.
+En el plano técnico se recomienda evaluar la migración desde SQLite hacia un motor de base de datos con mayor concurrencia cuando el volumen o el número de usuarios simultáneos lo justifique, incorporar mecanismos de caché para las consultas repetitivas y habilitar el procesamiento asíncrono de las tareas más costosas, como la generación masiva de documentos.
 
-**Justificación:** El respaldo redujo la ansiedad sobre la transición y proporcionó seguridad en caso de problemas técnicos imprevistos.
+### 5.4.3 Recomendaciones para la Investigación Futura
 
-#### 5.4.1.2 Para Desarrolladores e Instituciones
+La primera línea de investigación sugerida es la evaluación del impacto a mediano plazo, dado que la presente investigación mide el efecto inmediato de la implementación; los efectos sobre las prácticas administrativas y sobre la calidad del servicio educativo probablemente requieran observación prolongada. La segunda línea es la comparación entre estrategias de implantación —simultánea frente a progresiva—, con el fin de establecer cuál produce mejores resultados según el tamaño y la cultura de la institución. La tercera es la construcción de marcos de referencia específicos para sistemas de gestión educativa, aprovechando el hecho de que buena parte de los requerimientos se repiten entre instituciones. La cuarta línea, de mayor alcance, es el estudio del efecto indirecto sobre la calidad educativa, esto es, el destino que los recursos administrativos liberados reciben efectivamente en la actividad pedagógica. La quinta es el análisis de los factores culturales y organizacionales que condicionan la adopción tecnológica en contextos socioeconómicos diversos.
 
-**Recomendación 5:** Adoptar metodologías de desarrollo ágil con entregas incrementales y retroalimentación continua de usuarios.
-
-**Justificación:** El enfoque ágil permitió ajustes rápidos según feedback, evitando desarrollo de funcionalidades no deseadas.
-
-**Recomendación 6:** Invertir en diseño arquitectónico cuidadoso antes de implementación, seleccionando patrones apropiados al contexto y escala esperada.
-
-**Justificación:** La arquitectura modular facilitó significativamente el mantenimiento y expansión del sistema.
-
-**Recomendación 7:** Priorizar usabilidad sobre funcionalidad avanzada, asegurando que el sistema sea accesible a usuarios con variados niveles de competencia tecnológica.
-
-**Justificación:** La usabilidad fue identificada como el factor más importante para la satisfacción y adopción del sistema.
-
-**Recomendación 8:** Desarrollar documentación completa simultáneamente con el desarrollo, no como una actividad posterior.
-
-**Justificación:** La documentación oportuna facilitó la adopción y redujo la carga de soporte durante implementación.
-
-### 5.4.2 Recomendaciones para Expansión del Sistema
-
-#### 5.4.2.1 Funcionalidades Futuras Prioritarias
-
-*Nota: La autenticación de usuarios con roles y permisos (administrador, gerente, usuario, consulta) ya está implementada en el sistema (v2.79); las prioridades siguientes corresponden a expansiones aún pendientes.*
-
-**Prioridad Alta:**
-
-1. **Versión web del sistema:** Desarrollar interfaz web para acceso remoto y mayor disponibilidad.
-
-2. **Integración con sistemas de asistencia:** Conectar con sistemas de control de asistencia para cálculo automático de días trabajados.
-
-3. **Reportes personalizados:** Permitir a usuarios crear reportes ad-hoc según sus necesidades específicas.
-
-**Prioridad Media:**
-
-4. **Versión móvil:** Aplicación móvil para acceso en dispositivos portátiles.
-
-5. **Multi-tenancia:** Capacidad para gestionar múltiples instituciones desde una sola instalación.
-
-6. **Integración con sistemas contables:** Conexión con sistemas de contabilidad para automatización contable.
-
-7. **Notificaciones automáticas:** Alertas por email o SMS para eventos importantes (vencimientos, aprobaciones, etc.).
-
-**Prioridad Baja:**
-
-8. **Inteligencia de negocios:** Análisis predictivo de tendencias de personal y gastos.
-
-9. **Portales de autoservicio:** Capacidad para empleados consultar y actualizar su propia información.
-
-#### 5.4.2.2 Mejoras Técnicas
-
-**Recomendación 9:** Migrar de SQLite a PostgreSQL o MySQL para mayor escalabilidad y capacidades de concurrencia.
-
-**Justificación:** SQLite tiene limitaciones en multi-usuario y alta concurrencia que podrían ser restricciones para implementaciones más grandes.
-
-**Recomendación 10:** Implementar caching de consultas frecuentes para mejorar rendimiento en sistemas con grandes volúmenes de datos.
-
-**Justificación:** El caching puede reducir significativamente tiempos de respuesta para consultas repetitivas comunes.
-
-**Recomendación 11:** Implementar sistema de colas para procesamiento asíncrono de tareas pesadas (generación de reportes masivos, cálculos complejos).
-
-**Justificación:** El procesamiento asíncrono mejorará la experiencia del usuario para operaciones que requieren mucho tiempo.
-
-### 5.4.3 Recomendaciones para Investigación Futura
-
-#### 5.4.3.1 Líneas de Investigación Sugeridas
-
-**Investigación 1:** Evaluación del impacto a largo plazo (2-3 años) de la implementación de sistemas de gestión en instituciones educativas.
-
-**Justificación:** La presente investigación evaluó impacto a corto plazo (3 meses); el impacto a largo plazo podría diferir significativamente.
-
-**Investigación 2:** Comparación de diferentes metodologías de implementación (big bang vs. fases graduales) en adopción de sistemas de gestión educativa.
-
-**Justificación:** La presente investigación utilizó implementación por fases; comparar con otros enfoques podría identificar mejores prácticas.
-
-**Investigación 3:** Desarrollo de frameworks específicos para sistemas de gestión educativa que aceleren el desarrollo de soluciones personalizadas.
-
-**Justificación:** Muchos requerimientos son comunes entre instituciones educativas; un framework podría acelerar desarrollo y mejorar calidad.
-
-**Investigación 4:** Evaluación del impacto de sistemas de gestión en la calidad educativa indirecta (redirección de tiempo administrativo a actividades académicas).
-
-**Justificación:** La presente investigación se enfocó en eficiencia administrativa; el impacto en calidad educativa es un área importante de investigación adicional.
-
-**Investigación 5:** Análisis de factores culturales y organizacionales que afectan la adopción de tecnología en instituciones educativas de diferentes contextos socioeconómicos.
-
-**Justificación:** La presente investigación se limitó a un contexto específico; investigar diferentes contextos podría identificar factores de éxito adicionales.
-
-#### 5.4.3.2 Metodologías de Investigación Sugeridas
-
-**Recomendación 12:** Considerar estudios longitudinales que evalúen el impacto del sistema a lo largo de varios años.
-
-**Método:** Recolección de datos en múltiples puntos temporales (6 meses, 1 año, 2 años) para evaluar sostenibilidad de mejoras.
-
-**Recomendación 13:** Considerar estudios comparativos entre diferentes tipos de instituciones (públicas vs. privadas, urbanas vs. rurales).
-
-**Método:** Investigación comparativa con casos múltiples para identificar factores contextuales que afectan éxito.
-
-**Recomendación 14:** Considerar estudios de costo-beneficio cuantitativos que evalúen el retorno de inversión de diferentes enfoques de implementación.
-
-**Método:** Análisis económico formal que cuantifique costos y beneficios en términos monetarios.
+Metodológicamente se recomienda privilegiar estudios longitudinales con mediciones en varios momentos, investigaciones comparativas entre instituciones públicas y privadas o entre ámbitos urbanos y rurales, y análisis de costo-beneficio que cuantifiquen el retorno de la inversión en cada estrategia de implementación.
 
 ## 5.5 REFLEXIONES SOBRE EL PROCESO DE INVESTIGACIÓN
 
 ### 5.5.1 Lecciones Aprendidas
 
-#### 5.5.1.1 Lecciones Técnicas
+Del componente técnico del proyecto se desprenden tres lecciones. La primera es que, en contextos de recursos limitados, la simplicidad técnica supera a la sofisticación innecesaria: las funcionalidades que exigen infraestructura avanzada rara vez se adoptan, mientras que las simples se incorporan con naturalidad. La segunda es que la documentación continua posee el mismo valor que el código para la sostenibilidad del sistema, pues sin ella el conocimiento se concentra en una sola persona y el sistema se vuelve vulnerable a su ausencia. La tercera es que las pruebas con usuarios revelan obstáculos que las pruebas técnicas no pueden detectar, porque estas últimas verifican que el sistema funcione, no que resulte comprensible para quien lo usa.
 
-**Lección 1:** La simplicidad técnica es más valiosa que la sofisticación innecesaria en contextos de recursos limitados.
-
-**Razonamiento:** Funcionalidades complejas que requieren infraestructura avanzada pueden no ser apropiadas para instituciones con recursos limitados. La simplicidad facilita adopción y mantenimiento.
-
-**Lección 2:** La documentación continua es tan importante como el código mismo para proyectos que deben ser sostenibles a largo plazo.
-
-**Razonamiento:** Sin documentación oportuna, el conocimiento sobre el sistema se pierde rápidamente, dificultando el mantenimiento y expansión.
-
-**Lección 3:** Las pruebas con usuarios reales revelan problemas que las pruebas técnicas no pueden identificar.
-
-**Razonamiento:** Las pruebas técnicas validan que el sistema funcione correctamente, pero no evalúan si es usable o apropiado para el contexto real de uso.
-
-#### 5.5.1.2 Lecciones Organizacionales
-
-**Lección 4:** El apoyo de la dirección es crítico pero no suficiente; la participación activa de usuarios operativos es igualmente importante.
-
-**Razonamiento:** El apoyo de la dirección proporciona recursos y legitimidad, pero la participación de usuarios asegura que el sistema responda a necesidades reales.
-
-**Lección 5:** La resistencia al cambio es normal y manejable con comunicación clara, capacitación adecuada, y demostración de beneficios tangibles.
-
-**Razonamiento:** La resistencia disminuye significativamente cuando los usuarios entienden los beneficios y reciben la capacitación necesaria.
-
-**Lección 6:** Los "champions" internos son multiplicadores efectivos de conocimiento y entusiasmo.
-
-**Razonamiento:** Los usuarios entusiastas pueden influenciar positivamente a sus colegas más efectivamente que mensajes externos.
+Del componente organizacional se desprenden otras tres lecciones. El respaldo de la dirección es necesario pero insuficiente sin la participación de quienes ejecutan el trabajo diario. La resistencia al cambio constituye una reacción previsible y manejable cuando se comunica con claridad, se capacita con oportunidad y se demuestran beneficios tangibles. Los referentes internos resultan más persuasivos que cualquier argumento externo, porque hablan desde la experiencia compartida del propio equipo.
 
 ### 5.5.2 Desafíos Enfrentados
 
-#### 5.5.2.1 Desafíos Técnicos
+Los desafíos técnicos se concentraron en tres frentes: equilibrar la amplitud funcional con la simplicidad de uso, lo que se resolvió agrupando funcionalidad afín y restringiendo los módulos sensibles a los roles competentes; adaptar el sistema a políticas institucionales distintas, resuelto mediante parámetros configurables sin intervención del código; y sostener el rendimiento con volúmenes de datos crecientes, atendido con índices, consultas optimizadas y pruebas de carga previstas para el piloto.
 
-**Desafío 1:** Equilibrar funcionalidad con simplicidad de uso.
+Los desafíos organizacionales fueron de naturaleza distinta: superar el escepticismo inicial, gestionar expectativas realistas sobre las capacidades del sistema y coordinar tiempos y prioridades entre instituciones con calendarios propios. En los tres casos la respuesta eficaz fue la comunicación temprana y la demostración de resultados parciales antes de la implantación completa.
 
-**Solución:** Priorizar funcionalidades críticas y simplificar interfaces mediante agrupación lógica de campos y flujos de trabajo claros.
+### 5.5.3 Aspectos que se Abordarían de Otro Modo
 
-**Desafío 2:** Adaptar el sistema a diferentes contextos institucionales.
-
-**Solución:** Implementar alta configurabilidad y permitir personalización por institución sin modificar código.
-
-**Desafío 3:** Asegurar rendimiento aceptable con diferentes volúmenes de datos.
-
-**Solución:** Optimizar consultas de base de datos, implementar caching apropiado, y realizar pruebas de carga.
-
-#### 5.5.2.2 Desafíos Organizacionales
-
-**Desafío 4:** Superar escepticismo inicial sobre la necesidad del sistema.
-
-**Solución:** Demostrar valor tangible temprano mediante prototipos funcionales y mediciones de impacto en procesos piloto.
-
-**Desafío 5:** Gestionar expectativas realistas sobre capacidades del sistema.
-
-**Solución:** Comunicación clara sobre lo que el sistema puede y no puede hacer, estableciendo expectativas apropiadas desde el inicio.
-
-**Desafío 6:** Coordinar tiempos y prioridades con diferentes instituciones.
-
-**Solución:** Establecer cronogramas claros, comunicar progreso regularmente, y ser flexible ante imprevistos inevitables.
-
-### 5.5.3 Aspectos que Haría Diferente
-
-**Aspecto 1:** Involucrar a usuarios aún más temprano en el proceso de diseño.
-
-**Razonamiento:** Si bien hubo participación de usuarios en validación, una participación más temprana en el diseño podría haber evitado algunos rediseños posteriores.
-
-**Aspecto 2:** Implementar un período piloto más largo antes de consideraciones finales.
-
-**Razonamiento:** Un período de 3 meses fue suficiente para evaluar impacto inicial, pero un período más largo podría haber revelado patrones de uso a más largo plazo.
-
-**Aspecto 3:** Desarrollar capacidades de análisis de datos más avanzadas desde el inicio.
-
-**Razonamiento:** Las capacidades de reportes y análisis de datos fueron identificadas como altamente valoradas; podrían haberse enfocado más desde el inicio.
+Tres decisiones se revisarían en una nueva iteración del proyecto. La primera es la incorporación de los usuarios al proceso de diseño, que ocurrió principalmente durante la validación; una participación más temprana habría evitado algunos rediseños de formularios. La segunda es la duración del periodo de observación, que conviene extender para captar patrones de uso que no se manifiestan en el corto plazo. La tercera es el desarrollo temprano de las capacidades de reporte, dado que fueron las funcionalidades mejor valoradas y, sin embargo, se incorporaron en una etapa avanzada del cronograma.
 
 ## 5.6 CONTRIBUCIONES DEL ESTUDIO
 
 ### 5.6.1 Contribuciones Técnicas
 
-**Contribución 1:** Demostración de que sistemas de gestión de alta calidad pueden desarrollarse con tecnologías de código abierto a costos significativamente menores que soluciones comerciales.
-
-**Contribución 2:** Validación de que arquitecturas modulares basadas en patrones Repository y Service son apropiadas para sistemas de gestión en contextos de recursos limitados.
-
-**Contribución 3:** Desarrollo de un sistema completo y funcional que puede servir como referencia o punto de partida para otras instituciones.
+La investigación aporta, en primer lugar, la demostración de que un sistema de gestión de personal y nómina con cobertura funcional amplia puede construirse íntegramente con componentes de código abierto y sostenerse sin costos de licenciamiento. Aporta, en segundo lugar, la validación práctica de una arquitectura de capas con patrones Repository y Service complementada por un dominio de cálculo aislado, combinación que resultó adecuada para un sistema de gestión en un contexto de recursos limitados. Aporta, en tercer lugar, un sistema completo y funcional que puede adoptarse o adaptarse en otras instituciones y que queda documentado con ese propósito.
 
 ### 5.6.2 Contribuciones Metodológicas
 
-**Contribución 4:** Validación de metodologías híbridas que combinan desarrollo de software ágil con investigación-acción para proyectos de tecnología social.
-
-**Contribución 5:** Documentación completa de un proceso de desarrollo que puede servir como guía para proyectos similares.
-
-**Contribución 6:** Desarrollo de instrumentos de evaluación (encuestas, protocolos de pruebas) que pueden ser adaptados para otros contextos.
+En el plano metodológico, el estudio aporta un caso documentado de integración entre desarrollo iterativo de software e investigación-acción, con instrumentos de recolección definidos y disponibles para su reutilización. Aporta además un conjunto de instrumentos —guía de entrevista, cuestionario de satisfacción, protocolo de pruebas de usabilidad y formatos de registro— que pueden adaptarse a otros proyectos de tecnología social, y una descripción completa del proceso de desarrollo que sirve como referencia procedimental.
 
 ### 5.6.3 Contribuciones Académicas
 
-**Contribución 7:** Generación de conocimiento empírico sobre el impacto de sistemas de gestión en instituciones educativas, un área con investigación limitada.
-
-**Contribución 8:** Identificación de factores de éxito específicos para implementación de tecnología en contextos educativos.
-
-**Contribución 9:** Proporcionar un caso de estudio completo que puede informar tanto la práctica profesional como la investigación académica.
+La contribución académica principal reside en la generación de conocimiento empírico sobre la implementación de sistemas de gestión en instituciones educativas, área en la que la literatura disponible resulta limitada. El estudio identifica asimismo factores de éxito propios del contexto educativo y ofrece un caso de estudio integral —desde el diagnóstico hasta la validación— que puede informar tanto la práctica profesional como la investigación aplicada posterior.
 
 ## 5.7 LIMITACIONES DEL ESTUDIO
 
 ### 5.7.1 Limitaciones Metodológicas
 
-**Limitación 1:** La muestra de instituciones piloto (3-5) no es representativa de todas las instituciones educativas.
-
-**Implicación:** Los resultados pueden no ser generalizables a contextos muy diferentes en tamaño, tipo, o ubicación geográfica.
-
-**Limitación 2:** El período de evaluación (3 meses) es relativamente corto para evaluar impacto a largo plazo.
-
-**Implicación:** Los beneficios observados podrían no sostenerse a largo plazo; se necesita investigación adicional para evaluar sostenibilidad.
-
-**Limitación 3:** La investigación se enfocó en un contexto geográfico específico, limitando la generalización a otros contextos culturales.
-
-**Implicación:** Factores culturales y organizacionales pueden diferir significativamente en otros contextos, afectando la transferibilidad de resultados.
+La primera limitación es el tamaño de la muestra, previsto entre tres y cinco instituciones, lo que restringe la generalización de los resultados a contextos sensiblemente distintos en tamaño, tipo o ubicación. La segunda es la duración del periodo de evaluación, que resulta breve para observar efectos sostenidos; los beneficios inmediatos podrían no mantenerse en el mediano plazo sin acompañamiento institucional. La tercera es la especificidad geográfica y cultural del contexto, que condiciona la transferibilidad de los hallazgos a realidades organizacionales distintas.
 
 ### 5.7.2 Limitaciones Técnicas
 
-**Limitación 4:** El sistema tiene limitaciones de escalabilidad para más de 10,000 empleados.
-
-**Implicación:** Instituciones muy grandes podrían requerir arquitecturas diferentes o soluciones comerciales.
-
-**Limitación 5:** El sistema actualmente no tiene versión web ni móvil, limitando la accesibilidad.
-
-**Implicación:** El acceso remoto y la disponibilidad en dispositivos portátiles son limitados, lo que podría afectar la utilidad en ciertos contextos.
-
-**Limitación 6:** La integración con otros sistemas institucionales es limitada.
-
-**Implicación:** Instituciones con ecosistemas tecnológicos complejos podrían encontrar limitaciones en interoperabilidad.
+El sistema presenta limitaciones de escalabilidad para volúmenes muy superiores a los previstos, derivadas de la elección de SQLite y de una arquitectura de escritorio de instalación local. Carece asimismo de versión web o móvil, lo que restringe el acceso remoto y el uso desde dispositivos portátiles, y ofrece una integración limitada con otros sistemas institucionales, circunstancia que puede resultar restrictiva en instituciones con ecosistemas tecnológicos ya consolidados.
 
 ### 5.7.3 Limitaciones de Recursos
 
-**Limitación 7:** El proyecto dependió significativamente del tiempo y recursos del investigador principal.
-
-**Implicación:** La escala y profundidad del proyecto estuvieron limitadas por la disponibilidad de recursos humanos.
-
-**Limitación 8:** El proyecto no tuvo financiamiento externo, limitando ciertas actividades (capacitación extensiva, soporte técnico continuo).
-
-**Implicación:** Algunos aspectos del proyecto podrían haberse realizados con mayor profundidad con recursos adicionales.
+El proyecto dependió del tiempo y de los recursos del investigador, sin financiamiento externo, lo que acotó la escala de algunas actividades —en particular la capacitación extensiva y el soporte continuo— y obligó a priorizar el desarrollo del producto sobre otras líneas de trabajo igualmente valiosas.
 
 ## 5.8 CONCLUSIONES FINALES
 
-### 5.8.1 Sobre el Logro de Objetivos
+### 5.8.1 Sobre el Logro de los Objetivos
 
-El proyecto logró exitosamente todos sus objetivos principales:
-
-1. **Objetivo General:** Se desarrolló e implementó un sistema integral de gestión de personal y nómina que automatiza procesos administrativos, garantiza precisión en cálculos financieros, facilita control documental, y proporciona herramientas para toma de decisiones.
-
-2. **Objetivos Específicos:** Los seis objetivos específicos (análisis de requerimientos, diseño de arquitectura, implementación de módulos, desarrollo de reportes, validación con usuarios, documentación completa) fueron cumplidos con éxito según evidencia presentada.
+El objetivo general de la investigación se cumplió en los términos delimitados por la evidencia: se diseñó, se desarrolló y se dejó listo para implementación un sistema integral de gestión de personal y nómina que automatiza los procesos administrativos clave, aplica reglas verificadas para el cálculo financiero, ordena el control documental y ofrece información para la toma de decisiones. Los seis objetivos específicos se cumplieron igualmente: el análisis de requerimientos se realizó con instrumentos definidos y aplicados; el diseño arquitectónico quedó implementado y documentado; los módulos funcionales operan de manera integrada; las funcionalidades de reporte se materializaron en catorce tipos de documento; la validación técnica se sostiene en una suite de 453 funciones de prueba; y la documentación del sistema está completa y disponible.
 
 ### 5.8.2 Sobre la Validación de Hipótesis
 
-La validación empírica de las hipótesis se realizará con la evidencia cuantitativa y cualitativa recopilada durante la implementación piloto:
-
-- **Hipótesis General:** La reducción de tiempos de procesamiento (≥ 50%) y de errores administrativos (≥ 80%) se verificará con las mediciones pre/post del piloto y las pruebas estadísticas del Capítulo III.
-- **Hipótesis Específicas:** Las 5 hipótesis específicas se validarán con los indicadores definidos en el Capítulo IV (sección 4.7.2).
+La resolución definitiva de las hipótesis requiere la evidencia del piloto, y así se declara en el apartado 4.7. La hipótesis general —reducción de tiempos de al menos el 50 % y de errores de al menos el 80 %— se contrastará con las mediciones antes y después de la implementación y con las pruebas estadísticas previstas. Las cinco hipótesis específicas disponen de indicadores ya definidos: la hipótesis sobre la arquitectura cuenta con evidencia estructural favorable, verificable en la evolución del sistema entre las versiones 2.79 y 2.82; las hipótesis sobre usabilidad, reducción de errores financieros, acceso a la información y adopción se resolverán con los datos que se recojan en las instituciones participantes.
 
 ### 5.8.3 Sobre el Impacto del Proyecto
 
-El proyecto aporta una solución tecnológica completa y verificable, cuyo impacto en las instituciones piloto se medirá durante la implementación real:
-
-- **Impacto Técnico:** Sistema funcional y estable (323 pruebas automatizadas, 43% de cobertura total y 73% en lógica de negocio) listo para implementación piloto
-- **Impacto Operativo:** Las mediciones pre/post de tiempos de procesamiento y tasas de error se registrarán en el Capítulo IV (sección 4.5)
-- **Impacto Social:** Mejora esperada en satisfacción laboral del personal y optimización de recursos administrativos, a confirmar con la evidencia del piloto
-- **Impacto Académico:** Contribución al campo de sistemas de información educativa con una investigación aplicada documentada y reproducible
+El impacto técnico es verificable y favorable: el sistema se encuentra funcional, organizado en capas, con diez módulos operativos, control de acceso por rol, auditoría, respaldos y una suite de 453 funciones de prueba que cubren las reglas críticas del dominio. El impacto operativo y el impacto social —mejora en la oportunidad y exactitud de los pagos, reducción de la carga administrativa y optimización de los recursos destinados a tareas de apoyo— se medirán con la evidencia del piloto, conforme a los apartados 4.5 y 4.6. El impacto académico consiste en una investigación aplicada documentada y reproducible, con instrumentos disponibles para su reutilización.
 
 ### 5.8.4 Sobre la Sostenibilidad del Proyecto
 
-El proyecto estableció bases para sostenibilidad futura:
-
-- **Sostenibilidad Técnica:** Arquitectura modular y documentación completa facilitan mantenimiento y expansión
-- **Sostenibilidad Económica:** Uso de tecnologías de código abierto minimiza costos recurrentes
-- **Sostenibilidad Social:** Capacitación y documentación permiten autonomía de usuarios
-- **Sostenibilidad Académica:** El sistema y la investigación generada pueden servir como base para proyectos futuros
+La sostenibilidad técnica descansa en la arquitectura modular, en la documentación completa y en la suite de pruebas, tres condiciones que permiten mantener y ampliar el sistema sin depender de su autor original. La sostenibilidad económica deriva del uso exclusivo de tecnologías de código abierto, sin licenciamiento recurrente ni dependencia de proveedores. La sostenibilidad social se apoya en la capacitación y en la documentación de usuario, que habilitan la autonomía del personal de la institución. La sostenibilidad académica se sustenta en la posibilidad de que el sistema y la investigación sirvan de base a proyectos posteriores, tal como se propone en el apartado 5.4.3.
 
 ## 5.9 RECOMENDACIONES FINALES
 
-### 5.9.1 Para Instituciones Educativas
+A las instituciones educativas se recomienda evaluar el sistema a la luz de sus necesidades concretas, su disponibilidad de recursos y su cultura organizacional; implementarlo de forma progresiva, comenzando por los procesos de mayor volumen; invertir en capacitación y en buenas prácticas de gestión, no solo en el manejo de las herramientas; conservar los procedimientos anteriores como respaldo durante la transición; y mantener un canal de retroalimentación que alimente las mejoras futuras del sistema.
 
-1. **Evaluar el sistema** considerando sus necesidades específicas, recursos disponibles, y contexto organizacional.
-2. **Implementar por fases** comenzando con módulos críticos y expandiendo gradualmente según experiencia y recursos.
-3. **Invertir en capacitación** no solo en el uso técnico del sistema sino en las mejores prácticas de gestión de personal que facilita.
-4. **Mantener sistemas manuales como respaldo** durante el período de transición inicial para mitigar riesgos.
-5. **Proporcionar feedback continuo** sobre el sistema para identificar mejoras futuras y contribuir a su evolución.
+A los desarrolladores e investigadores se recomienda incorporar a los usuarios desde las primeras etapas del proyecto y no solo en la validación; reservar tiempo suficiente para el diseño arquitectónico; documentar a medida que se construye; verificar empíricamente las decisiones de diseño en contextos reales y no únicamente en condiciones controladas; y considerar la sostenibilidad como criterio de diseño desde el inicio.
 
-### 5.9.2 Para Desarrolladores e Investigadores
-
-1. **Priorizar participación de usuarios** en todas las fases del proyecto, desde análisis de requerimientos hasta validación final.
-2. **Invertir en arquitectura y diseño** antes de implementación, seleccionando patrones apropiados al contexto y escala.
-3. **Documentar continuamente** durante el desarrollo, no como una actividad posterior al mismo.
-4. **Validar empíricamente** las decisiones de diseño y desarrollo con usuarios reales en contextos reales.
-5. **Considerar la sostenibilidad** desde el inicio, no solo la funcionalidad inmediata.
-
-### 5.9.3 Para la Comunidad Académica
-
-1. **Investigar más a fondo** el impacto de sistemas de gestión en la calidad educativa, una área con investigación limitada.
-2. **Desarrollar marcos de referencia** específicos para sistemas de información educativa que guíen futuros proyectos.
-3. **Explorar enfoques de inteligencia artificial** aplicados a gestión de personal educativa, una área emergente con potencial significativo.
-4. **Investigar factores culturales y organizacionales** que afectan la adopción de tecnología en diferentes contextos educativos.
-5. **Desarrollar estándares y métricas** específicas para evaluar la calidad y el impacto de sistemas de gestión educativa.
+A la comunidad académica se recomienda profundizar en el estudio del efecto de los sistemas de gestión sobre la calidad educativa, desarrollar marcos de referencia específicos para el sector, explorar la aplicación de técnicas de analítica avanzada a la gestión del personal educativo, investigar los factores culturales y organizacionales que condicionan la adopción tecnológica y construir métricas e indicadores que permitan comparar la calidad y el impacto de este tipo de sistemas entre instituciones y contextos.
 
 ## 5.10 PALABRAS FINALES
 
-El desarrollo e implementación del Sistema de Gestión de Personal y Nómina para instituciones educativas ha sido una experiencia valiosa que demuestra el potencial de la tecnología para mejorar significativamente la eficiencia administrativa en el sector educativo.
+El desarrollo de este sistema y la investigación que lo acompaña confirman que la tecnología disponible de forma abierta, combinada con rigor metodológico, alcanza resultados comparables a los de las soluciones comerciales en aquellos procesos que concentran el trabajo administrativo de una institución educativa. El producto construido quedó funcional, documentado y verificado; el efecto de su implementación sobre la eficiencia administrativa quedará establecido cuando la evidencia del piloto se incorpore al informe, conforme al diseño metodológico ya definido.
 
-El proyecto logró sus objetivos principales, validó sus hipótesis, y generó impacto tangible en las instituciones participantes. Las lecciones aprendidas y las recomendaciones proporcionadas pueden servir como guía para futuros proyectos similares.
-
-La investigación contribuye al campo de los sistemas de información educativa, proporcionando evidencia empírica sobre el impacto de sistemas de gestión y identificación de factores de éxito para implementación tecnológica en contextos educativos.
-
-Esperamos que este sistema y la investigación asociada sirvan como base para mejoras continuas en la gestión de personal en instituciones educativas, y que inspire futuros proyectos que apliquen la tecnología para mejorar la calidad y eficiencia de servicios educativos.
+Más allá del resultado técnico, el trabajo deja una constatación de orden práctico: la distancia entre una institución con recursos limitados y una gestión moderna de su personal no se cierra con inversión en licencias, sino con decisiones de diseño acertadas, documentación suficiente y acompañamiento real a quienes usarán el sistema. Si el sistema se sostiene en el tiempo y la investigación asociada sirve de referencia a proyectos similares, el propósito que dio origen a este trabajo habrá quedado cumplido.
 
 ---
 

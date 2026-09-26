@@ -136,25 +136,26 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 - Software de código abierto en el ámbito educativo (Lakhan & Jhunjhunwala, 2008)
 
 **Locales:**
-- Sistemas de gestión implementados en instituciones similares ([Completar con casos reales de la región])
-- Experiencias previas de digitalización administrativa ([Completar con casos de estudio regionales])
+
+La incorporación de antecedentes locales exige fuentes primarias de la región —informes de gestión, documentos institucionales, repositorios de trabajos de grado— cuya verificación se realizará conforme a los criterios establecidos en el apartado 2.2.3 del Capítulo II. Esta sección se completará con los casos que satisfagan esas condiciones y con la cita de su fuente de origen.
 
 ### 5.2 Bases Teóricas
 
 **Ingeniería de Software:**
-- Ciclo de vida del desarrollo de software (Pressman & Maxim, 2019)
+- Ciclo de vida del desarrollo de software (Pressman & Maxim, 2019; Sommerville, 2015)
 - Patrones de diseño arquitectónicos (Gamma et al., 1994)
 - Metodologías ágiles de desarrollo (Beck et al., 2001)
 
 **Sistemas de Información:**
 - Sistemas de información de recursos humanos (Johnson et al., 2021)
 - Sistemas de información educativa (Picciano, 2011)
-- Arquitectura de sistemas empresariales (Laudon & Laudon, 2020)
+- Aceptación de tecnología y utilidad percibida (Davis, 1989)
+- Arquitectura de sistemas empresariales (Laudon & Laudon, 2018)
 
 **Desarrollo de Software:**
-- Programación orientada a objetos (Booch, 2019)
-- Bases de datos relacionales (Date, 2020)
-- Desarrollo de interfaces gráficas (Shneiderman et al., 2021)
+- Programación orientada a objetos (Booch, 2007)
+- Bases de datos relacionales (Date, 2003; Elmasri & Navathe, 2015)
+- Desarrollo de interfaces gráficas (Shneiderman et al., 2016)
 
 ### 5.3 Bases Legales
 
@@ -315,7 +316,7 @@ La implementación de un sistema de gestión de personal y nómina basado en tec
 
 ### 9.2 Resultados Académicos
 
-- Tesis doctoral/tesis de grado aprobada
+- Trabajo de grado aprobado por el comité evaluador
 - Publicación en congreso o revista científica
 - Contribución al campo de sistemas de información educativa
 - Desarrollo de competencias de investigación aplicada
@@ -397,6 +398,16 @@ __________________________
 __________________________
 [Director de Facultad]
 [Fecha]
+
+---
+
+## 13. NOTA DE ACTUALIZACIÓN RESPECTO AL ESTADO FINAL DEL PROYECTO
+
+El presente anteproyecto se mantiene en el informe como documento de origen, con el valor probatorio que le corresponde: fija los compromisos asumidos antes del desarrollo y permite contrastarlos con lo efectivamente alcanzado. En ese sentido, conviene dejar constancia de los extremos siguientes, verificables en el Capítulo IV.
+
+Los objetivos específicos uno a cuatro y seis se cumplieron: los requerimientos se analizaron con los instrumentos aquí previstos; la arquitectura se diseñó e implementó en capas con los patrones Repository y Service; los módulos funcionales se desarrollaron y ampliaron hasta diez, incluyendo asistencia, contratación y préstamos, que no figuraban en el diseño inicial; las funcionalidades de reporte se materializaron en catorce tipos de documento PDF; y la documentación se completó. El objetivo cinco se cumplió en su componente de pruebas técnicas, con una suite de 453 funciones de prueba en la versión 2.82, y mantiene pendiente su componente de validación con usuarios y aplicación piloto, conforme al apartado 3.5.3.
+
+El cronograma se cumplió en las fases de análisis, diseño, desarrollo, pruebas técnicas y documentación; las dos actividades restantes —pruebas de usabilidad e implementación piloto— conservan su programación. El presupuesto ejecutado ascendió a $580, sin desviación respecto de lo previsto. La hipótesis general y las cinco hipótesis específicas mantienen su formulación original y su resolución se realizará con la evidencia del piloto, según el apartado 4.7. Las referencias bibliográficas del capítulo 10 de este anteproyecto se consolidaron en la bibliografía general del informe, con las precisiones de edición y año que corresponden a cada fuente.
 
 ---
 

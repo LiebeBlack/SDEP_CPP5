@@ -643,7 +643,7 @@ el módulo que esté visible en ese momento:
 
 | Atajo | Acción |
 | --- | --- |
-| **Ctrl+1 … Ctrl+6** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Nómina, 6 Configuración |
+| **Ctrl+1 … Ctrl+0** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Asistencia, 6 Contratos, 7 Préstamos, 8 Nómina, 9 Alertas, 0 Configuración |
 | **Ctrl+N** | Nuevo registro del módulo activo (Empleado, Documento, Incidencia, Pago, Usuario) |
 | **Ctrl+F** | Enfocar la búsqueda (Empleados) o el filtro del módulo activo |
 | **Ctrl+S** | Guardar cambios en el módulo de Configuración |

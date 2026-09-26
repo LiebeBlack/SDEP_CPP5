@@ -30,7 +30,7 @@ La revisión concluyó que la transformación digital debe abordarse como un pro
 
 ### 2.2.2 Antecedentes Nacionales
 
-En el contexto de países en desarrollo, la literatura internacional ofrece hallazgos directamente transferibles a la realidad nacional. A continuación se presentan tres estudios cuyos resultados informan el diseño del sistema propuesto; las referencias locales específicas se completan en la sección de antecedentes locales.
+En el contexto de los países en desarrollo, la literatura internacional ofrece hallazgos directamente transferibles a la realidad nacional, razón por la cual se presentan tres estudios cuyos resultados informaron el diseño del sistema. La incorporación de antecedentes locales propiamente dichos se aborda en el apartado 2.2.3, con los criterios de selección que deben satisfacer las fuentes regionales.
 
 #### 2.2.2.1 Toma de Decisiones Basada en Datos en Países en Desarrollo
 
@@ -52,29 +52,23 @@ La investigación concluyó que las instituciones con recursos limitados pueden 
 
 ### 2.2.3 Antecedentes Locales
 
-#### 2.2.3.1 Sistemas de Gestión Implementados en Instituciones Similares
+#### 2.2.3.1 Estado de la Cuestión y Criterios de Incorporación
 
-[Referencia a sistemas implementados en instituciones educativas de la región] Estos casos demuestran que es posible implementar sistemas de gestión de personal efectivos en contextos similares al de esta investigación, con recursos limitados y personal con variados niveles de competencia tecnológica.
+La revisión de antecedentes locales exige una precisión metodológica que conviene declarar de forma explícita. A diferencia de los antecedentes internacionales, que se localizan en revistas indexadas y resultan verificables de manera directa, los casos regionales se documentan con frecuencia en informes institucionales, actas de consejos directivos, memorias de gestión o repositorios de trabajos de grado cuya localización depende del acceso a fuentes primarias de cada institución. Por esa razón, este apartado se construye con los criterios que deben satisfacer los casos que se incorporen y no con atribuciones de las que no se dispone de respaldo documental.
 
-Las experiencias locales destacan la importancia de adaptar soluciones tecnológicas a las características específicas de cada institución, considerando factores como tamaño, cultura organizacional, y capacidades técnicas disponibles.
+Los antecedentes locales que se integren a la versión definitiva deberán cumplir cuatro condiciones. En primer lugar, proceder de una fuente localizable: repositorio institucional, publicación oficial, informe de gestión o documento institucional con identificación de autoría y fecha. En segundo lugar, describir una experiencia concreta de sistematización administrativa en una institución educativa de la región, con indicación de su alcance y de su estado. En tercer lugar, permitir la comparación con los hallazgos internacionales ya expuestos, de modo que aporten elementos de contraste y no solo confirmación. En cuarto lugar, declarar sus limitaciones, dado que un caso único no autoriza generalizaciones.
 
-#### 2.2.3.2 Experiencias Previas de Digitalización Administrativa
+#### 2.2.3.2 Uso Previsto de los Antecedentes Locales
 
-[Casos de estudio regionales] Las experiencias previas de digitalización en la región revelan patrones similares a los identificados en la literatura internacional: resistencia al cambio, necesidad de capacitación intensiva, y importancia de liderazgo comprometido.
+Los casos regionales cumplirán tres funciones en este informe. La primera es contextual: situarán la magnitud del déficit de sistematización administrativa en el ámbito geográfico de aplicación, con datos propios de la zona. La segunda es comparativa: permitirán contrastar si los obstáculos descritos en la literatura —resistencia al cambio, necesidad de capacitación, dependencia del liderazgo institucional— se manifiestan con la misma intensidad en el medio local. La tercera es instrumental: orientarán las decisiones de implementación, en particular la estrategia de gestión del cambio y el diseño de la capacitación.
 
-Estos casos locales proporcionan lecciones valiosas para el diseño e implementación del sistema propuesto, particularmente en relación con estrategias de gestión del cambio y capacitación de usuarios.
+Mientras esa evidencia local se incorpore, el apartado 8 del índice general mantiene registrada esta sección entre los datos pendientes de completación, con el objeto de que la omisión no pase inadvertida durante la revisión previa a la presentación.
 
 ### 2.2.4 Síntesis de Antecedentes
 
-Los antecedentes revisados revelan patrones consistentes en la implementación de sistemas de gestión en instituciones educativas:
+Los antecedentes revisados convergen en cinco patrones. El primero concierne al peso relativo de los factores intervinientes: el resultado de una implementación depende más de condiciones humanas y organizacionales que de la tecnología elegida, hallazgo que Bondarouk y Ruël (2009) formularon al señalar que la gestión del cambio y la capacitación explican el éxito en mayor medida que las prestaciones del sistema. El segundo se refiere a la formación: la capacitación continua aparece en todas las fuentes consultadas como condición de adopción, y Pelgrum (2001) la sitúa entre las barreras principales cuando resulta insuficiente. El tercero atañe a la estrategia de implantación: los enfoques por fases permiten aprender del uso real y ajustar el alcance, en contraste con las implantaciones simultáneas, que concentran el riesgo. El cuarto se refiere al contexto: Pollock y Cornford (2004) demostraron que las instituciones educativas no se comportan como organizaciones estandarizables y que los sistemas deben adaptarse a sus procesos en lugar de forzar la operación contraria. El quinto alude a la documentación: su disponibilidad determina la capacidad de la institución para sostener el sistema sin depender de quien lo construyó, condición que Lakhan y Jhunjhunwala (2008) identificaron como determinante en la adopción de software abierto en el ámbito educativo.
 
-1. **Importancia del enfoque organizacional:** El éxito depende más de factores humanos y organizacionales que de la tecnología misma.
-2. **Necesidad de capacitación intensiva:** La formación continua es crítica para la adopción exitosa de nuevas tecnologías.
-3. **Valor de implementación por fases:** Enfoques iterativos permiten aprendizaje continuo y ajuste según el contexto.
-4. **Relevancia del contexto institucional:** Las soluciones deben adaptarse a las características específicas de cada institución.
-5. **Importancia de documentación completa:** La documentación facilita el mantenimiento y expansión del sistema.
-
-Estos hallazgos informan el diseño e implementación del sistema propuesto, proporcionando lecciones valiosas para maximizar las probabilidades de éxito.
+Estos cinco hallazgos informaron las decisiones de diseño y de implementación del sistema desarrollado y orientan, además, la estrategia de acompañamiento prevista para la fase piloto.
 
 ## 2.3 BASES TEÓRICAS
 
@@ -82,7 +76,7 @@ Estos hallazgos informan el diseño e implementación del sistema propuesto, pro
 
 #### 2.3.1.1 Ciclo de Vida del Desarrollo de Software
 
-El ciclo de vida del desarrollo de software (SDLC - Software Development Life Cycle) proporciona un marco estructurado para el desarrollo de sistemas de información. Según Pressman (2022), el SDLC comprende las siguientes fases:
+El ciclo de vida del desarrollo de software (SDLC, *Software Development Life Cycle*) proporciona un marco estructurado para el desarrollo de sistemas de información. Según Pressman y Maxim (2019) y Sommerville (2015), el ciclo comprende las fases siguientes:
 
 1. **Análisis de Requerimientos:** Identificación y documentación de las necesidades del sistema.
 2. **Diseño del Sistema:** Arquitectura, componentes y especificaciones técnicas.
@@ -91,18 +85,18 @@ El ciclo de vida del desarrollo de software (SDLC - Software Development Life Cy
 5. **Despliegue:** Instalación del sistema en el entorno de producción.
 6. **Mantenimiento:** Corrección de errores y adaptación a cambios en requerimientos.
 
-Para este proyecto, se adoptará un enfoque iterativo del SDLC, permitiendo ciclos de desarrollo continuos con retroalimentación de usuarios, alineado con metodologías ágiles.
+En este proyecto se adoptó un enfoque iterativo del ciclo de vida, con ciclos breves de desarrollo y retroalimentación de usuarios, en consonancia con los principios ágiles.
 
 #### 2.3.1.2 Patrones de Diseño Arquitectónicos
 
-Los patrones de diseño arquitectónicos proporcionan soluciones reutilizables a problemas comunes en el diseño de software. Según Gamma et al. (1994), los patrones relevantes para este proyecto incluyen:
+Los patrones de diseño arquitectónicos proporcionan soluciones reutilizables a problemas comunes en el diseño de software. De acuerdo con el catálogo clásico de Gamma et al. (1994) y con las prácticas de modelado ágil descritas por Ambler (2002), los patrones adoptados en este proyecto fueron los siguientes:
 
 - **Repository Pattern:** Abstrae la lógica de acceso a datos, proporcionando una interfaz para operaciones CRUD sin exponer detalles de implementación.
 - **Service Layer Pattern:** Encapsula la lógica de negocio, separándola de la presentación y el acceso a datos.
 - **Model-View-Controller (MVC):** Separa la aplicación en componentes lógicos: modelo (datos), vista (presentación) y controlador (lógica).
 - **Dependency Injection:** Facilita el testing y el mantenimiento mediante inyección de dependencias en lugar de creación directa.
 
-Estos patrones contribuirán a la mantenibilidad, escalabilidad y testabilidad del sistema.
+Estos patrones contribuyeron a la mantenibilidad, la escalabilidad y la verificabilidad del sistema, en los términos que el Capítulo IV documenta.
 
 #### 2.3.1.3 Metodologías Ágiles de Desarrollo
 
@@ -113,13 +107,13 @@ Las metodologías ágiles enfatizan el desarrollo iterativo, colaboración con c
 - **Respuesta al cambio:** Adaptabilidad a cambios en requerimientos durante el desarrollo.
 - **Calidad continua:** Enfoque en calidad técnica y de producto en cada iteración.
 
-Para este proyecto, se adoptará Scrum como metodología ágil, con sprints de 2 semanas y entregas incrementales de funcionalidad.
+El proyecto adoptó un esquema de iteraciones breves con entregas incrementales de funcionalidad, conforme a los planteamientos de Beck et al. (2001) y a las prácticas descritas por Schwaber y Sutherland (2020).
 
 ### 2.3.2 Sistemas de Información
 
 #### 2.3.2.1 Sistemas de Gestión de Recursos Humanos
 
-Según Kavanagh y Thite (2021), los sistemas de gestión de recursos humanos (HRM) automatizan y optimizan procesos relacionados con la gestión del personal. Los componentes típicos incluyen:
+Según Johnson, Carlson y Kavanagh (2021), los sistemas de gestión de recursos humanos automatizan y optimizan los procesos vinculados con el personal. Sus componentes habituales son los siguientes:
 
 - **Gestión de Información de Empleados:** Registro, actualización y consulta de datos personales y laborales.
 - **Procesamiento de Nómina:** Cálculo automático de salarios, deducciones y beneficios.
@@ -127,57 +121,57 @@ Según Kavanagh y Thite (2021), los sistemas de gestión de recursos humanos (HR
 - **Gestión de Beneficios:** Administración de seguros, pensiones y otros beneficios.
 - **Reportes y Analíticas:** Generación de reportes para toma de decisiones.
 
-El sistema propuesto implementará estos componentes adaptados al contexto educativo.
+El sistema desarrollado implementa estos componentes adaptados al contexto educativo, con la salvedad de que la gestión de beneficios se limita a las prestaciones y deducciones previstas en la normativa laboral de aplicación.
 
 #### 2.3.2.2 Sistemas de Información Educativa
 
-Picciano (2019) define los sistemas de información educativa como sistemas diseñados específicamente para apoyar procesos administrativos y académicos en instituciones educativas. Estos sistemas deben:
+Picciano (2011) define los sistemas de información educativa como aquellos diseñados específicamente para apoyar los procesos administrativos y académicos de las instituciones. Según el autor, estos sistemas deben:
 
 - **Adaptarse al contexto educativo:** Considerar las características específicas de instituciones educativas.
 - **Integrarse con sistemas existentes:** Compatibilidad con otros sistemas institucionales.
 - **Facilitar la toma de decisiones:** Proporcionar datos oportunos y relevantes para administradores.
 - **Ser accesibles a usuarios diversos:** Interfaces adaptadas a usuarios con variados niveles de competencia tecnológica.
 
-El sistema propuesto incorporará estos principios en su diseño.
+El sistema desarrollado incorpora estos principios en su diseño, en particular la adaptación al contexto institucional y la accesibilidad para usuarios con competencias tecnológicas diversas, condición que la literatura sobre aceptación tecnológica vincula de manera directa con la intención de uso (Davis, 1989).
 
 #### 2.3.2.3 Arquitectura de Sistemas Empresariales
 
-Laudon y Laudon (2020) describen la arquitectura de sistemas empresariales como el diseño de la infraestructura tecnológica de una organización. Componentes clave incluyen:
+Laudon y Laudon (2018) describen la arquitectura de sistemas empresariales como el diseño de la infraestructura tecnológica de una organización. Sus componentes característicos son los siguientes:
 
 - **Capa de Presentación:** Interfaces de usuario para interacción con el sistema.
 - **Capa de Aplicación:** Lógica de negocio y reglas del sistema.
 - **Capa de Datos:** Almacenamiento y gestión de información.
 - **Capa de Integración:** Conectividad con otros sistemas y servicios externos.
 
-El sistema propuesto seguirá esta arquitectura de capas, facilitando la integración futura con otros sistemas.
+El sistema desarrollado sigue esta arquitectura de capas, decisión que facilita tanto la prueba aislada de cada nivel como la integración futura con otros sistemas institucionales.
 
 ### 2.3.3 Desarrollo de Software
 
 #### 2.3.3.1 Programación Orientada a Objetos
 
-La programación orientada a objetos (POO) es un paradigma de programación basado en el concepto de "objetos", que contienen datos y código. Según Booch (2019), los principios fundamentales incluyen:
+La programación orientada a objetos es un paradigma que organiza el software en unidades que reúnen datos y comportamiento. Según Booch (2007), sus principios fundamentales son los siguientes:
 
 - **Encapsulamiento:** Ocultamiento de detalles de implementación y exposición de interfaces públicas.
 - **Herencia:** Creación de nuevas clases basadas en clases existentes.
 - **Polimorfismo:** Capacidad de objetos de diferentes tipos de responder al mismo mensaje.
 - **Abstracción:** Representación simplificada de entidades complejas.
 
-El sistema propuesto utilizará POO para modelar entidades del dominio (Empleado, Documento, Incidencia, Pago) y sus relaciones.
+El sistema emplea este paradigma para modelar las entidades del dominio —empleado, documento, incidencia, asistencia, contrato, préstamo, pago, horario, configuración y usuario— y las relaciones que las vinculan.
 
 #### 2.3.3.2 Bases de Datos Relacionales
 
-Las bases de datos relacionales organizan datos en tablas con relaciones definidas entre ellas. Según Date (2020), ventajas clave incluyen:
+Las bases de datos relacionales organizan la información en tablas con relaciones explícitas entre ellas. Según Date (2003) y Elmasri y Navathe (2015), sus ventajas principales son las siguientes:
 
 - **Integridad de datos:** Reglas que aseguran consistencia y precisión de los datos.
 - **Flexibilidad en consultas:** Lenguaje SQL para consultas complejas y flexibles.
 - **Escalabilidad:** Capacidad para manejar crecientes volúmenes de datos.
 - **Estandarización:** SQL como lenguaje estándar para bases de datos relacionales.
 
-El sistema propuesto utilizará SQLite como base de datos relacional, con SQLAlchemy como ORM para mapeo objeto-relacional.
+El sistema utiliza SQLite como motor relacional y SQLAlchemy como capa de mapeo objeto-relacional, elección coherente con un despliegue local y con un volumen de información acotado.
 
 #### 2.3.3.3 Desarrollo de Interfaces Gráficas
 
-El desarrollo de interfaces gráficas de usuario (GUI) es fundamental para la usabilidad de aplicaciones de escritorio. Según Shneiderman et al. (2021), principios de diseño de interfaces incluyen:
+El desarrollo de interfaces gráficas resulta determinante para la usabilidad de las aplicaciones de escritorio. Según Shneiderman et al. (2016), los principios de diseño de interfaces comprenden:
 
 - **Consistencia:** Mantener patrones consistentes en toda la interfaz.
 - **Feedback inmediato:** Respuestas rápidas a acciones del usuario.
@@ -185,13 +179,13 @@ El desarrollo de interfaces gráficas de usuario (GUI) es fundamental para la us
 - **Flexibilidad y eficiencia:** Accesos rápidos para usuarios expertos.
 - **Estética y minimalismo:** Diseño limpio y enfocado en funcionalidad esencial.
 
-El sistema propuesto utilizará CustomTkinter para desarrollar interfaces modernas, consistentes y usables.
+El sistema desarrollado emplea CustomTkinter para construir una interfaz consistente, con validación inmediata, prevención de errores y accesos rápidos para usuarios experimentados.
 
 ### 2.3.4 Gestión de Recursos Humanos
 
 #### 2.3.4.1 Procesamiento de Nómina
 
-El procesamiento de nómina involucra el cálculo de salarios, deducciones y beneficios para empleados. Según Mathis y Jackson (2020), componentes típicos incluyen:
+El procesamiento de nómina comprende el cálculo de remuneraciones, deducciones y prestaciones del personal. Según Mathis et al. (2016), los componentes habituales son los siguientes:
 
 - **Salario base:** Compensación básica por tiempo trabajado.
 - **Deducciones legales:** Seguro social, impuesto sobre la renta, pensiones.
@@ -199,11 +193,11 @@ El procesamiento de nómina involucra el cálculo de salarios, deducciones y ben
 - **Horas extra:** Compensación por trabajo adicional al horario regular.
 - **Retenciones:** Deducciones por préstamos o adelantos.
 
-El sistema propuesto automatizará estos cálculos según la configuración de cada institución.
+El sistema automatiza estos cálculos conforme a la configuración de cada institución, con parámetros que pueden ajustarse sin modificar el código fuente.
 
 #### 2.3.4.2 Gestión Documental
 
-La gestión documental implica el control de documentos relacionados con empleados. Según Guffey y Loewy (2022), aspectos clave incluyen:
+La gestión documental comprende el control de los documentos vinculados con el personal. Según Guffey y Loewy (2021), sus aspectos centrales son los siguientes:
 
 - **Digitalización:** Conversión de documentos físicos a formato digital.
 - **Control de versiones:** Seguimiento de diferentes versiones de documentos.
@@ -211,7 +205,7 @@ La gestión documental implica el control de documentos relacionados con emplead
 - **Retención y disposición:** Políticas sobre retención y eliminación de documentos.
 - **Búsqueda y recuperación:** Sistemas eficientes para localizar documentos específicos.
 
-El sistema propuesto implementará funcionalidades de gestión documental adaptadas al contexto educativo.
+El sistema implementa estas funcionalidades con especial énfasis en el control de vigencia, dado que el vencimiento documental constituye uno de los riesgos administrativos señalados en el diagnóstico inicial.
 
 #### 2.3.4.3 Gestión de Incidencias y Permisos
 
@@ -223,13 +217,13 @@ La gestión de incidencias involucra el control de ausencias, permisos y reposos
 - **Cumplimiento legal:** Asegurar cumplimiento de normativas laborales.
 - **Historial y auditoría:** Mantener registros completos de todas las incidencias.
 
-El sistema propuesto implementará un flujo completo de gestión de incidencias con control de aprobación.
+El sistema implementa un flujo completo de gestión de incidencias con control de aprobación, registro del responsable de la decisión y efecto directo en el cálculo de la nómina.
 
 ## 2.4 BASES LEGALES
 
 ### 2.4.1 Normativas de Protección de Datos Personales
 
-El sistema debe cumplir con las normativas de protección de datos personales vigentes en [País/Región]. Consideraciones clave incluyen:
+El sistema debe cumplir con las normativas de protección de datos personales vigentes en la jurisdicción de aplicación, cuya identificación concreta figura entre los datos pendientes de completación señalados en el apartado 8 del índice general. Los criterios que orientan el diseño en esta materia son los siguientes:
 
 - **Consentimiento informado:** Los empleados deben consentir el procesamiento de sus datos personales.
 - **Minimización de datos:** Recopilar solo los datos necesarios para los propósitos del sistema.
@@ -237,11 +231,11 @@ El sistema debe cumplir con las normativas de protección de datos personales vi
 - **Derechos de los individuos:** Permitir acceso, corrección y eliminación de datos personales.
 - **Transferencia de datos:** Restricciones sobre la transferencia de datos a terceros.
 
-El sistema incorporará estas consideraciones en su diseño e implementación.
+El sistema atiende estos criterios mediante control de acceso por rol, registro de auditoría de las operaciones sensibles, respaldo cifrado por ubicación restringida y minimización de los datos almacenados, al margen de que la consignación de la norma específica corresponda completarse con la legislación aplicable.
 
 ### 2.4.2 Normativas Laborales
 
-El sistema debe cumplir con las normativas laborales vigentes, incluyendo:
+El sistema debe cumplir con las normativas laborales vigentes en la jurisdicción de aplicación, entre cuyos extremos se cuentan:
 
 - **Cálculo de nóminas:** Cumplimiento de requisitos legales para cálculo de salarios y deducciones.
 - **Registro de horas:** Mantenimiento de registros apropiados de horas trabajadas.
@@ -249,7 +243,7 @@ El sistema debe cumplir con las normativas laborales vigentes, incluyendo:
 - **Permisos y licencias:** Cumplimiento de normativas sobre diferentes tipos de permisos y licencias.
 - **Retención de registros:** Mantenimiento de registros por los períodos requeridos legalmente.
 
-El sistema facilitará el cumplimiento de estas normativas mediante automatización y recordatorios.
+El sistema contribuye al cumplimiento de estas disposiciones mediante el cálculo parametrizado, el registro de jornada y el control de vencimientos documentales.
 
 ### 2.4.3 Normativas Educativas
 
@@ -260,11 +254,11 @@ Las instituciones educativas están sujetas a normativas específicas que afecta
 - **Reportes obligatorios:** Información que debe reportarse a autoridades educativas.
 - **Estándares de calidad:** Normativas sobre calidad de servicios educativos.
 
-El sistema facilitará el cumplimiento de estas normativas mediante documentación y reportes automatizados.
+El sistema contribuye al cumplimiento de estas disposiciones mediante el control documental con alertas de vencimiento y la generación de los reportes previstos en la configuración institucional.
 
 ### 2.4.4 Estándares de Seguridad Informática
 
-El sistema debe cumplir con estándares de seguridad informática para proteger la información:
+El sistema debe observar estándares de seguridad informática en la protección de la información, según los extremos siguientes:
 
 - **Autenticación:** Control de acceso al sistema mediante autenticación de usuarios.
 - **Autorización:** Gestión de permisos basada en roles y responsabilidades.
@@ -272,7 +266,7 @@ El sistema debe cumplir con estándares de seguridad informática para proteger 
 - **Auditoría:** Registro de actividades del sistema para fines de auditoría.
 - **Respaldo y recuperación:** Procedimientos para respaldo y recuperación de datos.
 
-El sistema implementará estas medidas de seguridad para proteger la información de empleados y la institución.
+El sistema implementa estas medidas con el fin de proteger la información del personal y de la institución, y su verificación se documenta en el apartado 4.3.4 del Capítulo IV.
 
 ## 2.5 DEFINICIÓN DE TÉRMINOS BÁSICOS
 
@@ -330,74 +324,63 @@ El sistema implementará estas medidas de seguridad para proteger la informació
 
 ### 2.6.1 Modelo Conceptual del Sistema
 
-El Sistema de Gestión de Personal y Nómina se basa en el siguiente modelo conceptual:
+El Sistema de Gestión de Personal y Nómina se organiza conforme al modelo conceptual que representa la Figura 2.1.
 
+**Figura 2.1. Modelo conceptual por capas del sistema**
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ CAPA DE PRESENTACIÓN · CustomTkinter                                   │
+│ LoginWindow · MainWindow · diez módulos con acceso por rol y atajos    │
+│ Ctrl+1 … Ctrl+0: panel de control, empleados, documentos, incidencias, │
+│ asistencia, contratos, préstamos, nómina, alertas y configuración      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ CAPA DE SERVICIOS · reglas de negocio y orquestación de flujos         │
+│ autenticación · empleados · documentos · incidencias · asistencia ·    │
+│ contratos · préstamos · nómina · alertas · configuración               │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ CAPA DE REPOSITORIOS · patrón Repository sobre repositorio base        │
+│ diez repositorios concretos con consultas reutilizables y transacciones│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ CAPA DE MODELOS · SQLAlchemy ORM                                       │
+│ empleados · documentos · incidencias · asistencias · contratos ·       │
+│ prestamos · pagos · horarios · configuraciones · usuarios              │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ DOMINIO DE NÓMINA · cálculo aislado de la interfaz y del acceso a datos│
+│ motor · parámetros · impuesto sobre la renta · horas extra ·           │
+│ prestaciones · seguridad social · préstamos · finiquito                │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ SERVICIOS TRANSVERSALES · seguridad, trazabilidad y sostenibilidad     │
+│ security · audit_logger · backup_manager · backup_scheduler ·          │
+│ pdf_generator · document_manager · exporter · jornada · validators ·   │
+│ helpers · actualizador automático                                      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ BASE DE DATOS · SQLite con integridad referencial y migraciones        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    INTERFAZ DE USUARIO                    │
-│  (CustomTkinter - GUI Moderna: Login, Dashboard, Empleados,  │
-│   Documentos, Incidencias, Nómina, Configuración)          │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                  CAPA DE SERVICIOS                       │
-│         (Lógica de Negocio - Reglas del Dominio)         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Auth      │  │Empleado  │  │Documento │  │Incidencia││
-│  │Service   │  │ Service  │  │ Service  │  │ Service  ││
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │Pago      │  │Config.   │  │Auditoría │              │
-│  │Service   │  │ Service  │  │(transv.) │              │
-│  └──────────┘  └──────────┘  └──────────┘              │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                CAPA DE REPOSITORIOS                        │
-│         (Acceso a Datos - Abstracción de BD)              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Empleado  │  │Documento │  │Incidencia│  │ Pago    ││
-│  │Repository│  │Repository│  │Repository│  │Repository││
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │Config.   │  │Usuario   │  │(Base     │              │
-│  │Repository│  │Repository│  │Repository)│              │
-│  └──────────┘  └──────────┘  └──────────┘              │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│                  CAPA DE MODELOS                          │
-│         (Entidades del Dominio - SQLAlchemy ORM)           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │Empleado  │  │Documento │  │Incidencia│  │  Pago   ││
-│  │  Model   │  │  Model   │  │  Model   │  │  Model  ││
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘│
-│  ┌──────────┐  ┌──────────┐                              │
-│  │Config.   │  │ Usuario  │                              │
-│  │  Model   │  │  Model   │                              │
-│  └──────────┘  └──────────┘                              │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│      CAPA DE UTILIDADES Y SERVICIOS TRANSVERSALES        │
-│   (security, audit_logger, backup_manager, exporter,     │
-│    pdf_generator, document_manager, validators, helpers) │
-└────────────────────┬──────────────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────────────┐
-│               BASE DE DATOS (SQLite)                       │
-│         (Almacenamiento Persistente de Datos)             │
-└─────────────────────────────────────────────────────────────┘
-```
+
+*Fuente: elaboración propia a partir de la arquitectura implementada en `src/`, versión 2.82.*
 
 ### 2.6.2 Relaciones entre Componentes
 
-**Flujo de Datos:**
-1. El usuario interactúa con la interfaz gráfica
-2. La interfaz llama a los servicios correspondientes
-3. Los servicios aplican lógica de negocio y llaman a repositorios
-4. Los repositorios interactúan con la base de datos mediante ORM
-5. Los resultados fluyen de vuelta a través de las capas hasta la interfaz
+**Flujo de datos del sistema:**
+1. El usuario interactúa con la interfaz gráfica, que verifica previamente sus permisos sobre el módulo solicitado.
+2. La interfaz invoca al servicio correspondiente y le entrega los datos del formulario.
+3. El servicio valida las reglas del dominio y, cuando la operación lo requiere, delega el cálculo en el dominio de nómina.
+4. El servicio consulta o persiste la información a través de los repositorios, que operan sobre el ORM.
+5. Los resultados retornan por las mismas capas hasta la interfaz, y las operaciones sensibles quedan registradas en la auditoría.
 
 **Principios de Diseño:**
 - **Separación de Responsabilidades:** Cada capa tiene una responsabilidad clara
@@ -411,4 +394,4 @@ Este capítulo ha establecido el fundamento teórico y conceptual necesario para
 
 El marco legal identifica las normativas que el sistema debe cumplir, asegurando que la solución sea no solo técnicamente sólida sino también legalmente conforme. Las definiciones de términos establecen un vocabulario común para facilitar la comunicación y comprensión del proyecto.
 
-El modelo conceptual presentado proporciona una visión clara de la arquitectura del sistema, estableciendo las relaciones entre componentes y los principios de diseño que guiarán su desarrollo. Este marco teórico sólido proporciona la base necesaria para abordar la metodología de investigación presentada en el siguiente capítulo.
+El modelo conceptual presentado describe la arquitectura efectivamente construida, establece las relaciones entre sus componentes y explicita los principios de diseño que rigieron su desarrollo. Este marco teórico sólido proporciona la base necesaria para abordar la metodología de investigación presentada en el siguiente capítulo.

@@ -128,9 +128,12 @@ El sistema sigue una arquitectura en capas separando la lógica de negocio, acce
 
 ## 🔄 CI/CD Pipeline (GitHub Actions)
 
-El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
+La integración continua se reparte entre dos workflows complementarios.
 
-1. **Pruebas**: ejecuta la suite completa de pytest (aislada) en cada push.
+**`.github/workflows/build.yml`** (integración y empaquetado):
+
+1. **Pruebas**: ejecuta la suite completa de pytest sobre los 24 archivos de
+   `tests/` en cada push a `main` o `develop`.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
 3. **Actualizador automático**: compila `SDEP_CPP5_AutoUpdater.exe`
@@ -146,22 +149,31 @@ El workflow `.github/workflows/build.yml` automatiza todo el ciclo:
    24.04 LTS o superior; se autoverifica con `--selftest` bajo `xvfb-run`
    dentro de contenedores `debian:13-slim` y se comprueba que la glibc
    máxima requerida no supere 2.41.
-6. **Artefactos**: sube Setup.exe, ZIP portable (Windows), tar.gz (Linux)
-   y `SDEP_CPP5_AutoUpdater.exe` como artefactos del run.
-7. **Release continua**: cada push a `main` publica automáticamente un
-   Release de GitHub con el instalador y las versiones portables de Windows
-   y Linux (sin necesidad de crear etiquetas). Un push con etiqueta `vX.Y.Z`
-   genera una release versionada con ese nombre.
+6. **Artefactos**: sube a la ejecución el instalador `Setup.exe`, el ZIP
+   portable de Windows, el `tar.gz` portable de Linux y el reporte de
+   cobertura. El actualizador `SDEP_CPP5_AutoUpdater.exe` se compila y queda
+   incluido dentro del instalador. Este workflow **no publica releases**:
+   solo compila y verifica.
 
-Cada cambio publicado genera su Release automáticamente:
+**`.github/workflows/release.yml`** (release firmada) se activa con cada
+push a `main`, con etiquetas `v*` y de forma manual. Aplica firma masiva
+profunda en dos pasadas —todo el contenido de `dist/` antes de Inno Setup y
+el instalador final después—, audita que ningún archivo firmable quede sin
+firma y publica la Release con un único adjunto: el instalador
+`SistemaGestionPersonal-Setup-<versión>.exe`. En los push a `main` la
+etiqueta de la release continua es `continuous-v<versión>.<número de
+ejecución>`; una etiqueta `vX.Y.Z` produce una release versionada con ese
+nombre. La firma requiere los secretos `PFX_BASE64` y `PFX_PASSWORD`.
+
+Cada cambio publicado genera su Release firmada automáticamente:
 ```bash
 git push origin main
 ```
 
 Para una release versionada (opcional):
 ```bash
-git tag v2.81
-git push origin v2.81
+git tag v2.82
+git push origin v2.82
 ```
 
 ## 🔧 Instalación

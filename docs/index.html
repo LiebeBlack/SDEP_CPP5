@@ -26,7 +26,7 @@
                 <span class="brand-icon">◆</span>
                 <span class="brand-name brand-name-full">Sistema de Gestión de Personal</span>
                 <span class="brand-name brand-name-short">SDEP</span>
-                <span class="brand-badge">v2.80</span>
+                <span class="brand-badge">v2.82</span>
             </a>
 
             <nav class="nav-menu" id="nav-menu">
@@ -71,7 +71,7 @@
             <section id="inicio" class="hero">
                 <a href="#catalogo" class="hero-pill-link">
                     <span class="hero-pill-dot"></span>
-                    <span>Versión 2.80 • 323 Tests Passing • 17 Documentos Indexados</span>
+                    <span>Versión 2.82 • 453 Pruebas Automatizadas • 20 Documentos Indexados</span>
                 </a>
 
                 <h1 class="hero-title">
@@ -149,7 +149,7 @@ cd SDEP_CPP5
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-python -m src.gui.main_window</code></pre>
+python src/main.py</code></pre>
                     </div>
                 </div>
         </section>
@@ -157,19 +157,19 @@ python -m src.gui.main_window</code></pre>
             <!-- Stats Metrics Section -->
             <div class="stats-strip">
                 <div class="stat-box">
-                    <div class="stat-val">323</div>
+                    <div class="stat-val">453</div>
                     <div class="stat-lbl">Pruebas Automatizadas</div>
-                    <div class="stat-sub">100% pasando en suite pytest</div>
+                    <div class="stat-sub">Funciones de prueba en 24 archivos</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-val">73%</div>
                     <div class="stat-lbl">Cobertura de Negocio</div>
-                    <div class="stat-sub">Servicios, modelos y repositorios</div>
+                    <div class="stat-sub">Medición v1.0.4 sobre lógica de negocio</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-val">17</div>
+                    <div class="stat-val">20</div>
                     <div class="stat-lbl">Documentos Indexados</div>
-                    <div class="stat-sub">10 Tesis + 7 Guías Técnicas</div>
+                    <div class="stat-sub">13 Tesis + 7 Guías Técnicas</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-val">10</div>
@@ -273,13 +273,13 @@ python -m src.gui.main_window</code></pre>
                     </div>
 
                     <div class="tech-pills">
-                        <span class="tech-pill">Python 3.10+</span>
-                        <span class="tech-pill">CustomTkinter 5.2</span>
+                        <span class="tech-pill">Python 3.15</span>
+                        <span class="tech-pill">CustomTkinter 6.0</span>
                         <span class="tech-pill">SQLAlchemy 2.0</span>
                         <span class="tech-pill">SQLite 3</span>
                         <span class="tech-pill">ReportLab (PDF)</span>
                         <span class="tech-pill">openpyxl (Excel)</span>
-                        <span class="tech-pill">pytest (323 tests)</span>
+                        <span class="tech-pill">pytest (453 pruebas)</span>
                         <span class="tech-pill">PBKDF2 SHA-256</span>
                     </div>
                 </div>
@@ -295,8 +295,8 @@ python -m src.gui.main_window</code></pre>
 
                 <div class="catalog-controls">
                     <div class="catalog-tabs" role="tablist" aria-label="Filtrar catálogo">
-                        <button class="catalog-tab active" data-filter="all">Todos (17)</button>
-                        <button class="catalog-tab" data-filter="tesis">🎓 Tesis (10)</button>
+                        <button class="catalog-tab active" data-filter="all">Todos (20)</button>
+                        <button class="catalog-tab" data-filter="tesis">🎓 Tesis (13)</button>
                         <button class="catalog-tab" data-filter="tecnica">💻 Técnica (7)</button>
                     </div>
 
@@ -317,7 +317,7 @@ python -m src.gui.main_window</code></pre>
                 <div class="section-head">
                     <span class="section-tag">Despliegue y Ejecución</span>
                     <h2 class="section-heading">Inicio Rápido</h2>
-                    <p class="section-subtext">Configura el entorno de desarrollo y ejecuta la aplicación en tres sencillos pasos.</p>
+                    <p class="section-subtext">Configura el entorno de desarrollo, ejecuta la suite de pruebas y lanza la aplicación.</p>
                 </div>
 
                 <div class="code-block-wrapper">
@@ -331,19 +331,22 @@ python -m src.gui.main_window</code></pre>
 git clone https://github.com/LiebeBlack/SDEP_CPP5.git
 cd SDEP_CPP5
 
-# 2. Crear y activar entorno virtual Python 3.10+
+# 2. Crear y activar entorno virtual Python 3.15
 python -m venv venv
 # Windows:
 venv\Scripts\activate
 # Linux/macOS:
 # source venv/bin/activate
 
-# 3. Instalar requerimientos y ejecutar la suite de pruebas
+# 3. Instalar requerimientos y dependencias de desarrollo
 pip install -r requirements.txt
+pip install -e ".[dev]"   # pytest y herramientas de calidad
+
+# 4. Ejecutar la suite de pruebas
 pytest -v
 
-# 4. Lanzar la aplicación
-python -m src.gui.main_window</code></pre>
+# 5. Lanzar la aplicación
+python src/main.py</code></pre>
                 </div>
             </section>
         </div>
@@ -508,12 +511,15 @@ python -m src.gui.main_window</code></pre>
                     <ul class="footer-links">
                         <li><a href="#doc=tesis-indice-general" class="open-doc-trigger" data-doc="tesis-indice-general">Índice General</a></li>
                         <li><a href="#doc=tesis-proyecto-social" class="open-doc-trigger" data-doc="tesis-proyecto-social">Proyecto Social</a></li>
+                        <li><a href="#doc=tesis-anteproyecto" class="open-doc-trigger" data-doc="tesis-anteproyecto">Anteproyecto de Tesis</a></li>
                         <li><a href="#doc=tesis-capitulo-1" class="open-doc-trigger" data-doc="tesis-capitulo-1">Capítulo I: Problema</a></li>
                         <li><a href="#doc=tesis-capitulo-2" class="open-doc-trigger" data-doc="tesis-capitulo-2">Capítulo II: Marco Teórico</a></li>
                         <li><a href="#doc=tesis-capitulo-3" class="open-doc-trigger" data-doc="tesis-capitulo-3">Capítulo III: Metodología</a></li>
                         <li><a href="#doc=tesis-capitulo-4" class="open-doc-trigger" data-doc="tesis-capitulo-4">Capítulo IV: Resultados</a></li>
                         <li><a href="#doc=tesis-capitulo-5" class="open-doc-trigger" data-doc="tesis-capitulo-5">Capítulo V: Conclusiones</a></li>
                         <li><a href="#doc=tesis-bibliografia-anexos" class="open-doc-trigger" data-doc="tesis-bibliografia-anexos">Bibliografía y Anexos</a></li>
+                        <li><a href="#doc=tesis-resumen-investigacion" class="open-doc-trigger" data-doc="tesis-resumen-investigacion">Resumen de la Investigación</a></li>
+                        <li><a href="#doc=tesis-registro-control" class="open-doc-trigger" data-doc="tesis-registro-control">Registro de Control Documental</a></li>
                     </ul>
                 </div>
 
@@ -543,7 +549,7 @@ python -m src.gui.main_window</code></pre>
 
             <div class="footer-bottom">
                 <div>© 2026 LiebeBlack Systems • Sistema de Gestión de Personal y Nómina</div>
-                <div>Licencia de Código Abierto • Python 3.10+</div>
+                <div>Licencia de Código Abierto • Python 3.15</div>
             </div>
         </div>
     </footer>

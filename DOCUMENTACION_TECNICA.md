@@ -425,7 +425,7 @@ El módulo `src/gui/theme.py` centraliza la apariencia de la aplicación:
 
 | Atajo | Acción |
 | --- | --- |
-| Ctrl+1 … Ctrl+6 | Navegar al módulo correspondiente |
+| Ctrl+1 … Ctrl+0 | Navegar al módulo correspondiente (1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Asistencia, 6 Contratos, 7 Préstamos, 8 Nómina, 9 Alertas, 0 Configuración) |
 | Ctrl+N | Nuevo registro en el módulo activo |
 | Ctrl+F | Enfocar búsqueda/filtro |
 | Ctrl+S | Guardar (Configuración) |

@@ -3,7 +3,49 @@ Verificación de integridad de la documentación web SDEP.
 """
 
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from generate_docs_bundle import DOCS_DIR, DOCUMENTS_MANIFEST, REPO_ROOT  # noqa: E402
+
+
+def expected_document_count() -> int:
+    """Cuenta los documentos del manifiesto cuyos archivos existen en el repo."""
+    return sum(1 for item in DOCUMENTS_MANIFEST if (REPO_ROOT / item["file"]).exists())
+
+
+def check_content_mirrors() -> None:
+    """Verifica que cada documento tenga copia idéntica en docs/content/.
+
+    El lector web intenta primero la copia local (./content/<archivo>) y solo
+    recurre a GitHub cuando no la encuentra; una copia desincronizada mostraría
+    contenido obsoleto al abrir el portal sin conexión.
+    """
+    print("\nVerificando copias sincronizadas en docs/content/...")
+    content_root = DOCS_DIR / "content"
+    incidencias = []
+
+    for item in DOCUMENTS_MANIFEST:
+        origen = REPO_ROOT / item["file"]
+        copia = content_root / item["file"]
+        if not origen.exists():
+            continue
+        if not copia.exists():
+            incidencias.append(f"falta la copia de {item['file']}")
+            continue
+        if origen.read_bytes() != copia.read_bytes():
+            incidencias.append(f"copia desincronizada de {item['file']}")
+        else:
+            print(f"  [OK] docs/content/{item['file']}")
+
+    if incidencias:
+        raise RuntimeError(
+            "El contenido de docs/content/ no coincide con los originales:\n  - "
+            + "\n  - ".join(incidencias)
+            + "\nSincronice las copias o ejecute 'python tools/generate_docs_bundle.py'."
+        )
 
 
 def main():
@@ -19,8 +61,12 @@ def main():
     json_str = content.split(marker)[1].strip().rstrip(";")
     data = json.loads(json_str)
 
-    print(f"Total documentos indexados: {len(data)}")
-    assert len(data) == 17, f"Se esperaban 17 documentos, pero se obtuvieron {len(data)}"
+    esperados = expected_document_count()
+    print(f"Total documentos indexados: {len(data)} (esperados según manifiesto: {esperados})")
+    assert len(data) == esperados, (
+        f"El catálogo tiene {len(data)} documentos y el manifiesto declara {esperados}. "
+        "Ejecute 'python tools/generate_docs_bundle.py' para regenerar docs/docs_data.js."
+    )
 
     total_words = 0
     categories = set()
@@ -54,6 +100,8 @@ def main():
         "docs/vendor/prism-json.min.js",
         "docs/vendor/prism-markdown.min.js",
     ]
+
+    check_content_mirrors()
 
     print("\nVerificando archivos requeridos de la web...")
     for rf in required_files:

@@ -87,7 +87,10 @@ class BaseRepository[T: BaseModel]:
             Objeto del modelo o None si no existe
         """
         try:
-            result = self.session.query(self.model).filter(self.model.id == id).first()
+            # session.get consulta primero el mapa de identidad de la sesión:
+            # los listados que resuelven el nombre de cada fila dejan de
+            # emitir un SELECT por fila (el patrón N+1 de los reportes).
+            result = self.session.get(self.model, id)
             if result:
                 self._log_data_operation("read", entity_id=id, data={"result": "found"})
             else:
@@ -105,13 +108,18 @@ class BaseRepository[T: BaseModel]:
             self._log_audit_error(e, context={"operation": "get_by_id", "entity_id": id})
             return None
 
-    def get_all(self, skip: int = 0, limit: int | None = 100) -> list[T]:
+    def get_all(self, skip: int = 0, limit: int | None = None) -> list[T]:
         """
-        Obtiene todos los registros con paginación y manejo de errores
+        Obtiene todos los registros con paginación opcional
+
+        El límite por defecto es ``None`` (sin tope): antes valía 100 y
+        recortaba en silencio cualquier conjunto mayor, de modo que la
+        tabla de nómina y las estadísticas del dashboard solo veían los
+        primeros 100 registros de una tabla que ya tenía más.
 
         Args:
             skip: Cantidad de registros a saltar
-            limit: Cantidad máxima de registros a retornar
+            limit: Cantidad máxima de registros a retornar (None = todas)
 
         Returns:
             Lista de objetos del modelo
@@ -200,6 +208,11 @@ class BaseRepository[T: BaseModel]:
             Exception: Si ocurre error general
         """
         try:
+            if obj not in self.session:
+                # Objeto desprendido (cargado en otra sesión o tras un
+                # rollback): sin reincorporarlo, commit() no persistiría
+                # nada y el método parecería haber funcionado.
+                obj = self.session.merge(obj)
             self.session.commit()
             self.session.refresh(obj)
 

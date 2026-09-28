@@ -232,7 +232,9 @@ def truncate_text(texto: str, max_length: int = 50, suffix: str = "...") -> str:
     Returns:
         str: Texto truncado o original si no excede el máximo
     """
-    if not texto or len(texto) <= max_length:
+    if not texto:
+        return ""
+    if len(texto) <= max_length:
         return texto
     return texto[: max_length - len(suffix)] + suffix
 
@@ -368,6 +370,58 @@ def generate_unique_filename(original_filename: str) -> str:
     extension = get_file_extension(original_filename)
     unique_id = uuid.uuid4().hex
     return f"{unique_id}{extension}"
+
+
+def ruta_dentro_de(base: str | Path, ruta: str | Path) -> bool:
+    """
+    Indica si una ruta está realmente dentro de un directorio base
+
+    Se resuelven ambas rutas antes de compararlas, de modo que los
+    enlaces simbólicos, los segmentos ``..`` y las rutas relativas no
+    permitan escapar del directorio gestionado. Sirve de contención para
+    todo valor de ruta que proceda de la base de datos o de la interfaz:
+    sin esta comprobación, una fila manipulada apuntaría a cualquier
+    archivo del sistema y el gestor documental lo leería, lo borraría o
+    lo lanzaría con la aplicación predeterminada.
+
+    Args:
+        base: Directorio que actúa como raíz permitida
+        ruta: Ruta candidata a validar
+
+    Returns:
+        bool: True si `ruta` es `base` o desciende de ella
+    """
+    try:
+        raiz = Path(base).resolve()
+        candidata = Path(ruta).resolve()
+    except (OSError, ValueError, RuntimeError):
+        return False
+
+    return candidata == raiz or raiz in candidata.parents
+
+
+def nombre_archivo_seguro(nombre: str) -> str | None:
+    """
+    Devuelve el nombre si es un nombre de archivo simple, o None
+
+    Rechaza cualquier valor que contenga separadores de ruta, rutas
+    absolutas o los comodines de directorio ``.`` y ``..``: los nombres
+    que se concatenan a un directorio nunca deben poder cambiarlo.
+
+    Args:
+        nombre: Nombre de archivo recibido
+
+    Returns:
+        str | None: El nombre validado o None si no es seguro
+    """
+    texto = (nombre or "").strip()
+    if not texto or texto in (".", ".."):
+        return None
+    if "/" in texto or "\\" in texto or "\x00" in texto:
+        return None
+    if Path(texto).name != texto or Path(texto).is_absolute():
+        return None
+    return texto
 
 
 def ensure_directory_exists(directory_path: str) -> bool:

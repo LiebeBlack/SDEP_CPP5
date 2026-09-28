@@ -407,7 +407,7 @@ SDEP_CPP5/
 │   │                      exporter.py · pdf_generator.py
 │   │                      validators.py · helpers.py
 │   └── main.py            punto de entrada
-├── tests/                 veinte archivos de prueba · 385 funciones
+├── tests/                 veinte archivos de prueba · 388 funciones
 ├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
 ├── installer/             configuración de instalación para Windows
 ├── docs/                  portal de documentación
@@ -487,7 +487,7 @@ class AuthService:
         return usuario_bd
 ```
 
-El código completo se encuentra en el repositorio del proyecto. Su extensión es de 21 991 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV.
+El código completo se encuentra en el repositorio del proyecto. Su extensión es de 22 013 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV.
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
@@ -496,8 +496,8 @@ El código completo se encuentra en el repositorio del proyecto. Su extensión e
 | Indicador | Valor |
 |-----------|-------|
 | Archivos de prueba | 20 |
-| Funciones de prueba declaradas | 385 |
-| Líneas de código de prueba | 4 290 |
+| Funciones de prueba declaradas | 388 |
+| Líneas de código de prueba | 4 394 |
 | Distribución por archivo | Tabla 4.7 del Capítulo IV |
 | Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 
@@ -522,13 +522,13 @@ La cobertura de la lógica de negocio —modelos, repositorios, servicios, utili
 
 | Área | Funciones de prueba | Archivos |
 |------|--------------------|----------|
-| Seguridad y credenciales | 78 | `test_security.py`, `test_credenciales.py` |
+| Seguridad y credenciales | 80 | `test_security.py`, `test_credenciales.py` |
 | Validación y utilidades | 102 | `test_validators.py`, `test_helpers.py` |
 | Nómina y pagos | 35 | `test_nomina_motor.py`, `test_pagos.py` |
 | Personal y contratación | 33 | `test_empleados.py`, `test_contratos.py` |
 | Documentos | 22 | `test_documentos.py`, `test_document_manager.py` |
 | Acceso y sesión | 16 | `test_auth.py` |
-| Configuración y esquema | 17 | `test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py` |
+| Configuración y esquema | 18 | `test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py` |
 | Reportes y documentos PDF | 17 | `test_reportes.py` |
 | Interfaz gráfica | 16 | `test_gui_smoke.py` |
 | Respaldo y actualización | 28 | `test_backups.py`, `test_auto_updater.py` |

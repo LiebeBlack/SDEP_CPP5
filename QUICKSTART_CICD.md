@@ -46,7 +46,7 @@ git push origin main
 ```
 
 **Resultado:**
-- ✅ Pruebas automatizadas (386 funciones de prueba)
+- ✅ Pruebas automatizadas (388 funciones de prueba)
 - ✅ Ejecutable Windows (onedir, icono, versión)
 - ✅ Instalador `Setup.exe` firmado y adjunto a la Release
 - ✅ ZIP portable (Windows) y `tar.gz` (Linux) como artefactos del run

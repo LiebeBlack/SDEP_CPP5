@@ -336,7 +336,7 @@ class SecurityValidator:
                     sanitized[field] = cls.sanitize_string(str(value))
                 else:
                     sanitized[field] = cls.sanitize_string(str(value))
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 logger.warning(f"Error sanitizando campo {field}: {e}")
                 sanitized[field] = None
 
@@ -387,6 +387,25 @@ class SecurityValidator:
 class PermissionChecker:
     """Verificador de permisos de usuario"""
 
+    # Mapa único de módulos del sistema -> roles autorizados a abrirlos.
+    # Es la única fuente de verdad del control de acceso a módulos: la
+    # interfaz construye la barra lateral a partir de esta tabla, y un
+    # módulo que no figure aquí queda denegado para TODOS los roles.
+    MODULE_ACCESS: dict[str, tuple[str, ...]] = {
+        "empleados": ("admin", "manager", "user", "viewer"),
+        "documentos": ("admin", "manager", "user", "viewer"),
+        "incidencias": ("admin", "manager", "user"),
+        "contratos": ("admin", "manager"),
+        "nomina": ("admin", "manager"),
+        "configuracion": ("admin",),
+        "reportes": ("admin", "manager", "viewer"),
+    }
+
+    @classmethod
+    def modulos_conocidos(cls) -> frozenset[str]:
+        """Nombres de los módulos con control de acceso declarado"""
+        return frozenset(cls.MODULE_ACCESS)
+
     @staticmethod
     def has_permission(user_role: str, required_permission: str) -> bool:
         """
@@ -419,10 +438,17 @@ class PermissionChecker:
         user_permissions = role_permissions.get(user_role, [])
         return required_permission in user_permissions
 
-    @staticmethod
-    def can_access_module(user_role: str, module: str) -> bool:
+    @classmethod
+    def can_access_module(cls, user_role: str, module: str) -> bool:
         """
         Verifica si un usuario puede acceder a un módulo específico
+
+        La comprobación es *fail-closed*: un módulo que no esté declarado
+        en ``MODULE_ACCESS`` se deniega para todos los roles. Antes se
+        devolvía True ante un módulo desconocido, de modo que registrar un
+        módulo nuevo en la interfaz y olvidarlo en el mapa de permisos lo
+        dejaba accesible —incluido crear y borrar— para cualquier rol,
+        incluso "viewer".
 
         Args:
             user_role: Rol del usuario
@@ -431,35 +457,18 @@ class PermissionChecker:
         Returns:
             True si puede acceder
         """
-        module_access = {
-            "admin": [
-                "empleados",
-                "documentos",
-                "incidencias",
-                "contratos",
-                "nomina",
-                "configuracion",
-                "reportes",
-            ],
-            "manager": [
-                "empleados",
-                "documentos",
-                "incidencias",
-                "contratos",
-                "nomina",
-                "reportes",
-            ],
-            "user": ["empleados", "documentos", "incidencias"],
-            "viewer": ["empleados", "documentos", "reportes"],
-        }
+        if not isinstance(module, str) or not module.strip():
+            logger.warning("Acceso denegado a un módulo sin nombre (%r)", module)
+            return False
 
-        # Un módulo desconocido no es un asunto de permisos: la interfaz
-        # lo mostrará con el marcador "en desarrollo".
-        modulos_conocidos = {m for modulos in module_access.values() for m in modulos}
-        if module not in modulos_conocidos:
-            return True
+        roles_autorizados = cls.MODULE_ACCESS.get(module)
+        if roles_autorizados is None:
+            logger.warning(
+                "Acceso denegado al módulo %r: no está declarado en MODULE_ACCESS", module
+            )
+            return False
 
-        return module in module_access.get(user_role, [])
+        return user_role in roles_autorizados
 
 
 class SecurityLogger:

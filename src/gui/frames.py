@@ -1737,8 +1737,38 @@ class DocumentosFrame(ctk.CTkFrame):
         super().__init__(parent)
         self.main_window = main_window
         self.current_empleado_id = None
+        # Copias temporales de los documentos que solo viven en la base de
+        # datos (BLOB). El visor del sistema puede seguir leyéndolas después
+        # de la orden de apertura, así que no se borran al instante: se
+        # eliminan al previsualizar el siguiente documento y al destruirse
+        # el marco. Antes no se borraban nunca y se acumulaban en tmp/.
+        self._temporales_vista: list[str] = []
         self._create_widgets()
         self._load_documentos()
+
+    def _limpiar_temporales_vista(self):
+        """
+        Elimina los archivos temporales de previsualización ya usados
+
+        Los que el visor del sistema mantenga bloqueados (Windows) se
+        conservan en la lista para reintentar la limpieza más adelante, en
+        lugar de quedar huérfanos en el directorio temporal.
+        """
+        pendientes: list[str] = []
+        for ruta in self._temporales_vista:
+            try:
+                os.remove(ruta)
+            except FileNotFoundError:
+                continue
+            except OSError:
+                logger.debug("Temporal en uso, se reintentará: %s", ruta, exc_info=True)
+                pendientes.append(ruta)
+        self._temporales_vista[:] = pendientes
+
+    def destroy(self):
+        """Libera los temporales de vista antes de destruir el marco"""
+        self._limpiar_temporales_vista()
+        super().destroy()
 
     def _create_widgets(self):
         """Crea los widgets del frame de documentos"""
@@ -2014,7 +2044,25 @@ class DocumentosFrame(ctk.CTkFrame):
             self._load_documentos()
 
     def _abrir_con_aplicacion(self, ruta: str):
-        """Abre un archivo con la aplicación predeterminada del sistema"""
+        """
+        Abre un archivo con la aplicación predeterminada del sistema
+
+        Solo se aceptan archivos que estén dentro de los directorios
+        gestionados (o del temporal, usado para los documentos servidos
+        desde la base de datos) y con extensión permitida: la ruta puede
+        proceder de un registro almacenado, y entregar una ruta arbitraria
+        al lanzador del sistema operativo permitiría ejecutar un binario.
+        """
+        from src.utils.document_manager import document_manager
+
+        if not document_manager.ruta_abrible(ruta):
+            logger.warning("Apertura rechazada para una ruta no permitida: %s", ruta)
+            messagebox.showwarning(
+                "Documento",
+                "No se puede abrir el archivo: no está dentro del almacén\n"
+                "documental o su tipo no está permitido.",
+            )
+            return
         try:
             match sys.platform:
                 case "win32":
@@ -2042,11 +2090,17 @@ class DocumentosFrame(ctk.CTkFrame):
         if contenido:
             try:
                 ext = os.path.splitext(documento.nombre_archivo)[1] or ".pdf"
+                # Descartar la copia temporal anterior antes de crear la nueva
+                self._limpiar_temporales_vista()
                 with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
                     tmp.write(contenido)
                     nombre_temporal = tmp.name
+                self._temporales_vista.append(nombre_temporal)
                 self._abrir_con_aplicacion(nombre_temporal)
             except Exception:
+                # No se llegó a abrir: la copia temporal no sirve para nada
+                self._limpiar_temporales_vista()
+                logger.warning("No se pudo previsualizar el documento", exc_info=True)
                 messagebox.showinfo(
                     "Documento",
                     f"Documento: {documento.titulo}\nArchivo: {documento.nombre_archivo}"

@@ -344,7 +344,7 @@ El proyecto se encuentra ejecutado en sus componentes de análisis, diseño, des
 | Diseño de la arquitectura | Concluido e implementado | Apartado 4.2.1 del Capítulo IV |
 | Desarrollo de módulos | Concluido: siete módulos operativos, con la contratación incorporada y la asistencia y los préstamos retirados del alcance | Apartado 4.2.2 del Capítulo IV |
 | Reportes y documentos oficiales | Concluido: doce tipos de documento | Apartado 4.2.1.6 del Capítulo IV |
-| Pruebas técnicas | Concluido: 386 funciones de prueba en la versión 3.0.0 | Apartado 4.3 del Capítulo IV y Anexo 7 |
+| Pruebas técnicas | Concluido: 388 funciones de prueba en la versión 3.0.0 | Apartado 4.3 del Capítulo IV y Anexo 7 |
 | Pruebas de usabilidad | Pendiente de ejecución | Protocolo del Anexo 3 |
 | Implementación piloto | Pendiente de ejecución | Apartado 4.5 del Capítulo IV |
 | Documentación | Concluida | Documentos de este informe y documentación del repositorio |

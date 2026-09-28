@@ -167,14 +167,14 @@ Los permisos de operación se organizan de forma análoga: el administrador disp
 
 ### 4.3.1 Pruebas Automatizadas
 
-La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 386 funciones de prueba distribuidas en 20 archivos, con 4 364 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
+La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 388 funciones de prueba distribuidas en 20 archivos, con 4 394 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
 
 **Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.0)**
 
 | Archivo de prueba | Funciones | Área verificada |
 |-------------------|-----------|-----------------|
 | `test_helpers.py` | 66 | Formateo, fechas y utilidades auxiliares |
-| `test_security.py` | 63 | Validación, sanitización y control de acceso |
+| `test_security.py` | 65 | Validación, sanitización y control de acceso |
 | `test_validators.py` | 36 | Reglas de validación del dominio |
 | `test_nomina_motor.py` | 27 | Motor de cálculo de nómina |
 | `test_auto_updater.py` | 19 | Actualización automática del sistema |
@@ -193,7 +193,7 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_documentos.py` | 7 | Gestión documental |
 | `test_migraciones.py` | 5 | Evolución y purga del esquema |
 | `test_settings_version.py` | 4 | Versión y parámetros de compilación |
-| **Total** | **386** | |
+| **Total** | **388** | |
 
 *Fuente: conteo de funciones `test_` sobre `tests/`, versión 3.0.0. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
 
@@ -492,7 +492,7 @@ Durante el desarrollo, el reto principal fue sostener el equilibrio entre cobert
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 22 013 líneas de código distribuidas en nueve capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 386 funciones de prueba organizadas en 20 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
+Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 22 013 líneas de código distribuidas en nueve capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 388 funciones de prueba organizadas en 20 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
 
 Los apartados de validación empírica definen con precisión qué se medirá, cómo se medirá y con qué umbral se decidirá, de manera que la evidencia pendiente no constituya una indeterminación metodológica, sino un registro preparado para recibirla. Las hipótesis planteadas se resolverán con esa evidencia: tres de ellas cuentan ya con indicadores estructurales verificados, mientras que su magnitud de impacto permanece condicionada al piloto. Las limitaciones identificadas —muestra acotada, periodo breve, contexto regional y dependencia de recursos propios— son consistentes con el alcance de un trabajo de grado y delimitan con honestidad el campo de validez de los resultados.
 

@@ -271,17 +271,34 @@ class Settings:
         datos.pop(clave, None)
         return self.save_config_json(datos)
 
+    @staticmethod
+    def _nombre_archivo_validado(filename: str) -> str:
+        """
+        Valida que el nombre sea simple antes de concatenarlo a un directorio
+
+        Estos métodos se usan con nombres generados internamente, pero
+        también reciben valores que provienen de la base de datos o de la
+        interfaz: un nombre con separadores de ruta escribiría el archivo
+        fuera del directorio gestionado.
+        """
+        from src.utils.helpers import nombre_archivo_seguro
+
+        nombre = nombre_archivo_seguro(filename)
+        if nombre is None:
+            raise ValueError(f"Nombre de archivo no válido: {filename!r}")
+        return nombre
+
     def get_document_path(self, filename: str) -> str:
         """Retorna la ruta completa para un documento"""
-        return str(Path(self.documents_path) / filename)
+        return str(Path(self.documents_path) / self._nombre_archivo_validado(filename))
 
     def get_photo_path(self, filename: str) -> str:
         """Retorna la ruta completa para una foto"""
-        return str(Path(self.photos_path) / filename)
+        return str(Path(self.photos_path) / self._nombre_archivo_validado(filename))
 
     def get_export_path(self, filename: str) -> str:
         """Retorna la ruta completa para un archivo exportado"""
-        return str(Path(self.exports_path) / filename)
+        return str(Path(self.exports_path) / self._nombre_archivo_validado(filename))
 
 
 # Instancia global de configuración

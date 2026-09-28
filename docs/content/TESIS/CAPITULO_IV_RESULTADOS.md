@@ -16,16 +16,16 @@ El sistema se materializó en una arquitectura de capas con separación estricta
 
 | Capa | Archivos | Líneas de código | Responsabilidad principal |
 |------|----------|------------------|---------------------------|
-| `src/models` | 10 | 1 332 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
+| `src/models` | 10 | 1 337 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
 | `src/repositories` | 9 | 1 581 | Acceso a datos y consultas reutilizables |
 | `src/services` | 8 | 2 783 | Reglas de negocio y orquestación de flujos |
 | `src/utils` | 10 | 5 145 | Seguridad, auditoría, respaldos, PDF y utilidades |
 | `src/config` | 3 | 1 289 | Configuración, rutas y sesión de base de datos |
-| `src/gui` | 8 | 7 875 | Interfaz gráfica (CustomTkinter) |
+| `src/gui` | 8 | 7 892 | Interfaz gráfica (CustomTkinter) |
 | `src/nomina` | 9 | 1 504 | Motor de cálculo de nómina y prestaciones |
 | `src/__init__.py` | 1 | 8 | Declaración del paquete raíz |
 | `src/main.py` | 1 | 474 | Punto de entrada de la aplicación |
-| **Total** | **59** | **21 991** | |
+| **Total** | **59** | **22 013** | |
 
 *Fuente: medición directa con `wc -l` sobre `src/` en la versión 3.0.0. El conteo de archivos incluye los módulos `__init__.py`.*
 
@@ -167,14 +167,14 @@ Los permisos de operación se organizan de forma análoga: el administrador disp
 
 ### 4.3.1 Pruebas Automatizadas
 
-La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 385 funciones de prueba distribuidas en 20 archivos, con 4 290 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
+La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 388 funciones de prueba distribuidas en 20 archivos, con 4 394 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
 
 **Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.0)**
 
 | Archivo de prueba | Funciones | Área verificada |
 |-------------------|-----------|-----------------|
 | `test_helpers.py` | 66 | Formateo, fechas y utilidades auxiliares |
-| `test_security.py` | 63 | Validación, sanitización y control de acceso |
+| `test_security.py` | 65 | Validación, sanitización y control de acceso |
 | `test_validators.py` | 36 | Reglas de validación del dominio |
 | `test_nomina_motor.py` | 27 | Motor de cálculo de nómina |
 | `test_auto_updater.py` | 19 | Actualización automática del sistema |
@@ -191,9 +191,9 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_incidencias.py` | 8 | Incidencias y aprobaciones |
 | `test_pagos.py` | 8 | Pagos y deducciones |
 | `test_documentos.py` | 7 | Gestión documental |
-| `test_migraciones.py` | 4 | Evolución del esquema |
+| `test_migraciones.py` | 5 | Evolución y purga del esquema |
 | `test_settings_version.py` | 4 | Versión y parámetros de compilación |
-| **Total** | **385** | |
+| **Total** | **388** | |
 
 *Fuente: conteo de funciones `test_` sobre `tests/`, versión 3.0.0. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
 
@@ -456,7 +456,7 @@ La hipótesis general sostiene que la implementación del sistema mejorará de m
 
 ### 4.7.2 Hipótesis Específicas
 
-**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.0 se incorporó el módulo de contratos, el motor de nómina y 62 funciones de prueba, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
+**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.0 se incorporó el módulo de contratos, el motor de nómina y 63 funciones de prueba, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
 
 **H2. Usabilidad de la interfaz gráfica.** La hipótesis sostiene que la interfaz gráfica mejora la usabilidad respecto de las alternativas de línea de comandos. Los indicadores son el tiempo de aprendizaje, la tasa de éxito en las tareas y la valoración de la interfaz, y se medirán con el protocolo del Anexo 3 conforme al apartado 4.4.2.
 
@@ -492,7 +492,7 @@ Durante el desarrollo, el reto principal fue sostener el equilibrio entre cobert
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 21 991 líneas de código distribuidas en nueve capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 385 funciones de prueba organizadas en 20 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
+Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 22 013 líneas de código distribuidas en nueve capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 388 funciones de prueba organizadas en 20 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
 
 Los apartados de validación empírica definen con precisión qué se medirá, cómo se medirá y con qué umbral se decidirá, de manera que la evidencia pendiente no constituya una indeterminación metodológica, sino un registro preparado para recibirla. Las hipótesis planteadas se resolverán con esa evidencia: tres de ellas cuentan ya con indicadores estructurales verificados, mientras que su magnitud de impacto permanece condicionada al piloto. Las limitaciones identificadas —muestra acotada, periodo breve, contexto regional y dependencia de recursos propios— son consistentes con el alcance de un trabajo de grado y delimitan con honestidad el campo de validez de los resultados.
 

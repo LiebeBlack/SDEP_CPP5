@@ -73,7 +73,7 @@ Los resultados que se enuncian a continuación fueron comprobados de forma direc
 | Módulos implementados | Panel de control, empleados, documentos, incidencias, contratos, nómina y configuración |
 | Esquema de base de datos | Siete tablas con integridad referencial y migraciones |
 | Dominio de cálculo | Motor de nómina aislado con deducciones, impuesto sobre la renta, horas extra, prestaciones, seguridad social y finiquito |
-| Suite de pruebas | 386 funciones de prueba en 20 archivos, con 4 364 líneas de código de prueba |
+| Suite de pruebas | 388 funciones de prueba en 20 archivos, con 4 394 líneas de código de prueba |
 | Seguridad | Autenticación con PBKDF2-HMAC-SHA256 de 200 000 iteraciones y sal de 16 bytes; control de acceso por cuatro roles; auditoría; respaldos sujetos a política de retención |
 | Generación documental | Doce tipos de documentos oficiales en formato PDF |
 | Exportación | Formatos abiertos para empleados, documentos, incidencias, pagos y reportes |
@@ -127,7 +127,7 @@ Gestión de personal, nómina, instituciones educativas, ingeniería de software
 | Índice general | `INDICE_GENERAL.md` |
 | Registro de control documental | `REGISTRO_CONTROL_DOCUMENTAL.md` |
 | Código fuente del sistema | Directorio `src/` del repositorio, versión 3.0.0 |
-| Suite de pruebas | Directorio `tests/`, 386 funciones de prueba |
+| Suite de pruebas | Directorio `tests/`, 388 funciones de prueba |
 
 ---
 

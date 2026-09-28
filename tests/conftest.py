@@ -33,13 +33,19 @@ import pytest  # noqa: E402
 
 
 def _reset_database(db_config):
-    """Limpia todas las tablas y vuelve a sembrar la configuración inicial"""
+    """Limpia todas las tablas y vuelve a sembrar la configuración inicial
+
+    El borrado va en orden inverso al de dependencias (hijos antes que
+    padres): la conexión tiene activada la verificación de claves foráneas,
+    así que borrar primero un empleado con documentos, pagos o contratos
+    vivos fallaría como violación de integridad referencial.
+    """
     from sqlalchemy import text
 
     from src.models import Base
 
     with db_config.engine.begin() as conn:
-        for tabla in Base.metadata.sorted_tables:
+        for tabla in reversed(Base.metadata.sorted_tables):
             conn.execute(text(f'DELETE FROM "{tabla.name}"'))
     db_config.init_db()
 

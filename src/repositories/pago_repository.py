@@ -145,25 +145,34 @@ class PagoRepository(BaseRepository[Pago]):
         return round(float(total or 0.0), 2)
 
     def get_estadisticas_por_tipo(self) -> dict:
-        """Obtiene estadísticas de pagos por tipo"""
+        """Obtiene estadísticas de pagos por tipo
+
+        El conteo se agrega en SQL (GROUP BY): antes se cargaban todas las
+        filas en memoria —y solo las primeras 100, por el límite por
+        defecto de get_all— para contarlas.
+        """
         stats = {t.value: 0 for t in TipoPago}
-        pagos = self.get_all()
-        for pago in pagos:
-            tipo = pago.tipo_pago.value if hasattr(pago.tipo_pago, "value") else str(pago.tipo_pago)
-            stats[tipo] = stats.get(tipo, 0) + 1
+        filas = (
+            self.session.query(Pago.tipo_pago, func.count(Pago.id))
+            .group_by(Pago.tipo_pago)
+            .all()
+        )
+        for tipo, total in filas:
+            clave = tipo.value if hasattr(tipo, "value") else str(tipo)
+            stats[clave] = stats.get(clave, 0) + int(total or 0)
         return stats
 
     def get_estadisticas_por_metodo(self) -> dict:
-        """Obtiene estadísticas de pagos por método"""
+        """Obtiene estadísticas de pagos por método (agregado en SQL)"""
         stats = {m.value: 0 for m in MetodoPago}
-        pagos = self.get_all()
-        for pago in pagos:
-            metodo = (
-                pago.metodo_pago.value
-                if hasattr(pago.metodo_pago, "value")
-                else str(pago.metodo_pago)
-            )
-            stats[metodo] = stats.get(metodo, 0) + 1
+        filas = (
+            self.session.query(Pago.metodo_pago, func.count(Pago.id))
+            .group_by(Pago.metodo_pago)
+            .all()
+        )
+        for metodo, total in filas:
+            clave = metodo.value if hasattr(metodo, "value") else str(metodo)
+            stats[clave] = stats.get(clave, 0) + int(total or 0)
         return stats
 
     def get_ultimo_pago_empleado(self, empleado_id: int) -> Pago | None:

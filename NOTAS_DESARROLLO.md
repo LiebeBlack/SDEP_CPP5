@@ -162,7 +162,7 @@ SDEP_CPP5/
 │   │   ├── backup_scheduler.py # Respaldos automáticos programados
 │   │   └── exporter.py        # Exportación Excel/CSV
 │   └── main.py                 # Punto de entrada
-├── tests/                       # Pruebas automatizadas: 20 archivos · 386 funciones
+├── tests/                       # Pruebas automatizadas: 20 archivos · 388 funciones
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto
@@ -462,7 +462,7 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
 - Los enums del dominio (`BaseEnum.coerce`) normalizan cualquier valor
   recibido como texto a su miembro correspondiente: las columnas tipadas
   de SQLAlchemy dejan de recibir cadenas sueltas.
-- **386 funciones de prueba** en 20 archivos, tras retirar las suites de
+- **388 funciones de prueba** en 20 archivos, tras retirar las suites de
   asistencia, préstamos, alertas y jornada (eran 453 antes del retiro).
 
 ### 8. Correcciones de esta versión
@@ -477,7 +477,7 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
   `except Exception: continue` silencioso; ahora los registra con
   `logger.warning(..., exc_info=True)` y continúa con el resto.
 
-### 11. Interfaz: concurrencia y ciclo de vida
+### 9. Interfaz: concurrencia y ciclo de vida
 
 - El respaldo automático ya no se ejecuta en el hilo de la interfaz: la
   copia de la base de datos (gzip + checksum + rotación) corre en un hilo
@@ -491,6 +491,48 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
 - El temporizador de seguridad del diálogo de cambio de contraseña se
   cancela cuando el diálogo termina por la vía normal; antes podía
   dispararse sobre una ventana ya destruida.
+- Al cerrar sesión también se cancela la verificación programada de
+  respaldo (no solo al salir): la ventana se destruye y la aplicación crea
+  otra, de modo que una tarea viva apuntaba a una sesión ya cerrada.
+
+### 10. Auditoría de seguridad y datos
+
+- **Control de acceso a módulos fail-closed.** El mapa de permisos vive
+  ahora en un único punto (`PermissionChecker.MODULE_ACCESS`) y un módulo
+  que no figure en él se deniega para todos los roles. Antes, un módulo
+  desconocido se concedía a cualquier rol: bastaba añadir un módulo a la
+  interfaz y olvidarlo en el mapa para dejarlo accesible —incluida la
+  creación y el borrado— al rol de solo lectura.
+- **Sin sesión no hay permisos.** `tiene_permiso` y `puede_ver_modulo`
+  deniegan todo cuando la ventana no tiene usuario cargado; antes devolvían
+  `True` y la interfaz habilitaba crear, editar y eliminar en todos los
+  módulos. La barra lateral avisa en el registro si un módulo del menú
+  quedara fuera del mapa de permisos.
+- **Contención de rutas (path traversal).** Los servicios documentales
+  validan que la ruta a leer, borrar o abrir esté dentro de los directorios
+  gestionados, el gestor documental restringe las rutas que entrega al
+  lanzador del sistema a ubicaciones gestionadas o temporales con extensión
+  permitida, y los nombres de archivo que se concatenan a un directorio se
+  validan como nombre simple. Una fila manipulada ya no puede provocar la
+  lectura, el borrado o la ejecución de un archivo arbitrario.
+- **Integridad referencial efectiva.** Las conexiones de SQLite activan
+  `PRAGMA foreign_keys=ON` (era la única forma de que el esquema declarado
+  se cumpliera: sin él, documentos, pagos y contratos podían quedar
+  apuntando a un empleado inexistente).
+- **Fin del truncado silencioso.** `get_all` ya no recorta en 100 filas por
+  omisión: la tabla de nómina y las estadísticas del dashboard solo veían
+  los primeros cien registros. Las estadísticas de pagos e incidencias se
+  agregan en SQL (`GROUP BY`) en lugar de cargar todas las filas para
+  contarlas, y la lectura por identificador usa el mapa de identidad de la
+  sesión, eliminando el patrón N+1 de los listados que resuelven el nombre
+  del empleado fila por fila.
+- **Sin temporales huérfanos.** La previsualización de documentos guardados
+  en la base de datos creaba una copia temporal que nadie borraba; ahora se
+  elimina al abrir el siguiente documento y al salir del módulo.
+- **Escrituras y borrados diagnosticables.** El gestor documental registra
+  los fallos de copia, movimiento y borrado (antes devolvía `False` en
+  silencio) y rechaza la categoría de exportación `..`, que escapaba del
+  directorio de exportaciones.
 
 ## Novedades de la Versión 2.79
 

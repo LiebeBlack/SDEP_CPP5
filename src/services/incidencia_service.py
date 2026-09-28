@@ -14,6 +14,7 @@ import os
 from src.models import Incidencia, EstadoIncidencia
 from src.repositories import IncidenciaRepository
 from src.config import settings
+from src.utils.helpers import ruta_dentro_de
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,17 @@ class IncidenciaService:
         """
         self.session = session
         self.repository = IncidenciaRepository(session)
+
+    @staticmethod
+    def _ruta_gestionada(ruta: str) -> bool:
+        """
+        Indica si una ruta pertenece al almacén documental
+
+        La ruta del soporte vive en la base de datos, así que se valida
+        antes de leer o borrar el archivo: un registro manipulado no debe
+        permitir operaciones sobre rutas ajenas al sistema.
+        """
+        return bool(ruta) and ruta_dentro_de(settings.documents_path, ruta)
 
     def crear_incidencia(self, datos: dict, archivo_soporte: bytes | None = None) -> Incidencia:
         """Crea una nueva incidencia"""
@@ -136,8 +148,8 @@ class IncidenciaService:
 
         # Procesar nuevo archivo de soporte
         if archivo_soporte:
-            # Eliminar archivo anterior
-            if incidencia.documento_soporte_ruta and os.path.exists(
+            # Eliminar archivo anterior (solo dentro del almacén documental)
+            if self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
                 incidencia.documento_soporte_ruta
             ):
                 try:
@@ -189,8 +201,8 @@ class IncidenciaService:
         """Elimina una incidencia"""
         incidencia = self.repository.get_by_id(incidencia_id)
         if incidencia:
-            # Eliminar archivo de soporte
-            if incidencia.documento_soporte_ruta and os.path.exists(
+            # Eliminar archivo de soporte (solo dentro del almacén documental)
+            if self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
                 incidencia.documento_soporte_ruta
             ):
                 try:
@@ -262,7 +274,7 @@ class IncidenciaService:
         if incidencia:
             if incidencia.documento_soporte_binario:
                 return incidencia.documento_soporte_binario
-            elif incidencia.documento_soporte_ruta and os.path.exists(
+            elif self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
                 incidencia.documento_soporte_ruta
             ):
                 with open(incidencia.documento_soporte_ruta, "rb") as f:

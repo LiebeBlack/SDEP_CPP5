@@ -237,10 +237,26 @@ class TestMainWindow:
         main_window.update()
         time.sleep(0.1)
 
-    def test_mostrar_modulo_invalido(self, main_window):
-        """Un módulo desconocido cae en el marco de 'en desarrollo'"""
+    def test_mostrar_modulo_invalido(self, main_window, monkeypatch):
+        """Un módulo no declarado en el mapa de permisos se deniega (fail-closed)
+
+        Regresión: antes `can_access_module` devolvía True para cualquier
+        módulo desconocido, así que un módulo nuevo de la interfaz que no se
+        registrara en el mapa de permisos quedaba accesible a todos los roles.
+        """
+        from src.gui import main_window as modulo_ventana
+
+        avisos: list[str] = []
+        monkeypatch.setattr(
+            modulo_ventana.messagebox,
+            "showwarning",
+            lambda titulo, mensaje: avisos.append(mensaje),
+        )
+        anterior = main_window.current_frame
         main_window._show_frame("modulo_inexistente")
-        assert main_window.current_frame is not None
+        main_window.update()
+        assert main_window.current_frame is anterior
+        assert avisos and "permisos" in avisos[0]
 
     def test_seleccion_fila_click(self, main_window):
         """El clic/doble clic selecciona la fila bajo el cursor (fallback de selección)"""

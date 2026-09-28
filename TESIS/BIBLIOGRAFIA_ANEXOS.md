@@ -407,7 +407,7 @@ SDEP_CPP5/
 │   │                      exporter.py · pdf_generator.py
 │   │                      validators.py · helpers.py
 │   └── main.py            punto de entrada
-├── tests/                 veinte archivos de prueba · 386 funciones
+├── tests/                 veinte archivos de prueba · 388 funciones
 ├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
 ├── installer/             configuración de instalación para Windows
 ├── docs/                  portal de documentación
@@ -496,8 +496,8 @@ El código completo se encuentra en el repositorio del proyecto. Su extensión e
 | Indicador | Valor |
 |-----------|-------|
 | Archivos de prueba | 20 |
-| Funciones de prueba declaradas | 386 |
-| Líneas de código de prueba | 4 364 |
+| Funciones de prueba declaradas | 388 |
+| Líneas de código de prueba | 4 394 |
 | Distribución por archivo | Tabla 4.7 del Capítulo IV |
 | Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 
@@ -522,7 +522,7 @@ La cobertura de la lógica de negocio —modelos, repositorios, servicios, utili
 
 | Área | Funciones de prueba | Archivos |
 |------|--------------------|----------|
-| Seguridad y credenciales | 78 | `test_security.py`, `test_credenciales.py` |
+| Seguridad y credenciales | 80 | `test_security.py`, `test_credenciales.py` |
 | Validación y utilidades | 102 | `test_validators.py`, `test_helpers.py` |
 | Nómina y pagos | 35 | `test_nomina_motor.py`, `test_pagos.py` |
 | Personal y contratación | 33 | `test_empleados.py`, `test_contratos.py` |

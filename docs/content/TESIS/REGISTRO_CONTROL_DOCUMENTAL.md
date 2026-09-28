@@ -12,7 +12,7 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 |---------|------------------|
 | 1.0.4 | Versión sobre la que se ejecutó la medición de cobertura de pruebas que se conserva como referencia en el Anexo 7 |
 | 2.79 | Versión en la que se documentó por primera vez la suite de 323 pruebas, la autenticación con roles y los módulos iniciales |
-| 3.0.0 | Versión vigente al momento de esta revisión: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 385 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración |
+| 3.0.0 | Versión vigente al momento de esta revisión: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 388 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración |
 
 ## 3. INVENTARIO DOCUMENTAL Y ESTADO
 
@@ -39,9 +39,9 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 | Verificación | Procedimiento | Resultado |
 |--------------|---------------|-----------|
 | Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 3.0.0 en ambos archivos |
-| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 21 991 líneas en 59 archivos |
+| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 22 013 líneas en 59 archivos |
 | Distribución por capa | Recuento por directorio | Consignada en la Tabla 4.1 del Capítulo IV |
-| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 385 funciones en 20 archivos |
+| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 388 funciones en 20 archivos |
 | Distribución de pruebas por archivo | Recuento por archivo | Consignada en la Tabla 4.7 del Capítulo IV |
 | Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Siete tablas |
 | Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Siete módulos con atajos `Ctrl+1` a `Ctrl+7` |

@@ -14,6 +14,7 @@ import uuid
 from src.models import Documento
 from src.repositories import DocumentoRepository
 from src.config import settings
+from src.utils.helpers import ruta_dentro_de
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,17 @@ class DocumentoService:
         """
         self.session = session
         self.repository = DocumentoRepository(session)
+
+    @staticmethod
+    def _ruta_gestionada(ruta: str) -> bool:
+        """
+        Indica si una ruta pertenece al almacén documental
+
+        La ruta vive en la base de datos, así que se valida antes de leer
+        o borrar el archivo: un registro manipulado no debe permitir
+        operaciones sobre rutas ajenas al sistema.
+        """
+        return bool(ruta) and ruta_dentro_de(settings.documents_path, ruta)
 
     def crear_documento(self, datos: dict, archivo_binario: bytes | None = None) -> Documento:
         """Crea un nuevo documento"""
@@ -109,8 +121,10 @@ class DocumentoService:
 
         # Si se proporciona un nuevo archivo
         if archivo_binario:
-            # Eliminar archivo anterior
-            if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+            # Eliminar archivo anterior (solo dentro del almacén documental)
+            if self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
+                documento.ruta_archivo
+            ):
                 try:
                     os.remove(documento.ruta_archivo)
                 except Exception:
@@ -160,8 +174,10 @@ class DocumentoService:
         """Elimina un documento (desactivación lógica)"""
         documento = self.repository.get_by_id(documento_id)
         if documento:
-            # Eliminar archivo físico
-            if documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+            # Eliminar archivo físico (solo dentro del almacén documental)
+            if self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
+                documento.ruta_archivo
+            ):
                 try:
                     os.remove(documento.ruta_archivo)
                 except OSError:
@@ -207,7 +223,9 @@ class DocumentoService:
         if documento:
             if documento.contenido_binario:
                 return documento.contenido_binario
-            elif documento.ruta_archivo and os.path.exists(documento.ruta_archivo):
+            elif self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
+                documento.ruta_archivo
+            ):
                 with open(documento.ruta_archivo, "rb") as f:
                     return f.read()
         return None

@@ -74,6 +74,10 @@ ROL_LABELS = {
     "viewer": "Solo lectura",
 }
 
+# Módulos que no pasan por el mapa de permisos: el dashboard es el marco de
+# bienvenida (sin datos ni acciones) y se muestra a cualquier sesión.
+MODULOS_SIN_CONTROL_DE_ACCESO = frozenset({"dashboard"})
+
 
 def configure_treeview_style():
     """
@@ -182,16 +186,24 @@ class MainWindow(ctk.CTk):
     # Permisos del usuario actual
     # ------------------------------------------------------------------
     def tiene_permiso(self, permiso: str) -> bool:
-        """¿El usuario actual puede ejecutar una acción (create/update/...)?"""
+        """¿El usuario actual puede ejecutar una acción (create/update/...)?
+
+        Sin sesión autenticada se deniega siempre (fail-closed): antes se
+        devolvía True, de modo que una ventana construida sin usuario
+        habilitaba crear, editar y eliminar en todos los módulos.
+        """
         if self.current_user is None:
-            return True
+            logger.warning("Permiso %r denegado: no hay sesión activa", permiso)
+            return False
         return PermissionChecker.has_permission(self.current_user.rol_valor, permiso)
 
     def puede_ver_modulo(self, modulo: str) -> bool:
         """¿El usuario actual puede acceder a un módulo?"""
-        if modulo == "dashboard":
-            return True
         if self.current_user is None:
+            # Sin sesión solo queda disponible el dashboard (marco de
+            # bienvenida, sin datos ni acciones).
+            return modulo == "dashboard"
+        if modulo == "dashboard":
             return True
         return PermissionChecker.can_access_module(self.current_user.rol_valor, modulo)
 
@@ -224,6 +236,23 @@ class MainWindow(ctk.CTk):
         self._bind_atajos()
 
     def _create_sidebar(self):
+        # Validación temprana del mapa de permisos: un módulo del menú que no
+        # esté declarado en PermissionChecker.MODULE_ACCESS queda oculto para
+        # todos los roles (fail-closed). Se avisa en el log para detectar la
+        # desincronización al añadir un módulo nuevo.
+        sin_declarar = [
+            nombre
+            for nombre, _titulo, _icono in MODULOS
+            if nombre not in MODULOS_SIN_CONTROL_DE_ACCESO
+            and nombre not in PermissionChecker.modulos_conocidos()
+        ]
+        if sin_declarar:
+            logger.warning(
+                "Módulos del menú sin permiso declarado (quedarán ocultos "
+                "para todos los roles): %s",
+                ", ".join(sin_declarar),
+            )
+
         self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color=COLORES["panel"])
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
@@ -767,6 +796,12 @@ class MainWindow(ctk.CTk):
         self.destroy()
 
     def _cleanup(self):
+        # El respaldo periódico también se cancela aquí: _cleanup corre al
+        # salir y al cerrar sesión, y tras un cierre de sesión la aplicación
+        # crea otra ventana mientras esta deja de existir (una tarea
+        # programada viva fallaría contra la sesión de base de datos ya
+        # cerrada).
+        self._cancelar_respaldo_programado()
         if getattr(self, "_clock_timer", None) is not None:
             try:
                 self.after_cancel(self._clock_timer)

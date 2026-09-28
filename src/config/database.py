@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -71,6 +71,42 @@ TABLAS_OBSOLETAS: tuple[str, ...] = ("asistencias", "horarios", "prestamos")
 # permite DROP COLUMN sobre una columna que participa en una clave foránea,
 # así que la tabla se reconstruye a partir del modelo actual.
 COLUMNAS_OBSOLETAS_PAGOS: tuple[str, ...] = ("deduccion_prestamo", "prestamo_id")
+
+
+def _activar_claves_foraneas(engine) -> None:
+    """
+    Activa la verificación de claves foráneas en cada conexión de SQLite
+
+    SQLite las ignora de forma predeterminada, así que el esquema declaraba
+    relaciones que nadie verificaba: un documento, un pago o un contrato
+    podían quedar apuntando a un empleado inexistente sin que ninguna
+    operación lo notara (registros huérfanos que después aparecían como
+    "Desconocido" en la interfaz).
+
+    El PRAGMA es por conexión y no por base de datos, por eso se registra en
+    el evento ``connect`` del pool y se comprueba que haya quedado activo.
+
+    Args:
+        engine: Motor SQLAlchemy sobre una base SQLite
+    """
+
+    @event.listens_for(engine, "connect")
+    def _on_connect(dbapi_connection, _connection_record):
+        try:
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("PRAGMA foreign_keys=ON")
+                activo = cursor.execute("PRAGMA foreign_keys").fetchone()
+            finally:
+                cursor.close()
+            if not activo or not activo[0]:
+                logger.warning(
+                    "No se pudo activar la verificación de claves foráneas en SQLite"
+                )
+        except Exception:
+            # El driver pudo cambiar de interfaz: se registra y se continúa
+            # (la aplicación funciona, pero sin integridad referencial).
+            logger.warning("Error activando las claves foráneas", exc_info=True)
 
 
 def _columnas_pendientes(engine) -> dict[str, list[tuple[str, str]]]:
@@ -415,20 +451,6 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
         "tipo_dato": "int",
         "categoria": "recursos_humanos",
     },
-    {
-        "clave": "dias_descanso",
-        "valor": "[5, 6]",
-        "descripcion": "Días de descanso semanal (0 = lunes ... 6 = domingo)",
-        "tipo_dato": "json",
-        "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "feriados",
-        "valor": "[]",
-        "descripcion": "Fechas feriadas en formato AAAA-MM-DD usadas al calcular horas extra",
-        "tipo_dato": "json",
-        "categoria": "recursos_humanos",
-    },
     # --- Seguridad: política de credenciales y respaldos ---
     {
         "clave": "password_dias_caducidad",
@@ -487,6 +509,8 @@ CONFIGURACION_OBSOLETA: tuple[str, ...] = (
     "dias_alerta_documento",
     "max_horas_extra_semana",
     "dias_alerta_pago_antiguo",
+    "dias_descanso",
+    "feriados",
 )
 
 
@@ -545,6 +569,7 @@ class DatabaseConfig:
                 echo=self.echo,
                 pool_pre_ping=True,
             )
+            _activar_claves_foraneas(engine)
             logger.info("Engine de base de datos creado exitosamente")
             return engine
         except Exception as e:

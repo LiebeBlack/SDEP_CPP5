@@ -240,11 +240,25 @@ class TestPermissionChecker:
         assert not PermissionChecker.can_access_module("user", "nomina")
         assert not PermissionChecker.can_access_module("viewer", "incidencias")
 
-    def test_can_access_module_desconocido_no_es_asunto_de_permisos(self):
-        # Un módulo no registrado se muestra como "en desarrollo" para
-        # cualquier rol; la denegación solo aplica a módulos conocidos.
-        assert PermissionChecker.can_access_module("admin", "modulo_inexistente")
-        assert PermissionChecker.can_access_module("viewer", "modulo_inexistente")
+    def test_can_access_module_desconocido_se_deniega(self):
+        # Fail-closed: un módulo no declarado en MODULE_ACCESS se deniega
+        # para todos los roles. Si fuera fail-open, un módulo nuevo de la
+        # interfaz olvidado en el mapa de permisos quedaría accesible a
+        # cualquier rol (escalada de privilegios).
+        assert not PermissionChecker.can_access_module("admin", "modulo_inexistente")
+        assert not PermissionChecker.can_access_module("viewer", "modulo_inexistente")
+
+    def test_can_access_module_sin_nombre_se_deniega(self):
+        assert not PermissionChecker.can_access_module("admin", "")
+        assert not PermissionChecker.can_access_module("admin", "   ")
+        assert not PermissionChecker.can_access_module("admin", None)
+
+    def test_modulos_conocidos_coincide_con_los_roles(self):
+        conocidos = PermissionChecker.modulos_conocidos()
+        assert "configuracion" in conocidos
+        # Configuración es exclusiva del administrador
+        for rol in ("manager", "user", "viewer"):
+            assert not PermissionChecker.can_access_module(rol, "configuracion")
 
 
 class TestSecurityLogger:

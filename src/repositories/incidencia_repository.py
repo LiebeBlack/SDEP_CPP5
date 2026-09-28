@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from datetime import date
 import logging
 
@@ -166,27 +166,32 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
             return False
 
     def get_estadisticas_por_tipo(self) -> dict:
-        """Obtiene estadísticas de incidencias por tipo"""
+        """Obtiene estadísticas de incidencias por tipo
+
+        El conteo se agrega en SQL (GROUP BY): antes se cargaban todas las
+        filas en memoria —y solo las primeras 100, por el límite por
+        defecto de get_all— para contarlas.
+        """
         stats = {t.value: 0 for t in TipoIncidencia}
-        incidencias = self.get_all()
-        for incidencia in incidencias:
-            tipo = (
-                incidencia.tipo_incidencia.value
-                if hasattr(incidencia.tipo_incidencia, "value")
-                else str(incidencia.tipo_incidencia)
-            )
-            stats[tipo] = stats.get(tipo, 0) + 1
+        filas = (
+            self.session.query(Incidencia.tipo_incidencia, func.count(Incidencia.id))
+            .group_by(Incidencia.tipo_incidencia)
+            .all()
+        )
+        for tipo, total in filas:
+            clave = tipo.value if hasattr(tipo, "value") else str(tipo)
+            stats[clave] = stats.get(clave, 0) + int(total or 0)
         return stats
 
     def get_estadisticas_por_estado(self) -> dict:
-        """Obtiene estadísticas de incidencias por estado"""
+        """Obtiene estadísticas de incidencias por estado (agregado en SQL)"""
         stats = {e.value: 0 for e in EstadoIncidencia}
-        incidencias = self.get_all()
-        for incidencia in incidencias:
-            estado = (
-                incidencia.estado.value
-                if hasattr(incidencia.estado, "value")
-                else str(incidencia.estado)
-            )
-            stats[estado] = stats.get(estado, 0) + 1
+        filas = (
+            self.session.query(Incidencia.estado, func.count(Incidencia.id))
+            .group_by(Incidencia.estado)
+            .all()
+        )
+        for estado, total in filas:
+            clave = estado.value if hasattr(estado, "value") else str(estado)
+            stats[clave] = stats.get(clave, 0) + int(total or 0)
         return stats

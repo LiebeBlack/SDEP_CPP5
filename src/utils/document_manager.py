@@ -7,6 +7,7 @@ import os
 import shutil
 from datetime import datetime
 import mimetypes
+from pathlib import Path
 from typing import Any
 
 from src.config import settings
@@ -19,10 +20,30 @@ from src.utils.helpers import (
     format_file_size,
     escribir_archivo_seguro,
     leer_archivo_seguro,
+    ruta_dentro_de,
 )
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Extensiones que el sistema puede lanzar con la aplicación predeterminada
+# del sistema operativo. Nada fuera de esta lista debe ejecutarse nunca.
+EXTENSIONES_ABRIBLES = frozenset(
+    {
+        ".pdf",
+        ".txt",
+        ".rtf",
+        ".csv",
+        ".xlsx",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".webp",
+    }
+)
 
 
 class DocumentManager:
@@ -52,7 +73,11 @@ class DocumentManager:
         Returns:
             tuple[ruta_completa, nombre_unico]
         """
-        # Crear directorio de categoría si no existe
+        # Crear directorio de categoría si no existe. La categoría es un
+        # único segmento de directorio: se valida para que no pueda salir
+        # del almacén documental con separadores o '..'.
+        if not category or Path(category).name != category or category in (".", ".."):
+            raise ValueError(f"Categoría de documento no válida: {category!r}")
         category_dir = os.path.join(self.documents_dir, category)
         ensure_directory_exists(category_dir)
 
@@ -80,8 +105,14 @@ class DocumentManager:
         Returns:
             tuple[ruta_completa, nombre_unico]
         """
-        # Crear directorio de empleado si no existe
-        employee_dir = os.path.join(self.photos_dir, str(employee_id))
+        # Crear directorio de empleado si no existe. El identificador debe
+        # ser numérico: un valor con separadores escribiría fuera del
+        # directorio de fotografías.
+        try:
+            employee_dir_name = str(int(employee_id))
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Identificador de empleado no válido: {employee_id!r}") from e
+        employee_dir = os.path.join(self.photos_dir, employee_dir_name)
         ensure_directory_exists(employee_dir)
 
         # Generar nombre único
@@ -94,6 +125,55 @@ class DocumentManager:
 
         return file_path, unique_filename
 
+    def ruta_gestionada(self, file_path: str) -> bool:
+        """
+        Indica si una ruta pertenece a alguno de los directorios gestionados
+
+        Es la contención que separa las rutas que el sistema puede leer,
+        borrar o abrir de las que solo existen en la base de datos por un
+        error o una manipulación.
+
+        Args:
+            file_path: Ruta a comprobar
+
+        Returns:
+            bool: True si la ruta está dentro de documentos, fotos o exportaciones
+        """
+        if not file_path:
+            return False
+        return any(
+            ruta_dentro_de(base, file_path)
+            for base in (self.documents_dir, self.photos_dir, self.exports_dir)
+        )
+
+    def ruta_abrible(self, file_path: str) -> bool:
+        """
+        Indica si una ruta puede entregarse a la aplicación predeterminada
+
+        Además de estar dentro de un directorio gestionado (o del directorio
+        temporal del sistema, usado para los documentos servidos desde la
+        base de datos), el archivo debe existir y tener una extensión
+        permitida: así un registro manipulado no puede provocar la ejecución
+        de un binario o un script.
+
+        Args:
+            file_path: Ruta a comprobar
+
+        Returns:
+            bool: True si es seguro abrirla
+        """
+        if not file_path or not os.path.isfile(file_path):
+            return False
+
+        import tempfile
+
+        ubicaciones = (self.documents_dir, self.photos_dir, self.exports_dir, tempfile.gettempdir())
+        if not any(ruta_dentro_de(base, file_path) for base in ubicaciones):
+            logger.warning("Intento de abrir una ruta fuera de las permitidas: %s", file_path)
+            return False
+
+        return get_file_extension(file_path) in EXTENSIONES_ABRIBLES
+
     def get_document(self, file_path: str) -> bytes | None:
         """
         Obtiene el contenido de un documento
@@ -102,8 +182,12 @@ class DocumentManager:
             file_path: Ruta del archivo
 
         Returns:
-            Contenido binario del archivo o None si no existe
+            Contenido binario del archivo o None si no existe o está fuera
+            de los directorios gestionados
         """
+        if not self.ruta_gestionada(file_path):
+            logger.warning("Lectura rechazada fuera del almacén documental: %s", file_path)
+            return None
         if os.path.exists(file_path):
             return leer_archivo_seguro(file_path)
         return None
@@ -118,6 +202,9 @@ class DocumentManager:
         Returns:
             True si se eliminó correctamente, False en caso contrario
         """
+        if not self.ruta_gestionada(file_path):
+            logger.warning("Borrado rechazado fuera del almacén documental: %s", file_path)
+            return False
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -127,7 +214,10 @@ class DocumentManager:
                     os.rmdir(parent_dir)
                 return True
             return False
-        except Exception:
+        except OSError:
+            # Un fallo silencioso dejaría el archivo en disco y al registro
+            # apuntando a él; se registra para poder diagnosticarlo.
+            logger.warning("No se pudo eliminar el documento %s", file_path, exc_info=True)
             return False
 
     def copy_document(self, source_path: str, destination_path: str) -> bool:
@@ -141,11 +231,24 @@ class DocumentManager:
         Returns:
             True si se copió correctamente, False en caso contrario
         """
+        if not (self.ruta_gestionada(source_path) and self.ruta_gestionada(destination_path)):
+            # Origen y destino deben estar dentro del almacén: copiar desde
+            # fuera introduciría en el gestor documental cualquier archivo
+            # del sistema (o el contenido de un dispositivo) sin control.
+            logger.warning(
+                "Copia rechazada fuera del almacén (origen=%s, destino=%s)",
+                source_path,
+                destination_path,
+            )
+            return False
         try:
             ensure_directory_exists(os.path.dirname(destination_path))
             shutil.copy2(source_path, destination_path)
             return True
-        except Exception:
+        except OSError:
+            logger.warning(
+                "No se pudo copiar %s a %s", source_path, destination_path, exc_info=True
+            )
             return False
 
     def move_document(self, source_path: str, destination_path: str) -> bool:
@@ -159,11 +262,17 @@ class DocumentManager:
         Returns:
             True si se movió correctamente, False en caso contrario
         """
+        if not (self.ruta_gestionada(source_path) and self.ruta_gestionada(destination_path)):
+            logger.warning("Movimiento rechazado fuera del almacén: %s", destination_path)
+            return False
         try:
             ensure_directory_exists(os.path.dirname(destination_path))
             shutil.move(source_path, destination_path)
             return True
-        except Exception:
+        except OSError:
+            logger.warning(
+                "No se pudo mover %s a %s", source_path, destination_path, exc_info=True
+            )
             return False
 
     def get_file_info(self, file_path: str) -> dict | None:
@@ -174,8 +283,11 @@ class DocumentManager:
             file_path: Ruta del archivo
 
         Returns:
-            Diccionario con información del archivo o None si no existe
+            Diccionario con información del archivo, o None si no existe o
+            está fuera de los directorios gestionados
         """
+        if not self.ruta_gestionada(file_path):
+            return None
         if not os.path.exists(file_path):
             return None
 
@@ -208,6 +320,8 @@ class DocumentManager:
         documents: list[dict[str, Any]] = []
 
         if category:
+            if Path(category).name != category or category in (".", ".."):
+                return documents
             search_dir = os.path.join(self.documents_dir, category)
             if not os.path.exists(search_dir):
                 return documents
@@ -234,7 +348,10 @@ class DocumentManager:
             Lista de diccionarios con información de archivos
         """
         photos: list[dict[str, Any]] = []
-        employee_dir = os.path.join(self.photos_dir, str(employee_id))
+        try:
+            employee_dir = os.path.join(self.photos_dir, str(int(employee_id)))
+        except (TypeError, ValueError):
+            return photos
 
         if not os.path.exists(employee_dir):
             return photos
@@ -315,6 +432,14 @@ class DocumentManager:
         Returns:
             tuple[ruta_completa, nombre_unico]
         """
+        if (
+            not export_category
+            or Path(export_category).name != export_category
+            or export_category in (".", "..")
+        ):
+            # '..' satisface Path('..').name == '..' y escaparía del
+            # directorio de exportaciones: se rechaza de forma explícita.
+            raise ValueError(f"Categoría de exportación no válida: {export_category!r}")
         category_dir = os.path.join(self.exports_dir, export_category)
         ensure_directory_exists(category_dir)
 

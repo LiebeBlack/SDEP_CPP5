@@ -54,9 +54,9 @@ git push origin main
 
 ### Release versionada (opcional)
 ```bash
-# Crea una release con nombre y etiqueta versionados (ej: v2.82)
-git tag v2.82
-git push origin v2.82
+# Crea una release con nombre y etiqueta versionados (ej: v3.0.0)
+git tag v3.0.0
+git push origin v3.0.0
 ```
 
 **Resultado:**

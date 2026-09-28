@@ -1194,7 +1194,7 @@ class PDFGenerator:
         return output_path
 
     # ------------------------------------------------------------------
-    # Reportes nuevos: ingresos, asistencia, contratos, préstamos y liquidación
+    # Reportes nuevos: ingresos, contratos y liquidación
     # ------------------------------------------------------------------
     def generate_constancia_ingresos(
         self,
@@ -1321,7 +1321,7 @@ class PDFGenerator:
             empleado: Empleado que cesa funciones
             desglose: Resultado del finiquito (claves: prestaciones,
                 indemnizacion, preaviso, vacaciones, bono_vacacional,
-                aguinaldo, anticipos, otras_deducciones, neto...)
+                aguinaldo, otras_deducciones, neto...)
             output_path: Ruta donde se guardará el PDF
             fecha_egreso: Fecha efectiva del egreso
             contrato: Número del contrato terminado
@@ -1377,7 +1377,6 @@ class PDFGenerator:
             ("Aguinaldo", desglose.get("aguinaldo")),
         ]
         deducciones = [
-            ("Anticipos y préstamos pendientes", desglose.get("anticipos")),
             ("Otras deducciones", desglose.get("otras_deducciones")),
         ]
 
@@ -1443,134 +1442,6 @@ class PDFGenerator:
                 self.styles["CustomFooter"],
             )
         )
-
-        doc.build(story)
-        return output_path
-
-    def generate_reporte_asistencia(
-        self,
-        filas: list[dict],
-        output_path: str,
-        desde: date | None = None,
-        hasta: date | None = None,
-        resumen: dict | None = None,
-    ) -> str:
-        """
-        Genera un reporte de asistencia por período
-
-        Args:
-            filas: Registros con empleado, fecha, tipo, horas, tardanza y horas extra
-            output_path: Ruta donde se guardará el PDF
-            desde: Inicio del período
-            hasta: Fin del período
-            resumen: Totales del período (opcional)
-        """
-        if not filas:
-            raise ValueError("No hay registros de asistencia para el reporte")
-
-        config = self._get_configuracion()
-        doc = SimpleDocTemplate(
-            output_path, pagesize=landscape(A4), rightMargin=28, leftMargin=28, topMargin=40, bottomMargin=28
-        )
-
-        story = [
-            Paragraph(
-                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
-                self.styles["CustomTitle"],
-            ),
-            Spacer(1, 0.12 * inch),
-            Paragraph("REPORTE DE ASISTENCIA", self.styles["CustomTitle"]),
-        ]
-        periodo = self._texto_periodo(desde, hasta)
-        if periodo:
-            story.append(Paragraph(f"Período: <b>{periodo}</b>", self.styles["CustomData"]))
-        story.append(Spacer(1, 0.12 * inch))
-
-        encabezados = [
-            "No.",
-            "Empleado",
-            "Fecha",
-            "Tipo",
-            "Entrada",
-            "Salida",
-            "Horas",
-            "Tardanza",
-            "H. extra",
-            "Observaciones",
-        ]
-        tabla_datos = [encabezados]
-        total_horas = 0.0
-        total_extra = 0.0
-        for indice, fila in enumerate(filas, start=1):
-            horas = float(fila.get("horas_trabajadas") or 0)
-            extra = float(fila.get("horas_extra") or 0)
-            total_horas += horas
-            total_extra += extra
-            observaciones = str(fila.get("observaciones") or "")
-            if len(observaciones) > 40:
-                observaciones = observaciones[:40] + "..."
-            tabla_datos.append(
-                [
-                    str(indice),
-                    str(fila.get("empleado", ""))[:30],
-                    format_date(fila.get("fecha")),
-                    str(fila.get("tipo", "")).capitalize(),
-                    str(fila.get("hora_entrada") or "-"),
-                    str(fila.get("hora_salida") or "-"),
-                    f"{horas:.2f}",
-                    str(fila.get("minutos_tardanza") or 0),
-                    f"{extra:.2f}",
-                    observaciones,
-                ]
-            )
-
-        tabla = Table(
-            tabla_datos,
-            repeatRows=1,
-            colWidths=[
-                0.35 * inch,
-                1.9 * inch,
-                0.85 * inch,
-                0.85 * inch,
-                0.7 * inch,
-                0.7 * inch,
-                0.6 * inch,
-                0.7 * inch,
-                0.7 * inch,
-                1.7 * inch,
-            ],
-        )
-        tabla.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 7.5),
-                    ("FONTSIZE", (0, 1), (-1, -1), 7),
-                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                    ("ALIGN", (6, 0), (8, -1), "RIGHT"),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ]
-            )
-        )
-        story.append(tabla)
-        story.append(Spacer(1, 0.1 * inch))
-
-        partes = [
-            f"Registros: <b>{len(filas)}</b>",
-            f"Horas trabajadas: <b>{total_horas:.2f}</b>",
-            f"Horas extra: <b>{total_extra:.2f}</b>",
-        ]
-        if resumen:
-            partes.append(f"Faltas: <b>{int(resumen.get('faltas_injustificadas') or 0)}</b>")
-            partes.append(
-                f"Tardanzas: <b>{int(resumen.get('minutos_tardanza') or 0)} min</b>"
-            )
-        story.append(Paragraph(" | ".join(partes), self.styles["CustomData"]))
 
         doc.build(story)
         return output_path
@@ -1681,122 +1552,6 @@ class PDFGenerator:
             Paragraph(
                 f"Total de contratos: <b>{len(filas)}</b> | "
                 f"Monto mensual comprometido: <b>{format_currency(total_salarios)}</b>",
-                self.styles["CustomData"],
-            )
-        )
-
-        doc.build(story)
-        return output_path
-
-    def generate_reporte_prestamos(
-        self,
-        filas: list[dict],
-        output_path: str,
-        titulo: str | None = None,
-    ) -> str:
-        """
-        Genera un reporte de anticipos y préstamos
-
-        Args:
-            filas: Préstamos con empleado, tipo, montos, cuotas, saldo y estado
-            output_path: Ruta donde se guardará el PDF
-            titulo: Encabezado adicional
-        """
-        if not filas:
-            raise ValueError("No hay préstamos para incluir en el reporte")
-
-        config = self._get_configuracion()
-        doc = SimpleDocTemplate(
-            output_path, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=28
-        )
-
-        story = [
-            Paragraph(
-                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
-                self.styles["CustomTitle"],
-            ),
-            Spacer(1, 0.12 * inch),
-            Paragraph("REPORTE DE ANTICIPOS Y PRÉSTAMOS", self.styles["CustomTitle"]),
-        ]
-        if titulo:
-            story.append(Paragraph(escape(titulo), self.styles["CustomData"]))
-        story.append(Spacer(1, 0.12 * inch))
-
-        encabezados = [
-            "No.",
-            "Empleado",
-            "Tipo",
-            "Monto",
-            "Cuota",
-            "Cuotas",
-            "Pagadas",
-            "Saldo",
-            "Avance",
-            "Estado",
-        ]
-        tabla_datos = [encabezados]
-        total_otorgado = 0.0
-        total_saldo = 0.0
-        for indice, fila in enumerate(filas, start=1):
-            monto = float(fila.get("monto") or 0)
-            saldo = float(fila.get("saldo") or 0)
-            total_otorgado += monto
-            total_saldo += saldo
-            tabla_datos.append(
-                [
-                    str(indice),
-                    str(fila.get("empleado", ""))[:30],
-                    str(fila.get("tipo", "")).capitalize(),
-                    format_currency(monto),
-                    format_currency(float(fila.get("monto_cuota") or 0)),
-                    str(fila.get("numero_cuotas") or 0),
-                    str(fila.get("cuotas_pagadas") or 0),
-                    format_currency(saldo),
-                    f"{float(fila.get('porcentaje_pagado') or 0):.0f}%",
-                    str(fila.get("estado", "")).capitalize(),
-                ]
-            )
-
-        tabla = Table(
-            tabla_datos,
-            repeatRows=1,
-            colWidths=[
-                0.35 * inch,
-                2.1 * inch,
-                0.9 * inch,
-                0.95 * inch,
-                0.95 * inch,
-                0.6 * inch,
-                0.65 * inch,
-                0.95 * inch,
-                0.6 * inch,
-                0.95 * inch,
-            ],
-        )
-        tabla.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 7.5),
-                    ("FONTSIZE", (0, 1), (-1, -1), 7),
-                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                    ("ALIGN", (3, 0), (7, -1), "RIGHT"),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ]
-            )
-        )
-        story.append(tabla)
-        story.append(Spacer(1, 0.1 * inch))
-        story.append(
-            Paragraph(
-                f"Operaciones: <b>{len(filas)}</b> | Total otorgado: "
-                f"<b>{format_currency(total_otorgado)}</b> | Saldo pendiente: "
-                f"<b>{format_currency(total_saldo)}</b>",
                 self.styles["CustomData"],
             )
         )
@@ -1925,74 +1680,6 @@ class PDFGenerator:
         if hasta:
             return f"hasta {format_date(hasta)}"
         return ""
-
-    def generate_reporte_alertas(self, alertas: list[dict], output_path: str) -> str:
-        """
-        Genera el reporte de alertas vigentes del sistema
-
-        Args:
-            alertas: Alertas con titulo, severidad, cantidad y descripción
-            output_path: Ruta donde se guardará el PDF
-        """
-        if not alertas:
-            raise ValueError("No hay alertas vigentes para el reporte")
-
-        config = self._get_configuracion()
-        doc = SimpleDocTemplate(
-            output_path, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=48, bottomMargin=30
-        )
-
-        story = [
-            Paragraph(
-                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
-                self.styles["CustomTitle"],
-            ),
-            Spacer(1, 0.12 * inch),
-            Paragraph("REPORTE DE ALERTAS DEL SISTEMA", self.styles["CustomTitle"]),
-            Spacer(1, 0.12 * inch),
-        ]
-
-        for alerta in alertas:
-            severidad = str(alerta.get("severidad", "")).capitalize()
-            story.append(
-                Paragraph(
-                    f"<b>{escape(str(alerta.get('titulo', '')))}</b> "
-                    f"({severidad}, {int(alerta.get('cantidad') or 0)} caso(s))",
-                    self.styles["CustomSubtitle"],
-                )
-            )
-            story.append(
-                Paragraph(escape(str(alerta.get("descripcion", ""))), self.styles["CustomData"])
-            )
-            detalles = alerta.get("detalles") or []
-            if detalles:
-                lista = Table(
-                    [["• " + escape(str(detalle))] for detalle in detalles],
-                    colWidths=[6.5 * inch],
-                )
-                lista.setStyle(
-                    TableStyle(
-                        [
-                            ("FONTSIZE", (0, 0), (-1, -1), 8),
-                            ("LEFTPADDING", (0, 0), (-1, -1), 12),
-                            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                        ]
-                    )
-                )
-                story.append(lista)
-            story.append(Spacer(1, 0.12 * inch))
-
-        story.append(
-            Paragraph(
-                f"Total de alertas: <b>{len(alertas)}</b> | "
-                f"Generado el {format_date(date.today())}",
-                self.styles["CustomFooter"],
-            )
-        )
-
-        doc.build(story)
-        return output_path
-
 
 # Instancia global del generador de PDFs
 pdf_generator = PDFGenerator()

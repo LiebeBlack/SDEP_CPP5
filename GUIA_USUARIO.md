@@ -148,7 +148,7 @@ Al iniciar el sistema por primera vez, deberá configurar los datos básicos de 
 
 ### Control de Vencimientos
 
-El sistema le alertará sobre:
+El sistema clasifica cada documento en uno de estos estados:
 - Documentos vencidos
 - Documentos por vencer en los próximos 30 días
 - Documentos vigentes
@@ -239,7 +239,7 @@ El sistema calcula automáticamente:
   - Impuesto (según porcentaje configurado o tabla por tramos)
 - Aportes patronales (costo de la institución, no se descuentan)
 - Bonificaciones, aguinaldo, bono vacacional y horas extra
-- Cuota del préstamo o anticipo activo, recortada al tope sobre el neto
+- Otras deducciones y descuentos capturados en el pago
 - Salario neto a pagar (nunca negativo)
 
 ### Modalidades de Cálculo
@@ -297,50 +297,6 @@ tramo.
 2. Haga clic en **Marcar como Pagado**
 3. El sistema registrará la fecha de pago
 
-## Control de Asistencia
-
-Permite registrar la jornada real de cada empleado y calcular horas
-trabajadas, tardanzas y horas extra sin hacer cuentas a mano.
-
-### Registrar una Jornada
-
-1. Vaya a **Asistencia** y pulse **➕ Registrar jornada**
-2. Seleccione el empleado, la fecha y las horas de entrada y salida
-3. Verifique la **vista previa** (horas calculadas y minutos de tardanza)
-4. Elija el tipo (o deje **Automático**: el sistema deduce presencia,
-   tardanza o ausencia) y guarde
-
-Si el empleado tiene un **horario** cargado para ese día, la tardanza y
-las horas previstas se calculan contra ese horario; si no, se usan las
-horas de entrada y salida por defecto de Configuración.
-
-### Horas Extra
-
-Las horas que exceden la jornada se clasifican solas para que la nómina
-las pague con el recargo correcto:
-
-- **Diurnas** (recargo normal)
-- **Nocturnas** (jornada nocturna o mixta)
-- **Feriadas**: trabajar en feriado o en día de descanso (todo lo
-  trabajado se considera extra)
-
-Los días de descanso y los feriados se configuran en Configuración.
-
-### Aplicar Incidencias Aprobadas
-
-El botón **✅ Aplicar incidencias** marca como justificados los días
-cubiertos por incidencias aprobadas (vacaciones, reposos, permisos) en el
-rango de fechas elegido. Puede pulsarlo tantas veces como quiera: no
-reescribe los días ya marcados.
-
-### Consultar y Exportar
-
-- Ajuste el rango **Desde/Hasta** y filtre por empleado para ver el detalle
-- El resumen inferior muestra horas trabajadas, horas extra, faltas,
-  tardanzas y días trabajados del período
-- **📊 Exportar** guarda el listado en Excel y **📄 Reporte PDF** genera el
-  informe de asistencia del período con su resumen
-
 ## Contratos Laborales
 
 ### Crear un Contrato
@@ -372,7 +328,7 @@ pactar un salario distinto. El contrato anterior pasa a **Renovado**.
 
 El finiquito incluye prestaciones por antigüedad, indemnización, preaviso,
 vacaciones no disfrutadas, bono vacacional y aguinaldo proporcional, menos
-los anticipos pendientes.
+las deducciones registradas.
 
 ### Seguimiento
 
@@ -382,48 +338,6 @@ los anticipos pendientes.
 - El resumen inferior indica cuántos contratos vigentes hay y el monto
   mensual comprometido
 - **📊 Exportar** y **📄 Reporte PDF** entregan el listado mostrado
-
-## Anticipos y Préstamos
-
-### Registrar una Solicitud
-
-1. Vaya a **Préstamos** y pulse **➕ Nueva solicitud**
-2. Elija el empleado, el tipo (**anticipo** de una sola cuota o
-   **préstamo** en varias cuotas), el monto y el número de cuotas
-3. El diálogo muestra el **monto máximo** según el salario y la cuota
-   estimada; al guardar, el sistema valida el tope de descuento
-
-### Aprobar o Rechazar
-
-- **✅ Aprobar** habilita el descuento automático del préstamo en la nómina
-- **❌ Rechazar** cierra la solicitud indicando el motivo
-
-### Seguimiento
-
-- Las columnas muestran monto, cuota, cuotas pagadas, saldo y avance
-- **📋 Plan de pagos** abre la amortización cuota por cuota del préstamo
-  seleccionado (la última cuota ajusta el redondeo para que la suma sea
-  exactamente el monto otorgado)
-- El filtro **Rechazados o cancelados** agrupa las operaciones anuladas
-
-En la nómina, la cuota se descuenta respetando el tope porcentual sobre el
-neto del empleado, para que nunca se quede sin remuneración disponible.
-
-## Alertas del Sistema
-
-El módulo **Alertas** (y el panel del Dashboard) reúne los avisos que
-requieren acción, ordenados por severidad:
-
-- **Críticas**: contratos vencidos sin cerrar, incidencias pendientes
-  antiguas, ausencia de respaldos
-- **Advertencias**: documentos y contratos por vencer, empleados sin
-  contrato vigente, préstamos por aprobar, pagos pendientes antiguos,
-  contraseñas caducadas
-- **Informativas**: jornadas sin registrar, ausentismo elevado
-
-Cada alerta indica cuántos casos agrupa y en qué módulo se resuelve. Pulse
-**↗ Ir al módulo** (o haga doble clic) para resolverla, filtre por
-categoría y use **📄 Reporte PDF** para exportar el listado.
 
 ## Configuración del Sistema
 
@@ -445,20 +359,15 @@ Ajuste las deducciones del período:
 - **Aportes patronales**: porcentajes a cargo de la institución
 - **Recargos de horas extra**: diurna, nocturna y feriada
 - **Días de aguinaldo, bono vacacional, prestaciones y preaviso**
-- **Tope de la cuota de préstamo**: porcentaje máximo sobre el neto
 - **Salario mínimo**: valor de referencia para cálculos
 
 ### Configuración de Recursos Humanos
 
-Defina las políticas de personal y asistencia:
+Defina las políticas de personal:
 - **Horas laborales**: jornada diaria y horas semanales de referencia
-- **Hora de entrada y salida por defecto**: se usan cuando el empleado no
-  tiene horario cargado
-- **Tolerancia de asistencia**: minutos de gracia antes de marcar tardanza
-- **Días de descanso**: días de la semana no laborables
-- **Feriados**: fechas que se pagan como hora feriada
-- **Umbrales de aviso**: contratos y documentos por vencer, ausentismo,
-  horas extra semanales, pagos pendientes antiguos
+- **Vacaciones**: días anuales que corresponden al personal
+- **Umbral de aviso**: días de anticipación con los que se avisa de un
+  contrato por vencer
 - **Respaldos automáticos**: interruptor e intervalo en horas
 - **Credenciales**: caducidad, historial de contraseñas, intentos
   permitidos y minutos de bloqueo
@@ -524,14 +433,11 @@ El Dashboard proporciona una vista general del sistema:
 Debajo de las tarjetas, el panel muestra el estado del período:
 
 - **Nómina del mes**: total neto pagado y cantidad de pagos
-- **Ausentismo del mes**: porcentaje de faltas sobre los registros
 - **Contratos por vencer**: contratos próximos a su fecha de fin y
   empleados sin contrato vigente
-- **Saldo por cobrar**: préstamos y anticipos activos
+- **Dotación activa**: empleados registrados y cuántos están activos
 - **Gráficos**: empleados activos por departamento, contratos por tipo y
   egresos netos de los últimos seis meses
-- **Panel de alertas**: las alertas vigentes con un botón para ir al
-  módulo donde se resuelven (el módulo **Alertas** las muestra todas)
 
 ### Acciones Rápidas
 
@@ -539,7 +445,6 @@ Accesos directos a las funciones más utilizadas:
 - Registrar nuevo empleado
 - Cargar documento
 - Crear incidencia
-- Registrar jornada
 - Consultar contratos
 - Generar nómina
 
@@ -643,7 +548,7 @@ el módulo que esté visible en ese momento:
 
 | Atajo | Acción |
 | --- | --- |
-| **Ctrl+1 … Ctrl+0** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Asistencia, 6 Contratos, 7 Préstamos, 8 Nómina, 9 Alertas, 0 Configuración |
+| **Ctrl+1 … Ctrl+7** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Contratos, 6 Nómina, 7 Configuración |
 | **Ctrl+N** | Nuevo registro del módulo activo (Empleado, Documento, Incidencia, Pago, Usuario) |
 | **Ctrl+F** | Enfocar la búsqueda (Empleados) o el filtro del módulo activo |
 | **Ctrl+S** | Guardar cambios en el módulo de Configuración |
@@ -695,5 +600,5 @@ Este sistema ha sido diseñado para ser intuitivo y eficiente. Con la práctica,
 
 ---
 
-**Versión del Sistema**: 2.82  
+**Versión del Sistema**: 3.0.0  
 **Última Actualización**: 2026

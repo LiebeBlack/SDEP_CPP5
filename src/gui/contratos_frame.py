@@ -182,7 +182,7 @@ class ContratosFrame(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y", padx=(0, 8), pady=8)
 
     def _crear_resumen(self) -> None:
-        """Resumen de contratos y alertas de vencimiento"""
+        """Resumen de contratos por vencer y vencidos"""
         resumen = ctk.CTkFrame(self, fg_color=COLORES["panel"], corner_radius=8)
         resumen.pack(fill="x", padx=20, pady=(0, 16))
         self.resumen_label = ctk.CTkLabel(
@@ -853,7 +853,7 @@ class TerminacionDialog(ctk.CTkToplevel):
                 f"Vacaciones: {format_currency(float(finiquito.vacaciones))}\n"
                 f"Aguinaldo: {format_currency(float(finiquito.aguinaldo))} · "
                 f"Bono vacacional: {format_currency(float(finiquito.bono_vacacional))}\n"
-                f"Anticipos por descontar: -{format_currency(float(finiquito.anticipos))}\n"
+                f"Otras deducciones: -{format_currency(float(finiquito.otras_deducciones))}\n"
                 f"NETO A PAGAR: {format_currency(float(finiquito.neto))}"
             )
         )

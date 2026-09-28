@@ -3,7 +3,7 @@ Cálculo de liquidaciones y finiquitos
 
 Determina lo que corresponde pagar a un empleado que cesa funciones:
 prestaciones acumuladas, indemnización, preaviso, vacaciones y
-beneficios proporcionales, menos los anticipos pendientes.
+beneficios proporcionales, menos las deducciones registradas.
 """
 
 from datetime import date, datetime
@@ -84,7 +84,6 @@ def calcular_finiquito(
     if ingreso is None or salario <= CERO:
         return ResultadoFiniquito(
             motivo=entrada.motivo,
-            anticipos=redondear(entrada.anticipos_pendientes),
             otras_deducciones=redondear(entrada.otras_deducciones),
         )
 
@@ -137,7 +136,6 @@ def calcular_finiquito(
         vacaciones=vacaciones,
         bono_vacacional=bono_vacacional,
         aguinaldo=aguinaldo,
-        anticipos=redondear(entrada.anticipos_pendientes),
         otras_deducciones=redondear(entrada.otras_deducciones),
         motivo=entrada.motivo,
     )
@@ -188,7 +186,6 @@ def resumen_liquidacion(resultado: ResultadoFiniquito) -> list[tuple[str, float]
         ("Vacaciones no disfrutadas", resultado.vacaciones),
         ("Bono vacacional", resultado.bono_vacacional),
         ("Aguinaldo", resultado.aguinaldo),
-        ("Anticipos pendientes (-)", resultado.anticipos),
         ("Otras deducciones (-)", resultado.otras_deducciones),
     ]
     return [

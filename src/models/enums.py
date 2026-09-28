@@ -188,36 +188,6 @@ class RolUsuario(BaseEnum):
     VIEWER = "viewer"
 
 
-class TipoAsistencia(BaseEnum):
-    """
-    Tipos de registro de asistencia
-
-    Clasifica cada registro diario de jornada, desde la presencia
-    normal hasta las ausencias justificadas.
-    """
-
-    PRESENTE = "presente"
-    TARDANZA = "tardanza"
-    AUSENTE = "ausente"
-    PERMISO = "permiso"
-    VACACIONES = "vacaciones"
-    REPOSO = "reposo"
-    FERIADO = "feriado"
-
-
-class TipoJornada(BaseEnum):
-    """
-    Tipos de jornada laboral
-
-    Determina el recargo aplicable a las horas extra calculadas sobre
-    el horario correspondiente.
-    """
-
-    DIURNA = "diurna"
-    NOCTURNA = "nocturna"
-    MIXTA = "mixta"
-
-
 class TipoContrato(BaseEnum):
     """Tipos de contrato laboral"""
 
@@ -236,23 +206,6 @@ class EstadoContrato(BaseEnum):
     TERMINADO = "terminado"
 
 
-class TipoPrestamo(BaseEnum):
-    """Tipos de descuento diferido al empleado"""
-
-    ANTICIPO = "anticipo"
-    PRESTAMO = "prestamo"
-
-
-class EstadoPrestamo(BaseEnum):
-    """Estados por los que pasa un anticipo o préstamo"""
-
-    SOLICITADO = "solicitado"
-    APROBADO = "aprobado"
-    ACTIVO = "activo"
-    PAGADO = "pagado"
-    CANCELADO = "cancelado"
-
-
 class ModoCalculoNomina(BaseEnum):
     """
     Modo de cálculo de las deducciones de nómina
@@ -265,10 +218,3 @@ class ModoCalculoNomina(BaseEnum):
     PORCENTAJE = "porcentaje"
     TRAMOS = "tramos"
 
-
-class SeveridadAlerta(BaseEnum):
-    """Severidad de las alertas mostradas al usuario"""
-
-    INFO = "info"
-    ADVERTENCIA = "advertencia"
-    CRITICA = "critica"

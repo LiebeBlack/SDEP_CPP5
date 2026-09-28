@@ -54,7 +54,7 @@ El efecto de las deficiencias descritas se extiende a cuatro dimensiones. En la 
 
 1. ¿Qué requerimientos funcionales y no funcionales deben considerarse para diseñar un sistema de gestión de personal ajustado a las necesidades de las instituciones educativas?
 2. ¿Qué arquitectura de software y qué patrones de diseño resultan adecuados para asegurar la escalabilidad, la mantenibilidad y la verificabilidad del sistema?
-3. ¿Cómo deben implementarse los módulos de gestión de personal, documentación, incidencias, asistencia, contratación, préstamos y nómina para responder a las necesidades del contexto educativo?
+3. ¿Cómo deben implementarse los módulos de gestión de personal, documentación, incidencias, contratación y nómina para responder a las necesidades del contexto educativo?
 4. ¿Qué funcionalidades de reporte y de generación de documentos oficiales requiere la institución para sustentar sus decisiones administrativas y sus obligaciones normativas?
 5. ¿Cómo validar la efectividad del sistema mediante pruebas funcionales, pruebas de usabilidad y validación con usuarios reales en instituciones educativas?
 6. ¿Cuál es el efecto del sistema sobre la eficiencia administrativa de las instituciones piloto, medido en tiempos de procesamiento y en tasas de error?
@@ -69,7 +69,7 @@ Diseñar, desarrollar e implementar un sistema integral de gestión de personal 
 
 1. Analizar los procesos actuales de gestión de personal en instituciones educativas para identificar requerimientos funcionales, no funcionales y restricciones técnicas, mediante entrevistas, observación directa y análisis documental.
 2. Diseñar la arquitectura del sistema con patrones de diseño consolidados y criterios de ingeniería de software que garanticen escalabilidad, mantenibilidad y verificabilidad.
-3. Implementar los módulos de gestión de personal, documentación, incidencias, asistencia, contratación, préstamos y nómina con interfaces usables, funcionalidad completa y validaciones integrales, empleando tecnologías de código abierto.
+3. Implementar los módulos de gestión de personal, documentación, incidencias, contratación y nómina con interfaces usables, funcionalidad completa y validaciones integrales, empleando tecnologías de código abierto.
 4. Desarrollar las funcionalidades de reporte estadístico y de generación de documentos oficiales en formato PDF que la institución requiere para la toma de decisiones y el cumplimiento de sus obligaciones.
 5. Validar el sistema mediante pruebas automatizadas, pruebas de usabilidad con usuarios reales y aplicación piloto en instituciones educativas, evaluando su efecto sobre la eficiencia administrativa.
 6. Documentar integralmente el sistema —documentación técnica, guía de usuario, notas de desarrollo y documentos académicos— de modo que su sostenimiento y su expansión no dependan de una sola persona.
@@ -118,7 +118,7 @@ El cronograma previsto abarcó ocho meses, distribuidos en cuatro fases: anális
 
 ### 1.7.1 Alcances
 
-La investigación comprende el desarrollo completo del sistema, desde el análisis de requerimientos hasta su verificación técnica; la documentación integral del producto; el diseño de los instrumentos de recolección y de evaluación; y la aplicación piloto en instituciones educativas con medición de tiempos de procesamiento, tasas de error y satisfacción del personal. El sistema cubre la gestión de personal, documentación, incidencias, asistencia, contratación, préstamos, nómina, alertas y configuración institucional, además de autenticación con control de acceso por rol, auditoría, respaldos y exportación de datos.
+La investigación comprende el desarrollo completo del sistema, desde el análisis de requerimientos hasta su verificación técnica; la documentación integral del producto; el diseño de los instrumentos de recolección y de evaluación; y la aplicación piloto en instituciones educativas con medición de tiempos de procesamiento, tasas de error y satisfacción del personal. El sistema cubre la gestión de personal, documentación, incidencias, contratación, nómina y configuración institucional, además de autenticación con control de acceso por rol, auditoría, respaldos y exportación de datos.
 
 ### 1.7.2 Limitaciones
 

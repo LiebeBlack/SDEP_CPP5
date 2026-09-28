@@ -42,29 +42,14 @@ El proyecto se encuentra en un estado estable y funcional con todas las funciona
    - Datos institucionales
    - Validación de valores
 
-6. **Control de Asistencia**
-   - Registro de jornadas con cálculo de horas y tardanzas
-   - Horarios por empleado y día de la semana
-   - Horas extra clasificadas por recargo
-   - Marcado automático desde incidencias aprobadas
-
-7. **Contratos Laborales**
+6. **Contratos Laborales**
    - Alta, renovación y terminación con finiquito
    - Unicidad del contrato vigente y numeración automática
    - Control de contratos por vencer y vencidos
 
-8. **Anticipos y Préstamos**
-   - Solicitud, aprobación o rechazo y seguimiento del saldo
-   - Tope de descuento sobre el salario y sobre el neto de la nómina
-   - Plan de pagos y descuento automático en el pago
-
-9. **Alertas del Sistema**
-   - Alertas accionables por severidad con navegación al módulo
-   - Vencimientos, pendientes, respaldos y credenciales
-
-10. **Panel Analítico**
+7. **Panel Analítico**
    - Indicadores clave y gráficos propios (barras, dona, línea)
-   - Reportes PDF de asistencia, contratos, préstamos y alertas
+   - Reportes PDF de contratos, vencimientos y movimiento anual
 
 ### ✅ Infraestructura
 
@@ -126,11 +111,7 @@ SDEP_CPP5/
 │   ├── gui/                     # Interfaz gráfica
 │   │   ├── main_window.py      # Ventana principal
 │   │   ├── frames.py           # Frames de módulos históricos
-│   │   ├── asistencia_frame.py # Módulo de asistencia
 │   │   ├── contratos_frame.py  # Módulo de contratos
-│   │   ├── prestamos_frame.py  # Módulo de préstamos
-│   │   ├── alertas_frame.py    # Módulo de alertas
-│   │   ├── alertas_panel.py    # Panel de alertas (Dashboard)
 │   │   ├── widgets/            # Gráficos y KPIs propios (Canvas)
 │   │   ├── login_window.py     # Inicio de sesión
 │   │   └── theme.py            # Tema claro/oscuro
@@ -141,10 +122,7 @@ SDEP_CPP5/
 │   │   ├── documento.py       # Modelo documento
 │   │   ├── incidencia.py      # Modelo incidencia
 │   │   ├── pago.py           # Modelo pago
-│   │   ├── horario.py         # Horario semanal
-│   │   ├── asistencia.py      # Registro de jornada
 │   │   ├── contrato.py        # Contrato laboral
-│   │   ├── prestamo.py        # Anticipo o préstamo
 │   │   ├── configuracion.py   # Modelo configuración
 │   │   └── usuario.py        # Modelo usuario
 │   ├── nomina/                  # Motor de cálculo puro
@@ -154,7 +132,6 @@ SDEP_CPP5/
 │   │   ├── seguridad_social.py # Aportes con techos
 │   │   ├── horas_extra.py      # Recargos por tipo de jornada
 │   │   ├── prestaciones.py     # Aguinaldo, vacaciones, prestaciones
-│   │   ├── prestamos.py        # Amortización de cuotas
 │   │   ├── finiquito.py        # Liquidación completa
 │   │   └── motor.py            # Orquestador del cálculo
 │   ├── repositories/            # Acceso a datos
@@ -163,10 +140,7 @@ SDEP_CPP5/
 │   │   ├── documento_repository.py
 │   │   ├── incidencia_repository.py
 │   │   ├── pago_repository.py
-│   │   ├── horario_repository.py
-│   │   ├── asistencia_repository.py
 │   │   ├── contrato_repository.py
-│   │   ├── prestamo_repository.py
 │   │   ├── configuracion_repository.py
 │   │   └── usuario_repository.py
 │   ├── services/                # Lógica de negocio
@@ -174,16 +148,12 @@ SDEP_CPP5/
 │   │   ├── documento_service.py
 │   │   ├── incidencia_service.py
 │   │   ├── pago_service.py
-│   │   ├── asistencia_service.py
 │   │   ├── contrato_service.py
-│   │   ├── prestamo_service.py
-│   │   ├── alerta_service.py
 │   │   ├── configuracion_service.py
 │   │   └── auth_service.py
 │   ├── utils/                   # Utilidades
 │   │   ├── helpers.py          # Funciones auxiliares
 │   │   ├── validators.py      # Validadores
-│   │   ├── jornada.py         # Cálculos de jornada laboral
 │   │   ├── document_manager.py # Gestión documentos
 │   │   ├── pdf_generator.py    # Generación PDF
 │   │   ├── security.py        # Hash de contraseñas y permisos
@@ -192,7 +162,7 @@ SDEP_CPP5/
 │   │   ├── backup_scheduler.py # Respaldos automáticos programados
 │   │   └── exporter.py        # Exportación Excel/CSV
 │   └── main.py                 # Punto de entrada
-├── tests/                       # Pruebas unitarias
+├── tests/                       # Pruebas automatizadas: 20 archivos · 385 funciones
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto
@@ -382,16 +352,38 @@ pylint src/
   `libtk9.0.so`), que viven fuera del árbol de PyInstaller; corrige el
   fallo del selftest "libtcl9tk9.0.so: cannot open shared object file".
 
-## Novedades de la Versión 2.82
+## Novedades de la Versión 3.0.0
 
-Esta versión **desarrolla** el sistema: añade los dominios que faltaban
-(asistencia, contratos y préstamos), un motor de nómina real con tabla
-progresiva de impuestos y prestaciones, alertas accionables, respaldos
-programados y un panel analítico. Nada de lo anterior se retiró: los
-contratos, columnas y cálculos de las versiones previas siguen
-funcionando (las bases existentes se actualizan de forma aditiva).
+Esta versión **redefine el alcance** del sistema: retira por completo los
+módulos de **Asistencia**, **Préstamos** y **Alertas**, y conserva la
+restante funcionalidad —empleados, documentos, incidencias, contratos,
+nómina y configuración— junto con el motor de cálculo, los respaldos
+programados y el panel analítico. El cambio es **incompatible** con el
+esquema anterior: las tablas, columnas y parámetros de configuración de
+los módulos retirados se purgan al arrancar, con respaldo automático
+previo.
 
-### 1. Motor de nómina (`src/nomina/`)
+### 1. Retiro de Asistencia, Préstamos y Alertas
+
+- Se eliminan los modelos `Horario`, `Asistencia` y `Prestamo`, con sus
+  repositorios, servicios y pantallas, el paquete
+  `src/nomina/prestamos.py` y las utilidades `src/utils/jornada.py`.
+- La tabla `pagos` pierde `deduccion_prestamo` y `prestamo_id`. Como
+  SQLite no admite `DROP COLUMN` sobre una columna que participa en una
+  clave foránea, la tabla se reconstruye copiando las columnas vigentes y
+  rehaciendo sus índices (`purgar_esquema_obsoleto`, en
+  `src/config/database.py`).
+- Las tablas `asistencias`, `horarios` y `prestamos` se eliminan, igual
+  que los parámetros de configuración que solo consumían esos módulos: se
+  borran de la base y del espejo `config.json` para que `obtener_valor`
+  no los devuelva como si siguieran vigentes.
+- La purga es idempotente (no toca nada si no queda nada por retirar) y
+  va precedida de un respaldo `pre_purga_esquema`.
+- La navegación queda en **siete módulos**, el panel de control pierde su
+  panel de alertas y el indicador de dotación sustituye a los de
+  ausentismo y préstamos.
+
+### 2. Motor de nómina (`src/nomina/`)
 
 Paquete de cálculo puro —no accede a la base de datos ni a la interfaz—
 con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
@@ -407,29 +399,13 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
 - **Prestaciones** proporcionales por meses y días de servicio:
   aguinaldo, bono vacacional, vacaciones no disfrutadas, prestaciones por
   antigüedad, indemnización y preaviso (`src/nomina/prestaciones.py`).
-- **Finiquito completo** con anticipos y otras deducciones
-  (`src/nomina/finiquito.py`).
-- **Préstamos**: cuota calculada hacia abajo, plan de amortización que
-  cuadra exactamente con el monto y avance de saldo
-  (`src/nomina/prestamos.py`).
+- **Finiquito completo** con prestaciones, indemnización, preaviso y
+  otras deducciones (`src/nomina/finiquito.py`).
 - **Modalidades**: `porcentaje` reproduce exactamente el cálculo
   histórico y `tramos` activa el motor completo; el modo se elige con
   `modo_calculo_nomina` en Configuración.
 - Las deducciones capturadas a mano por el usuario **mandan** sobre el
   cálculo automático, y el neto nunca puede ser negativo.
-
-### 2. Asistencia y horarios
-
-- Modelos `Horario` y `Asistencia` con horas trabajadas, tardanza y horas
-  extra clasificadas por recargo.
-- `src/utils/jornada.py`: cálculos puros de jornada (turnos que cruzan la
-  medianoche, descanso, tolerancia, feriados y días de descanso
-  configurables).
-- En feriado o día de descanso laborado no hay jornada prevista que
-  cumplir: todo lo trabajado se paga como hora feriada.
-- Las **incidencias aprobadas** marcan la asistencia del período de forma
-  idempotente (reaplicar el rango no reescribe días ya justificados).
-- La nómina consume las horas extra del período desde la asistencia.
 
 ### 3. Contratos
 
@@ -441,28 +417,10 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
 - **Terminación con finiquito**: calcula la liquidación y la registra como
   pago de tipo `liquidacion` (sin aportes de seguridad social), de modo
   que la nómina refleje el egreso.
-- Sincronización automática de estados (vencidos y renovables) y alertas
-  de vencimiento.
+- Sincronización automática de estados (vencidos y renovables) y
+  detección de contratos por vencer, expuesta en el panel de control.
 
-### 4. Anticipos y préstamos
-
-- Modelo `Prestamo` con flujo solicitud → aprobación/rechazo → descuento
-  por cuotas → cierre.
-- Tope de descuento configurable sobre el salario y, al aplicar la cuota
-  en la nómina, sobre el neto disponible del empleado.
-- Los anticipos son de una sola cuota por definición.
-
-### 5. Alertas accionables
-
-- `src/services/alerta_service.py` reúne documentos por vencer, contratos
-  vencidos o por vencer, **empleados sin contrato vigente**, incidencias
-  pendientes antiguas, asistencia sin registrar, ausentismo elevado,
-  préstamos por aprobar, pagos pendientes antiguos, respaldos atrasados y
-  credenciales caducadas.
-- Cada alerta indica severidad, cantidad, detalle y el **módulo donde se
-  resuelve**; el panel y el módulo de Alertas permiten ir directo.
-
-### 6. Respaldos programados y política de credenciales
+### 4. Respaldos programados y política de credenciales
 
 - `src/utils/backup_scheduler.py`: respaldo automático según
   `backup_interval_hours` (con interruptor `backup_enabled`), verificación
@@ -471,51 +429,53 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
   caducidad de la contraseña, prohibición de repetir las últimas claves y
   de reutilizar la vigente, desbloqueo administrativo e historial.
 
-### 7. Panel analítico y reportes
+### 5. Panel analítico y reportes
 
 - `src/gui/widgets/graficos.py`: gráficos de barras, dona y línea más
   tarjetas de indicador dibujados sobre `Canvas` (sin dependencias nuevas).
-- El Dashboard incorpora KPI reales (nómina del mes, ausentismo, contratos
-  por vencer, saldo por cobrar), tres gráficos y el panel de alertas,
-  dentro de un contenedor desplazable.
-- Nuevos reportes PDF: asistencia, contratos, préstamos y alertas, además
-  de los existentes; exportación multihoja para Excel.
+- El Dashboard incorpora KPI reales (nómina del mes, contratos por vencer
+  y dotación activa) y tres gráficos, dentro de un contenedor desplazable.
+- Reportes PDF vigentes: constancias de trabajo, de estudios y de
+  ingresos, recibo de pago, ficha de empleado, planilla de nómina,
+  liquidación y reportes de empleados, incidencias, vencimientos,
+  contratos y movimiento anual; exportación multihoja para Excel.
 
-### 8. Interfaz
+### 6. Interfaz
 
-- Nuevos módulos en la barra lateral: **Asistencia**, **Contratos**,
-  **Préstamos** y **Alertas** (10 módulos en total, navegables con
-  `Ctrl+1`…`Ctrl+9` y `Ctrl+0`; `Ctrl+10` no es una secuencia válida de Tk),
-  con los permisos por rol ampliados.
-- `frames.py` se conserva como módulo histórico y los dominios nuevos
-  viven en módulos propios por responsabilidad
-  (`asistencia_frame.py`, `contratos_frame.py`, `prestamos_frame.py`,
-  `alertas_frame.py`, `alertas_panel.py`).
+- **Siete módulos** en la barra lateral —Panel de control, Empleados,
+  Documentos, Incidencias, Contratos, Nómina y Configuración—, navegables
+  con `Ctrl+1`…`Ctrl+7`.
+- `frames.py` se conserva como módulo histórico y los dominios con
+  pantalla propia viven en módulos por responsabilidad
+  (`contratos_frame.py`), junto con los diálogos de contratación.
+- La lista de módulos, los títulos de ventana y los mapas de refresco se
+  derivan de una sola estructura, de modo que teclas y módulos no pueden
+  desincronizarse.
 - Los servicios solo se instancian cuando el módulo se abre y toda
   operación que puede fallar muestra un mensaje entendible en lugar de
   dejar la ventana muda.
 
-### 9. Calidad
+### 7. Calidad
 
-- `mypy` sin errores en 75 archivos de `src/` y cero `# type: ignore`;
+- `mypy` sin errores en los 59 archivos de `src/` y cero `# type: ignore`;
   `flake8` (F/E9/W6) sin hallazgos.
 - Los enums del dominio (`BaseEnum.coerce`) normalizan cualquier valor
   recibido como texto a su miembro correspondiente: las columnas tipadas
   de SQLAlchemy dejan de recibir cadenas sueltas.
-- **455 pruebas** en verde (eran 326): suites nuevas para el motor de
-  nómina, jornada, asistencia, contratos, préstamos, alertas y política de
-  credenciales/respaldos.
+- **385 funciones de prueba** en 20 archivos, tras retirar las suites de
+  asistencia, préstamos, alertas y jornada (eran 453 antes del retiro).
 
-### 10. Correcciones de esta versión
+### 8. Correcciones de esta versión
 
-- Las horas trabajadas en feriado o día de descanso no generaban horas
-  extra: se comparaban contra la jornada prevista de un día laboral.
-- Aplicar incidencias aprobadas dos veces reescribía los días ya marcados.
-- `actualizar_contrato` y `actualizar_asistencia` escribían texto plano en
-  columnas tipadas por enum; ahora normalizan el valor.
-- La alerta de empleados sin contrato vigente no existía pese a que el
-  panel mostraba el indicador.
+- El diálogo de terminación de contrato mostraba un campo `anticipos` que
+  ya no existe en el resultado del finiquito; ahora presenta las otras
+  deducciones.
+- `actualizar_contrato` escribía texto plano en columnas tipadas por enum;
+  ahora normaliza el valor.
 - Cambiar la contraseña por la misma vigente estaba permitido.
+- `generar_nominas_periodo` descartaba los errores de un empleado con un
+  `except Exception: continue` silencioso; ahora los registra con
+  `logger.warning(..., exc_info=True)` y continúa con el resto.
 
 ### 11. Interfaz: concurrencia y ciclo de vida
 
@@ -680,6 +640,6 @@ Para más información, consulte:
 
 ---
 
-**Versión**: 2.82  
+**Versión**: 3.0.0  
 **Estado**: Estable  
 **Última actualización**: 2026

@@ -10,29 +10,30 @@ Conviene precisar, antes de continuar, el estatuto de la evidencia que se presen
 
 ### 4.2.1 Arquitectura General
 
-El sistema se materializó en una arquitectura de capas con separación estricta de responsabilidades. La organización del código en `src/` responde a cinco capas y a un dominio de cálculo independiente, decisión que permitió aislar la complejidad del cálculo de nómina del resto de la aplicación. La Tabla 4.1 resume la distribución del código fuente por capa, medida sobre la versión 2.82 del repositorio.
+El sistema se materializó en una arquitectura de capas con separación estricta de responsabilidades. La organización del código en `src/` responde a cinco capas y a un dominio de cálculo independiente, decisión que permitió aislar la complejidad del cálculo de nómina del resto de la aplicación. La Tabla 4.1 resume la distribución del código fuente por capa, medida sobre la versión 3.0.0 del repositorio.
 
-**Tabla 4.1. Distribución del código fuente por capa (versión 2.82)**
+**Tabla 4.1. Distribución del código fuente por capa (versión 3.0.0)**
 
 | Capa | Archivos | Líneas de código | Responsabilidad principal |
 |------|----------|------------------|---------------------------|
-| `src/models` | 13 | 1 832 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
-| `src/repositories` | 12 | 2 204 | Acceso a datos y consultas reutilizables |
-| `src/services` | 11 | 4 609 | Reglas de negocio y orquestación de flujos |
-| `src/utils` | 12 | 5 642 | Seguridad, auditoría, respaldos, PDF y utilidades |
-| `src/config` | 4 | 1 169 | Configuración, rutas y sesión de base de datos |
-| `src/gui` | 10 | 9 873 | Interfaz gráfica (CustomTkinter) |
-| `src/nomina` | 10 | 1 723 | Motor de cálculo de nómina y prestaciones |
+| `src/models` | 10 | 1 332 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
+| `src/repositories` | 9 | 1 581 | Acceso a datos y consultas reutilizables |
+| `src/services` | 8 | 2 783 | Reglas de negocio y orquestación de flujos |
+| `src/utils` | 10 | 5 145 | Seguridad, auditoría, respaldos, PDF y utilidades |
+| `src/config` | 3 | 1 289 | Configuración, rutas y sesión de base de datos |
+| `src/gui` | 8 | 7 875 | Interfaz gráfica (CustomTkinter) |
+| `src/nomina` | 9 | 1 504 | Motor de cálculo de nómina y prestaciones |
+| `src/__init__.py` | 1 | 8 | Declaración del paquete raíz |
 | `src/main.py` | 1 | 474 | Punto de entrada de la aplicación |
-| **Total** | **73** | **27 534** | |
+| **Total** | **59** | **21 991** | |
 
-*Fuente: medición directa con `wc -l` sobre `src/` en la versión 2.82. El conteo de archivos incluye los módulos `__init__.py`.*
+*Fuente: medición directa con `wc -l` sobre `src/` en la versión 3.0.0. El conteo de archivos incluye los módulos `__init__.py`.*
 
-La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 36 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 38 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
+La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 36 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 33 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
 
 #### 4.2.1.1 Capa de Presentación
 
-La interfaz se construyó con CustomTkinter y se organiza en diez módulos accesibles desde la barra lateral o mediante atajos de teclado. El sistema de navegación comprende los módulos de Panel de control, Empleados, Documentos, Incidencias, Asistencia, Contratos, Préstamos, Nómina, Alertas y Configuración, asociados a las combinaciones `Ctrl+1` a `Ctrl+0`, respectivamente. La Tabla 4.2 detalla los componentes principales de esta capa.
+La interfaz se construyó con CustomTkinter y se organiza en siete módulos accesibles desde la barra lateral o mediante atajos de teclado. El sistema de navegación comprende los módulos de Panel de control, Empleados, Documentos, Incidencias, Contratos, Nómina y Configuración, asociados a las combinaciones `Ctrl+1` a `Ctrl+7`, respectivamente. La Tabla 4.2 detalla los componentes principales de esta capa.
 
 **Tabla 4.2. Componentes de la capa de presentación**
 
@@ -44,37 +45,34 @@ La interfaz se construyó con CustomTkinter y se organiza en diez módulos acces
 | `EmpleadosFrame` | `frames.py` | Registro, edición, búsqueda y filtrado de empleados |
 | `DocumentosFrame` | `frames.py` | Gestión documental y control de vencimientos |
 | `IncidenciasFrame` | `frames.py` | Solicitudes, aprobación e impacto en nómina |
-| `AsistenciaFrame` | `asistencia_frame.py` | Registro diario de jornada y cálculo de horas |
 | `ContratosFrame` | `contratos_frame.py` | Vigencia y renovación de contratos laborales |
-| `PrestamosFrame` | `prestamos_frame.py` | Anticipos y préstamos con amortización |
 | `NominaFrame` | `frames.py` | Generación de nómina, recibos y planillas |
-| `AlertasFrame` y `PanelAlertas` | `alertas_frame.py`, `alertas_panel.py` | Notificaciones de vencimientos y eventos |
 | `ConfiguracionFrame` | `frames.py` | Parámetros institucionales, apariencia y respaldos |
 | `theme.py` y `widgets/graficos.py` | `theme.py`, `widgets/graficos.py` | Paletas claro/oscuro y gráficos del panel |
 
-*Fuente: inspección de `src/gui/` en la versión 2.82.*
+*Fuente: inspección de `src/gui/` en la versión 3.0.0.*
 
 La interfaz incorpora validación de formularios con retroalimentación visual inmediata, tablas con búsqueda y filtrado, menús contextuales por clic derecho, apariencia clara y oscura persistida en la configuración institucional, y un conjunto de atajos generales que comprende `Ctrl+N` para crear registros, `Ctrl+F` para enfocar el buscador, `Ctrl+S` para guardar cambios en configuración, `F5` para refrescar y `Esc` para cerrar diálogos o limpiar la selección.
 
 #### 4.2.1.2 Capa de Servicios
 
-Los servicios encapsulan las reglas de negocio y constituyen el único punto de entrada desde la interfaz hacia los datos. Se implementaron diez servicios: autenticación y control de acceso, empleados, documentos, incidencias, asistencia, contratos, préstamos, nómina, alertas y configuración. Cada uno valida las reglas del dominio, coordina los repositorios que le corresponden, ejecuta los cálculos y deja constancia de las operaciones sensibles en el registro de auditoría. Esta capa concentra 4 609 líneas y es, junto con el motor de nómina, el núcleo funcional del sistema.
+Los servicios encapsulan las reglas de negocio y constituyen el único punto de entrada desde la interfaz hacia los datos. Se implementaron siete servicios: autenticación y control de acceso, empleados, documentos, incidencias, contratos, nómina y configuración. Cada uno valida las reglas del dominio, coordina los repositorios que le corresponden, ejecuta los cálculos y deja constancia de las operaciones sensibles en el registro de auditoría. Esta capa concentra 2 783 líneas y es, junto con el motor de nómina, el núcleo funcional del sistema.
 
 #### 4.2.1.3 Capa de Repositorios
 
-La capa de acceso a datos aplica el patrón Repository sobre un repositorio base genérico, del cual heredan los diez repositorios concretos. Gracias a esta abstracción, las consultas frecuentes —búsqueda por cédula, por periodo o por estado— se escriben una sola vez, se reutilizan desde cualquier servicio y pueden probarse con independencia de la interfaz. Los repositorios gestionan además las transacciones y las relaciones entre entidades, de modo que ninguna otra capa manipula la sesión de base de datos directamente.
+La capa de acceso a datos aplica el patrón Repository sobre un repositorio base genérico, del cual heredan los siete repositorios concretos. Gracias a esta abstracción, las consultas frecuentes —búsqueda por cédula, por periodo o por estado— se escriben una sola vez, se reutilizan desde cualquier servicio y pueden probarse con independencia de la interfaz. Los repositorios gestionan además las transacciones y las relaciones entre entidades, de modo que ninguna otra capa manipula la sesión de base de datos directamente.
 
 #### 4.2.1.4 Capa de Modelos
 
-Los modelos se declararon con el ORM SQLAlchemy y representan las entidades del dominio junto con sus enumeraciones de apoyo. El esquema consta de diez tablas: `empleados`, `documentos`, `incidencias`, `asistencias`, `contratos`, `prestamos`, `pagos`, `horarios`, `configuraciones` y `usuarios`. Las relaciones principales responden a la naturaleza del negocio: un empleado concentra documentos, incidencias, registros de asistencia, contratos y pagos; los préstamos se amortizan contra la nómina; y los registros de asistencia se calculan contra el horario asignado.
+Los modelos se declararon con el ORM SQLAlchemy y representan las entidades del dominio junto con sus enumeraciones de apoyo. El esquema consta de siete tablas: `empleados`, `documentos`, `incidencias`, `contratos`, `pagos`, `configuraciones` y `usuarios`. Las relaciones principales responden a la naturaleza del negocio: un empleado concentra documentos, incidencias, contratos y pagos; cada pago pertenece a un empleado y a un periodo; y los contratos conservan la vigencia de la relación laboral que alimenta el finiquito.
 
 #### 4.2.1.5 Dominio de Cálculo de Nómina
 
-El cálculo de nómina se aisló en el paquete `src/nomina`, que no depende de la interfaz ni del acceso a datos y opera exclusivamente con tipos monetarios propios. Este dominio comprende el motor de cálculo, los parámetros de configuración, el cálculo del impuesto sobre la renta, las horas extra con recargos según tipo de jornada, las prestaciones laborales, las deducciones de seguridad social, la amortización de préstamos y el cálculo de finiquito. La separación permite que cada regla de cálculo se pruebe de forma exhaustiva: el módulo `tests/test_nomina_motor.py` reúne treinta y cuatro funciones de prueba dedicadas a verificar proporcionalidad, deducciones, topes y redondeos.
+El cálculo de nómina se aisló en el paquete `src/nomina`, que no depende de la interfaz ni del acceso a datos y opera exclusivamente con tipos monetarios propios. Este dominio comprende el motor de cálculo, los parámetros de configuración, el cálculo del impuesto sobre la renta, las horas extra con recargos según tipo de jornada, las prestaciones laborales, las deducciones de seguridad social y el cálculo de finiquito. La separación permite que cada regla de cálculo se pruebe de forma exhaustiva: el módulo `tests/test_nomina_motor.py` reúne veintisiete funciones de prueba dedicadas a verificar proporcionalidad, deducciones, topes y redondeos.
 
 #### 4.2.1.6 Servicios Transversales
 
-Los módulos transversales refuerzan la seguridad, la trazabilidad y la sostenibilidad de la información. `security.py` valida y sanitiza entradas, verifica permisos y gestiona contraseñas con PBKDF2-HMAC-SHA256, doscientas mil iteraciones y sal aleatorio de dieciséis bytes, con comparación en tiempo constante. `audit_logger.py` registra las acciones críticas, entre ellas los inicios de sesión y las operaciones sobre empleados, documentos, incidencias y nómina. `backup_manager.py` y `backup_scheduler.py` administran respaldos y restauración con políticas de retención, mientras que `pdf_generator.py` produce catorce tipos de documentos oficiales, entre los que figuran constancias de trabajo y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de incidencias, vencimientos, asistencia, contratos y préstamos. `document_manager.py` gobierna el almacenamiento de archivos y fotografías, `exporter.py` genera exportaciones en formatos abiertos y `jornada.py`, junto con `validators.py` y `helpers.py`, completa las utilidades de cálculo y validación.
+Los módulos transversales refuerzan la seguridad, la trazabilidad y la sostenibilidad de la información. `security.py` valida y sanitiza entradas, verifica permisos y gestiona contraseñas con PBKDF2-HMAC-SHA256, doscientas mil iteraciones y sal aleatorio de dieciséis bytes, con comparación en tiempo constante. `audit_logger.py` registra las acciones críticas, entre ellas los inicios de sesión y las operaciones sobre empleados, documentos, incidencias y nómina. `backup_manager.py` y `backup_scheduler.py` administran respaldos y restauración con políticas de retención, mientras que `pdf_generator.py` produce doce tipos de documentos oficiales, entre los que figuran constancias de trabajo, de estudios y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de empleados, incidencias, vencimientos, contratos y movimiento anual. `document_manager.py` gobierna el almacenamiento de archivos y fotografías, `exporter.py` genera exportaciones en formatos abiertos y `validators.py`, junto con `helpers.py`, completa las utilidades de validación y presentación.
 
 ### 4.2.2 Funcionalidades Implementadas
 
@@ -95,14 +93,14 @@ El módulo permite registrar, consultar, actualizar y desactivar empleados media
 
 #### 4.2.2.2 Módulo de Gestión Documental
 
-La gestión documental admite la carga de archivos en formato PDF e imagen, clasificados por tipo de documento, con registro de fecha de emisión y de vencimiento y almacenamiento organizado por empleado. El control de vencimientos constituye la aportación más valorada de este módulo, pues identifica de manera automática los documentos vencidos y aquellos próximos a vencer, y alimenta las alertas del sistema. Se incorporaron asimismo la vista previa y descarga del archivo original, la exportación del expediente documental y la validación de nombre, extensión, tamaño y tipo de archivo antes del almacenamiento. La pérdida de documentos, riesgo señalado en el planteamiento del problema, queda así reducida a los términos que la Tabla 4.4 resume.
+La gestión documental admite la carga de archivos en formato PDF e imagen, clasificados por tipo de documento, con registro de fecha de emisión y de vencimiento y almacenamiento organizado por empleado. El control de vencimientos constituye la aportación más valorada de este módulo, pues identifica de manera automática los documentos vencidos y aquellos próximos a vencer, y alimenta el indicador de vencimientos del panel de control. Se incorporaron asimismo la vista previa y descarga del archivo original, la exportación del expediente documental y la validación de nombre, extensión, tamaño y tipo de archivo antes del almacenamiento. La pérdida de documentos, riesgo señalado en el planteamiento del problema, queda así reducida a los términos que la Tabla 4.4 resume.
 
 **Tabla 4.4. Gestión documental: contraste proceso manual y sistema**
 
 | Indicador | Proceso manual | Sistema | Observación |
 |-----------|----------------|---------|-------------|
 | Tiempo de incorporación de un documento | [por completar] | [por completar] | Medición cronometrada en el piloto |
-| Detección de vencimientos | Revisión periódica manual | Alerta automática | Verificada por pruebas del gestor documental |
+| Detección de vencimientos | Revisión periódica manual | Detección automática | Verificada por pruebas del gestor documental |
 | Recuperación del documento | Búsqueda en archivo físico | Consulta inmediata | Medición cronometrada en el piloto |
 | Integridad del archivo almacenado | Sujeta a deterioro | Copia digital verificada | Verificada por pruebas de respaldo |
 
@@ -110,23 +108,15 @@ La gestión documental admite la carga de archivos en formato PDF e imagen, clas
 
 #### 4.2.2.3 Módulo de Incidencias
 
-El módulo administra las incidencias que afectan la asistencia y, por extensión, el cálculo de la nómina: reposo médico, ausencia, permiso, vacaciones y licencia. Cada solicitud registra el empleado, el tipo, las fechas de inicio y fin, los días calculados de forma automática, el motivo y el documento de soporte cuando corresponde. El flujo de aprobación transita por los estados pendiente, aprobado, rechazado y completado, y conserva el nombre del aprobador y los comentarios de la decisión, con lo cual la trazabilidad de cada solicitud queda asegurada. El sistema identifica además las incidencias vigentes y su impacto en el periodo de nómina.
+El módulo administra las incidencias que afectan la jornada laboral y, por extensión, el cálculo de la nómina: reposo médico, ausencia, permiso, vacaciones y licencia. Cada solicitud registra el empleado, el tipo, las fechas de inicio y fin, los días calculados de forma automática, el motivo y el documento de soporte cuando corresponde. El flujo de aprobación transita por los estados pendiente, aprobado, rechazado y completado, y conserva el nombre del aprobador y los comentarios de la decisión, con lo cual la trazabilidad de cada solicitud queda asegurada. El sistema identifica además las incidencias vigentes y su impacto en el periodo de nómina.
 
-#### 4.2.2.4 Módulo de Asistencia
-
-El control de asistencia registra la jornada diaria de cada empleado con siete tipos de marca —presente, tardanza, ausente, permiso, vacaciones, reposo y feriado— y calcula las horas efectivamente trabajadas contra el horario asignado. El módulo produce el reporte de asistencia por periodo y proporciona al motor de nómina la información necesaria para determinar los días y las horas que integran el cálculo.
-
-#### 4.2.2.5 Módulo de Contratos
+#### 4.2.2.4 Módulo de Contratos
 
 El módulo de contratos conserva la relación laboral de cada empleado —tipo de contrato, vigencia, remuneración y condiciones—, permite clasificar los contratos en indefinido, temporal, por obra y pasantía y advierte sobre las renovaciones y vencimientos próximos. Esta información alimenta el cálculo de finiquito y de prestaciones del dominio de nómina.
 
-#### 4.2.2.6 Módulo de Préstamos y Anticipos
+#### 4.2.2.5 Módulo de Nómina
 
-Los préstamos y anticipos se registran con su monto, número de cuotas y plan de amortización, y se descuentan automáticamente en el cálculo de la nómina del periodo correspondiente. El módulo conserva el saldo pendiente de cada empleado y genera el reporte de préstamos vigentes y liquidados.
-
-#### 4.2.2.7 Módulo de Nómina
-
-La nómina constituye el proceso de mayor criticidad financiera y, por ello, el de mayor densidad de reglas. El sistema calcula el salario proporcional a los días trabajados, integra las incidencias y los registros de asistencia, aplica las deducciones configurables —seguridad social, pensión e impuesto sobre la renta—, incorpora las horas extra con el recargo que corresponde a la jornada diurna, nocturna o mixta, descuenta las cuotas de préstamos y determina el salario neto. Sobre ese resultado genera los pagos individuales o masivos del periodo y produce los documentos asociados: recibo de pago individual, planilla consolidada, reporte de nómina y liquidación. La exactitud de los cálculos se verifica de manera sistemática en la suite automatizada.
+La nómina constituye el proceso de mayor criticidad financiera y, por ello, el de mayor densidad de reglas. El sistema calcula el salario proporcional a los días trabajados, integra las incidencias aprobadas del periodo, aplica las deducciones configurables —seguridad social, pensión e impuesto sobre la renta—, incorpora las horas extra con el recargo que corresponde a la jornada diurna, nocturna o feriado y determina el salario neto. Sobre ese resultado genera los pagos individuales o masivos del periodo y produce los documentos asociados: recibo de pago individual, planilla consolidada, reporte de nómina y liquidación. La exactitud de los cálculos se verifica de manera sistemática en la suite automatizada.
 
 **Tabla 4.5. Generación de nómina: contraste proceso manual y sistema**
 
@@ -139,11 +129,7 @@ La nómina constituye el proceso de mayor criticidad financiera y, por ello, el 
 
 *Fuente: funcionalidad implementada en el módulo de nómina; los tiempos se incorporarán con las mediciones del piloto.*
 
-#### 4.2.2.8 Módulo de Alertas
-
-El módulo de alertas centraliza los avisos que el sistema genera de manera automática: vencimiento de documentos, proximidad de renovación de contratos, incidencias pendientes de resolución y saldos de préstamos. Las alertas se presentan en un panel específico y en el panel de control, lo que permite al personal administrativo anticipar gestiones en lugar de reaccionar ante contingencias consumadas.
-
-#### 4.2.2.9 Módulo de Configuración
+#### 4.2.2.6 Módulo de Configuración
 
 La configuración institucional comprende los datos de la institución —denominación, dirección, contacto e identificación—, los parámetros de nómina —porcentajes de deducción, salario mínimo de referencia y criterios de cálculo— y las políticas de recursos humanos —días de vacaciones, horas laborales semanales y reglas de incidencias—. El módulo administra además la apariencia clara u oscura, el cambio de contraseña del usuario autenticado, el visor de auditoría para el rol administrador y las operaciones de respaldo y restauración de la base de datos. La totalidad de los parámetros se modifica sin intervenir el código fuente, condición indispensable para que una misma distribución del sistema atienda a instituciones con políticas distintas.
 
@@ -151,11 +137,11 @@ La configuración institucional comprende los datos de la institución —denomi
 
 #### 4.2.3.1 Base de Datos
 
-El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de mapeo objeto-relacional. El esquema comprende diez tablas con integridad referencial mediante claves foráneas, índices sobre los campos de consulta frecuente —cédula, nombre y periodo— y un mecanismo de migración que permite evolucionar la estructura sin pérdida de datos. La elección de SQLite responde a las condiciones de operación previstas: instalación local, ausencia de servidor dedicado y volumen de información acotado. Las mediciones de rendimiento del apartado 4.3.3 determinarán si esa elección se sostiene en el rango superior de volumen previsto.
+El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de mapeo objeto-relacional. El esquema comprende siete tablas con integridad referencial mediante claves foráneas, índices sobre los campos de consulta frecuente —cédula, nombre y periodo— y un mecanismo de migración que permite evolucionar la estructura sin pérdida de datos. La elección de SQLite responde a las condiciones de operación previstas: instalación local, ausencia de servidor dedicado y volumen de información acotado. Las mediciones de rendimiento del apartado 4.3.3 determinarán si esa elección se sostiene en el rango superior de volumen previsto.
 
 #### 4.2.3.2 Interfaz Gráfica
 
-La interfaz mantiene un diseño consistente en los diez módulos, con temas claro y oscuro persistidos en la configuración, validación en tiempo real, retroalimentación visual de las acciones, navegación completa por teclado y diálogos auxiliares de ayuda y de información del sistema. Las tarjetas del panel de control son navegables y conducen al módulo correspondiente, lo que reduce la profundidad de navegación para las consultas habituales.
+La interfaz mantiene un diseño consistente en los siete módulos, con temas claro y oscuro persistidos en la configuración, validación en tiempo real, retroalimentación visual de las acciones, navegación completa por teclado y diálogos auxiliares de ayuda y de información del sistema. Las tarjetas del panel de control son navegables y conducen al módulo correspondiente, lo que reduce la profundidad de navegación para las consultas habituales.
 
 #### 4.2.3.3 Seguridad
 
@@ -168,15 +154,12 @@ Las medidas de seguridad implementadas abarcan la autenticación de usuarios, el
 | Empleados | Sí | Sí | Sí | Sí |
 | Documentos | Sí | Sí | Sí | Sí |
 | Incidencias | Sí | Sí | Sí | No |
-| Asistencia | Sí | Sí | Sí | No |
 | Contratos | Sí | Sí | No | No |
-| Préstamos | Sí | Sí | No | No |
 | Nómina | Sí | Sí | No | No |
-| Alertas | Sí | Sí | No | No |
 | Configuración | Sí | No | No | No |
 | Reportes | Sí | Sí | No | Sí |
 
-*Fuente: `PermissionChecker.can_access_module` en `src/utils/security.py`, versión 2.82.*
+*Fuente: `PermissionChecker.can_access_module` en `src/utils/security.py`, versión 3.0.0.*
 
 Los permisos de operación se organizan de forma análoga: el administrador dispone de creación, lectura, actualización, eliminación, reportes, configuración, respaldo y restauración; el rol gestor de creación, lectura, actualización, eliminación y reportes; el rol usuario de lectura y actualización de registros propios; y el rol de solo lectura exclusivamente de consulta.
 
@@ -184,28 +167,24 @@ Los permisos de operación se organizan de forma análoga: el administrador disp
 
 ### 4.3.1 Pruebas Automatizadas
 
-La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 2.82 —objeto de este informe— declara 453 funciones de prueba distribuidas en 24 archivos, con 5 371 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
+La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 385 funciones de prueba distribuidas en 20 archivos, con 4 290 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
 
-**Tabla 4.7. Distribución de funciones de prueba por archivo (versión 2.82)**
+**Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.0)**
 
 | Archivo de prueba | Funciones | Área verificada |
 |-------------------|-----------|-----------------|
 | `test_helpers.py` | 66 | Formateo, fechas y utilidades auxiliares |
 | `test_security.py` | 63 | Validación, sanitización y control de acceso |
 | `test_validators.py` | 36 | Reglas de validación del dominio |
-| `test_nomina_motor.py` | 34 | Motor de cálculo de nómina |
+| `test_nomina_motor.py` | 27 | Motor de cálculo de nómina |
 | `test_auto_updater.py` | 19 | Actualización automática del sistema |
-| `test_asistencia.py` | 18 | Registro de jornada y cálculo de horas |
 | `test_contratos.py` | 17 | Vigencia y renovación de contratos |
-| `test_prestamos.py` | 17 | Amortización de anticipos y préstamos |
 | `test_reportes.py` | 17 | Generación de documentos PDF |
 | `test_auth.py` | 16 | Autenticación, roles y permisos |
 | `test_empleados.py` | 16 | Gestión de empleados |
 | `test_gui_smoke.py` | 16 | Humo de la interfaz gráfica |
 | `test_credenciales.py` | 15 | Credenciales y política de contraseñas |
 | `test_document_manager.py` | 15 | Almacenamiento de documentos |
-| `test_alertas.py` | 13 | Generación de alertas |
-| `test_jornada.py` | 13 | Cálculo de jornada laboral |
 | `test_theme.py` | 13 | Paletas de apariencia |
 | `test_backups.py` | 9 | Respaldo y restauración |
 | `test_configuracion.py` | 9 | Parámetros configurables |
@@ -214,11 +193,11 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_documentos.py` | 7 | Gestión documental |
 | `test_migraciones.py` | 4 | Evolución del esquema |
 | `test_settings_version.py` | 4 | Versión y parámetros de compilación |
-| **Total** | **453** | |
+| **Total** | **385** | |
 
-*Fuente: conteo de funciones `test_` sobre `tests/`, versión 2.82. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
+*Fuente: conteo de funciones `test_` sobre `tests/`, versión 3.0.0. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
 
-La distinción entre ambas mediciones merece precisión metodológica. Los porcentajes de cobertura que se exponen en la Tabla 4.8 corresponden a la medición ejecutada sobre la versión 1.0.4 del sistema; se conservan como referencia histórica y como evidencia de que la estrategia de pruebas alcanzó niveles altos en la lógica de negocio. Dado que el código creció de manera sustancial desde entonces, esos porcentajes no pueden atribuirse a la versión vigente: la cobertura de la versión 2.82 debe re-medirse con `pytest --cov=src` y sustituir los valores de la tabla antes de la presentación definitiva. La misma exigencia se aplica al estado de ejecución de la suite, cuya verificación corresponde al flujo de integración continua del repositorio y cuyo informe debe adjuntarse como evidencia.
+La distinción entre ambas mediciones merece precisión metodológica. Los porcentajes de cobertura que se exponen en la Tabla 4.8 corresponden a la medición ejecutada sobre la versión 1.0.4 del sistema; se conservan como referencia histórica y como evidencia de que la estrategia de pruebas alcanzó niveles altos en la lógica de negocio. Dado que el código creció de manera sustancial desde entonces, esos porcentajes no pueden atribuirse a la versión vigente: la cobertura de la versión 3.0.0 debe re-medirse con `pytest --cov=src` y sustituir los valores de la tabla antes de la presentación definitiva. La misma exigencia se aplica al estado de ejecución de la suite, cuya verificación corresponde al flujo de integración continua del repositorio y cuyo informe debe adjuntarse como evidencia.
 
 **Tabla 4.8. Cobertura de referencia medida en la versión 1.0.4**
 
@@ -242,17 +221,16 @@ La lectura de estos datos admite dos conclusiones. La primera es que la cobertur
 La suite verifica flujos completos sobre una base de datos aislada y sembrada para cada prueba, lo que permite comprobar la interacción entre capas sin interferencias entre casos. Los flujos cubiertos son los siguientes:
 
 1. Cadena de personal: registro de un empleado, búsqueda, actualización y asociación de documentos, incidencias y pagos (`test_empleados.py`, `test_documentos.py`, `test_pagos.py`).
-2. Cálculo de nómina: determinación de días y horas trabajadas con incidencias y asistencia, salario proporcional, deducciones, descuento de préstamos, salario neto y emisión de recibos (`test_nomina_motor.py`, `test_pagos.py`, `test_prestamos.py`).
+2. Cálculo de nómina: determinación de días trabajados con incidencias aprobadas, salario proporcional, deducciones, ISR por tramos, horas extra, salario neto y emisión de recibos (`test_nomina_motor.py`, `test_pagos.py`).
 3. Gestión de incidencias: solicitud, validación de fechas y días, aprobación y efecto en la nómina (`test_incidencias.py`).
-4. Asistencia y jornada: registro diario, cruce con el horario asignado y cálculo de horas efectivas (`test_asistencia.py`, `test_jornada.py`).
-5. Contratación: alta del contrato, vigencia, renovación y efecto en prestaciones y finiquito (`test_contratos.py`).
-6. Autenticación y control de acceso: inicio de sesión, verificación de contraseñas, roles y permisos por módulo (`test_auth.py`, `test_security.py`).
-7. Configuración y persistencia: siembra de parámetros iniciales, persistencia de la apariencia, migraciones de esquema y lectura de versión (`test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py`).
-8. Respaldo y restauración: ciclo completo de copia, verificación y restauración de la base de datos (`test_backups.py`).
-9. Reportes: generación de los documentos PDF y de las exportaciones en formatos abiertos (`test_reportes.py`).
-10. Alertas y actualización: generación de avisos y funcionamiento del actualizador automático (`test_alertas.py`, `test_auto_updater.py`).
+4. Contratación: alta del contrato, vigencia, renovación y efecto en prestaciones y finiquito (`test_contratos.py`).
+5. Autenticación y control de acceso: inicio de sesión, verificación de contraseñas, roles y permisos por módulo (`test_auth.py`, `test_security.py`).
+6. Configuración y persistencia: siembra de parámetros iniciales, persistencia de la apariencia, migraciones de esquema, purga de esquema obsoleto y lectura de versión (`test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py`).
+7. Respaldo y restauración: ciclo completo de copia, verificación y restauración de la base de datos (`test_backups.py`).
+8. Reportes: generación de los documentos PDF y de las exportaciones en formatos abiertos (`test_reportes.py`).
+9. Actualización del sistema: funcionamiento del actualizador automático (`test_auto_updater.py`).
 
-El informe de ejecución de la suite sobre la versión 2.82 deberá acompañarse como evidencia en el anexo correspondiente, con el número de pruebas ejecutadas, el resultado obtenido y la fecha de la ejecución.
+El informe de ejecución de la suite sobre la versión 3.0.0 deberá acompañarse como evidencia en el anexo correspondiente, con el número de pruebas ejecutadas, el resultado obtenido y la fecha de la ejecución.
 
 ### 4.3.3 Pruebas de Rendimiento
 
@@ -274,7 +252,7 @@ El protocolo de rendimiento se definió conforme a la metodología del Capítulo
 
 ### 4.3.4 Pruebas de Seguridad
 
-Los controles de seguridad implementados fueron verificados mediante pruebas automatizadas dedicadas, presentes en `test_security.py`, `test_auth.py` y `test_credenciales.py`. La revisión abarcó seis frentes. En materia de inyección de código, el riesgo se mitiga con consultas parametrizadas a través del ORM y con la sanitización complementaria de entradas; en una aplicación de escritorio no existe superficie de ataque web, si bien los campos se sanitizan antes de almacenarse. La autenticación se apoya en PBKDF2-HMAC-SHA256 con doscientas mil iteraciones, sal aleatorio y comparación en tiempo constante, y rechaza las credenciales inválidas sin revelar cuál de los dos datos falló. La autorización se resuelve con la matriz de roles y permisos expuesta en la Tabla 4.6. La auditoría registra los eventos de seguridad y las acciones críticas, y el tratamiento de archivos valida nombre, extensión, tamaño y tipo antes del almacenamiento. El respaldo y la restauración cierran el conjunto con políticas de retención configurables. El informe de cobertura específica del módulo de seguridad deberá actualizarse a la versión 2.82 conforme a la exigencia señalada en el apartado 4.3.1.
+Los controles de seguridad implementados fueron verificados mediante pruebas automatizadas dedicadas, presentes en `test_security.py`, `test_auth.py` y `test_credenciales.py`. La revisión abarcó seis frentes. En materia de inyección de código, el riesgo se mitiga con consultas parametrizadas a través del ORM y con la sanitización complementaria de entradas; en una aplicación de escritorio no existe superficie de ataque web, si bien los campos se sanitizan antes de almacenarse. La autenticación se apoya en PBKDF2-HMAC-SHA256 con doscientas mil iteraciones, sal aleatorio y comparación en tiempo constante, y rechaza las credenciales inválidas sin revelar cuál de los dos datos falló. La autorización se resuelve con la matriz de roles y permisos expuesta en la Tabla 4.6. La auditoría registra los eventos de seguridad y las acciones críticas, y el tratamiento de archivos valida nombre, extensión, tamaño y tipo antes del almacenamiento. El respaldo y la restauración cierran el conjunto con políticas de retención configurables. El informe de cobertura específica del módulo de seguridad deberá actualizarse a la versión 3.0.0 conforme a la exigencia señalada en el apartado 4.3.1.
 
 ## 4.4 RESULTADOS DE PRUEBAS DE USABILIDAD
 
@@ -429,7 +407,7 @@ La comparación con los sistemas comerciales disponibles en el mercado se realiz
 |----------|----------------------|------------------------|------------|
 | Costo de adquisición | Sin costo de licencia | Del orden de miles a decenas de miles de dólares | Ventaja para el sistema desarrollado |
 | Costo anual de sostenimiento | Sin licenciamiento; mantenimiento interno | Suscripción o soporte anual | Ventaja para el sistema desarrollado |
-| Cobertura funcional básica | Empleados, documentos, incidencias, asistencia, contratos, préstamos, nómina y reportes | Equivalente, con mayor profundidad en algunos módulos | Paridad funcional en lo esencial |
+| Cobertura funcional básica | Empleados, documentos, incidencias, contratos, nómina y reportes | Equivalente, con mayor profundidad en algunos módulos | Paridad funcional en lo esencial |
 | Analítica avanzada y planeación de talento | No incorporada | Disponible en las suites de mayor rango | Ventaja para las soluciones comerciales |
 | Personalización institucional | Alta, mediante parámetros sin modificar código | Limitada por la configuración ofrecida por el proveedor | Ventaja para el sistema desarrollado |
 | Soporte técnico | Comunitario y auto-soporte documentado | Mesa de ayuda contratada | Ventaja para las soluciones comerciales |
@@ -452,7 +430,7 @@ El contraste con el proceso manual se aborda en dos planos. El primero es cualit
 | Tasa de errores en cálculos | Dependiente del operador | Reglas automatizadas verificadas | Pruebas del motor de nómina |
 | Acceso a la información | Sujeto a búsqueda física | Consulta inmediata y filtrada | Pruebas de integración |
 | Trazabilidad de las decisiones | Registro informal | Auditoría automática | Pruebas de seguridad |
-| Control de vencimientos | Revisión periódica manual | Alerta automática | Pruebas de alertas y documentos |
+| Control de vencimientos | Revisión periódica manual | Detección automática | Pruebas de documentos |
 | Continuidad ante ausencias del operador | Dependiente de la persona | Documentación y registro institucional | Guía de usuario y auditoría |
 | Escalabilidad del proceso | Limitada por el tiempo disponible | Determinada por el volumen y la configuración | [por completar] |
 
@@ -478,7 +456,7 @@ La hipótesis general sostiene que la implementación del sistema mejorará de m
 
 ### 4.7.2 Hipótesis Específicas
 
-**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 2.82 se incorporaron cuatro módulos funcionales —asistencia, contratos, préstamos y alertas—, el motor de nómina y 130 funciones de prueba, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
+**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.0 se incorporó el módulo de contratos, el motor de nómina y 62 funciones de prueba, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
 
 **H2. Usabilidad de la interfaz gráfica.** La hipótesis sostiene que la interfaz gráfica mejora la usabilidad respecto de las alternativas de línea de comandos. Los indicadores son el tiempo de aprendizaje, la tasa de éxito en las tareas y la valoración de la interfaz, y se medirán con el protocolo del Anexo 3 conforme al apartado 4.4.2.
 
@@ -514,7 +492,7 @@ Durante el desarrollo, el reto principal fue sostener el equilibrio entre cobert
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 2.82 comprende 27 534 líneas de código distribuidas en nueve capas y componentes, diez módulos funcionales con acceso por rol, diez tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 453 funciones de prueba organizadas en 24 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
+Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 21 991 líneas de código distribuidas en nueve capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 385 funciones de prueba organizadas en 20 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
 
 Los apartados de validación empírica definen con precisión qué se medirá, cómo se medirá y con qué umbral se decidirá, de manera que la evidencia pendiente no constituya una indeterminación metodológica, sino un registro preparado para recibirla. Las hipótesis planteadas se resolverán con esa evidencia: tres de ellas cuentan ya con indicadores estructurales verificados, mientras que su magnitud de impacto permanece condicionada al piloto. Las limitaciones identificadas —muestra acotada, periodo breve, contexto regional y dependencia de recursos propios— son consistentes con el alcance de un trabajo de grado y delimitan con honestidad el campo de validez de los resultados.
 

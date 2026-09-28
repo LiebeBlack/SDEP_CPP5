@@ -3,6 +3,7 @@ Pago Model
 Modelo de datos para pagos y nómina
 """
 
+import logging
 from datetime import date
 from decimal import Decimal
 from sqlalchemy import Integer, String, Text, Date, ForeignKey, Numeric
@@ -14,7 +15,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .empleado import Empleado
-    from .prestamo import Prestamo
+
+logger = logging.getLogger(__name__)
 
 
 class Pago(Base, BaseModel):
@@ -60,15 +62,11 @@ class Pago(Base, BaseModel):
     horas_extra_diurnas: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     horas_extra_nocturnas: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     horas_extra_feriadas: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
-    deduccion_prestamo: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     aguinaldo: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     bono_vacacional: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     aporte_seguro_patronal: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     aporte_pension_patronal: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     isr_tramo: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    prestamo_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("prestamos.id"), nullable=True
-    )
 
     # Detalles adicionales
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -81,7 +79,6 @@ class Pago(Base, BaseModel):
 
     # Relaciones
     empleado: Mapped["Empleado"] = relationship("Empleado", back_populates="pagos")
-    prestamo: Mapped["Prestamo | None"] = relationship("Prestamo")
 
     @property
     def dias_trabajados(self):
@@ -100,7 +97,8 @@ class Pago(Base, BaseModel):
                 )
                 delta = fin - ini
                 return max(0, delta.days + 1)
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
+                logger.debug("Periodo de pago no interpretable como fecha", exc_info=True)
                 return 0
         return 0
 
@@ -110,7 +108,8 @@ class Pago(Base, BaseModel):
         if self.dias_trabajados > 0 and self.salario_base:
             try:
                 return round(float(self.salario_base) / 30.0, 2)
-            except Exception:
+            except (TypeError, ValueError):
+                logger.debug("Salario base no numérico en el pago", exc_info=True)
                 return 0.0
         return 0.0
 
@@ -122,8 +121,7 @@ class Pago(Base, BaseModel):
             + float(self.deduccion_pension or 0)
             + float(self.deduccion_impuesto or 0)
             + float(self.otras_deducciones or 0)
-            + float(self.descuentos or 0)
-            + float(self.deduccion_prestamo or 0),
+            + float(self.descuentos or 0),
             2,
         )
 

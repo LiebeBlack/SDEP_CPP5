@@ -296,7 +296,7 @@ El proyecto seguirá una metodología híbrida que combina elementos de:
 
 | Indicador | Meta | Estado |
 |-----------|------|--------|
-| Cobertura funcional de los módulos previstos | Diez módulos operativos con control de acceso por rol | Verificado en la versión 2.82 |
+| Cobertura funcional de los módulos previstos | Siete módulos operativos con control de acceso por rol | Verificado en la versión 3.0.0 |
 | Estabilidad del sistema | Ausencia de fallos críticos conocidos | Verificado mediante la suite automatizada y su ejecución en integración continua |
 | Rendimiento en operación | Tiempo de respuesta inferior a tres segundos | Pendiente de medición durante el piloto |
 | Calidad verificable | Cobertura alta en la lógica de negocio | Medición de referencia disponible; requiere actualización a la versión vigente |
@@ -342,9 +342,9 @@ El proyecto se encuentra ejecutado en sus componentes de análisis, diseño, des
 |------------|-----------|-----------|
 | Análisis de requerimientos | Concluido | Apartado 1.2.2 del Capítulo I; instrumentos del Anexo 1 |
 | Diseño de la arquitectura | Concluido e implementado | Apartado 4.2.1 del Capítulo IV |
-| Desarrollo de módulos | Concluido, con alcance ampliado de cuatro a diez módulos | Apartado 4.2.2 del Capítulo IV |
-| Reportes y documentos oficiales | Concluido: catorce tipos de documento | Apartado 4.2.1.6 del Capítulo IV |
-| Pruebas técnicas | Concluido: 453 funciones de prueba en la versión 2.82 | Apartado 4.3 del Capítulo IV y Anexo 7 |
+| Desarrollo de módulos | Concluido: siete módulos operativos, con la contratación incorporada y la asistencia y los préstamos retirados del alcance | Apartado 4.2.2 del Capítulo IV |
+| Reportes y documentos oficiales | Concluido: doce tipos de documento | Apartado 4.2.1.6 del Capítulo IV |
+| Pruebas técnicas | Concluido: 385 funciones de prueba en la versión 3.0.0 | Apartado 4.3 del Capítulo IV y Anexo 7 |
 | Pruebas de usabilidad | Pendiente de ejecución | Protocolo del Anexo 3 |
 | Implementación piloto | Pendiente de ejecución | Apartado 4.5 del Capítulo IV |
 | Documentación | Concluida | Documentos de este informe y documentación del repositorio |

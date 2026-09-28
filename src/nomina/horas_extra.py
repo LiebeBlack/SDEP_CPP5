@@ -1,9 +1,9 @@
 """
 Cálculo de horas extra
 
-Convierte las horas extra registradas en asistencia (diurnas,
-nocturnas y feriadas) al monto a pagar, aplicando el recargo de cada
-tipo sobre el valor de la hora ordinaria del empleado.
+Convierte las horas extra capturadas por tipo (diurnas, nocturnas y
+feriadas) al monto a pagar, aplicando el recargo de cada tipo sobre el
+valor de la hora ordinaria del empleado.
 """
 
 from decimal import Decimal

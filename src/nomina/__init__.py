@@ -42,15 +42,6 @@ from .prestaciones import (
     calcular_vacaciones,
     meses_y_dias_entre,
 )
-from .prestamos import (
-    aplicar_descuento,
-    calcular_descuento,
-    calcular_monto_cuota,
-    cuota_a_descontar,
-    monto_maximo_otorgable,
-    plan_de_pagos,
-    validar_solicitud,
-)
 from .seguridad_social import (
     AportesSeguridadSocial,
     base_afectada,
@@ -119,13 +110,6 @@ __all__ = [
     "meses_y_dias_entre",
     "dias_vacaciones_pendientes",
     "resumen_liquidacion",
-    "calcular_monto_cuota",
-    "plan_de_pagos",
-    "cuota_a_descontar",
-    "calcular_descuento",
-    "aplicar_descuento",
-    "validar_solicitud",
-    "monto_maximo_otorgable",
     "lineas_recibo",
     "resumen_costo_empleador",
 ]

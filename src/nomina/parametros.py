@@ -38,7 +38,6 @@ VALORES_POR_DEFECTO: dict[str, Any] = {
     "dias_bono_vacacional": 15,
     "dias_prestaciones_por_ano": 30,
     "dias_preaviso": 30,
-    "max_porcentaje_cuota_prestamo": 30.0,
     "salario_minimo": 0.0,
 }
 
@@ -107,7 +106,6 @@ def cargar_parametros(valores: Mapping[str, Any] | None = None) -> ParametrosNom
         dias_bono_vacacional=a_decimal(datos["dias_bono_vacacional"]),
         dias_prestaciones_por_ano=a_decimal(datos["dias_prestaciones_por_ano"]),
         dias_preaviso=a_decimal(datos["dias_preaviso"]),
-        max_porcentaje_cuota_prestamo=a_decimal(datos["max_porcentaje_cuota_prestamo"]),
         salario_minimo=a_decimal(datos["salario_minimo"]),
     )
 
@@ -152,9 +150,6 @@ def validar_parametros(parametros: ParametrosNomina) -> list[str]:
 
     if parametros.horas_jornada_diaria <= CERO:
         errores.append("horas_jornada_diaria: debe ser mayor que 0")
-
-    if parametros.max_porcentaje_cuota_prestamo < CERO:
-        errores.append("max_porcentaje_cuota_prestamo: no puede ser negativo")
 
     tramos = parametros.tramos_ordenados
     if parametros.usa_tramos and not tramos:

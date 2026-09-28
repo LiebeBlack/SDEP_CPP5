@@ -171,7 +171,7 @@ DOCUMENTS_MANIFEST = [
         "id": "guia-usuario",
         "file": "GUIA_USUARIO.md",
         "title": "Guía de Usuario y Manual Operativo",
-        "subtitle": "Manual paso a paso para empleados, documentos, incidencias, asistencia, contratos, préstamos y nómina.",
+        "subtitle": "Manual paso a paso para empleados, documentos, incidencias, contratos y nómina.",
         "category": "Documentación Técnica",
         "order": 16,
         "badge": "Manual",

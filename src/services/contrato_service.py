@@ -38,7 +38,6 @@ from src.repositories import (
     ContratoRepository,
     EmpleadoRepository,
     IncidenciaRepository,
-    PrestamoRepository,
 )
 from src.utils.audit_logger import AuditEventType, get_audit_logger
 from src.utils.helpers import parse_date
@@ -61,7 +60,6 @@ class ContratoService:
         self.repository = ContratoRepository(session)
         self.empleado_repository = EmpleadoRepository(session)
         self.incidencia_repository = IncidenciaRepository(session)
-        self.prestamo_repository = PrestamoRepository(session)
         self.config_repository = ConfiguracionRepository(session)
 
     # ------------------------------------------------------------------
@@ -339,9 +337,9 @@ class ContratoService:
         """
         Calcula el finiquito de un empleado
 
-        Reúne el salario, las fechas de servicio, las vacaciones
+        Reúne el salario, las fechas de servicio y las vacaciones
         pendientes (descontando las ya disfrutadas por incidencias
-        aprobadas) y los anticipos por cobrar.
+        aprobadas).
         """
         empleado = self.empleado_repository.get_by_id(empleado_id)
         if not empleado:
@@ -370,9 +368,6 @@ class ContratoService:
                 fecha_ingreso=ingreso,
                 fecha_egreso=egreso,
                 dias_vacaciones_pendientes=pendientes,
-                anticipos_pendientes=a_decimal(
-                    self.prestamo_repository.get_saldo_total(empleado_id)
-                ),
                 motivo=motivo,
             ),
             parametros,
@@ -410,9 +405,10 @@ class ContratoService:
         Registra el pago de la liquidación
 
         Se guarda como un pago de tipo liquidación donde el bruto son las
-        asignaciones y las deducciones corresponden a los anticipos. Los
-        aportes de seguridad social se envían explícitamente en cero
-        porque una liquidación no es salario sujeto a esos aportes.
+        asignaciones y las deducciones corresponden a los descuentos
+        registrados. Los aportes de seguridad social se envían
+        explícitamente en cero porque una liquidación no es salario sujeto
+        a esos aportes.
         """
         from src.services.pago_service import PagoService
 
@@ -458,7 +454,7 @@ class ContratoService:
         Marca como vencidos los contratos cuya fecha de fin ya pasó
 
         Se ejecuta al abrir el módulo de contratos y en el arranque, para
-        que las alertas y los reportes reflejen siempre la realidad.
+        que los reportes reflejen siempre la realidad.
         """
         actualizados = 0
         for contrato in self.repository.get_vencidos():

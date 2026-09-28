@@ -32,10 +32,7 @@ from src.gui.frames import (
     NominaFrame,
     ConfiguracionFrame,
 )
-from src.gui.asistencia_frame import AsistenciaFrame
 from src.gui.contratos_frame import ContratosFrame
-from src.gui.prestamos_frame import PrestamosFrame
-from src.gui.alertas_frame import AlertasFrame
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +42,8 @@ MODULOS = [
     ("empleados", "Empleados", "👥"),
     ("documentos", "Documentos", "📁"),
     ("incidencias", "Incidencias", "📅"),
-    ("asistencia", "Asistencia", "📋"),
     ("contratos", "Contratos", "📜"),
-    ("prestamos", "Préstamos", "🏦"),
     ("nomina", "Nómina", "💰"),
-    ("alertas", "Alertas", "🔔"),
     ("configuracion", "Configuración", "⚙️"),
 ]
 
@@ -58,11 +52,8 @@ TITULOS_VENTANA = {
     "empleados": "Gestión de Empleados",
     "documentos": "Gestión Documental",
     "incidencias": "Incidencias y Permisos",
-    "asistencia": "Control de Asistencia",
     "contratos": "Contratos Laborales",
-    "prestamos": "Anticipos y Préstamos",
     "nomina": "Nómina y Pagos",
-    "alertas": "Alertas del Sistema",
     "configuracion": "Configuración",
 }
 
@@ -71,11 +62,8 @@ FRAME_CLASSES: dict[str, type[ctk.CTkFrame]] = {
     "empleados": EmpleadosFrame,
     "documentos": DocumentosFrame,
     "incidencias": IncidenciasFrame,
-    "asistencia": AsistenciaFrame,
     "contratos": ContratosFrame,
-    "prestamos": PrestamosFrame,
     "nomina": NominaFrame,
-    "alertas": AlertasFrame,
     "configuracion": ConfiguracionFrame,
 }
 
@@ -127,6 +115,10 @@ class MainWindow(ctk.CTk):
         # de la aplicación a mitad de una copia de la base de datos.
         self._backup_en_curso = threading.Event()
         self._backup_timer: str | None = None
+        # Identificador del reloj de la barra de estado: se cancela en
+        # _cleanup para no dejar una tarea programada sobre una ventana que
+        # ya se destruyó.
+        self._clock_timer: str | None = None
 
         # Resultados del respaldo automático: el hilo de respaldo encola el
         # evento y este hilo principal muestra el aviso al usuario.
@@ -408,7 +400,7 @@ class MainWindow(ctk.CTk):
 
             if hasattr(self, "datetime_label") and self.datetime_label.winfo_exists():
                 self.datetime_label.configure(text=datetime.now().strftime("%Y-%m-%d %H:%M"))
-                self.after(30000, self._update_clock)
+                self._clock_timer = self.after(30000, self._update_clock)
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
 
@@ -421,11 +413,8 @@ class MainWindow(ctk.CTk):
         "EmpleadosFrame": "_load_empleados",
         "DocumentosFrame": "_load_documentos",
         "IncidenciasFrame": "_load_data",
-        "AsistenciaFrame": "_load_data",
         "ContratosFrame": "_load_data",
-        "PrestamosFrame": "_load_data",
         "NominaFrame": "_load_pagos",
-        "AlertasFrame": "_load_data",
         "ConfiguracionFrame": "_load_configuracion",
     }
 
@@ -434,9 +423,7 @@ class MainWindow(ctk.CTk):
         "EmpleadosFrame": "_on_new_empleado",
         "DocumentosFrame": "_on_new_documento",
         "IncidenciasFrame": "_on_new_incidencia",
-        "AsistenciaFrame": "_nueva_jornada",
         "ContratosFrame": "_nuevo_contrato",
-        "PrestamosFrame": "_nueva_solicitud",
         "NominaFrame": "_on_new_pago",
         "ConfiguracionFrame": "_on_new_usuario",
     }
@@ -460,12 +447,19 @@ class MainWindow(ctk.CTk):
         self.bind("<Control-f>", lambda e: self._enfocar_busqueda())
         self.bind("<Control-s>", lambda e: self._atajo_guardar())
         self.bind("<Escape>", lambda e: self._atajo_escape())
-        # Navegación directa a cada módulo con Ctrl+1..9 y Ctrl+0 para el
-        # décimo: Tk no admite secuencias como <Control-10>.
-        teclas = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
-        for tecla, (frame_name, _titulo, _icono) in zip(teclas, MODULOS):
+        # Navegación directa a cada módulo con Ctrl+1..N, en el mismo orden
+        # que MODULOS. La numeración se deriva de la propia lista para que
+        # las teclas y los módulos no puedan desincronizarse.
+        for indice, (frame_name, _titulo, _icono) in enumerate(MODULOS, start=1):
+            if indice > 9:
+                logger.warning(
+                    "MODULOS supera los nueve atajos directos; %s solo es "
+                    "accesible desde la barra lateral",
+                    frame_name,
+                )
+                break
             self.bind(
-                f"<Control-Key-{tecla}>",
+                f"<Control-Key-{indice}>",
                 lambda e, fn=frame_name: self._show_frame(fn),
             )
 
@@ -568,12 +562,11 @@ class MainWindow(ctk.CTk):
         texto = (
             "GUÍA RÁPIDA\n"
             "===========\n\n"
-            "Módulos del sistema (barra lateral o Ctrl+1 a Ctrl+0):\n"
+            "Módulos del sistema (barra lateral o Ctrl+1 a Ctrl+7):\n"
             "  Ctrl+1  Dashboard      Ctrl+2  Empleados\n"
             "  Ctrl+3  Documentos     Ctrl+4  Incidencias\n"
-            "  Ctrl+5  Asistencia     Ctrl+6  Contratos\n"
-            "  Ctrl+7  Préstamos      Ctrl+8  Nómina\n"
-            "  Ctrl+9  Alertas        Ctrl+0  Configuración\n\n"
+            "  Ctrl+5  Contratos      Ctrl+6  Nómina\n"
+            "  Ctrl+7  Configuración\n\n"
             "Atajos generales:\n"
             "  Ctrl+N   Nuevo registro en el módulo activo\n"
             "  Ctrl+F   Buscar / enfocar filtro\n"
@@ -774,6 +767,12 @@ class MainWindow(ctk.CTk):
         self.destroy()
 
     def _cleanup(self):
+        if getattr(self, "_clock_timer", None) is not None:
+            try:
+                self.after_cancel(self._clock_timer)
+            except Exception:
+                logger.debug("operación de interfaz ignorada", exc_info=True)
+            self._clock_timer = None
         try:
             if self.session is not None:
                 db_config.close_session(self.session)

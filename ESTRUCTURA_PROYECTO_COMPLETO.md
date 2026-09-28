@@ -105,7 +105,7 @@
 ```
 SDEP_CPP5/
 ├── docs/                 # Documentación
-├── src/                  # Código fuente (estructura real, versión 2.82)
+├── src/                  # Código fuente (estructura real, versión 3.0.0)
 │   ├── __init__.py
 │   ├── config/           # Configuración y siembra de parámetros
 │   │   ├── settings.py
@@ -113,31 +113,25 @@ SDEP_CPP5/
 │   ├── gui/              # Interfaz gráfica
 │   │   ├── main_window.py     # Ventana principal, módulos y permisos
 │   │   ├── frames.py          # Módulos históricos (empleados, documentos…)
-│   │   ├── asistencia_frame.py
 │   │   ├── contratos_frame.py
-│   │   ├── prestamos_frame.py
-│   │   ├── alertas_frame.py
-│   │   ├── alertas_panel.py   # Panel de alertas del Dashboard
 │   │   ├── login_window.py
 │   │   ├── theme.py           # Paleta clara/oscura y estilos ttk
 │   │   └── widgets/           # Gráficos (barras, dona, línea) y KPIs
 │   ├── models/           # Modelos de datos (SQLAlchemy 2.x)
 │   │   ├── empleado.py, documento.py, incidencia.py, pago.py
-│   │   ├── horario.py, asistencia.py, contrato.py, prestamo.py
+│   │   ├── contrato.py
 │   │   └── configuracion.py, usuario.py, enums.py, base.py
 │   ├── nomina/           # Motor de cálculo puro (sin BD ni interfaz)
 │   │   ├── tipos.py, parametros.py, motor.py
 │   │   ├── isr.py, seguridad_social.py, horas_extra.py
-│   │   └── prestaciones.py, prestamos.py, finiquito.py
+│   │   └── prestaciones.py, finiquito.py
 │   ├── repositories/     # Acceso a datos (repositorio genérico + dominio)
 │   ├── services/         # Lógica de negocio por dominio
 │   │   ├── empleado, documento, incidencia, pago y configuración
-│   │   ├── asistencia, contrato y prestamo
-│   │   ├── alerta_service.py  # Alertas accionables
+│   │   ├── contrato
 │   │   └── auth_service.py    # Usuarios y política de credenciales
 │   ├── utils/            # Utilidades transversales
 │   │   ├── helpers.py, validators.py, security.py
-│   │   ├── jornada.py         # Cálculos de jornada laboral
 │   │   ├── pdf_generator.py   # Reportes y recibos PDF
 │   │   ├── exporter.py        # Exportación Excel/CSV (multihoja)
 │   │   ├── audit_logger.py    # Auditoría

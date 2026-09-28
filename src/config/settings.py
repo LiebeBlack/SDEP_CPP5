@@ -27,7 +27,7 @@ load_dotenv()
 # Nombre de la carpeta de datos cuando la app está instalada en Windows
 APP_DATA_DIR_NAME = "SistemaGestionPersonal"
 
-APP_VERSION_DEFAULT = "2.82"
+APP_VERSION_DEFAULT = "3.0.0"
 
 # Información de compilación incrustada en el build (generada por build.py
 # o por el CI como src/config/build_info.py). En desarrollo, sin ese archivo,
@@ -261,6 +261,14 @@ class Settings:
         """Escribe un valor en config.json de forma atómica"""
         datos = self.load_config_json()
         datos[clave] = valor
+        return self.save_config_json(datos)
+
+    def delete_config_value(self, clave: str) -> bool:
+        """Elimina una clave de config.json (False si no existía)"""
+        datos = self.load_config_json()
+        if clave not in datos:
+            return False
+        datos.pop(clave, None)
         return self.save_config_json(datos)
 
     def get_document_path(self, filename: str) -> str:

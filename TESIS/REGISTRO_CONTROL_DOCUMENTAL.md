@@ -12,7 +12,7 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 |---------|------------------|
 | 1.0.4 | Versión sobre la que se ejecutó la medición de cobertura de pruebas que se conserva como referencia en el Anexo 7 |
 | 2.79 | Versión en la que se documentó por primera vez la suite de 323 pruebas, la autenticación con roles y los módulos iniciales |
-| 2.82 | Versión vigente al momento de esta revisión: diez módulos funcionales, motor de nómina, dominio de asistencia, contratación y préstamos, y 453 funciones de prueba |
+| 3.0.0 | Versión vigente al momento de esta revisión: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 386 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración |
 
 ## 3. INVENTARIO DOCUMENTAL Y ESTADO
 
@@ -23,7 +23,7 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 | Capítulo I | `CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md` | Reestructurado | Diagnóstico anclado en instrumentos y literatura; tiempos verbales coherentes con el trabajo realizado |
 | Capítulo II | `CAPITULO_II_MARCO_TEORICO.md` | Actualizado | Citas armonizadas con la lista de referencias; modelo conceptual alineado con la arquitectura real |
 | Capítulo III | `CAPITULO_III_METODOLOGIA.md` | Reestructurado | Distingue fases ejecutadas y pendientes; respaldo metodológico citado |
-| Capítulo IV | `CAPITULO_IV_RESULTADOS.md` | Reestructurado | Datos verificados sobre la versión 2.82; estructura de registro para la evidencia del piloto |
+| Capítulo IV | `CAPITULO_IV_RESULTADOS.md` | Reestructurado | Datos verificados sobre la versión 3.0.0; estructura de registro para la evidencia del piloto |
 | Capítulo V | `CAPITULO_V_CONCLUSIONES.md` | Reestructurado | Conteos actualizados; conclusiones ajustadas al estatuto de la evidencia disponible |
 | Bibliografía y anexos | `BIBLIOGRAFIA_ANEXOS.md` | Reestructurado | Referencias verificables; anexos alineados con el sistema real |
 | Índice general | `INDICE_GENERAL.md` | Reestructurado | Resumen, abstract e inventario actualizados; control de datos pendientes |
@@ -38,16 +38,17 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 
 | Verificación | Procedimiento | Resultado |
 |--------------|---------------|-----------|
-| Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 2.82 en ambos archivos |
-| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 27 534 líneas en 73 archivos |
+| Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 3.0.0 en ambos archivos |
+| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 22 013 líneas en 59 archivos |
 | Distribución por capa | Recuento por directorio | Consignada en la Tabla 4.1 del Capítulo IV |
-| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 453 funciones en 24 archivos |
+| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 386 funciones en 20 archivos |
 | Distribución de pruebas por archivo | Recuento por archivo | Consignada en la Tabla 4.7 del Capítulo IV |
-| Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Diez tablas |
-| Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Diez módulos con atajos `Ctrl+1` a `Ctrl+0` |
+| Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Siete tablas |
+| Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Siete módulos con atajos `Ctrl+1` a `Ctrl+7` |
 | Matriz de acceso por rol | Lectura de `PermissionChecker` en `src/utils/security.py` | Consignada en la Tabla 4.6 del Capítulo IV |
 | Parámetros de seguridad | Lectura de `SecurityValidator` | PBKDF2-HMAC-SHA256, 200 000 iteraciones, sal de 16 bytes |
-| Generación documental | Recuento de métodos de generación en `src/utils/pdf_generator.py` | Catorce tipos de documento |
+| Generación documental | Recuento de métodos de generación en `src/utils/pdf_generator.py` | Doce tipos de documento |
+| Retiro de módulos | Verificación de la ausencia de modelos, tablas y claves de configuración de asistencia, préstamos y alertas | Sin referencias residuales en `src/`; purga de esquema y de parámetros al arrancar |
 | Correspondencia entre citas y bibliografía | Revisión cruzada de las citas del cuerpo con la lista de referencias | Sin citas huérfanas ni entradas sin uso |
 | Correspondencia con el portal de documentación | Comparación byte a byte de cada documento con su copia de `docs/content/` y recuento de las entradas declaradas en el catálogo del portal | 20 documentos sincronizados: 13 académicos y 7 técnicos |
 
@@ -55,7 +56,7 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 
 Se relacionan los elementos cuya incorporación depende de mediciones aún no realizadas. Ninguno de ellos se declara cumplido en el informe.
 
-1. Cobertura de pruebas re-medida sobre la versión 2.82 e informe de la última ejecución de la suite, con número de pruebas, resultado y fecha.
+1. Cobertura de pruebas re-medida sobre la versión 3.0.0 e informe de la última ejecución de la suite, con número de pruebas, resultado y fecha.
 2. Resultados de las pruebas de rendimiento y de carga previstas en el apartado 4.3.3.
 3. Resultados de las pruebas de usabilidad con sus mediciones de tiempo, éxito, errores y valoración.
 4. Resultados de las encuestas de satisfacción y cálculo del coeficiente alfa de Cronbach.
@@ -86,4 +87,4 @@ Este registro debe actualizarse cada vez que se modifique un documento del exped
 
 **Responsable del registro:** [Nombre del Estudiante]
 **Última revisión:** [Fecha]
-**Versión del sistema documentado:** 2.82
+**Versión del sistema documentado:** 3.0.0

@@ -38,17 +38,8 @@ Este sistema proporciona una solución integral para la administración de recur
 - Horas extra con recargo por jornada (diurna, nocturna y feriada)
 - Prestaciones: aguinaldo, bono vacacional, prestaciones por antigüedad,
   indemnización y preaviso proportional al tiempo servido
-- Descuento automático de la cuota del préstamo respetando el tope sobre
-  el neto del empleado
 - Generación de recibos de pago y planilla de nómina en PDF
 - Control de pagos pendientes y realizados
-
-### Control de Asistencia
-- Registro de jornadas con cálculo de horas trabajadas y tardanzas
-- Horarios por empleado y día de la semana (jornada diurna, nocturna o mixta)
-- Horas extra clasificadas por recargo, incluidos feriados y días de descanso
-- Ausencias justificadas automaticamente desde las incidencias aprobadas
-- Reporte PDF de asistencia por período y exportación a Excel
 
 ### Contratos Laborales
 - Alta de contratos (indefinido, temporal, por obra o pasantía)
@@ -57,18 +48,8 @@ Este sistema proporciona una solución integral para la administración de recur
 - Control de contratos por vencer y vencidos
 - Reporte PDF de contratos
 
-### Anticipos y Préstamos
-- Solicitud, aprobación o rechazo y seguimiento del saldo por cuotas
-- Tope de descuento configurable sobre el salario y sobre el neto de la nómina
-- Plan de pagos cuota por cuota y descuento automático en el pago
-- Reporte PDF de la cartera
-
-### Alertas del Sistema
-- Alertas accionables con severidad y acceso directo al módulo donde se resuelven
-- Cubren vencimientos, contratos, asistencia, pendientes, respaldos y credenciales
-
 ### Panel Analítico
-- Indicadores clave: nómina del mes, ausentismo, contratos por vencer y saldo por cobrar
+- Indicadores clave: nómina del mes, contratos por vencer y dotación activa
 - Gráficos de barras, dona y línea dibujados sobre Canvas (sin dependencias nuevas)
 
 ### Generación de Documentos y Exportación
@@ -77,8 +58,8 @@ Este sistema proporciona una solución integral para la administración de recur
 - Recibos de pago
 - Reportes de empleados
 - Planilla de nómina por periodo con totales (ISSS, AFP, ISR, neto)
-- Reporte de incidencias y control de vencimientos de documentos
-- Reportes de **asistencia**, **contratos**, **préstamos** y **alertas**
+- Reporte de incidencias, control de vencimientos de documentos y
+  reporte de **contratos**
 - Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel),
   incluida la exportación multihoja
 
@@ -95,7 +76,7 @@ Este sistema proporciona una solución integral para la administración de recur
 - Tema **oscuro/claro** configurable y persistente (botón ☀️/🌙 en la cabecera)
 - Atajos de teclado para navegar y operar más rápido
 - Panel de control (Dashboard) con tarjetas estadísticas navegables,
-  indicadores analíticos, gráficos propios y panel de alertas
+  indicadores analíticos y gráficos propios
 - Ventanas integradas de **Ayuda** (guía rápida) y **Acerca de**
 - Barra de estado con reloj y mensajes de la aplicación
 - Soporte de alta resolución (DPI) en Windows
@@ -132,7 +113,7 @@ La integración continua se reparte entre dos workflows complementarios.
 
 **`.github/workflows/build.yml`** (integración y empaquetado):
 
-1. **Pruebas**: ejecuta la suite completa de pytest sobre los 24 archivos de
+1. **Pruebas**: ejecuta la suite completa de pytest sobre los 20 archivos de
    `tests/` en cada push a `main` o `develop`.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
@@ -172,8 +153,8 @@ git push origin main
 
 Para una release versionada (opcional):
 ```bash
-git tag v2.82
-git push origin v2.82
+git tag v3.0.0
+git push origin v3.0.0
 ```
 
 ## 🔧 Instalación
@@ -319,7 +300,7 @@ El sistema utiliza SQLite como base de datos local. La base de datos se crea aut
 
 | Atajo | Acción |
 | --- | --- |
-| `Ctrl+1` … `Ctrl+6` | Ir al módulo 1 (Dashboard) … 6 (Configuración) |
+| `Ctrl+1` … `Ctrl+7` | Ir al módulo 1 (Dashboard) … 7 (Configuración) |
 | `Ctrl+N` | Nuevo registro en el módulo activo |
 | `Ctrl+F` | Buscar / enfocar el filtro del módulo activo |
 | `Ctrl+S` | Guardar cambios (Configuración) |
@@ -445,5 +426,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 2.82  
+**Versión**: 3.0.0  
 **Última actualización**: 2026

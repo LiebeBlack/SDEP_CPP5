@@ -21,7 +21,6 @@ from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
 from src.utils.audit_logger import audit_logger, AuditEventType
 from src.services.auth_service import AuthService, LONGITUD_MINIMA_PASSWORD
-from src.gui.alertas_panel import PanelAlertas
 from src.gui.theme import COLORES
 from src.gui.widgets import GraficoBarras, GraficoDona, GraficoLinea, TarjetaIndicador
 
@@ -188,8 +187,8 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _create_widgets(self):
         """Crea los widgets del dashboard"""
-        # El panel reúne indicadores, gráficos y alertas: necesita
-        # desplazamiento para caber en ventanas pequeñas.
+        # El panel reúne indicadores y gráficos: necesita desplazamiento
+        # para caber en ventanas pequeñas.
         contenedor = ctk.CTkScrollableFrame(self, fg_color="transparent")
         contenedor.pack(fill="both", expand=True)
 
@@ -225,7 +224,6 @@ class DashboardFrame(ctk.CTkFrame):
         # Indicadores analíticos y gráficos
         self._crear_indicadores(contenedor)
         self._crear_graficos(contenedor)
-        self._crear_alertas(contenedor)
 
         # Sección de acciones rápidas
         actions_frame = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
@@ -252,9 +250,6 @@ class DashboardFrame(ctk.CTkFrame):
         def go_to_nomina():
             self.main_window._show_frame("nomina")
 
-        def go_to_asistencia():
-            self.main_window._show_frame("asistencia")
-
         def go_to_contratos():
             self.main_window._show_frame("contratos")
 
@@ -263,7 +258,6 @@ class DashboardFrame(ctk.CTkFrame):
             ("Ir a Empleados", go_to_empleados, "empleados"),
             ("Ir a Documentos", go_to_documentos, "documentos"),
             ("Ir a Incidencias", go_to_incidencias, "incidencias"),
-            ("Ir a Asistencia", go_to_asistencia, "asistencia"),
             ("Ir a Contratos", go_to_contratos, "contratos"),
             ("Ir a Nómina", go_to_nomina, "nomina"),
         ]
@@ -289,9 +283,8 @@ class DashboardFrame(ctk.CTkFrame):
         self.indicadores: dict[str, TarjetaIndicador] = {}
         definiciones = [
             ("nomina_mes", "Nómina del mes", "💵", "nomina"),
-            ("ausentismo", "Ausentismo del mes", "📉", "asistencia"),
             ("por_vencer", "Contratos por vencer", "📜", "contratos"),
-            ("prestamos", "Saldo por cobrar", "🏦", "prestamos"),
+            ("dotacion", "Dotación activa", "👥", "empleados"),
         ]
         for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
             tarjeta = TarjetaIndicador(
@@ -326,11 +319,6 @@ class DashboardFrame(ctk.CTkFrame):
 
         for columna in range(3):
             marco.grid_columnconfigure(columna, weight=1)
-
-    def _crear_alertas(self, contenedor) -> None:
-        """Crea el panel de alertas accionables"""
-        self.panel_alertas = PanelAlertas(contenedor, self.main_window, maximo=4)
-        self.panel_alertas.pack(fill="x", padx=20, pady=6)
 
     def _navegar(self, modulo: str) -> None:
         """Navega a un módulo si el rol lo permite"""
@@ -454,21 +442,6 @@ class DashboardFrame(ctk.CTkFrame):
             self.indicadores["nomina_mes"].establecer_valor("Sin datos", "sin pagos registrados")
 
         try:
-            from src.services import AsistenciaService
-
-            stats = AsistenciaService(self.main_window.session).obtener_estadisticas(
-                inicio_mes, hoy
-            )
-            self.indicadores["ausentismo"].establecer_valor(
-                f"{float(stats.get('ausentismo_porcentaje', 0)):.1f}%",
-                f"{int(stats.get('faltas', 0))} falta(s) de "
-                f"{int(stats.get('total_registros', 0))} registro(s)",
-            )
-        except Exception:
-            logger.debug("Sin datos de asistencia para el panel", exc_info=True)
-            self.indicadores["ausentismo"].establecer_valor("—", "sin registros")
-
-        try:
             from src.services import ContratoService
 
             servicio = ContratoService(self.main_window.session)
@@ -482,16 +455,14 @@ class DashboardFrame(ctk.CTkFrame):
             self.indicadores["por_vencer"].establecer_valor("—", "sin datos")
 
         try:
-            from src.services import PrestamoService
-
-            stats = PrestamoService(self.main_window.session).obtener_estadisticas()
-            self.indicadores["prestamos"].establecer_valor(
-                format_currency(float(stats.get("saldo_pendiente", 0))),
-                f"{int(stats.get('activos', 0))} operación(es) activa(s)",
+            stats = self.main_window.empleado_service.obtener_estadisticas()
+            self.indicadores["dotacion"].establecer_valor(
+                str(int(stats.get("total", 0))),
+                f"{int(stats.get('activos', 0))} empleado(s) activo(s)",
             )
         except Exception:
-            logger.debug("Sin datos de préstamos para el panel", exc_info=True)
-            self.indicadores["prestamos"].establecer_valor("Sin datos", "sin operaciones")
+            logger.debug("Sin datos de empleados para el panel", exc_info=True)
+            self.indicadores["dotacion"].establecer_valor("—", "sin datos")
 
     def _cargar_graficos(self) -> None:
         """Actualiza los tres gráficos del panel"""

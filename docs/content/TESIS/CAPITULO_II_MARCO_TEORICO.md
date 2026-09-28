@@ -121,7 +121,7 @@ Según Johnson, Carlson y Kavanagh (2021), los sistemas de gestión de recursos 
 - **Gestión de Beneficios:** Administración de seguros, pensiones y otros beneficios.
 - **Reportes y Analíticas:** Generación de reportes para toma de decisiones.
 
-El sistema desarrollado implementa estos componentes adaptados al contexto educativo, con la salvedad de que la gestión de beneficios se limita a las prestaciones y deducciones previstas en la normativa laboral de aplicación.
+El sistema desarrollado implementa estos componentes adaptados al contexto educativo, con dos salvedades: la gestión de beneficios se limita a las prestaciones y deducciones previstas en la normativa laboral de aplicación, y el control de tiempo se resuelve mediante el registro de incidencias y permisos, sin módulo de marcaje horario.
 
 #### 2.3.2.2 Sistemas de Información Educativa
 
@@ -156,7 +156,7 @@ La programación orientada a objetos es un paradigma que organiza el software en
 - **Polimorfismo:** Capacidad de objetos de diferentes tipos de responder al mismo mensaje.
 - **Abstracción:** Representación simplificada de entidades complejas.
 
-El sistema emplea este paradigma para modelar las entidades del dominio —empleado, documento, incidencia, asistencia, contrato, préstamo, pago, horario, configuración y usuario— y las relaciones que las vinculan.
+El sistema emplea este paradigma para modelar las entidades del dominio —empleado, documento, incidencia, contrato, pago, configuración y usuario— y las relaciones que las vinculan.
 
 #### 2.3.3.2 Bases de Datos Relacionales
 
@@ -243,7 +243,7 @@ El sistema debe cumplir con las normativas laborales vigentes en la jurisdicció
 - **Permisos y licencias:** Cumplimiento de normativas sobre diferentes tipos de permisos y licencias.
 - **Retención de registros:** Mantenimiento de registros por los períodos requeridos legalmente.
 
-El sistema contribuye al cumplimiento de estas disposiciones mediante el cálculo parametrizado, el registro de jornada y el control de vencimientos documentales.
+El sistema contribuye al cumplimiento de estas disposiciones mediante el cálculo parametrizado, el registro de incidencias y el control de vencimientos documentales.
 
 ### 2.4.3 Normativas Educativas
 
@@ -254,7 +254,7 @@ Las instituciones educativas están sujetas a normativas específicas que afecta
 - **Reportes obligatorios:** Información que debe reportarse a autoridades educativas.
 - **Estándares de calidad:** Normativas sobre calidad de servicios educativos.
 
-El sistema contribuye al cumplimiento de estas disposiciones mediante el control documental con alertas de vencimiento y la generación de los reportes previstos en la configuración institucional.
+El sistema contribuye al cumplimiento de estas disposiciones mediante el control documental con avisos de vencimiento y la generación de los reportes previstos en la configuración institucional.
 
 ### 2.4.4 Estándares de Seguridad Informática
 
@@ -331,38 +331,38 @@ El Sistema de Gestión de Personal y Nómina se organiza conforme al modelo conc
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │ CAPA DE PRESENTACIÓN · CustomTkinter                                   │
-│ LoginWindow · MainWindow · diez módulos con acceso por rol y atajos    │
-│ Ctrl+1 … Ctrl+0: panel de control, empleados, documentos, incidencias, │
-│ asistencia, contratos, préstamos, nómina, alertas y configuración      │
+│ LoginWindow · MainWindow · siete módulos con acceso por rol y atajos   │
+│ Ctrl+1 … Ctrl+7: panel de control, empleados, documentos, incidencias, │
+│ contratos, nómina y configuración                                      │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ CAPA DE SERVICIOS · reglas de negocio y orquestación de flujos         │
-│ autenticación · empleados · documentos · incidencias · asistencia ·    │
-│ contratos · préstamos · nómina · alertas · configuración               │
+│ autenticación · empleados · documentos · incidencias · contratos ·     │
+│ nómina · configuración                                                 │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ CAPA DE REPOSITORIOS · patrón Repository sobre repositorio base        │
-│ diez repositorios concretos con consultas reutilizables y transacciones│
+│ siete repositorios con consultas reutilizables y transacciones         │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ CAPA DE MODELOS · SQLAlchemy ORM                                       │
-│ empleados · documentos · incidencias · asistencias · contratos ·       │
-│ prestamos · pagos · horarios · configuraciones · usuarios              │
+│ empleados · documentos · incidencias · contratos · pagos ·             │
+│ configuraciones · usuarios                                             │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ DOMINIO DE NÓMINA · cálculo aislado de la interfaz y del acceso a datos│
 │ motor · parámetros · impuesto sobre la renta · horas extra ·           │
-│ prestaciones · seguridad social · préstamos · finiquito                │
+│ prestaciones · seguridad social · finiquito                            │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ SERVICIOS TRANSVERSALES · seguridad, trazabilidad y sostenibilidad     │
 │ security · audit_logger · backup_manager · backup_scheduler ·          │
-│ pdf_generator · document_manager · exporter · jornada · validators ·   │
+│ pdf_generator · document_manager · exporter · validators ·             │
 │ helpers · actualizador automático                                      │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
@@ -371,7 +371,7 @@ El Sistema de Gestión de Personal y Nómina se organiza conforme al modelo conc
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-*Fuente: elaboración propia a partir de la arquitectura implementada en `src/`, versión 2.82.*
+*Fuente: elaboración propia a partir de la arquitectura implementada en `src/`, versión 3.0.0.*
 
 ### 2.6.2 Relaciones entre Componentes
 

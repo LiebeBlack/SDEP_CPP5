@@ -4,13 +4,11 @@ Pruebas del motor de cálculo de nómina
 El motor es código puro (no toca la base de datos ni la interfaz), así que
 estas pruebas fijan las fórmulas: modalidad porcentual histórica, tabla
 progresiva de ISR, topes de seguridad social, horas extra con recargo,
-prorrateo, prestaciones y amortización de préstamos.
+prorrateo, prestaciones y finiquito.
 """
 
 from datetime import date
 from decimal import Decimal
-
-import pytest
 
 from src.models.enums import ModoCalculoNomina
 from src.nomina import (
@@ -23,12 +21,10 @@ from src.nomina import (
     TramoISR,
     a_decimal,
     antiguedad_en_anos,
-    aplicar_descuento,
     calcular_aguinaldo,
     calcular_finiquito,
     calcular_isr,
     calcular_isr_anual,
-    calcular_monto_cuota,
     calcular_monto_horas_extra,
     calcular_nomina,
     calcular_preaviso,
@@ -38,16 +34,12 @@ from src.nomina import (
     calcular_vacaciones,
     cargar_parametros,
     construir_tramos,
-    cuota_a_descontar,
     dias_vacaciones_pendientes,
     lineas_recibo,
-    monto_maximo_otorgable,
-    plan_de_pagos,
     redondear,
     resumen_costo_empleador,
     tramo_aplicable,
     validar_parametros,
-    validar_solicitud,
     valor_hora_ordinaria,
     valor_hora_por_jornada,
 )
@@ -177,18 +169,6 @@ def test_aguinaldo_y_bono_entran_al_bruto_y_a_las_deducciones():
     assert resultado.monto_bruto == Decimal("1750.00")
     assert resultado.deduccion_seguro == Decimal("45.00")
     assert resultado.monto_neto == Decimal("1655.00")
-
-
-def test_la_cuota_del_prestamo_se_descuenta_del_neto():
-    resultado = calcular_nomina(
-        EntradaNomina(
-            salario_base=Decimal("1000.00"),
-            cuota_prestamo=Decimal("100.00"),
-        )
-    )
-    assert resultado.deduccion_prestamo == Decimal("100.00")
-    assert resultado.monto_neto == Decimal("805.00")
-    assert resultado.to_dict()["deduccion_prestamo"] == 100.0
 
 
 # ----------------------------------------------------------------------
@@ -345,14 +325,12 @@ def test_finiquito_de_dos_anos_incluye_todos_los_conceptos():
             fecha_ingreso=date(2024, 1, 1),
             fecha_egreso=date(2026, 1, 1),
             dias_vacaciones_pendientes=Decimal(15),
-            anticipos_pendientes=Decimal("500.00"),
             motivo="renuncia",
         ),
         ParametrosNomina(),
     )
     assert finiquito.anos_servicio == Decimal("2.0000")
     assert finiquito.prestaciones == Decimal("6000.00")
-    assert finiquito.anticipos == Decimal("500.00")
     assert finiquito.total_asignaciones > CERO
     assert finiquito.neto == finiquito.total_asignaciones - finiquito.total_deducciones
     assert finiquito.to_dict()["motivo"] == "renuncia"
@@ -364,11 +342,9 @@ def test_finiquito_sin_fecha_de_ingreso_no_inventa_prestaciones():
             salario_mensual=Decimal("3000.00"),
             fecha_ingreso=None,
             fecha_egreso=date(2026, 1, 1),
-            anticipos_pendientes=Decimal("100.00"),
         )
     )
     assert finiquito.prestaciones == CERO
-    assert finiquito.anticipos == Decimal("100.00")
     assert finiquito.neto == CERO
 
 
@@ -381,81 +357,6 @@ def test_dias_de_vacaciones_pendientes_por_antiguedad():
         dias_ya_disfrutados=Decimal(5),
     )
     assert dias > CERO
-
-
-# ----------------------------------------------------------------------
-# Préstamos
-# ----------------------------------------------------------------------
-def test_cuota_redondea_hacia_abajo_para_no_cobrar_de_mas():
-    assert calcular_monto_cuota(Decimal("1000.00"), 3) == Decimal("333.33")
-    assert calcular_monto_cuota(Decimal("1000.00"), 0) == CERO
-
-
-def test_plan_de_pagos_suma_exactamente_el_monto():
-    plan = plan_de_pagos(Decimal("1000.00"), 3, date(2026, 1, 15))
-    assert len(plan) == 3
-    assert sum(cuota["monto"] for cuota in plan) == pytest.approx(1000.0)
-    assert plan[-1]["saldo"] == pytest.approx(0.0)
-    assert plan[0]["fecha"] == date(2026, 1, 15)
-    assert plan_de_pagos(CERO, 3) == []
-
-
-def test_la_ultima_cuota_no_excede_el_saldo():
-    assert cuota_a_descontar(Decimal("50.00"), Decimal("100.00")) == Decimal("50.00")
-    assert cuota_a_descontar(Decimal("500.00"), Decimal("100.00")) == Decimal("100.00")
-
-
-def test_aplicar_descuento_cierra_el_prestamo_cuando_llega_a_cero():
-    parcial = aplicar_descuento(
-        saldo=Decimal("500.00"),
-        cuotas_pagadas=0,
-        numero_cuotas=5,
-        descuento=Decimal("100.00"),
-        fecha=date(2026, 1, 30),
-    )
-    assert parcial["saldo"] == 400.0
-    assert parcial["cuotas_pagadas"] == 1
-    assert parcial["estado"] == "activo"
-    assert parcial["fecha_ultimo_descuento"] == date(2026, 1, 30)
-
-    final = aplicar_descuento(
-        saldo=Decimal("100.00"),
-        cuotas_pagadas=4,
-        numero_cuotas=5,
-        descuento=Decimal("100.00"),
-        fecha=date(2026, 2, 28),
-    )
-    assert final["saldo"] == 0.0
-    assert final["cuotas_pagadas"] == 5
-    assert final["estado"] == "pagado"
-
-
-def test_validacion_de_solicitud_por_tope_salarial():
-    # Cuota del 40% del salario: supera el tope del 30%
-    errores = validar_solicitud(
-        monto=Decimal("3600.00"),
-        numero_cuotas=3,
-        max_cuotas=24,
-        salario_mensual=Decimal("3000.00"),
-        max_porcentaje=Decimal("30.0"),
-    )
-    assert any("supera" in error for error in errores)
-
-    sin_errores = validar_solicitud(
-        monto=Decimal("1000.00"),
-        numero_cuotas=6,
-        max_cuotas=24,
-        salario_mensual=Decimal("3000.00"),
-    )
-    assert sin_errores == []
-
-    assert validar_solicitud(CERO, 0) != []
-    assert validar_solicitud(Decimal("100.00"), 99, max_cuotas=24) != []
-
-
-def test_monto_maximo_otorgable_respeta_el_tope():
-    assert monto_maximo_otorgable(Decimal("3000.00"), 10) == Decimal("9000.00")
-    assert monto_maximo_otorgable(CERO, 10) == CERO
 
 
 # ----------------------------------------------------------------------

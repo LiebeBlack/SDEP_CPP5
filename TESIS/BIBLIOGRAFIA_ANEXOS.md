@@ -208,52 +208,51 @@ No se incluirán entradas cuya existencia o localización no pueda comprobarse.
 
 ### 6.2.4 Anexo 4: Diagramas de Diseño del Sistema
 
-Las figuras que se presentan a continuación describen la arquitectura del sistema, su modelo de datos y los tres flujos de mayor criticidad operativa. Todas corresponden a la versión 2.82 y provienen de la implementación efectivamente desplegada en `src/`.
+Las figuras que se presentan a continuación describen la arquitectura del sistema, su modelo de datos y los tres flujos de mayor criticidad operativa. Todas corresponden a la versión 3.0.0 y provienen de la implementación efectivamente desplegada en `src/`.
 
 **Figura 6.1. Arquitectura de capas del sistema**
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │                      CAPA DE PRESENTACIÓN                    │
-│   LoginWindow · MainWindow · 10 módulos (Ctrl+1 … Ctrl+0)    │
+│   LoginWindow · MainWindow · 7 módulos (Ctrl+1 … Ctrl+7)     │
 │   Dashboard · Empleados · Documentos · Incidencias ·         │
-│   Asistencia · Contratos · Préstamos · Nómina · Alertas ·    │
-│   Configuración · tema claro/oscuro · widgets de gráficos    │
+│   Contratos · Nómina · Configuración · tema claro/oscuro ·   │
+│   widgets de gráficos                                        │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                      CAPA DE SERVICIOS                       │
-│   auth · empleado · documento · incidencia · asistencia ·    │
-│   contrato · préstamo · nómina · alerta · configuración      │
+│   auth · empleado · documento · incidencia · contrato ·      │
+│   nómina · configuración                                     │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                     CAPA DE REPOSITORIOS                     │
-│   base_repository + 10 repositorios concretos                │
+│   base_repository + 7 repositorios concretos                 │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                       CAPA DE MODELOS                        │
-│   SQLAlchemy ORM · 10 entidades y enumeraciones del dominio   │
+│   SQLAlchemy ORM · 7 entidades y enumeraciones del dominio    │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │              DOMINIO DE NÓMINA (src/nomina)                  │
 │   motor · parámetros · impuesto sobre la renta · horas extra │
-│   prestaciones · seguridad social · préstamos · finiquito    │
+│   prestaciones · seguridad social · finiquito                │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                SERVICIOS TRANSVERSALES (src/utils)           │
 │   security · audit_logger · backup_manager · exporter ·      │
-│   pdf_generator · document_manager · jornada · validators    │
+│   pdf_generator · document_manager · validators              │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                    BASE DE DATOS (SQLite)                    │
-│   empleados · documentos · incidencias · asistencias ·       │
-│   contratos · prestamos · pagos · horarios · configuraciones │
-│   · usuarios                                                 │
+│   empleados · documentos · incidencias · contratos · pagos · │
+│   configuraciones · usuarios                                 │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -262,11 +261,8 @@ Las figuras que se presentan a continuación describen la arquitectura del siste
 ```text
 empleados 1 ──── N documentos
 empleados 1 ──── N incidencias
-empleados 1 ──── N asistencias ──── N ── 1 horarios
 empleados 1 ──── N contratos
-empleados 1 ──── N prestamos
 empleados 1 ──── N pagos
-prestamos 1 ──── N pagos            (amortización de cuotas)
 configuraciones ─── parámetros del sistema (registro institucional)
 usuarios ───────── credenciales, rol y control de acceso
 ```
@@ -277,15 +273,14 @@ usuarios ───────── credenciales, rol y control de acceso
 Inicio
   └─ Seleccionar periodo
       └─ Identificar empleados activos
-          └─ Recuperar incidencias y registros de asistencia del periodo
-              └─ Determinar días y horas computables
+          └─ Recuperar las incidencias aprobadas del periodo
+              └─ Determinar días computables
                   └─ Calcular salario proporcional y horas extra con recargo
                       └─ Aplicar deducciones (seguridad social, pensión, ISR)
-                          └─ Descontar cuotas de préstamos vigentes
-                              └─ Determinar salario neto
-                                  └─ Registrar pagos del periodo
-                                      └─ Emitir recibos y planilla
-                                          └─ Fin
+                          └─ Determinar salario neto
+                              └─ Registrar pagos del periodo
+                                  └─ Emitir recibos y planilla
+                                      └─ Fin
 ```
 
 **Figura 6.4. Flujo de autenticación y control de acceso**
@@ -319,11 +314,11 @@ Inicio
                           └─ Fin
 ```
 
-*Fuente de las figuras 6.1 a 6.5: elaboración propia a partir de la implementación del sistema, versión 2.82.*
+*Fuente de las figuras 6.1 a 6.5: elaboración propia a partir de la implementación del sistema, versión 3.0.0.*
 
 ### 6.2.5 Anexo 5: Guía Resumida de Usuario
 
-**Nota.** La versión completa y actualizada de la guía se encuentra en el archivo `GUIA_USUARIO.md` del repositorio. Este anexo presenta la versión resumida que se entrega a las instituciones participantes, referida a la versión 2.82 del sistema.
+**Nota.** La versión completa y actualizada de la guía se encuentra en el archivo `GUIA_USUARIO.md` del repositorio. Este anexo presenta la versión resumida que se entrega a las instituciones participantes, referida a la versión 3.0.0 del sistema.
 
 **1. Requisitos e instalación**
 
@@ -345,9 +340,9 @@ Al iniciar la aplicación se presenta la ventana de autenticación. El usuario i
 
 | Rol | Alcance |
 |-----|---------|
-| Administrador | Acceso a los diez módulos, configuración institucional, respaldos, auditoría y gestión de usuarios |
-| Gestor | Empleados, documentos, incidencias, asistencia, contratos, préstamos, nómina, alertas y reportes |
-| Usuario | Empleados, documentos, incidencias y asistencia, con actualización de registros propios |
+| Administrador | Acceso a los siete módulos, configuración institucional, respaldos, auditoría y gestión de usuarios |
+| Gestor | Empleados, documentos, incidencias, contratos, nómina y reportes |
+| Usuario | Empleados, documentos e incidencias, con actualización de registros propios |
 | Solo lectura | Consulta de empleados, documentos y reportes |
 
 **4. Navegación y atajos de teclado**
@@ -358,12 +353,9 @@ Al iniciar la aplicación se presenta la ventana de autenticación. El usuario i
 | `Ctrl+2` | Empleados |
 | `Ctrl+3` | Documentos |
 | `Ctrl+4` | Incidencias |
-| `Ctrl+5` | Asistencia |
-| `Ctrl+6` | Contratos |
-| `Ctrl+7` | Préstamos |
-| `Ctrl+8` | Nómina |
-| `Ctrl+9` | Alertas |
-| `Ctrl+0` | Configuración |
+| `Ctrl+5` | Contratos |
+| `Ctrl+6` | Nómina |
+| `Ctrl+7` | Configuración |
 | `Ctrl+N` | Nuevo registro en el módulo activo |
 | `Ctrl+F` | Enfocar el buscador o el filtro |
 | `Ctrl+S` | Guardar cambios en el módulo de configuración |
@@ -374,7 +366,7 @@ Además de los atajos, el sistema admite doble clic sobre una fila para abrir el
 
 **5. Operaciones por módulo**
 
-En el módulo de empleados se registran, consultan y actualizan los datos del personal, se carga la fotografía, se filtra por tipo y departamento, se genera la ficha individual en PDF y se desactiva a un empleado sin eliminar su historial. En el módulo de documentos se incorporan archivos en formato PDF o imagen con su tipo, fecha de emisión y fecha de vencimiento, se consulta el estado de vigencia y se descarga el archivo original. En el módulo de incidencias se registran las solicitudes con su tipo, fechas y motivo, se adjunta el soporte y se recorre el flujo de aprobación con registro del aprobador y su comentario. En el módulo de asistencia se registra la jornada diaria y se calculan las horas efectivas contra el horario asignado. En el módulo de contratos se conserva la relación laboral y se advierten los vencimientos y renovaciones. En el módulo de préstamos se registra el monto, el número de cuotas y el plan de amortización, cuyo descuento se aplica en la nómina. En el módulo de nómina se selecciona el periodo, se calcula la nómina, se revisan los pagos generados, se emite el recibo individual y la planilla consolidada y se registran los pagos efectivamente entregados. En el módulo de alertas se consultan los avisos de vencimiento y los pendientes de gestión. En el módulo de configuración se ajustan los datos institucionales, los parámetros de nómina, las políticas de recursos humanos, la apariencia, la contraseña del usuario, el visor de auditoría y las operaciones de respaldo y restauración.
+En el módulo de empleados se registran, consultan y actualizan los datos del personal, se carga la fotografía, se filtra por tipo y departamento, se genera la ficha individual en PDF y se desactiva a un empleado sin eliminar su historial. En el módulo de documentos se incorporan archivos en formato PDF o imagen con su tipo, fecha de emisión y fecha de vencimiento, se consulta el estado de vigencia y se descarga el archivo original. En el módulo de incidencias se registran las solicitudes con su tipo, fechas y motivo, se adjunta el soporte y se recorre el flujo de aprobación con registro del aprobador y su comentario. En el módulo de contratos se conserva la relación laboral y se advierten los vencimientos y renovaciones. En el módulo de nómina se selecciona el periodo, se calcula la nómina, se revisan los pagos generados, se emite el recibo individual y la planilla consolidada y se registran los pagos efectivamente entregados. En el módulo de configuración se ajustan los datos institucionales, los parámetros de nómina, las políticas de recursos humanos, la apariencia, la contraseña del usuario, el visor de auditoría y las operaciones de respaldo y restauración.
 
 **6. Respaldos y exportaciones**
 
@@ -389,36 +381,33 @@ El sistema permite crear, verificar, restaurar y eliminar copias de seguridad de
 | La interfaz no responde | Cerrar la aplicación y reiniciarla; verificar los recursos disponibles del equipo |
 | Contraseña olvidada | Solicitar al administrador el restablecimiento desde la gestión de usuarios |
 | Documento no admitido | Verificar que la extensión esté permitida y que el tamaño no exceda el límite configurado |
-| Documento vencido sin alerta | Verificar la fecha de vencimiento registrada y la configuración de antelación de las alertas |
+| Documento vencido sin aviso | Verificar la fecha de vencimiento registrada y el umbral de anticipación configurado para los avisos |
 
 ### 6.2.6 Anexo 6: Código Fuente del Sistema
 
-**Estructura del repositorio (versión 2.82)**
+**Estructura del repositorio (versión 3.0.0)**
 
 ```text
 SDEP_CPP5/
 ├── src/
 │   ├── config/            database.py · settings.py
 │   ├── gui/               main_window.py · frames.py · login_window.py · theme.py
-│   │                      asistencia_frame.py · contratos_frame.py
-│   │                      prestamos_frame.py · alertas_frame.py · alertas_panel.py
-│   │                      widgets/graficos.py
+│   │                      contratos_frame.py · widgets/graficos.py
 │   ├── models/            base.py · enums.py · empleado.py · documento.py
-│   │                      incidencia.py · asistencia.py · contrato.py
-│   │                      prestamo.py · horario.py · pago.py
+│   │                      incidencia.py · contrato.py · pago.py
 │   │                      configuracion.py · usuario.py
 │   ├── nomina/            motor.py · parametros.py · isr.py · horas_extra.py
 │   │                      prestaciones.py · seguridad_social.py
-│   │                      prestamos.py · finiquito.py · tipos.py
-│   ├── repositories/      base_repository.py y diez repositorios concretos
-│   ├── services/          auth · empleado · documento · incidencia · asistencia
-│   │                      contrato · prestamo · pago · alerta · configuracion
+│   │                      finiquito.py · tipos.py
+│   ├── repositories/      base_repository.py y siete repositorios concretos
+│   ├── services/          auth · empleado · documento · incidencia · contrato
+│   │                      pago · configuracion
 │   ├── utils/             security.py · audit_logger.py · backup_manager.py
 │   │                      backup_scheduler.py · document_manager.py
-│   │                      exporter.py · pdf_generator.py · jornada.py
+│   │                      exporter.py · pdf_generator.py
 │   │                      validators.py · helpers.py
 │   └── main.py            punto de entrada
-├── tests/                 veinticuatro archivos de prueba · 453 funciones
+├── tests/                 veinte archivos de prueba · 386 funciones
 ├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
 ├── installer/             configuración de instalación para Windows
 ├── docs/                  portal de documentación
@@ -498,17 +487,17 @@ class AuthService:
         return usuario_bd
 ```
 
-El código completo se encuentra en el repositorio del proyecto. Su extensión es de 27 534 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV.
+El código completo se encuentra en el repositorio del proyecto. Su extensión es de 22 013 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV.
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
-**Composición de la suite (versión 2.82)**
+**Composición de la suite (versión 3.0.0)**
 
 | Indicador | Valor |
 |-----------|-------|
-| Archivos de prueba | 24 |
-| Funciones de prueba declaradas | 453 |
-| Líneas de código de prueba | 5 371 |
+| Archivos de prueba | 20 |
+| Funciones de prueba declaradas | 386 |
+| Líneas de código de prueba | 4 364 |
 | Distribución por archivo | Tabla 4.7 del Capítulo IV |
 | Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 
@@ -527,20 +516,19 @@ El código completo se encuentra en el repositorio del proyecto. Su extensión e
 
 La cobertura de la lógica de negocio —modelos, repositorios, servicios, utilidades y configuración— alcanzó el 73 % en esa medición.
 
-**Estado de actualización de esta evidencia.** Los porcentajes anteriores corresponden a la versión 1.0.4 y se conservan como referencia. Dado que el código evolucionó hasta la versión 2.82, la cobertura debe re-medirse con `pytest --cov=src` y sustituirse en esta tabla antes de la presentación definitiva. El informe de la última ejecución de la suite, con el número de pruebas ejecutadas y su resultado, debe adjuntarse como evidencia documental.
+**Estado de actualización de esta evidencia.** Los porcentajes anteriores corresponden a la versión 1.0.4 y se conservan como referencia. Dado que el código evolucionó hasta la versión 3.0.0, la cobertura debe re-medirse con `pytest --cov=src` y sustituirse en esta tabla antes de la presentación definitiva. El informe de la última ejecución de la suite, con el número de pruebas ejecutadas y su resultado, debe adjuntarse como evidencia documental.
 
-**Cobertura verificada por área** (composición de la suite en la versión 2.82):
+**Cobertura verificada por área** (composición de la suite en la versión 3.0.0):
 
 | Área | Funciones de prueba | Archivos |
 |------|--------------------|----------|
 | Seguridad y credenciales | 78 | `test_security.py`, `test_credenciales.py` |
 | Validación y utilidades | 102 | `test_validators.py`, `test_helpers.py` |
-| Nómina y pagos | 42 | `test_nomina_motor.py`, `test_pagos.py` |
-| Personal y contratación | 50 | `test_empleados.py`, `test_contratos.py`, `test_prestamos.py` |
-| Asistencia y jornada | 31 | `test_asistencia.py`, `test_jornada.py` |
-| Documentos y alertas | 35 | `test_documentos.py`, `test_document_manager.py`, `test_alertas.py` |
+| Nómina y pagos | 35 | `test_nomina_motor.py`, `test_pagos.py` |
+| Personal y contratación | 33 | `test_empleados.py`, `test_contratos.py` |
+| Documentos | 22 | `test_documentos.py`, `test_document_manager.py` |
 | Acceso y sesión | 16 | `test_auth.py` |
-| Configuración y esquema | 17 | `test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py` |
+| Configuración y esquema | 18 | `test_configuracion.py`, `test_migraciones.py`, `test_settings_version.py` |
 | Reportes y documentos PDF | 17 | `test_reportes.py` |
 | Interfaz gráfica | 16 | `test_gui_smoke.py` |
 | Respaldo y actualización | 28 | `test_backups.py`, `test_auto_updater.py` |

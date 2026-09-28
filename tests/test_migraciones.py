@@ -1,9 +1,22 @@
-"""Pruebas de migración de esquema (columnas nuevas en bases existentes)"""
+"""
+Pruebas de migración de esquema (columnas nuevas y purga de lo obsoleto)
+
+Cubre los dos caminos que se ejecutan en cada arranque sobre una base ya
+existente: `migrar_columnas` agrega columnas nuevas y
+`purgar_esquema_obsoleto` retira las tablas y columnas de los módulos
+que se dieron de baja (asistencia, horarios y préstamos).
+"""
 
 import pytest
 from sqlalchemy import create_engine, text
 
-from src.config.database import MIGRACIONES_EMPLEADOS, migrar_columnas
+from src.config.database import (
+    COLUMNAS_OBSOLETAS_PAGOS,
+    MIGRACIONES_EMPLEADOS,
+    TABLAS_OBSOLETAS,
+    migrar_columnas,
+    purgar_esquema_obsoleto,
+)
 
 
 @pytest.fixture()
@@ -88,3 +101,66 @@ def test_migracion_permite_insertar_con_columnas_nuevas(engine_viejo):
         "Bachiller",
         "María (10 años)",
     )
+
+
+def test_purgar_esquema_obsoleto_retira_modulos_dados_de_baja(tmp_path):
+    """
+    La purga elimina las tablas retiradas y reconstruye `pagos` sin las
+    columnas del préstamo, conservando los datos de las columnas comunes y
+    rehaciendo los índices del modelo.
+    """
+    from src.models import Base
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'anterior.db'}")
+    Base.metadata.create_all(engine)
+
+    # Reproduce el esquema de la versión anterior: las tablas de los módulos
+    # retirados y las dos columnas del préstamo dentro de `pagos`.
+    with engine.begin() as conn:
+        for tabla in TABLAS_OBSOLETAS:
+            conn.execute(text(f"CREATE TABLE {tabla} (id INTEGER PRIMARY KEY)"))
+        conn.execute(text("ALTER TABLE pagos ADD COLUMN deduccion_prestamo NUMERIC(10, 2)"))
+        conn.execute(
+            text("ALTER TABLE pagos ADD COLUMN prestamo_id INTEGER REFERENCES prestamos(id)")
+        )
+        conn.execute(
+            text(
+                "INSERT INTO pagos (empleado_id, tipo_pago, periodo_inicio, periodo_fin, "
+                "fecha_pago, monto_bruto, monto_neto, salario_base, modalidad_calculo, "
+                "deduccion_prestamo, prestamo_id) VALUES "
+                "(1, 'nomina', '2026-01-01', '2026-01-31', '2026-02-01', "
+                "1500.00, 1350.00, 1500.00, 'porcentaje', 100.00, 1)"
+            )
+        )
+
+    cambios = purgar_esquema_obsoleto(engine)
+    assert cambios == len(COLUMNAS_OBSOLETAS_PAGOS) + len(TABLAS_OBSOLETAS)
+
+    with engine.connect() as conn:
+        columnas = {fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos)"))}
+        tablas = {
+            fila[0]
+            for fila in conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            )
+        }
+        indices = {
+            fila[0]
+            for fila in conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='pagos'")
+            )
+        }
+        fila = conn.execute(text("SELECT id, monto_neto, salario_base FROM pagos")).fetchone()
+
+    for columna in COLUMNAS_OBSOLETAS_PAGOS:
+        assert columna not in columnas
+    for tabla in TABLAS_OBSOLETAS:
+        assert tabla not in tablas
+    # Los índices del modelo no se pierden al reconstruir la tabla
+    assert "ix_pagos_empleado_id" in indices
+    # El dato de la columna común sobrevive a la reconstrucción
+    assert fila == (1, 1350.00, 1500.00)
+
+    # Idempotente: una segunda pasada no encuentra nada que purgar
+    assert purgar_esquema_obsoleto(engine) == 0
+    engine.dispose()

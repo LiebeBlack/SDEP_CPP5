@@ -86,7 +86,6 @@ def calcular_nomina(
     bono_vacacional = redondear(entrada.bono_vacacional)
     otras_deducciones = redondear(entrada.otras_deducciones)
     descuentos = redondear(entrada.descuentos)
-    cuota_prestamo = max(CERO, redondear(entrada.cuota_prestamo))
 
     if parametros.usa_tramos:
         aportes = calcular_seguridad_social(
@@ -149,7 +148,6 @@ def calcular_nomina(
         deduccion_impuesto=impuesto,
         otras_deducciones=otras_deducciones,
         descuentos=descuentos,
-        deduccion_prestamo=cuota_prestamo,
         aporte_seguro_patronal=seguro_patronal,
         aporte_pension_patronal=pension_patronal,
         isr_tramo=tramo,
@@ -175,7 +173,6 @@ def lineas_recibo(resultado: ResultadoNomina) -> list[tuple[str, float, str]]:
         ("Seguro social", resultado.deduccion_seguro, "deduccion"),
         ("Pensión", resultado.deduccion_pension, "deduccion"),
         ("Impuesto sobre la renta", resultado.deduccion_impuesto, "deduccion"),
-        ("Cuota de préstamo", resultado.deduccion_prestamo, "deduccion"),
         ("Otras deducciones", resultado.otras_deducciones, "deduccion"),
         ("Descuentos", resultado.descuentos, "deduccion"),
     ]

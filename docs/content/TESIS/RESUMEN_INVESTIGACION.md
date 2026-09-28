@@ -21,7 +21,7 @@
 | Tipo de investigación | Aplicada y tecnológica |
 | Enfoque | Mixto, con predominio cuantitativo en la medición del efecto |
 | Ámbito de aplicación | Instituciones educativas de nivel medio y superior |
-| Versión del sistema | 2.82 |
+| Versión del sistema | 3.0.0 |
 | Fecha de presentación | [Fecha] |
 
 ---
@@ -64,28 +64,28 @@ El procedimiento se organizó en cuatro fases: análisis de requerimientos, dise
 
 ## 6. RESULTADOS VERIFICABLES
 
-Los resultados que se enuncian a continuación fueron comprobados de forma directa sobre el repositorio del proyecto, en la versión 2.82, y pueden replicarse con los procedimientos indicados en el registro de control documental.
+Los resultados que se enuncian a continuación fueron comprobados de forma directa sobre el repositorio del proyecto, en la versión 3.0.0, y pueden replicarse con los procedimientos indicados en el registro de control documental.
 
 | Aspecto verificado | Resultado |
 |--------------------|-----------|
-| Extensión del código fuente | 27 534 líneas en 73 archivos, organizadas en nueve capas y componentes |
-| Módulos funcionales | Diez, con control de acceso por rol y atajos de teclado |
-| Módulos implementados | Panel de control, empleados, documentos, incidencias, asistencia, contratos, préstamos, nómina, alertas y configuración |
-| Esquema de base de datos | Diez tablas con integridad referencial y migraciones |
-| Dominio de cálculo | Motor de nómina aislado con deducciones, impuesto sobre la renta, horas extra, prestaciones, seguridad social, préstamos y finiquito |
-| Suite de pruebas | 453 funciones de prueba en 24 archivos, con 5 371 líneas de código de prueba |
+| Extensión del código fuente | 21 991 líneas en 59 archivos, organizadas en nueve capas y componentes |
+| Módulos funcionales | Siete, con control de acceso por rol y atajos de teclado |
+| Módulos implementados | Panel de control, empleados, documentos, incidencias, contratos, nómina y configuración |
+| Esquema de base de datos | Siete tablas con integridad referencial y migraciones |
+| Dominio de cálculo | Motor de nómina aislado con deducciones, impuesto sobre la renta, horas extra, prestaciones, seguridad social y finiquito |
+| Suite de pruebas | 385 funciones de prueba en 20 archivos, con 4 290 líneas de código de prueba |
 | Seguridad | Autenticación con PBKDF2-HMAC-SHA256 de 200 000 iteraciones y sal de 16 bytes; control de acceso por cuatro roles; auditoría; respaldos sujetos a política de retención |
-| Generación documental | Catorce tipos de documentos oficiales en formato PDF |
+| Generación documental | Doce tipos de documentos oficiales en formato PDF |
 | Exportación | Formatos abiertos para empleados, documentos, incidencias, pagos y reportes |
 | Cobertura de referencia | Medición de la versión 1.0.4: 43 % total y 73 % en la lógica de negocio; debe re-medirse sobre la versión vigente |
 
-Adicionalmente, tres de las hipótesis específicas cuentan ya con evidencia estructural favorable: la arquitectura modular se verificó durante el crecimiento del sistema entre las versiones 2.79 y 2.82 —cuatro módulos nuevos, el motor de nómina y 130 funciones de prueba añadidas sin refactorizaciones estructurales—; la disponibilidad de la información y el acceso a ella se verificaron sobre la funcionalidad implementada; y la reducción de errores financieros se sustenta en la verificación automatizada de las reglas de cálculo.
+Adicionalmente, tres de las hipótesis específicas cuentan ya con evidencia estructural favorable: la arquitectura modular se verificó durante la evolución del sistema entre las versiones 2.79 y 3.0.0 —el módulo de contratación, el motor de nómina y 62 funciones de prueba incorporados, y los módulos de asistencia, préstamos y alertas retirados por completo, todo ello sin refactorizaciones estructurales—; la disponibilidad de la información y el acceso a ella se verificaron sobre la funcionalidad implementada; y la reducción de errores financieros se sustenta en la verificación automatizada de las reglas de cálculo.
 
 ---
 
 ## 7. CONCLUSIONES
 
-El sistema fue efectivamente construido y verificado: cubre los procesos que el diagnóstico identificó como críticos, concentra la información del personal en una fuente única, aplica reglas explícitas y comprobables para el cálculo de la remuneración, controla la vigencia de la documentación, formaliza el flujo de aprobación de las incidencias y produce los documentos oficiales que la institución debe emitir. La cobertura funcional alcanzada superó la prevista en el anteproyecto, al incorporar los módulos de asistencia, contratación y préstamos por requerimiento de las instituciones.
+El sistema fue efectivamente construido y verificado: cubre los procesos que el diagnóstico identificó como críticos, concentra la información del personal en una fuente única, aplica reglas explícitas y comprobables para el cálculo de la remuneración, controla la vigencia de la documentación, formaliza el flujo de aprobación de las incidencias y produce los documentos oficiales que la institución debe emitir. La cobertura funcional alcanzada se ajustó a la prevista en el anteproyecto: se incorporó el módulo de contratación por requerimiento de las instituciones y se retiraron los módulos de asistencia, préstamos y alertas, decisión de alcance que simplificó el esquema y redujo la superficie de mantenimiento.
 
 La solución resultó viable desde el punto de vista técnico y económico: se construyó íntegramente con tecnologías de código abierto, sin costo de licenciamiento, con un presupuesto ejecutado de $580 y con una arquitectura que admite expansión sin reconstrucción. La metodología adoptada permitió incorporar conocimiento del contexto sin comprometer el rigor técnico, y la documentación producida asegura que el sostenimiento del sistema no dependa de una sola persona.
 
@@ -126,8 +126,8 @@ Gestión de personal, nómina, instituciones educativas, ingeniería de software
 | Proyecto sociotecnológico | `PROYECTO_SOCIAL_TECNOLOGICO.md` |
 | Índice general | `INDICE_GENERAL.md` |
 | Registro de control documental | `REGISTRO_CONTROL_DOCUMENTAL.md` |
-| Código fuente del sistema | Directorio `src/` del repositorio, versión 2.82 |
-| Suite de pruebas | Directorio `tests/`, 453 funciones de prueba |
+| Código fuente del sistema | Directorio `src/` del repositorio, versión 3.0.0 |
+| Suite de pruebas | Directorio `tests/`, 385 funciones de prueba |
 
 ---
 

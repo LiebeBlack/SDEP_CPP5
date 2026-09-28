@@ -10,10 +10,7 @@ from .incidencia_repository import IncidenciaRepository
 from .pago_repository import PagoRepository
 from .configuracion_repository import ConfiguracionRepository
 from .usuario_repository import UsuarioRepository
-from .asistencia_repository import AsistenciaRepository
-from .horario_repository import HorarioRepository
 from .contrato_repository import ContratoRepository
-from .prestamo_repository import PrestamoRepository
 
 __all__ = [
     "BaseRepository",
@@ -23,8 +20,5 @@ __all__ = [
     "PagoRepository",
     "ConfiguracionRepository",
     "UsuarioRepository",
-    "AsistenciaRepository",
-    "HorarioRepository",
     "ContratoRepository",
-    "PrestamoRepository",
 ]

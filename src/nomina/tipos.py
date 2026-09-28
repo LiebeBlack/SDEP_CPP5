@@ -144,7 +144,6 @@ class ParametrosNomina:
     dias_bono_vacacional: Dinero = Decimal(15)
     dias_prestaciones_por_ano: Dinero = Decimal(30)
     dias_preaviso: Dinero = Decimal(30)
-    max_porcentaje_cuota_prestamo: Dinero = Decimal("30.0")
     salario_minimo: Dinero = CERO
 
     @property
@@ -211,7 +210,6 @@ class EntradaNomina:
     descuentos: Dinero = CERO
     aguinaldo: Dinero = CERO
     bono_vacacional: Dinero = CERO
-    cuota_prestamo: Dinero = CERO
     deducciones_manuales: DeduccionesManuales | None = None
 
 
@@ -231,7 +229,6 @@ class ResultadoNomina:
     deduccion_impuesto: Dinero = CERO
     otras_deducciones: Dinero = CERO
     descuentos: Dinero = CERO
-    deduccion_prestamo: Dinero = CERO
     aporte_seguro_patronal: Dinero = CERO
     aporte_pension_patronal: Dinero = CERO
     isr_tramo: str | None = None
@@ -257,7 +254,6 @@ class ResultadoNomina:
             + self.deduccion_impuesto
             + self.otras_deducciones
             + self.descuentos
-            + self.deduccion_prestamo
         )
 
     @property
@@ -293,7 +289,6 @@ class ResultadoNomina:
             "deduccion_impuesto": float(redondear(self.deduccion_impuesto)),
             "otras_deducciones": float(redondear(self.otras_deducciones)),
             "descuentos": float(redondear(self.descuentos)),
-            "deduccion_prestamo": float(redondear(self.deduccion_prestamo)),
             "aporte_seguro_patronal": float(redondear(self.aporte_seguro_patronal)),
             "aporte_pension_patronal": float(redondear(self.aporte_pension_patronal)),
             "isr_tramo": self.isr_tramo,
@@ -311,7 +306,6 @@ class EntradaFiniquito:
     fecha_egreso: Any
     dias_vacaciones_pendientes: Dinero = CERO
     dias_utilidades_pendientes: Dinero = CERO
-    anticipos_pendientes: Dinero = CERO
     otras_deducciones: Dinero = CERO
     motivo: str | None = None
 
@@ -329,7 +323,6 @@ class ResultadoFiniquito:
     vacaciones: Dinero = CERO
     bono_vacacional: Dinero = CERO
     aguinaldo: Dinero = CERO
-    anticipos: Dinero = CERO
     otras_deducciones: Dinero = CERO
     motivo: str | None = None
 
@@ -348,7 +341,7 @@ class ResultadoFiniquito:
     @property
     def total_deducciones(self) -> Dinero:
         """Total de conceptos a descontar"""
-        return redondear(self.anticipos + self.otras_deducciones)
+        return redondear(self.otras_deducciones)
 
     @property
     def neto(self) -> Dinero:
@@ -367,7 +360,6 @@ class ResultadoFiniquito:
             "vacaciones": float(self.vacaciones),
             "bono_vacacional": float(self.bono_vacacional),
             "aguinaldo": float(self.aguinaldo),
-            "anticipos": float(self.anticipos),
             "otras_deducciones": float(self.otras_deducciones),
             "total_asignaciones": float(self.total_asignaciones),
             "total_deducciones": float(self.total_deducciones),

@@ -54,15 +54,23 @@ MIGRACIONES: dict[str, dict[str, str]] = {
         "horas_extra_diurnas": "NUMERIC(10, 2)",
         "horas_extra_nocturnas": "NUMERIC(10, 2)",
         "horas_extra_feriadas": "NUMERIC(10, 2)",
-        "deduccion_prestamo": "NUMERIC(10, 2)",
         "aguinaldo": "NUMERIC(10, 2)",
         "bono_vacacional": "NUMERIC(10, 2)",
         "aporte_seguro_patronal": "NUMERIC(10, 2)",
         "aporte_pension_patronal": "NUMERIC(10, 2)",
         "isr_tramo": "VARCHAR(50)",
-        "prestamo_id": "INTEGER",
     },
 }
+
+# Tablas y columnas que quedaron sin modelo al retirar los módulos de
+# asistencia, horarios y préstamos. Se purgan en el arranque para que una base
+# creada por una versión anterior quede coherente con el esquema vigente.
+TABLAS_OBSOLETAS: tuple[str, ...] = ("asistencias", "horarios", "prestamos")
+
+# Columnas de ``pagos`` que dependían del módulo de préstamos. SQLite no
+# permite DROP COLUMN sobre una columna que participa en una clave foránea,
+# así que la tabla se reconstruye a partir del modelo actual.
+COLUMNAS_OBSOLETAS_PAGOS: tuple[str, ...] = ("deduccion_prestamo", "prestamo_id")
 
 
 def _columnas_pendientes(engine) -> dict[str, list[tuple[str, str]]]:
@@ -158,6 +166,109 @@ def migrar_columnas(engine) -> int:
         logger.warning(f"No se pudo migrar el esquema de la base de datos: {e}")
         return 0
     return agregadas
+
+
+def purgar_esquema_obsoleto(engine) -> int:
+    """
+    Elimina las tablas y columnas que ya no tienen modelo.
+
+    Al retirar los módulos de asistencia, horarios y préstamos sus tablas
+    dejaron de declararse en los modelos, y la tabla ``pagos`` perdió las
+    columnas del préstamo. Como SQLite no admite ``DROP COLUMN`` sobre una
+    columna usada en una clave foránea, ``pagos`` se reconstruye: se renombra
+    la tabla original, se crea la nueva con el esquema del modelo vigente, se
+    copian las columnas comunes y se elimina la antigua.
+
+    La operación es idempotente: si no queda nada por purgar no toca la base.
+
+    Returns:
+        int: Cantidad de cambios aplicados (tablas y columnas eliminadas)
+    """
+    try:
+        with engine.connect() as conn:
+            tablas = {
+                fila[0]
+                for fila in conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table'")
+                )
+            }
+    except SQLAlchemyError as e:
+        logger.warning(f"No se pudo inspeccionar el esquema para purgarlo: {e}")
+        return 0
+
+    obsoletas = [tabla for tabla in TABLAS_OBSOLETAS if tabla in tablas]
+    sobrantes: list[str] = []
+    if "pagos" in tablas:
+        try:
+            with engine.connect() as conn:
+                existentes = {
+                    fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos)"))
+                }
+        except SQLAlchemyError as e:
+            logger.warning(f"No se pudo leer el esquema de pagos: {e}")
+            return 0
+        sobrantes = [columna for columna in COLUMNAS_OBSOLETAS_PAGOS if columna in existentes]
+
+    if not obsoletas and not sobrantes:
+        return 0
+
+    # Respaldo previo: la purga elimina datos de forma irreversible.
+    try:
+        from src.utils.backup_manager import get_backup_manager
+
+        get_backup_manager().create_backup("pre_purga_esquema", compress=True)
+    except Exception as e:
+        logger.warning(f"No se pudo crear backup antes de purgar el esquema: {e}")
+
+    cambios = 0
+    try:
+        with engine.begin() as conn:
+            if sobrantes:
+                tabla_pagos = Base.metadata.tables["pagos"]
+                # Al renombrar una tabla, SQLite conserva sus índices ligados al
+                # nuevo nombre pero con los mismos nombres. Si no se eliminan
+                # antes de recrear ``pagos``, el CREATE INDEX del modelo choca
+                # con los índices heredados y la purga falla.
+                indices_heredados = [
+                    fila[0]
+                    for fila in conn.execute(
+                        text(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='index' AND tbl_name='pagos' AND name NOT LIKE 'sqlite_%'"
+                        )
+                    )
+                ]
+                conn.execute(text("ALTER TABLE pagos RENAME TO pagos_obsoleto"))
+                for indice in indices_heredados:
+                    conn.execute(text(f'DROP INDEX IF EXISTS "{indice}"'))
+                tabla_pagos.create(bind=conn)
+                antiguas = {
+                    fila[1]
+                    for fila in conn.execute(text("PRAGMA table_info(pagos_obsoleto)"))
+                }
+                comunes = [
+                    columna.name
+                    for columna in tabla_pagos.columns
+                    if columna.name in antiguas
+                ]
+                destino = ", ".join(f'"{columna}"' for columna in comunes)
+                conn.execute(
+                    text(f"INSERT INTO pagos ({destino}) SELECT {destino} FROM pagos_obsoleto")
+                )
+                conn.execute(text("DROP TABLE pagos_obsoleto"))
+                cambios += len(sobrantes)
+                logger.info(
+                    "Purga: tabla pagos reconstruida sin %s", ", ".join(sobrantes)
+                )
+
+            for tabla in obsoletas:
+                conn.execute(text(f"DROP TABLE IF EXISTS {tabla}"))
+                cambios += 1
+                logger.info(f"Purga: tabla {tabla} eliminada")
+    except SQLAlchemyError as e:
+        logger.warning(f"No se pudo purgar el esquema obsoleto: {e}")
+        return 0
+    return cambios
 
 
 # Parámetros de configuración que llegaron después de la primera versión del
@@ -296,67 +407,11 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
         "tipo_dato": "int",
         "categoria": "nomina",
     },
-    {
-        "clave": "max_cuotas_prestamo",
-        "valor": "24",
-        "descripcion": "Máximo de cuotas permitidas en un préstamo",
-        "tipo_dato": "int",
-        "categoria": "nomina",
-    },
-    {
-        "clave": "max_porcentaje_cuota_prestamo",
-        "valor": "30.0",
-        "descripcion": "Tope porcentual del neto que puede descontarse por préstamos",
-        "tipo_dato": "float",
-        "categoria": "nomina",
-    },
-    # --- Recursos humanos: asistencia, contratos y vencimientos ---
-    {
-        "clave": "hora_entrada_default",
-        "valor": "07:00",
-        "descripcion": "Hora de entrada por defecto al crear horarios",
-        "tipo_dato": "string",
-        "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "hora_salida_default",
-        "valor": "15:00",
-        "descripcion": "Hora de salida por defecto al crear horarios",
-        "tipo_dato": "string",
-        "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "tolerancia_asistencia_minutos",
-        "valor": "10",
-        "descripcion": "Minutos de tolerancia por defecto antes de marcar tardanza",
-        "tipo_dato": "int",
-        "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "umbral_ausentismo_alerta",
-        "valor": "10.0",
-        "descripcion": "Porcentaje de ausentismo a partir del cual se genera una alerta",
-        "tipo_dato": "float",
-        "categoria": "recursos_humanos",
-    },
+    # --- Recursos humanos: contratos y vencimientos ---
     {
         "clave": "umbral_contrato_por_vencer_dias",
         "valor": "30",
         "descripcion": "Días de anticipación para avisar de contratos por vencer",
-        "tipo_dato": "int",
-        "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "dias_alerta_documento",
-        "valor": "30",
-        "descripcion": "Días de anticipación para avisar de documentos por vencer",
-        "tipo_dato": "int",
-        "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "max_horas_extra_semana",
-        "valor": "10",
-        "descripcion": "Horas extra semanales a partir de las cuales se genera una alerta",
         "tipo_dato": "int",
         "categoria": "recursos_humanos",
     },
@@ -373,13 +428,6 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
         "descripcion": "Fechas feriadas en formato AAAA-MM-DD usadas al calcular horas extra",
         "tipo_dato": "json",
         "categoria": "recursos_humanos",
-    },
-    {
-        "clave": "dias_alerta_pago_antiguo",
-        "valor": "30",
-        "descripcion": "Días tras los cuales un pago pendiente genera una alerta",
-        "tipo_dato": "int",
-        "categoria": "nomina",
     },
     # --- Seguridad: política de credenciales y respaldos ---
     {
@@ -424,6 +472,21 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
         "tipo_dato": "int",
         "categoria": "seguridad",
     },
+)
+
+# Claves de configuración que quedaron sin consumidor al retirar los módulos de
+# asistencia, horarios y préstamos. Se eliminan de las instalaciones existentes
+# en cada arranque (ver _purgar_configuracion_obsoleta).
+CONFIGURACION_OBSOLETA: tuple[str, ...] = (
+    "max_cuotas_prestamo",
+    "max_porcentaje_cuota_prestamo",
+    "hora_entrada_default",
+    "hora_salida_default",
+    "tolerancia_asistencia_minutos",
+    "umbral_ausentismo_alerta",
+    "dias_alerta_documento",
+    "max_horas_extra_semana",
+    "dias_alerta_pago_antiguo",
 )
 
 
@@ -494,6 +557,7 @@ class DatabaseConfig:
         try:
             Base.metadata.create_all(bind=self.engine)
             migrar_columnas(self.engine)
+            purgar_esquema_obsoleto(self.engine)
             logger.info("Tablas de base de datos verificadas exitosamente")
             return True
         except SQLAlchemyError as e:
@@ -582,6 +646,7 @@ class DatabaseConfig:
             self._check_integrity()
             self._seed_initial_data()
             self._sincronizar_configuracion()
+            self._purgar_configuracion_obsoleta()
             self._seed_initial_user()
 
             # Crear backup inicial una sola vez (si la BD es nueva)
@@ -781,6 +846,53 @@ class DatabaseConfig:
             return 0
         finally:
             self.close_session(session)
+
+    def _purgar_configuracion_obsoleta(self) -> int:
+        """
+        Elimina los parámetros de configuración que ya no se usan
+
+        Los borra de la base y de la copia local en config.json: si la clave
+        quedara en el espejo, ``obtener_valor`` la devolvería como si siguiera
+        vigente aunque ya nadie la lea.
+
+        Returns:
+            int: Cantidad de parámetros eliminados
+        """
+        from src.models.configuracion import Configuracion
+
+        session = self.get_session()
+        eliminados = 0
+        try:
+            obsoletas = (
+                session.query(Configuracion)
+                .filter(Configuracion.clave.in_(CONFIGURACION_OBSOLETA))
+                .all()
+            )
+            for configuracion in obsoletas:
+                session.delete(configuracion)
+                eliminados += 1
+            if eliminados:
+                session.commit()
+                logger.info(f"Parámetros obsoletos eliminados: {eliminados}")
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.warning(f"No se pudieron eliminar los parámetros obsoletos: {e}")
+            return 0
+        finally:
+            self.close_session(session)
+
+        from src.config import settings
+
+        for clave in CONFIGURACION_OBSOLETA:
+            try:
+                settings.delete_config_value(clave)
+            except Exception:
+                logger.warning(
+                    "%s: operación auxiliar falló (se continúa)",
+                    "_purgar_configuracion_obsoleta",
+                    exc_info=True,
+                )
+        return eliminados
 
     def _seed_initial_user(self):
         """Crea el usuario administrador por defecto en el primer arranque"""

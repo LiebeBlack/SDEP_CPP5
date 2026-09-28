@@ -402,7 +402,7 @@ gh workflow run build.yml
 git push origin main
 
 # Optional: versioned release from a tag
-git tag v2.82 && git push origin v2.82
+git tag v3.0.0 && git push origin v3.0.0
 ```
 
 ---

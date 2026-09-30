@@ -7,6 +7,8 @@ incluyendo registro, aprobación, rechazo y control de vigencia.
 """
 
 from datetime import date
+from typing import TypeGuard
+
 from sqlalchemy.orm import Session
 import uuid
 import os
@@ -40,15 +42,21 @@ class IncidenciaService:
         self.repository = IncidenciaRepository(session)
 
     @staticmethod
-    def _ruta_gestionada(ruta: str) -> bool:
+    def _ruta_gestionada(ruta: str | None) -> TypeGuard[str]:
         """
         Indica si una ruta pertenece al almacén documental
 
         La ruta del soporte vive en la base de datos, así que se valida
         antes de leer o borrar el archivo: un registro manipulado no debe
         permitir operaciones sobre rutas ajenas al sistema.
+
+        Se declara ``TypeGuard`` porque la columna puede ser nula: quien
+        pregunte queda con una ruta no nula y puede usarla sin repetir la
+        comprobación.
         """
-        return bool(ruta) and ruta_dentro_de(settings.documents_path, ruta)
+        if not ruta:
+            return False
+        return ruta_dentro_de(settings.documents_path, ruta)
 
     def crear_incidencia(self, datos: dict, archivo_soporte: bytes | None = None) -> Incidencia:
         """Crea una nueva incidencia"""

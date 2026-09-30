@@ -8,13 +8,14 @@ y en cualquier navegador (sin problemas de CORS en file://).
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "docs"
 OUTPUT_FILE = DOCS_DIR / "docs_data.js"
 GITHUB_REPO_URL = "https://github.com/LiebeBlack/SDEP_CPP5"
 
-DOCUMENTS_MANIFEST = [
+DOCUMENTS_MANIFEST: list[dict[str, Any]] = [
     # --- Tesis Académica ---
     {
         "id": "tesis-indice-general",

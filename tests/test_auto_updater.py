@@ -209,3 +209,33 @@ def test_script_instalador_powershell_no_usa_format():
 def test_script_instalador_escapa_comillas_simples():
     script = updater._script_instalador_powershell(Path(r"C:\O'Brien\Setup.exe"))
     assert "O''Brien" in script
+
+
+# ---------------------------------------------------------------------------
+# Lectura de los comandos del sistema (regresión del UnicodeDecodeError)
+# ---------------------------------------------------------------------------
+def test_los_comandos_del_sistema_se_leen_aunque_no_sean_utf8(tmp_path):
+    """Los comandos de Windows escriben en la página de códigos OEM
+
+    Con el modo UTF-8 de Python 3.15, leer un acento de un mensaje localizado
+    hacía fallar la decodificación dentro del hilo de ``subprocess``: el error
+    no se propagaba y el comando quedaba sin salida. La opción compartida debe
+    tolerarlo.
+    """
+    import subprocess
+
+    guion = "import sys; sys.stdout.buffer.write(bytes([0xA2, 10])); sys.exit(0)"
+    resultado = subprocess.run(
+        [sys.executable, "-c", guion],
+        capture_output=True,
+        text=True,
+        **updater._TEXTO_SISTEMA,
+        timeout=60,
+    )
+    assert resultado.returncode == 0
+    # Sin la opción, este mismo comando se queda sin salida («stdout is None»),
+    # porque el fallo ocurre en el hilo de lectura y no se propaga. No se
+    # reproduce aquí el caso roto para no ensuciar la suite con la excepción
+    # de ese hilo.
+    assert resultado.stdout is not None
+    assert resultado.stdout.endswith("\n")

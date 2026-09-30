@@ -17,6 +17,8 @@ from .enums import (
     TipoContrato,
     EstadoContrato,
     ModoCalculoNomina,
+    NivelEducativo,
+    EstadoPeriodoAcademico,
     valores_sql,
 )
 from .empleado import Empleado
@@ -26,6 +28,12 @@ from .pago import Pago
 from .configuracion import Configuracion
 from .usuario import Usuario
 from .contrato import Contrato
+from .estudiante import Estudiante
+from .periodo_academico import PeriodoAcademico
+from .grado import Grado
+from .matricula import Matricula
+from .nota_final import NotaFinal
+from .token_sesion import TokenSesion
 
 __all__ = [
     "Base",
@@ -42,6 +50,8 @@ __all__ = [
     "TipoContrato",
     "EstadoContrato",
     "ModoCalculoNomina",
+    "NivelEducativo",
+    "EstadoPeriodoAcademico",
     "valores_sql",
     "Empleado",
     "Documento",
@@ -50,4 +60,10 @@ __all__ = [
     "Configuracion",
     "Usuario",
     "Contrato",
+    "Estudiante",
+    "PeriodoAcademico",
+    "Grado",
+    "Matricula",
+    "NotaFinal",
+    "TokenSesion",
 ]

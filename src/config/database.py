@@ -16,6 +16,7 @@ from typing import Any
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import QueuePool
 
 from src.models import Base
 
@@ -202,6 +203,34 @@ def migrar_columnas(engine) -> int:
         logger.warning(f"No se pudo migrar el esquema de la base de datos: {e}")
         return 0
     return agregadas
+
+
+def crear_disparadores_inmutabilidad(engine) -> int:
+    """
+    Crea los disparadores que bloquean editar notas de periodos cerrados
+
+    Se ejecuta en cada arranque (create_tables) después de create_all: las
+    tablas nuevas ya existen y las que ya tenían los disparadores no se
+    tocan (CREATE TRIGGER IF NOT EXISTS). Nunca impide el arranque: si algo
+    falla se registra la advertencia y la aplicación sigue funcionando (el
+    servicio de notas sigue validando el cierre).
+
+    Returns:
+        int: Cantidad de disparadores creados o verificados
+    """
+    creados = 0
+    try:
+        with engine.begin() as conn:
+            for nombre, sentencia in DISPARADORES_INMUTABILIDAD:
+                try:
+                    conn.execute(text(sentencia))
+                    creados += 1
+                except SQLAlchemyError as e:
+                    logger.warning(f"No se pudo crear el disparador {nombre}: {e}")
+    except SQLAlchemyError as e:
+        logger.warning(f"No se pudieron crear los disparadores de inmutabilidad: {e}")
+        return 0
+    return creados
 
 
 def purgar_esquema_obsoleto(engine) -> int:
@@ -451,6 +480,28 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
         "tipo_dato": "int",
         "categoria": "recursos_humanos",
     },
+    # --- Académico: escala de calificaciones ---
+    {
+        "clave": "nota_minima",
+        "valor": "0",
+        "descripcion": "Calificación mínima de la escala académica (0 = permite cero)",
+        "tipo_dato": "float",
+        "categoria": "academico",
+    },
+    {
+        "clave": "nota_maxima",
+        "valor": "20",
+        "descripcion": "Calificación máxima de la escala académica (20 = escala 0-20)",
+        "tipo_dato": "float",
+        "categoria": "academico",
+    },
+    {
+        "clave": "nota_aprobatoria",
+        "valor": "10",
+        "descripcion": "Calificación mínima aprobatoria usada en boletines y actas",
+        "tipo_dato": "float",
+        "categoria": "academico",
+    },
     # --- Seguridad: política de credenciales y respaldos ---
     {
         "clave": "password_dias_caducidad",
@@ -496,6 +547,71 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
     },
 )
 
+# Disparadores que protegen la inmutabilidad de las notas finales.
+# ----------------------------------------------------------------------
+# El cierre de un periodo debe respetarse incluso por SQL directo (scripts de
+# corrección, importaciones masivas, herramientas externas), no solo por el
+# servicio: estos disparadores abortan cualquier alta, cambio o borrado de una
+# nota cuyo grado pertenezca a un periodo cerrado. Se recrean en cada arranque
+# (CREATE TRIGGER IF NOT EXISTS) y viajan dentro del archivo SQLite, así que
+# también quedan activos al restaurar un respaldo.
+DISPARADORES_INMUTABILIDAD: tuple[tuple[str, str], ...] = (
+    (
+        "trg_notas_finales_insert_bloqueado",
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_notas_finales_insert_bloqueado
+        BEFORE INSERT ON notas_finales
+        FOR EACH ROW
+        WHEN (
+            SELECT p.estado FROM grados g
+            JOIN periodos_academicos p ON p.id = g.periodo_id
+            WHERE g.id = NEW.grado_id
+        ) = 'cerrado'
+        BEGIN
+            SELECT RAISE(ABORT, 'El periodo academico esta cerrado: no se pueden registrar notas');
+        END
+        """,
+    ),
+    (
+        "trg_notas_finales_update_bloqueado",
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_notas_finales_update_bloqueado
+        BEFORE UPDATE ON notas_finales
+        FOR EACH ROW
+        WHEN (
+            SELECT p.estado FROM grados g
+            JOIN periodos_academicos p ON p.id = g.periodo_id
+            WHERE g.id = OLD.grado_id
+        ) = 'cerrado'
+        OR (
+            SELECT p.estado FROM grados g
+            JOIN periodos_academicos p ON p.id = g.periodo_id
+            WHERE g.id = NEW.grado_id
+        ) = 'cerrado'
+        BEGIN
+            SELECT RAISE(ABORT, 'El periodo academico esta cerrado: la nota no puede modificarse');
+        END
+        """,
+    ),
+    (
+        "trg_notas_finales_delete_bloqueado",
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_notas_finales_delete_bloqueado
+        BEFORE DELETE ON notas_finales
+        FOR EACH ROW
+        WHEN (
+            SELECT p.estado FROM grados g
+            JOIN periodos_academicos p ON p.id = g.periodo_id
+            WHERE g.id = OLD.grado_id
+        ) = 'cerrado'
+        BEGIN
+            SELECT RAISE(ABORT, 'El periodo academico esta cerrado: la nota no puede eliminarse');
+        END
+        """,
+    ),
+)
+
+
 # Claves de configuración que quedaron sin consumidor al retirar los módulos de
 # asistencia, horarios y préstamos. Se eliminan de las instalaciones existentes
 # en cada arranque (ver _purgar_configuracion_obsoleta).
@@ -531,6 +647,12 @@ class DatabaseConfig:
         self.SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.SessionLocal = scoped_session(self.SessionFactory)
 
+        # El esquema del agente de sincronización se crea una sola vez por
+        # proceso y la captura de cambios se engancha únicamente si este
+        # puesto tiene el agente configurado (ver crear_tables).
+        self._sync_esquema_listo = False
+        self._sync_captura_activa = False
+
         logger.info(f"Base de datos configurada: {self.database_path}")
 
     def _safe_log_error(self, error: Exception, context: dict | None = None):
@@ -563,12 +685,25 @@ class DatabaseConfig:
 
     def _create_engine(self):
         try:
-            engine = create_engine(
-                self.database_url,
-                connect_args={"check_same_thread": False, "timeout": 30},
-                echo=self.echo,
-                pool_pre_ping=True,
-            )
+            # Agrupar las conexiones (pool) evita abrir y cerrar el archivo
+            # SQLite en cada operación: al guardar un lote grande de notas a
+            # fin de año la diferencia es de decenas de milisegundos por fila
+            # a microsegundos. El tamaño se declara explícito para que no
+            # dependa del valor por defecto del dialecto. SQLite en memoria no
+            # admite el pool: cada conexión abriría una base de datos vacía.
+            opciones: dict[str, Any] = {
+                "connect_args": {"check_same_thread": False, "timeout": 30},
+                "echo": self.echo,
+                "pool_pre_ping": True,
+            }
+            if ":memory:" not in self.database_url:
+                opciones.update(
+                    poolclass=QueuePool,
+                    pool_size=5,
+                    max_overflow=10,
+                    pool_timeout=30,
+                )
+            engine = create_engine(self.database_url, **opciones)
             _activar_claves_foraneas(engine)
             logger.info("Engine de base de datos creado exitosamente")
             return engine
@@ -582,13 +717,76 @@ class DatabaseConfig:
         try:
             Base.metadata.create_all(bind=self.engine)
             migrar_columnas(self.engine)
+            crear_disparadores_inmutabilidad(self.engine)
             purgar_esquema_obsoleto(self.engine)
+            self.preparar_sincronizacion()
+            if self.sincronizacion_configurada():
+                self.activar_captura_sincronizacion()
             logger.info("Tablas de base de datos verificadas exitosamente")
             return True
         except SQLAlchemyError as e:
             logger.error(f"Error creando tablas: {e}")
             self._safe_log_error(e, context={"operation": "create_tables"})
             raise
+
+    # ------------------------------------------------------------------
+    # Agente de sincronización
+    # ------------------------------------------------------------------
+    def preparar_sincronizacion(self) -> bool:
+        """
+        Crea en la base local las tablas del agente de sincronización
+
+        Son tablas propias del agente (identidad global de las filas, journal
+        de operaciones, marcas por campo, conflictos, binarios en tránsito),
+        independientes del esquema de la aplicación. La operación es idempotente
+        y nunca impide el arranque: si el paquete del agente no está disponible,
+        el sistema sigue funcionando con normalidad, solo sin replicar datos.
+        """
+        if self._sync_esquema_listo:
+            return True
+        try:
+            from sync_agent.esquema import asegurar_esquema
+
+            asegurar_esquema(self.engine)
+            self._sync_esquema_listo = True
+            return True
+        except Exception as e:
+            logger.warning(f"No se pudo preparar el esquema de sincronización: {e}")
+            return False
+
+    def activar_captura_sincronizacion(self) -> bool:
+        """
+        Engancha la captura de cambios del ORM (una sola vez por proceso)
+
+        A partir de este momento cada alta, edición o borrado de los datos
+        replicables deja su operación en el journal del agente **dentro de la
+        misma transacción** que el dato: si la operación se deshace, la
+        operación tampoco se anuncia al resto de la red. Se engancha solo
+        cuando el puesto tiene el agente configurado, para no hacer trabajar
+        de más a las instalaciones que no sincronizan.
+        """
+        if self._sync_captura_activa:
+            return True
+        try:
+            from sync_agent.captura import instalar
+
+            instalar(self.SessionFactory, self.engine)
+            self._sync_captura_activa = True
+            logger.info("Captura de cambios para sincronización activada")
+            return True
+        except Exception as e:
+            logger.warning(f"No se pudo activar la captura de sincronización: {e}")
+            return False
+
+    @staticmethod
+    def sincronizacion_configurada() -> bool:
+        """Indica si este equipo tiene el agente de sincronización habilitado"""
+        try:
+            from sync_agent.config import cargar
+
+            return bool(cargar().activo)
+        except Exception:
+            return False
 
     def drop_tables(self):
         """Elimina todas las tablas de la base de datos con backup previo"""
@@ -636,17 +834,43 @@ class DatabaseConfig:
         """
         return self.SessionFactory()
 
+    def _es_sesion_scoped(self, session) -> bool:
+        """
+        Indica si la sesión es la del registry scoped del hilo actual
+
+        Se consulta el registry sin crear ninguna sesión (``has`` antes de
+        pedir la instancia) para distinguir la sesión compartida por hilo
+        de ``get_session`` de una sesión independiente creada con
+        ``new_session``.
+        """
+        try:
+            registro = self.SessionLocal.registry
+            return bool(registro.has() and registro() is session)
+        except Exception:
+            logger.debug("No se pudo consultar el registry de sesiones", exc_info=True)
+            return False
+
     def close_session(self, session):
-        """Cierra una sesión de base de datos de forma segura"""
+        """
+        Cierra una sesión de base de datos de forma segura
+
+        El registry scoped solo se libera cuando la sesión cerrada ES la
+        sesión scoped del hilo. Al cerrar una sesión independiente
+        (``new_session``, como la de la ventana principal) el ``remove()``
+        invalidaba la sesión scoped que otro consumidor del mismo hilo
+        pudiera estar usando a mitad de una operación, y la aplicación
+        fallaba con "session is in 'closed' state".
+        """
         if session is not None:
             try:
                 session.close()
             except Exception as e:
                 logger.warning(f"Error cerrando sesión de base de datos: {e}")
-        try:
-            self.SessionLocal.remove()
-        except Exception as e:
-            logger.warning(f"Error removiendo sesión: {e}")
+        if self._es_sesion_scoped(session):
+            try:
+                self.SessionLocal.remove()
+            except Exception as e:
+                logger.warning(f"Error removiendo sesión: {e}")
 
     def dispose(self):
         """Libera TODAS las conexiones del pool y el registry de sesiones.

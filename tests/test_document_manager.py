@@ -13,6 +13,12 @@ def _crear_manager(storage):
     return manager
 
 
+def _envejecer(ruta, dias=60):
+    """Retrasa la fecha de modificación de un archivo (para la limpieza)"""
+    antiguo = time.time() - (dias * 24 * 60 * 60)
+    os.utime(ruta, (antiguo, antiguo))
+
+
 def test_save_document(storage):
     manager = _crear_manager(storage)
     ruta, nombre = manager.save_document(b"contenido-pdf", "planilla.pdf", "laboral")
@@ -127,16 +133,24 @@ def test_export_file(storage):
 
 
 def test_cleanup_old_files(storage):
+    """La limpieza por omisión no toca el almacén documental del usuario"""
     manager = _crear_manager(storage)
-    ruta_viejo, _ = manager.save_document(b"viejo", "viejo.pdf", "general")
-    # Envejecer el archivo
-    antiguo = time.time() - (60 * 24 * 60 * 60)  # 60 días
-    os.utime(ruta_viejo, (antiguo, antiguo))
-    # Archivo reciente no debe eliminarse
-    manager.save_document(b"nuevo", "nuevo.pdf", "general")
-    eliminados = manager.cleanup_old_files(days=30)
-    assert eliminados == 1
-    assert not os.path.exists(ruta_viejo)
+    # Documento del usuario: envejecido, pero es dato al que apunta la BD
+    ruta_documento, _ = manager.save_document(b"viejo", "viejo.pdf", "general")
+    _envejecer(ruta_documento)
+    # Exportación vieja y exportación reciente
+    ruta_export, _ = manager.export_file(b"exportado", "reporte.csv", "reportes")
+    _envejecer(ruta_export)
+    ruta_reciente, _ = manager.export_file(b"nuevo", "reciente.csv", "reportes")
+
+    assert manager.cleanup_old_files(days=30) == 1
+    assert os.path.exists(ruta_documento)
+    assert not os.path.exists(ruta_export)
+    assert os.path.exists(ruta_reciente)
+
+    # Con la bandera explícita sí se barre el almacén documental
+    assert manager.cleanup_old_files(days=30, incluir_almacen_documental=True) == 1
+    assert not os.path.exists(ruta_documento)
 
 
 def test_get_storage_stats(storage):

@@ -46,6 +46,21 @@ import urllib.request
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TypedDict
+
+# Los comandos del sistema (``reg``, ``taskkill``, ``tasklist``, ``schtasks``)
+# escriben en la página de códigos OEM de Windows, mientras que Python 3.15
+# decodifica en UTF-8 por omisión: un acento en un mensaje localizado hacía
+# fallar la lectura dentro del hilo de ``subprocess`` y la salida del comando
+# se perdía. Con ``errors="replace"`` el comando se lee siempre y lo que luego
+# se interpreta —nombres e identificadores— es ASCII.
+class _TextoComando(TypedDict):
+    """Opciones de lectura comunes a los comandos del sistema"""
+
+    errors: str
+
+
+_TEXTO_SISTEMA: _TextoComando = {"errors": "replace"}
 
 # ---------------------------------------------------------------------------
 # Configuración
@@ -289,6 +304,7 @@ def registry_display_version() -> str | None:
                 ["reg", "query", key, "/v", "DisplayVersion"],
                 capture_output=True,
                 text=True,
+                **_TEXTO_SISTEMA,
                 timeout=15,
             )
             match = re.search(r"DisplayVersion\s+REG_SZ\s+(\S+)", result.stdout)
@@ -316,6 +332,7 @@ def close_app_if_running() -> None:
             ["taskkill", "/IM", APP_EXE_NAME],
             capture_output=True,
             text=True,
+            **_TEXTO_SISTEMA,
             timeout=30,
         )
         if result.returncode == 0:
@@ -325,6 +342,7 @@ def close_app_if_running() -> None:
                     ["tasklist", "/FI", f"IMAGENAME eq {APP_EXE_NAME}"],
                     capture_output=True,
                     text=True,
+                    **_TEXTO_SISTEMA,
                     timeout=15,
                 )
                 if APP_EXE_NAME not in check.stdout:
@@ -360,6 +378,7 @@ def install_setup(setup_path: Path) -> int:
             [str(setup_path), *args],
             capture_output=True,
             text=True,
+            **_TEXTO_SISTEMA,
             timeout=30 * 60,
         )
         return proc.returncode
@@ -368,6 +387,7 @@ def install_setup(setup_path: Path) -> int:
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
         capture_output=True,
         text=True,
+        **_TEXTO_SISTEMA,
         timeout=30 * 60,
     )
     return proc.returncode
@@ -381,6 +401,7 @@ def tasks_registered() -> bool:
             ["schtasks", "/Query", "/TN", TASK_NAME],
             capture_output=True,
             text=True,
+            **_TEXTO_SISTEMA,
             timeout=15,
         )
         return result.returncode == 0
@@ -416,7 +437,9 @@ def register_tasks() -> None:
         "HIGHEST",
     ]
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            command, capture_output=True, text=True, **_TEXTO_SISTEMA, timeout=30
+        )
         status = "OK" if result.returncode == 0 else f"ERROR ({result.returncode})"
         log(
             f"Tarea '{TASK_NAME}' (cada {CHECK_INTERVAL_DAYS} días a las "
@@ -430,6 +453,7 @@ def register_tasks() -> None:
             ["schtasks", "/Delete", "/TN", TASK_NAME_LOGON, "/F"],
             capture_output=True,
             text=True,
+            **_TEXTO_SISTEMA,
             timeout=30,
         )
         if result.returncode == 0:
@@ -448,6 +472,7 @@ def unregister_tasks() -> None:
                 ["schtasks", "/Delete", "/TN", task, "/F"],
                 capture_output=True,
                 text=True,
+                **_TEXTO_SISTEMA,
                 timeout=30,
             )
             if result.returncode == 0:

@@ -135,6 +135,14 @@ class MainWindow(ctk.CTk):
             lambda _evento: self._on_respaldo_fallado(),
         )
 
+        # Estado de sincronización: el agente avisa desde su propio hilo y el
+        # aviso se encola como evento virtual, que el hilo principal procesa.
+        self._sync_estado_pendiente: dict = {}
+        self.bind(
+            "<<EstadoSincronizacion>>",
+            lambda _evento: self._pintar_estado_sincronizacion(),
+        )
+
         # Copiar el nombre de usuario MIENTRAS el objeto sigue ligado a la
         # sesión de login; cualquier cierre de sesión scoped posterior lo
         # dejaría detached (incluso para atributos de clave primaria).
@@ -181,6 +189,7 @@ class MainWindow(ctk.CTk):
         self.update()
         self._show_frame("dashboard")
         self._programar_respaldo_periodico()
+        self._vincular_sincronizacion()
 
     # ------------------------------------------------------------------
     # Permisos del usuario actual
@@ -421,7 +430,135 @@ class MainWindow(ctk.CTk):
             text_color=COLORES["texto_suave"],
         )
         self.datetime_label.pack(side="right", padx=10, pady=5)
+
+        # Indicador del agente de sincronización: dice de un vistazo si los
+        # datos de este puesto ya están en la red o si hay algo esperando.
+        self.sync_label = ctk.CTkLabel(
+            self.status_bar,
+            text="Sincronización: —",
+            font=ctk.CTkFont(size=10),
+            text_color=COLORES["texto_suave"],
+        )
+        self.sync_label.pack(side="right", padx=(10, 0), pady=5)
+
+        self.sync_btn = ctk.CTkButton(
+            self.status_bar,
+            text="Sincronizar ahora",
+            width=120,
+            height=22,
+            font=ctk.CTkFont(size=10),
+            command=self._on_sincronizar_ahora,
+        )
+        self.sync_btn.pack(side="right", padx=(10, 10), pady=4)
+
         self._update_clock()
+
+    # ------------------------------------------------------------------
+    # Sincronización con la intranet
+    # ------------------------------------------------------------------
+    def _vincular_sincronizacion(self):
+        """
+        Conecta la barra de estado con el agente de sincronización
+
+        Si el agente ya está en marcha (lo arranca main.py antes de abrir la
+        ventana) solo se registra el notificador; si no, se intenta arrancar
+        aquí, de modo que un cierre y una reapertura de sesión no dejen la
+        sincronización apagada. Nada de esto es obligatorio: sin agente, la
+        barra muestra el estado y el resto de la aplicación funciona igual.
+        """
+        try:
+            from sync_agent import agente_actual, estado_sincronizacion, iniciar_agente
+        except Exception:
+            logger.debug("El agente de sincronización no está disponible", exc_info=True)
+            self._pintar_estado_sincronizacion({"habilitado": False})
+            return
+
+        try:
+            agente = agente_actual()
+            if agente is None:
+                agente = iniciar_agente(notificador=self._on_estado_sincronizacion)
+            else:
+                agente.notificador = self._on_estado_sincronizacion
+            self._pintar_estado_sincronizacion(estado_sincronizacion())
+        except Exception:
+            logger.warning("No se pudo vincular la sincronización", exc_info=True)
+
+    def _on_estado_sincronizacion(self, estado: dict) -> None:
+        """Recibe el estado del agente (hilo de fondo) y lo encola al principal"""
+        try:
+            self._sync_estado_pendiente = dict(estado)
+        except Exception:
+            return
+        self._notificar_hilo_principal("<<EstadoSincronizacion>>")
+
+    def _pintar_estado_sincronizacion(self, estado: dict | None = None) -> None:
+        """Actualiza el indicador de la barra de estado (hilo principal)"""
+        if estado is None:
+            estado = self._sync_estado_pendiente
+        if not hasattr(self, "sync_label"):
+            return
+        try:
+            if not self.sync_label.winfo_exists():
+                return
+        except tk.TclError:
+            return
+
+        etiquetas = {
+            "detenido": ("detenida", "texto_suave"),
+            "inactivo": ("inactiva", "texto_suave"),
+            "sin_conexion": ("sin conexión", "error"),
+            "sincronizando": ("sincronizando…", "acento"),
+            "sincronizado": ("al día", "ok"),
+            "error_token": ("token rechazado", "error"),
+        }
+        colores = {
+            "texto_suave": COLORES["texto_suave"],
+            "acento": COLORES["acento"],
+            "ok": "#2ecc71" if COLORES["fondo"] == "#1a1a1a" else "#1e8449",
+            "error": "#e74c3c" if COLORES["fondo"] == "#1a1a1a" else "#c0392b",
+        }
+
+        clave = str(estado.get("estado") or "detenido")
+        texto, color = etiquetas.get(clave, (clave, "texto_suave"))
+        pendientes = int(estado.get("pendientes") or 0)
+        if pendientes:
+            texto = f"{texto} · {pendientes} pendiente{'s' if pendientes != 1 else ''}"
+        conflictos = int(estado.get("conflictos") or 0)
+        if conflictos:
+            texto = f"{texto} · {conflictos} conflicto{'s' if conflictos != 1 else ''}"
+
+        try:
+            self.sync_label.configure(text=f"Sincronización: {texto}", text_color=colores[color])
+            habilitado = bool(estado.get("habilitado"))
+            self.sync_btn.configure(state="normal" if habilitado else "disabled")
+        except tk.TclError:
+            logger.debug("Indicador de sincronización omitido: ventana cerrada")
+
+    def _on_sincronizar_ahora(self):
+        """Pide un ciclo inmediato de sincronización y lo informa en la barra"""
+        try:
+            from sync_agent import estado_sincronizacion, sincronizar_ahora
+        except Exception:
+            messagebox.showinfo(
+                "Sincronización",
+                "El agente de sincronización no está disponible en esta instalación.",
+            )
+            return
+        try:
+            if not sincronizar_ahora():
+                messagebox.showinfo(
+                    "Sincronización",
+                    "La sincronización no está habilitada en este equipo.\n"
+                    "Actívela en Configuración → Sincronización.",
+                )
+                return
+            estado = estado_sincronizacion()
+            self._sync_estado_pendiente = dict(estado)
+            self._pintar_estado_sincronizacion(estado)
+            self.status_label.configure(text="Sincronización solicitada…")
+        except Exception as e:
+            logger.warning("No se pudo solicitar la sincronización", exc_info=True)
+            messagebox.showwarning("Sincronización", f"No se pudo sincronizar: {e}")
 
     def _update_clock(self):
         try:
@@ -430,6 +567,18 @@ class MainWindow(ctk.CTk):
             if hasattr(self, "datetime_label") and self.datetime_label.winfo_exists():
                 self.datetime_label.configure(text=datetime.now().strftime("%Y-%m-%d %H:%M"))
                 self._clock_timer = self.after(30000, self._update_clock)
+                # El reloj también refresca el indicador de sincronización:
+                # si el agente está inactivo nadie más avisa de su estado.
+                self.after(50, self._refrescar_indicador_sincronizacion)
+        except Exception:
+            logger.debug("operación de interfaz ignorada", exc_info=True)
+
+    def _refrescar_indicador_sincronizacion(self) -> None:
+        """Relee el estado del agente para el indicador de la barra de estado"""
+        try:
+            from sync_agent import estado_sincronizacion
+
+            self._pintar_estado_sincronizacion(estado_sincronizacion())
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
 

@@ -183,7 +183,12 @@ class SecurityValidator:
         """
         Sanitiza input para prevenir inyección SQL básica
 
-        Nota: Esto no reemplaza el uso de parámetros en queries SQL
+        DESACONSEJADO y sin consumidores: elimina palabras (``OR``, ``AND``,
+        ``DROP``...) del valor, así que corrompería datos legítimos como un
+        apellido o una dirección. La protección real del sistema son las
+        consultas parametrizadas del ORM (ver `BaseRepository`), que no
+        requieren sanitizar el contenido. Se conserva solo por
+        compatibilidad con la API pública.
         """
         if value is None:
             return ""

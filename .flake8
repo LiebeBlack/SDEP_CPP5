@@ -1,0 +1,18 @@
+[flake8]
+# Configuración del análisis estático del proyecto.
+#
+# Se limita a los códigos que denotan defecto real: errores de importación y de
+# nombre no definido (F), errores de sintaxis e indentación (E9) y los avisos de
+# obsolescencia (W6). El resto de E/W son cuestiones de estilo que ya resolvió
+# `black` (línea de 100 caracteres) y `isort`, de modo que exigirlas aquí solo
+# generaría ruido sobre código que la herramienta no reescribe.
+select = F,E9,W6
+max-line-length = 100
+exclude =
+    .venv,
+    .git,
+    build,
+    dist,
+    htmlcov,
+    docs/vendor,
+    installer

@@ -4,44 +4,16 @@ Repositorio para operaciones de datos de empleados con manejo de errores mejorad
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 from typing import Any
 
 from src.models import Empleado, TipoEmpleado
 from .base_repository import BaseRepository
+from .busqueda import normalizar_expr, normalizar_termino
 
 logger = logging.getLogger(__name__)
-
-
-# Pares para búsqueda insensible a mayúsculas y tildes (SQLite LIKE no
-# normaliza caracteres acentuados: "gomez" debe encontrar "Gómez").
-_ACENTOS = [
-    ("á", "a"),
-    ("é", "e"),
-    ("í", "i"),
-    ("ó", "o"),
-    ("ú", "u"),
-    ("ü", "u"),
-    ("ñ", "n"),
-]
-
-
-def _normalizar_expr(col):
-    """Expresión SQL que pasa una columna a minúsculas sin tildes"""
-    expr = func.lower(col)
-    for acento, plano in _ACENTOS:
-        expr = func.replace(expr, acento, plano)
-    return expr
-
-
-def _normalizar_termino(termino: str) -> str:
-    """Normaliza un término de búsqueda: minúsculas y sin tildes"""
-    texto = termino.lower()
-    for acento, plano in _ACENTOS:
-        texto = texto.replace(acento, plano)
-    return texto
 
 
 class EmpleadoRepository(BaseRepository[Empleado]):
@@ -110,7 +82,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         Solo devuelve empleados activos, igual que la lista principal del frame.
         """
         try:
-            term = _normalizar_termino(search_term.strip())
+            term = normalizar_termino(search_term.strip())
             if not term:
                 return self.get_activos()
             patron = f"%{term}%"
@@ -119,9 +91,9 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 .filter(
                     Empleado.activo == 1,
                     or_(
-                        _normalizar_expr(Empleado.nombres).like(patron),
-                        _normalizar_expr(Empleado.apellidos).like(patron),
-                        _normalizar_expr(Empleado.cedula).like(patron),
+                        normalizar_expr(Empleado.nombres).like(patron),
+                        normalizar_expr(Empleado.apellidos).like(patron),
+                        normalizar_expr(Empleado.cedula).like(patron),
                     ),
                 )
                 .all()
@@ -174,14 +146,14 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 query = query.filter(Empleado.cargo == filtros["cargo"])
 
             if "busqueda" in filtros and filtros["busqueda"]:
-                search = _normalizar_termino(filtros["busqueda"].strip())
+                search = normalizar_termino(filtros["busqueda"].strip())
                 if search:
                     patron = f"%{search}%"
                     query = query.filter(
                         or_(
-                            _normalizar_expr(Empleado.nombres).like(patron),
-                            _normalizar_expr(Empleado.apellidos).like(patron),
-                            _normalizar_expr(Empleado.cedula).like(patron),
+                            normalizar_expr(Empleado.nombres).like(patron),
+                            normalizar_expr(Empleado.apellidos).like(patron),
+                            normalizar_expr(Empleado.cedula).like(patron),
                         )
                     )
 

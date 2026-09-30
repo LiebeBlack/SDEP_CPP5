@@ -12,6 +12,7 @@ asumen unicidad de cédula o conteos exactos se ejecutan aislados.
 """
 
 import atexit
+import logging
 import os
 import shutil
 import tempfile
@@ -31,6 +32,8 @@ atexit.register(_cleanup)
 
 import pytest  # noqa: E402
 
+logger = logging.getLogger(__name__)
+
 
 def _reset_database(db_config):
     """Limpia todas las tablas y vuelve a sembrar la configuración inicial
@@ -48,6 +51,22 @@ def _reset_database(db_config):
         for tabla in reversed(Base.metadata.sorted_tables):
             conn.execute(text(f'DELETE FROM "{tabla.name}"'))
     db_config.init_db()
+
+    # El agente de sincronización guarda identidad global por tabla e id local:
+    # si esas tablas sobrevivieran al reinicio de los datos, un empleado nuevo
+    # reutilizaría el id local de otro y heredaría su identidad global.
+    try:
+        from sync_agent.esquema import BaseSync
+
+        tablas_sync = [tabla.name for tabla in reversed(BaseSync.metadata.sorted_tables)]
+    except Exception:
+        tablas_sync = []
+    for nombre in tablas_sync:
+        try:
+            with db_config.engine.begin() as conn:
+                conn.execute(text(f'DELETE FROM "{nombre}"'))
+        except Exception:
+            logger.debug("No se pudo limpiar la tabla %s del agente", nombre, exc_info=True)
 
 
 @pytest.fixture(scope="session")
@@ -70,12 +89,85 @@ def session(db_config):
 
 
 @pytest.fixture()
+def entorno_sync(db_config, monkeypatch):
+    """
+    Aisla el agente de sincronización dentro de una prueba
+
+    La suite comparte un único archivo de base de datos y un único config.json,
+    así que sin esta limpieza una prueba vería el journal, la identidad y los
+    conflictos que dejaron las anteriores. Deja la base recién sembrada, las
+    tablas del agente vacías, la captura de cambios instalada y la
+    configuración del equipo en blanco (variables de entorno incluidas).
+    """
+    from sqlalchemy import text
+
+    import sync_agent
+    from src.config import settings
+    from sync_agent import captura, esquema
+    from sync_agent import config as config_sync
+
+    _reset_database(db_config)
+    db_config.preparar_sincronizacion()
+    db_config.activar_captura_sincronizacion()
+
+    with db_config.engine.begin() as conn:
+        for tabla in reversed(esquema.BaseSync.metadata.sorted_tables):
+            conn.execute(text(f'DELETE FROM "{tabla.name}"'))
+
+    def _limpiar_configuracion_sync():
+        """Deja la configuración del equipo como recién instalada"""
+        for clave in (
+            config_sync.CLAVE_HABILITADO,
+            config_sync.CLAVE_URL,
+            config_sync.CLAVE_TOKEN,
+            config_sync.CLAVE_DISPOSITIVO,
+            config_sync.CLAVE_EQUIPO,
+            config_sync.CLAVE_INTERVALO,
+            config_sync.CLAVE_BINARIO_MAX,
+        ):
+            try:
+                settings.delete_config_value(clave)
+            except OSError:
+                pass
+        for variable in (
+            "SDP_SYNC_ACTIVADO",
+            "SDP_SYNC_URL",
+            "SDP_SYNC_TOKEN",
+            "SDP_SYNC_INTERVALO",
+            "SDP_SYNC_BINARIO_MAX",
+            "SDP_SYNC_EQUIPO",
+        ):
+            monkeypatch.delenv(variable, raising=False)
+
+    _limpiar_configuracion_sync()
+    captura.establecer_dispositivo(None)
+    sync_agent._agente = None
+
+    yield db_config
+
+    if sync_agent._agente is not None:
+        try:
+            sync_agent._agente.detener(timeout=5.0)
+        except Exception:
+            pass
+        sync_agent._agente = None
+    # Sin esta limpieza, una prueba posterior que construya la ventana
+    # principal arrancaría el agente contra el servidor de esta prueba (ya
+    # apagado) y ensuciaría su resultado.
+    _limpiar_configuracion_sync()
+    captura.establecer_dispositivo(None)
+
+
+@pytest.fixture()
 def storage(tmp_path, monkeypatch):
     """Redirige el almacenamiento de documentos/fotos a un directorio temporal"""
     from src.config import settings
     from src.utils.helpers import ensure_directory_exists
 
-    for attr in ("documents_path", "photos_path", "exports_path"):
+    # `temp_dir` también se redirige: el directorio base de las pruebas es
+    # ancestro de `tmp_path`, y al limpiar temporales se recorría el almacén
+    # entero del test. En producción esas carpetas son hermanas, no anidadas.
+    for attr in ("documents_path", "photos_path", "exports_path", "temp_dir"):
         destino = str(tmp_path / attr)
         ensure_directory_exists(destino)
         monkeypatch.setattr(settings, attr, destino)

@@ -125,6 +125,11 @@ hiddenimports = [
     "dotenv",
     "sqlalchemy.dialects.sqlite",
     *collect_submodules("reportlab.graphics"),
+    # El agente de sincronización se importa dentro de funciones (arranque,
+    # configuración y bandeja de conflictos): se recolecta el paquete entero
+    # para que el ejecutable empaquetado lo incluya.
+    *collect_submodules("sync_agent"),
+    "sync_agent",
 ]
 
 a = Analysis(

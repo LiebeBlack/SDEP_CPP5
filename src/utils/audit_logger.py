@@ -51,6 +51,9 @@ class AuditEventType(Enum):
     CONFIG_CHANGE = "config_change"
     CONFIG_ACCESS = "config_access"
 
+    # Sincronización entre puestos de la intranet
+    SYNC_ACTIVITY = "sync_activity"
+
 
 class AuditLogger:
     """Sistema de auditoría y logging"""

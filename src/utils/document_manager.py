@@ -12,6 +12,7 @@ from typing import Any
 
 from src.config import settings
 from src.utils.helpers import (
+    EXTENSIONES_ABRIBLES,
     get_file_extension,
     is_valid_image_file,
     is_valid_pdf_file,
@@ -25,25 +26,6 @@ from src.utils.helpers import (
 import logging
 
 logger = logging.getLogger(__name__)
-
-# Extensiones que el sistema puede lanzar con la aplicación predeterminada
-# del sistema operativo. Nada fuera de esta lista debe ejecutarse nunca.
-EXTENSIONES_ABRIBLES = frozenset(
-    {
-        ".pdf",
-        ".txt",
-        ".rtf",
-        ".csv",
-        ".xlsx",
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".gif",
-        ".bmp",
-        ".tiff",
-        ".webp",
-    }
-)
 
 
 class DocumentManager:
@@ -231,14 +213,16 @@ class DocumentManager:
         Returns:
             True si se copió correctamente, False en caso contrario
         """
-        if not (self.ruta_gestionada(source_path) and self.ruta_gestionada(destination_path)):
-            # Origen y destino deben estar dentro del almacén: copiar desde
-            # fuera introduciría en el gestor documental cualquier archivo
-            # del sistema (o el contenido de un dispositivo) sin control.
+        if not self.ruta_gestionada(source_path):
+            # El origen sí debe estar dentro del almacén: permitir copiar desde
+            # fuera introduciría en el gestor documental cualquier archivo del
+            # sistema (o el contenido de un dispositivo) sin control. El destino
+            # no se restringe porque solo lo fija el código que llama -igual que
+            # en `export_file`- y su propósito declarado es copiar "a otra
+            # ubicación".
             logger.warning(
-                "Copia rechazada fuera del almacén (origen=%s, destino=%s)",
+                "Copia rechazada: el origen no está en el almacén (%s)",
                 source_path,
-                destination_path,
             )
             return False
         try:
@@ -262,8 +246,12 @@ class DocumentManager:
         Returns:
             True si se movió correctamente, False en caso contrario
         """
-        if not (self.ruta_gestionada(source_path) and self.ruta_gestionada(destination_path)):
-            logger.warning("Movimiento rechazado fuera del almacén: %s", destination_path)
+        if not self.ruta_gestionada(source_path):
+            # Igual que en `copy_document`: se protege el origen, no el destino.
+            logger.warning(
+                "Movimiento rechazado: el origen no está en el almacén (%s)",
+                source_path,
+            )
             return False
         try:
             ensure_directory_exists(os.path.dirname(destination_path))
@@ -451,38 +439,70 @@ class DocumentManager:
 
         return file_path, unique_filename
 
-    def cleanup_old_files(self, days: int = 30) -> int:
+    def cleanup_old_files(
+        self, days: int = 30, incluir_almacen_documental: bool = False
+    ) -> int:
         """
-        Limpia archivos antiguos
+        Limpia archivos antiguos de las carpetas de trabajo
+
+        Por omisión solo barre las exportaciones y los temporales de la
+        aplicación: los documentos y las fotografías son datos del usuario a
+        los que apunta la base de datos, y borrarlos por fecha de
+        modificación dejaría registros activos sin archivo. El almacén
+        documental solo se limpia si el llamador lo pide expresamente.
 
         Args:
             days: Días de antigüedad para eliminar archivos
+            incluir_almacen_documental: barre también documentos y fotografías
 
         Returns:
             Cantidad de archivos eliminados
         """
-        count = 0
-        cutoff_time = datetime.now().timestamp() - (days * 24 * 60 * 60)
+        directorios = [self.exports_dir, settings.temp_dir]
+        if incluir_almacen_documental:
+            directorios.extend([self.documents_dir, self.photos_dir])
+        return self._purgar_antiguos(directorios, days)
 
-        for directory in [self.documents_dir, self.photos_dir, self.exports_dir]:
-            if not os.path.exists(directory):
+    def limpiar_temporales(self, days: int = 1) -> int:
+        """
+        Purga los temporales que dejó una ejecución anterior
+
+        ReportLab, las previsualizaciones y las pruebas de escritura viven en
+        ``tmp/`` dentro de la carpeta de datos. Nada de ahí debe sobrevivir a
+        un arranque, así que se eliminan los archivos con más de un día: el
+        margen evita borrar los de otra instancia abierta en paralelo.
+
+        Args:
+            days: Días de antigüedad a partir de los cuales se elimina
+
+        Returns:
+            Cantidad de archivos eliminados
+        """
+        return self._purgar_antiguos([settings.temp_dir], days)
+
+    @staticmethod
+    def _purgar_antiguos(directorios: list[str], days: int) -> int:
+        """Elimina de las carpetas indicadas los archivos con más de `days` días"""
+        eliminados = 0
+        limite = datetime.now().timestamp() - (days * 24 * 60 * 60)
+
+        for directory in directorios:
+            if not os.path.isdir(directory):
                 continue
-
-            for root, dirs, files in os.walk(directory):
+            for root, _dirs, files in os.walk(directory):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    if os.path.getmtime(file_path) < cutoff_time:
-                        try:
-                            os.remove(file_path)
-                            count += 1
-                        except Exception:
-                            logger.warning(
-                                "%s: operación auxiliar falló (se continúa)",
-                                "cleanup_old_files",
-                                exc_info=True,
-                            )
+                    try:
+                        if os.path.getmtime(file_path) >= limite:
+                            continue
+                        os.remove(file_path)
+                        eliminados += 1
+                    except OSError:
+                        # Archivo en uso por un visor u otro proceso: se deja
+                        # para la próxima pasada en lugar de abortar la limpieza.
+                        logger.debug("No se pudo limpiar %s", file_path, exc_info=True)
 
-        return count
+        return eliminados
 
     def get_storage_stats(self) -> dict:
         """

@@ -45,7 +45,7 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow
 
 ### tests (ubuntu)
 
-- Ejecuta la suite de pytest (388 funciones de prueba en 20 archivos) con
+- Ejecuta la suite de pytest (451 funciones de prueba en 25 archivos) con
   cobertura.
 - Sube el reporte de cobertura como artefacto.
 

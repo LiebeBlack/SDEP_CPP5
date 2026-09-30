@@ -243,6 +243,20 @@ SDEP_CPP5/
 ✅ Installer automation (NSIS, Inno Setup scripts)
 ```
 
+### 4.5 Sincronización entre Puestos (`sync_agent/`)
+```
+🔁 Escritura siempre local: la red nunca bloquea al usuario (modo offline)
+🔁 Captura transaccional: journal del ORM en la misma transacción que el dato
+🔁 Identidad global por UUID + clave natural (unificar registros duplicados)
+🔁 Mezcla por campo con orden total determinista (convergencia entre nodos)
+🔁 Bandeja de conflictos: el valor perdedor nunca se descarta en silencio
+🔁 Nodo central con ThreadingHTTPServer (biblioteca estándar, sin dependencias)
+🔁 SQLite central en WAL con seq global autoritativo (único escritor)
+🔁 Token de puesto hasheado (PBKDF2) + límite de peticiones + TLS opcional
+🔁 Binarios por hash (deduplicados), con límite de tamaño configurable
+🔁 Hilo de fondo con espera interrumpible y reintentos 30→300 s con jitter
+```
+
 ---
 
 ## 📦 FASE 5: EMPAQUETADO A EXE

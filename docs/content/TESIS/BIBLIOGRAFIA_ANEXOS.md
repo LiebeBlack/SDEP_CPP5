@@ -407,7 +407,11 @@ SDEP_CPP5/
 │   │                      exporter.py · pdf_generator.py
 │   │                      validators.py · helpers.py
 │   └── main.py            punto de entrada
-├── tests/                 veinte archivos de prueba · 388 funciones
+├── sync_agent/            agente de sincronización (paquete independiente)
+│                          merge.py · captura.py · aplicador.py · agente.py
+│                          servidor.py · cliente.py · esquema.py · identidad.py
+│                          registro.py · comun.py · config.py · __main__.py
+├── tests/                 veintiséis archivos de prueba · 476 funciones
 ├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
 ├── installer/             configuración de instalación para Windows
 ├── docs/                  portal de documentación
@@ -487,7 +491,7 @@ class AuthService:
         return usuario_bd
 ```
 
-El código completo se encuentra en el repositorio del proyecto. Su extensión es de 22 013 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV.
+El código completo se encuentra en el repositorio del proyecto. Su extensión es de 23 242 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV, a las que se suman 5 271 líneas del paquete independiente de sincronización (`sync_agent/`, 13 archivos).
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
@@ -496,8 +500,8 @@ El código completo se encuentra en el repositorio del proyecto. Su extensión e
 | Indicador | Valor |
 |-----------|-------|
 | Archivos de prueba | 20 |
-| Funciones de prueba declaradas | 388 |
-| Líneas de código de prueba | 4 394 |
+| Funciones de prueba declaradas | 476 |
+| Líneas de código de prueba | 6 598 |
 | Distribución por archivo | Tabla 4.7 del Capítulo IV |
 | Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 

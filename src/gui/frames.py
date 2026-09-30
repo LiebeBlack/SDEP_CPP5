@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import webbrowser
 from datetime import date, timedelta
 
@@ -60,6 +61,22 @@ def _id_fila_seleccionada(tree) -> int | None:
         return int(tags[0])
     except (TypeError, ValueError, IndexError):
         return None
+
+
+def _texto_valor_conflicto(valor, limite: int = 60) -> str:
+    """
+    Reduce el valor de un conflicto de sincronización a una línea corta
+
+    Los valores viajan serializados (con su tipo) dentro del JSON del agente:
+    aquí solo se busca que la bandeja sea legible, no exhaustiva; el detalle
+    completo queda en el registro del conflicto.
+    """
+    if valor is None:
+        return "—"
+    if isinstance(valor, (bytes, bytearray)):
+        return f"<binario {len(valor)} B>"
+    texto = str(valor).replace("\n", " ").strip()
+    return texto if len(texto) <= limite else texto[: limite - 1] + "…"
 
 
 def _seleccionar_fila_click(tree, event) -> bool:
@@ -3568,6 +3585,13 @@ class ConfiguracionFrame(ctk.CTkFrame):
         usuarios_tab = self.notebook.add("Usuarios")
         self._create_usuarios_tab(usuarios_tab)
 
+        # Pestaña de sincronización con la intranet (admin): los parámetros
+        # del agente son POR EQUIPO (dirección, token e identidad propios) y
+        # por eso no se guardan en la tabla de configuración replicada.
+        if self.main_window.tiene_permiso("config"):
+            sync_tab = self.notebook.add("Sincronización")
+            self._create_sincronizacion_tab(sync_tab)
+
         # Pestaña de auditoría (solo administradores)
         if self.main_window.tiene_permiso("config"):
             auditoria_tab = self.notebook.add("Auditoría")
@@ -3904,6 +3928,463 @@ class ConfiguracionFrame(ctk.CTkFrame):
         _seleccionar_fila_click(self.usuarios_tree, event)
         self._on_edit_usuario()
 
+    # ------------------------------------------------------------------
+    # Sincronización con la intranet
+    # ------------------------------------------------------------------
+    def _create_sincronizacion_tab(self, parent):
+        """Crea la pestaña del agente de sincronización bidireccional"""
+        from sync_agent.config import INTERVALO_MAXIMO, INTERVALO_MINIMO
+
+        # Interruptor principal + estado
+        cabecera = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
+        cabecera.pack(fill="x", padx=10, pady=(10, 5))
+
+        self.sync_habilitado_var = tk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            cabecera,
+            text="Sincronizar este equipo con la intranet",
+            variable=self.sync_habilitado_var,
+        ).grid(row=0, column=0, columnspan=2, padx=10, pady=8, sticky="w")
+
+        self.sync_estado_label = ctk.CTkLabel(
+            cabecera,
+            text="Estado: sin datos",
+            text_color=COLORES["texto_suave"],
+            anchor="w",
+        )
+        self.sync_estado_label.grid(row=1, column=0, columnspan=3, padx=10, pady=(0, 8), sticky="w")
+
+        # Parámetros del equipo
+        parametros = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
+        parametros.pack(fill="x", padx=10, pady=5)
+
+        ctk.CTkLabel(parametros, text="Servidor central:", text_color=COLORES["texto"]).grid(
+            row=0, column=0, padx=(10, 5), pady=6, sticky="e"
+        )
+        self.sync_url_entry = ctk.CTkEntry(
+            parametros,
+            width=280,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="http://servidor:8765",
+        )
+        self.sync_url_entry.grid(row=0, column=1, columnspan=2, padx=5, pady=6, sticky="w")
+
+        ctk.CTkLabel(parametros, text="Token del equipo:", text_color=COLORES["texto"]).grid(
+            row=1, column=0, padx=(10, 5), pady=6, sticky="e"
+        )
+        self.sync_token_entry = ctk.CTkEntry(
+            parametros,
+            width=280,
+            show="•",
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="token entregado por el administrador",
+        )
+        self.sync_token_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=6, sticky="w")
+
+        ctk.CTkLabel(parametros, text="Nombre del equipo:", text_color=COLORES["texto"]).grid(
+            row=2, column=0, padx=(10, 5), pady=6, sticky="e"
+        )
+        self.sync_equipo_entry = ctk.CTkEntry(
+            parametros, width=240, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.sync_equipo_entry.grid(row=2, column=1, padx=5, pady=6, sticky="w")
+
+        ctk.CTkLabel(parametros, text="Intervalo (segundos):", text_color=COLORES["texto"]).grid(
+            row=3, column=0, padx=(10, 5), pady=6, sticky="e"
+        )
+        self.sync_intervalo_entry = ctk.CTkEntry(
+            parametros, width=90, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.sync_intervalo_entry.grid(row=3, column=1, padx=5, pady=6, sticky="w")
+        ctk.CTkLabel(
+            parametros,
+            text=f"({INTERVALO_MINIMO} a {INTERVALO_MAXIMO})",
+            text_color=COLORES["texto_suave"],
+        ).grid(row=3, column=2, padx=5, pady=6, sticky="w")
+
+        ctk.CTkLabel(parametros, text="Identificador del equipo:", text_color=COLORES["texto"]).grid(
+            row=4, column=0, padx=(10, 5), pady=6, sticky="e"
+        )
+        self.sync_dispositivo_entry = ctk.CTkEntry(
+            parametros, width=280, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.sync_dispositivo_entry.grid(row=4, column=1, columnspan=2, padx=5, pady=6, sticky="w")
+        ctk.CTkLabel(
+            parametros,
+            text=(
+                "El administrador lo entrega junto con el token al dar de alta el "
+                "puesto en el nodo central"
+            ),
+            text_color=COLORES["texto_suave"],
+            anchor="w",
+        ).grid(row=5, column=0, columnspan=3, padx=10, pady=(0, 8), sticky="w")
+
+        # Acciones
+        acciones = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
+        acciones.pack(fill="x", padx=10, pady=5)
+
+        self.sync_guardar_btn = ctk.CTkButton(
+            acciones, text="Guardar", command=self._on_guardar_sincronizacion
+        )
+        self.sync_guardar_btn.pack(side="left", padx=5, pady=6)
+        self.sync_probar_btn = ctk.CTkButton(
+            acciones, text="Probar conexión", command=self._on_probar_conexion
+        )
+        self.sync_probar_btn.pack(side="left", padx=5, pady=6)
+        self.sync_ahora_btn = ctk.CTkButton(
+            acciones, text="Sincronizar ahora", command=self._on_sincronizar_ahora
+        )
+        self.sync_ahora_btn.pack(side="left", padx=5, pady=6)
+        self.sync_adoptar_btn = ctk.CTkButton(
+            acciones, text="Adoptar datos existentes", command=self._on_adoptar_datos
+        )
+        self.sync_adoptar_btn.pack(side="left", padx=5, pady=6)
+        ctk.CTkButton(
+            acciones, text="Actualizar", command=self._load_sincronizacion
+        ).pack(side="left", padx=5, pady=6)
+
+        # Contadores
+        self.sync_contadores_label = ctk.CTkLabel(
+            parent,
+            text="Pendientes: —   ·   Conflictos: —",
+            text_color=COLORES["texto_suave"],
+            anchor="w",
+            justify="left",
+        )
+        self.sync_contadores_label.pack(fill="x", padx=15, pady=(5, 0))
+
+        # Bandeja de conflictos: el valor perdedor de cada mezcla queda aquí,
+        # con la trazabilidad de quién ganó y por qué regla.
+        ctk.CTkLabel(
+            parent,
+            text="Conflictos de mezcla (el valor perdedor nunca se descarta en silencio)",
+            text_color=COLORES["texto"],
+            anchor="w",
+        ).pack(fill="x", padx=15, pady=(10, 0))
+
+        conflictos_frame = ctk.CTkFrame(parent, fg_color=COLORES["fondo"])
+        conflictos_frame.pack(fill="both", expand=True, padx=10, pady=(5, 10))
+        scrollbar = ctk.CTkScrollbar(conflictos_frame)
+        scrollbar.pack(side="right", fill="y")
+        self.sync_conflictos_tree = ttk.Treeview(
+            conflictos_frame,
+            columns=("fecha", "tabla", "campo", "ganador", "local", "remoto"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
+        for columna, titulo, ancho in (
+            ("fecha", "Fecha", 140),
+            ("tabla", "Tabla", 110),
+            ("campo", "Campo", 140),
+            ("ganador", "Ganó", 80),
+            ("local", "Valor local", 220),
+            ("remoto", "Valor del servidor", 220),
+        ):
+            self.sync_conflictos_tree.heading(columna, text=titulo)
+            self.sync_conflictos_tree.column(columna, width=ancho, minwidth=70)
+        self.sync_conflictos_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.configure(command=self.sync_conflictos_tree.yview)
+        _habilitar_orden_columnas(self.sync_conflictos_tree)
+
+        self._load_sincronizacion()
+
+    def _load_sincronizacion(self):
+        """Carga la configuración del agente y sus contadores"""
+        try:
+            from sync_agent import estado_sincronizacion
+            from sync_agent.config import cargar as cargar_sync
+        except Exception:
+            logger.debug("El agente de sincronización no está disponible", exc_info=True)
+            return
+
+        try:
+            config = cargar_sync()
+            self.sync_habilitado_var.set(bool(config.habilitado))
+            self.sync_url_entry.delete(0, tk.END)
+            self.sync_url_entry.insert(0, config.url_servidor or "")
+            self.sync_token_entry.delete(0, tk.END)
+            self.sync_token_entry.insert(0, config.token or "")
+            self.sync_equipo_entry.delete(0, tk.END)
+            self.sync_equipo_entry.insert(0, config.nombre_equipo or "")
+            self.sync_intervalo_entry.delete(0, tk.END)
+            self.sync_intervalo_entry.insert(0, str(config.intervalo_segundos))
+            self.sync_dispositivo_entry.delete(0, tk.END)
+            self.sync_dispositivo_entry.insert(0, config.dispositivo_id or "")
+
+            estado = estado_sincronizacion()
+            self._pintar_estado_sync(estado, config)
+            self._load_conflictos_sync()
+        except Exception as e:
+            # Nunca se abre un diálogo modal por esto: la pestaña es informativa
+            # y un fallo aquí no debe bloquear la configuración del sistema.
+            logger.warning("No se pudo cargar la sincronización: %s", e, exc_info=True)
+            try:
+                self.sync_estado_label.configure(text=f"Estado: no disponible ({e})")
+            except tk.TclError:
+                logger.debug("Etiqueta de sincronización no disponible")
+
+    def _pintar_estado_sync(self, estado: dict, config) -> None:
+        """Refresca el texto de estado y los contadores"""
+        partes = [f"Estado: {estado.get('estado', 'detenido')}"]
+        if estado.get("ultima_sincronizacion"):
+            partes.append(f"última: {estado['ultima_sincronizacion']}")
+        if estado.get("ultimo_error"):
+            partes.append(f"último error: {estado['ultimo_error']}")
+        problemas = config.problemas() if hasattr(config, "problemas") else []
+        if problemas:
+            partes.append("pendiente: " + "; ".join(problemas))
+        self.sync_estado_label.configure(text="   ·   ".join(str(p) for p in partes))
+
+        desfase = estado.get("desfase_reloj_segundos")
+        self.sync_contadores_label.configure(
+            text=(
+                f"Pendientes por enviar: {int(estado.get('pendientes') or 0)}   ·   "
+                f"Conflictos sin revisar: {int(estado.get('conflictos') or 0)}   ·   "
+                f"Subidas: {int(estado.get('subidas') or 0)}   ·   "
+                f"Bajadas: {int(estado.get('bajadas') or 0)}   ·   "
+                f"Desfase de reloj: {desfase if desfase is not None else '—'} s"
+            )
+        )
+
+    def _load_conflictos_sync(self) -> None:
+        """Lista los conflictos guardados por el agente en este equipo"""
+        from sync_agent.comun import loads
+        from sync_agent.esquema import ConflictoSync
+
+        from src.config import db_config
+
+        for item in self.sync_conflictos_tree.get_children():
+            self.sync_conflictos_tree.delete(item)
+        db = db_config
+        sesion = db.new_session()
+        try:
+            filas = (
+                sesion.query(ConflictoSync)
+                .filter(ConflictoSync.resuelto == 0)
+                .order_by(ConflictoSync.detectado_en.desc())
+                .limit(200)
+                .all()
+            )
+            for indice, fila in enumerate(filas):
+                self.sync_conflictos_tree.insert(
+                    "",
+                    "end",
+                    iid=f"sc_{indice}",
+                    values=(
+                        fila.detectado_en.strftime("%Y-%m-%d %H:%M")
+                        if fila.detectado_en
+                        else "",
+                        fila.tabla,
+                        fila.campo,
+                        fila.ganador,
+                        _texto_valor_conflicto(loads(fila.valor_local)),
+                        _texto_valor_conflicto(loads(fila.valor_remoto)),
+                    ),
+                )
+        except Exception:
+            logger.debug("No se pudieron listar los conflictos", exc_info=True)
+        finally:
+            db.close_session(sesion)
+
+    def _on_guardar_sincronizacion(self):
+        """Guarda los parámetros del agente y (des)arranca el hilo según el caso"""
+        from src.config import db_config
+
+        try:
+            from sync_agent import detener_agente, iniciar_agente
+            from sync_agent.captura import adoptar_existentes
+            from sync_agent.config import guardar as guardar_sync
+        except Exception:
+            messagebox.showerror("Error", "El agente de sincronización no está disponible")
+            return
+
+        intervalo = self._parse_int(self.sync_intervalo_entry.get())
+        if intervalo is None:
+            messagebox.showwarning("Advertencia", "El intervalo debe ser un número entero")
+            return
+
+        try:
+            config = guardar_sync(
+                habilitado=bool(self.sync_habilitado_var.get()),
+                url_servidor=self.sync_url_entry.get().strip(),
+                token=self.sync_token_entry.get().strip(),
+                dispositivo_id=self.sync_dispositivo_entry.get().strip(),
+                nombre_equipo=self.sync_equipo_entry.get().strip(),
+                intervalo_segundos=intervalo,
+            )
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar la configuración: {e}")
+            return
+
+        # La captura de cambios debe estar enganchada ANTES de arrancar el
+        # hilo, y los datos que ya existían necesitan identidad global: si no,
+        # nada de lo anterior a la activación llegaría al resto de la red.
+        if config.activo:
+            db_config.preparar_sincronizacion()
+            db_config.activar_captura_sincronizacion()
+            try:
+                sesion = db_config.new_session()
+                try:
+                    adoptadas = adoptar_existentes(sesion)
+                    sesion.commit()
+                finally:
+                    db_config.close_session(sesion)
+                if adoptadas:
+                    logger.info("Datos adoptados al activar la sincronización: %s", adoptadas)
+            except Exception:
+                logger.warning("No se pudieron adoptar los datos existentes", exc_info=True)
+            iniciar_agente(config)
+        else:
+            detener_agente()
+
+        self._load_sincronizacion()
+        problemas = config.problemas()
+        if config.habilitado and problemas:
+            messagebox.showwarning(
+                "Sincronización",
+                "La configuración se guardó, pero aún falta:\n\n- " + "\n- ".join(problemas),
+            )
+        else:
+            messagebox.showinfo("Éxito", "Configuración de sincronización guardada")
+
+    def _on_probar_conexion(self):
+        """Prueba el servicio central sin bloquear la interfaz"""
+        url = self.sync_url_entry.get().strip()
+        token = self.sync_token_entry.get().strip()
+        if not url:
+            messagebox.showwarning("Advertencia", "Indique la dirección del servidor central")
+            return
+        try:
+            from sync_agent.cliente import ClienteSync
+            from sync_agent.config import cargar as cargar_sync
+            from sync_agent.config import guardar as guardar_sync
+        except Exception:
+            messagebox.showerror("Error", "El agente de sincronización no está disponible")
+            return
+
+        # Se guarda primero lo escrito: probar y guardar son la misma decisión.
+        try:
+            guardar_sync(url_servidor=url, token=token)
+            config = cargar_sync()
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar la configuración: {e}")
+            return
+
+        self._set_sync_botones(estado="disabled")
+        cliente = ClienteSync(
+            url_servidor=url,
+            token=config.token,
+            dispositivo=config.dispositivo_id,
+            timeout=config.timeout_segundos,
+        )
+
+        def _probar():
+            try:
+                datos = cliente.ping()
+                mensaje = (
+                    "Conexión correcta.\n\n"
+                    f"Servidor: {datos.get('servicio', 'desconocido')} "
+                    f"v{datos.get('version', '?')}\n"
+                    f"Hora del servidor: {datos.get('hora', '—')}\n"
+                    f"Protocolo: {datos.get('protocolo', '—')}"
+                )
+            except Exception as error:
+                mensaje = f"No se pudo conectar con el servidor central:\n\n{error}"
+            self.after(0, lambda: self._mostrar_resultado_conexion(mensaje))
+
+        threading.Thread(target=_probar, name="sync-prueba", daemon=True).start()
+
+    def _mostrar_resultado_conexion(self, mensaje: str) -> None:
+        """Muestra el resultado de la prueba de conexión en el hilo principal"""
+        try:
+            self._set_sync_botones(estado="normal")
+            if mensaje.startswith("Conexión correcta"):
+                messagebox.showinfo("Sincronización", mensaje)
+            else:
+                messagebox.showwarning("Sincronización", mensaje)
+        except tk.TclError:
+            logger.debug("Aviso de conexión omitido: ventana cerrada")
+
+    def _set_sync_botones(self, estado: str) -> None:
+        """Habilita o deshabilita los botones de la pestaña de sincronización"""
+        for nombre in (
+            "sync_guardar_btn",
+            "sync_probar_btn",
+            "sync_ahora_btn",
+            "sync_adoptar_btn",
+        ):
+            boton = getattr(self, nombre, None)
+            if boton is not None:
+                try:
+                    boton.configure(state=estado)
+                except tk.TclError:
+                    logger.debug("Botón de sincronización no disponible")
+
+    def _on_sincronizar_ahora(self):
+        """Solicita un ciclo inmediato y refresca los contadores"""
+        try:
+            from sync_agent import sincronizar_ahora
+
+            if not sincronizar_ahora():
+                messagebox.showinfo(
+                    "Sincronización",
+                    "Active y guarde primero la sincronización de este equipo.",
+                )
+                return
+            self.after(1500, self._load_sincronizacion)
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo sincronizar: {e}")
+
+    def _on_adoptar_datos(self):
+        """Da identidad global a los datos que ya existían en este equipo"""
+        if not messagebox.askyesno(
+            "Adoptar datos existentes",
+            "Se dará identidad global a todos los registros que ya tenía este "
+            "equipo, para que puedan viajar al resto de la red.\n\n"
+            "La operación es segura y repetible: no modifica ningún dato.\n"
+            "¿Continuar?",
+        ):
+            return
+        from src.config import db_config
+
+        self._set_sync_botones(estado="disabled")
+
+        def _adoptar():
+            resultado = 0
+            error = None
+            try:
+                from sync_agent.captura import adoptar_existentes as adoptar
+
+                db_config.preparar_sincronizacion()
+                sesion = db_config.new_session()
+                try:
+                    resultado = adoptar(sesion)
+                    sesion.commit()
+                finally:
+                    db_config.close_session(sesion)
+            except Exception as fallo:
+                error = fallo
+            self.after(0, lambda: self._mostrar_resultado_adopcion(resultado, error))
+
+        threading.Thread(target=_adoptar, name="sync-adopcion", daemon=True).start()
+
+    def _mostrar_resultado_adopcion(self, adoptadas: int, error) -> None:
+        """Informa el resultado de la adopción de datos previos"""
+        try:
+            self._set_sync_botones(estado="normal")
+            if error is not None:
+                messagebox.showerror("Error", f"No se pudieron adoptar los datos: {error}")
+            else:
+                messagebox.showinfo(
+                    "Adopción completada",
+                    f"Registros preparados para sincronizar: {adoptadas}",
+                )
+            self._load_sincronizacion()
+        except tk.TclError:
+            logger.debug("Aviso de adopción omitido: ventana cerrada")
+
     def _create_general_tab(self, parent):
         """Crea la pestaña de configuración general"""
         form_frame = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
@@ -4008,6 +4489,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
             # Datos de la pestaña de seguridad y usuarios
             self._cargar_seguridad_y_usuarios()
+
+            # Pestaña de sincronización (solo existe para administradores)
+            if hasattr(self, "sync_habilitado_var"):
+                self._load_sincronizacion()
 
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar configuración: {str(e)}")

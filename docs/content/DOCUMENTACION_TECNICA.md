@@ -408,6 +408,74 @@ La configuración se almacena en la base de datos y puede modificarse desde la i
 - Configuración de recursos humanos
 - Preferencias del sistema
 
+## Sincronización entre Puestos (`sync_agent`)
+
+El sistema incorpora un **agente de sincronización bidireccional** que replica
+los datos institucionales entre los puestos de la intranet a través de un nodo
+central. Está construido como **paquete independiente** (`sync_agent/`) para
+poder ejecutarse por sí solo y, a la vez, funcionar embebido en la aplicación.
+
+### Garantías de diseño
+
+- **Escritura siempre local.** La aplicación nunca espera a la red: escribe en
+  su SQLite y encola la operación con su marca de tiempo (modo offline).
+- **Captura transaccional.** Un enganche a los eventos `before_flush` y
+  `after_flush_postexec` de `Session` registra la operación en el journal
+  **en la misma transacción** que el dato; una transacción deshecha no anuncia
+  nada al resto de la red.
+- **Identidad global.** Cada fila recibe un UUID (`sync_ids`) y se unifica por
+  su clave natural (`empleados.cedula`, `contratos.numero`,
+  `configuraciones.clave`), de modo que un registro creado en dos puestos es uno
+  solo.
+- **Mezcla por campo.** `merge.py` contiene funciones puras que deciden cada
+  columna por separado con un orden total y determinista
+  (`(momento, equipo, operación)`). Dos puestos que editan columnas distintas
+  conservan ambas ediciones; el choque en la misma columna deja un conflicto
+  registrado con el valor perdedor. El orden total garantiza la convergencia
+  sin importar el orden de llegada de las operaciones.
+- **Nodo central como único escritor.** Servicio HTTP de la biblioteca estándar
+  (`ThreadingHTTPServer`) sobre SQLite en modo WAL, con `seq` global
+  autoritativo, autenticación por token hasheado (PBKDF2), límite de peticiones
+  por minuto y TLS opcional.
+- **Binarios por hash.** `documentos.contenido_binario` e
+  `incidencias.documento_soporte_binario` viajan como hash y tamaño; el
+  contenido se transfiere solo si no supera el límite configurado (5 MB por
+  defecto) y queda deduplicado en el nodo central.
+- **Usuarios y preferencias fuera del alcance.** La tabla `usuarios` no se
+  replica (cada puesto administra sus cuentas) y tampoco las preferencias
+  locales (tema, respaldos, claves `sync_*`).
+
+### Módulos
+
+| Módulo | Responsabilidad |
+|---|---|
+| `merge.py` | Motor de mezcla puro (sin base de datos) |
+| `captura.py` | Enganche al ORM y adopción de los datos preexistentes |
+| `aplicador.py` | Aplica las operaciones recibidas (lo comparten cliente y servidor) |
+| `agente.py` | Hilo de fondo: ciclo, espera interrumpible, reintentos y estado |
+| `servidor.py` | Nodo central: servicio HTTP, autenticación y bitácora |
+| `cliente.py` | Cliente HTTP del protocolo (`urllib`) |
+| `esquema.py` | Tablas propias del agente (`sync_*`) |
+| `config.py` | Configuración por equipo (`config.json` + variables `SDP_SYNC_*`) |
+
+### Operación
+
+```bash
+py -3 -m sync_agent init                  # prepara el equipo (esquema, captura, adopción)
+py -3 -m sync_agent agente                # sincroniza en segundo plano (Ctrl+C detiene)
+py -3 -m sync_agent estado --json         # pendientes, cursor y desfase de reloj
+py -3 -m sync_agent conflictos            # valor perdedor de cada mezcla
+py -3 -m sync_agent servidor --db sqlite:///central.db   # nodo central
+py -3 -m sync_agent dispositivos --db sqlite:///central.db --crear "Secretaría"
+```
+
+La aplicación arranca el agente al iniciar (`main.iniciar_sincronizacion`) y lo
+detiene antes de liberar el pool de conexiones. La barra de estado muestra el
+indicador y el botón **Sincronizar ahora**, y la pestaña **Sincronización** de
+Configuración concentra la configuración por equipo, la prueba de conexión, los
+contadores y la bandeja de conflictos. El manual de operación completo está en
+`sync_agent/README.md`.
+
 ## Integración y Extensión
 
 ### Puntos de Extensión

@@ -16,6 +16,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Extensiones que el sistema puede entregar a la aplicación predeterminada del
+# sistema operativo. Es el único listado del proyecto (el gestor documental la
+# reutiliza): nada fuera de este conjunto debe ejecutarse nunca.
+EXTENSIONES_ABRIBLES = frozenset(
+    {
+        ".pdf",
+        ".txt",
+        ".rtf",
+        ".csv",
+        ".xlsx",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".webp",
+    }
+)
+
 
 def get_resource_path(relative_path: str) -> str:
     """
@@ -501,9 +521,14 @@ def abrir_con_aplicacion_predeterminada(ruta: str | Path) -> bool:
     Abre un archivo con la aplicación predeterminada del sistema
 
     Se usa para mostrar los reportes generados sin obligar al usuario a
-    buscarlos manualmente. Nunca lanza excepciones: si el archivo no
-existe o el sistema no tiene una aplicación asociada, devuelve False y
-    la interfaz lo informa.
+    buscarlos manualmente. Nunca lanza excepciones: si el archivo no existe,
+    su extensión no está permitida o el sistema no tiene una aplicación
+    asociada, devuelve False y la interfaz lo informa.
+
+    La extensión se valida contra ``EXTENSIONES_ABRIBLES``: el lanzador del
+    sistema operativo ejecuta lo que se le entregue, así que una ruta que
+    proceda de la base de datos (o de cualquier valor almacenado) no debe
+    llegar aquí sin pasar por ese filtro.
 
     Args:
         ruta: Ruta del archivo a abrir
@@ -512,8 +537,11 @@ existe o el sistema no tiene una aplicación asociada, devuelve False y
         bool: True si el sistema aceptó la orden de abrir el archivo
     """
     archivo = Path(ruta)
-    if not archivo.exists():
+    if not archivo.is_file():
         logger.warning("No se puede abrir un archivo inexistente: %s", archivo)
+        return False
+    if get_file_extension(archivo.name) not in EXTENSIONES_ABRIBLES:
+        logger.warning("Extensión no permitida para abrir: %s", archivo)
         return False
     try:
         if sys.platform.startswith("win"):

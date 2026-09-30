@@ -17,19 +17,21 @@ El sistema se materializó en una arquitectura de capas con separación estricta
 | Capa | Archivos | Líneas de código | Responsabilidad principal |
 |------|----------|------------------|---------------------------|
 | `src/models` | 10 | 1 337 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
-| `src/repositories` | 9 | 1 581 | Acceso a datos y consultas reutilizables |
-| `src/services` | 8 | 2 783 | Reglas de negocio y orquestación de flujos |
-| `src/utils` | 10 | 5 145 | Seguridad, auditoría, respaldos, PDF y utilidades |
-| `src/config` | 3 | 1 289 | Configuración, rutas y sesión de base de datos |
-| `src/gui` | 8 | 7 892 | Interfaz gráfica (CustomTkinter) |
+| `src/repositories` | 9 | 1 608 | Acceso a datos y consultas reutilizables |
+| `src/services` | 8 | 2 821 | Reglas de negocio y orquestación de flujos |
+| `src/utils` | 10 | 5 389 | Seguridad, auditoría, respaldos, PDF y utilidades |
+| `src/config` | 3 | 1 425 | Configuración, rutas y sesión de base de datos |
+| `src/gui` | 8 | 8 615 | Interfaz gráfica (CustomTkinter) |
 | `src/nomina` | 9 | 1 504 | Motor de cálculo de nómina y prestaciones |
 | `src/__init__.py` | 1 | 8 | Declaración del paquete raíz |
-| `src/main.py` | 1 | 474 | Punto de entrada de la aplicación |
-| **Total** | **59** | **22 013** | |
+| `src/main.py` | 1 | 535 | Punto de entrada de la aplicación |
+| **Total** | **59** | **23 242** | |
 
 *Fuente: medición directa con `wc -l` sobre `src/` en la versión 3.0.0. El conteo de archivos incluye los módulos `__init__.py`.*
 
-La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 36 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 33 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
+A esta extensión se suma el agente de sincronización, deliberadamente construido como **paquete independiente** en `sync_agent/` (13 archivos, 5 271 líneas) para que funcione tanto ejecutado por sí solo —`py -3 -m sync_agent`— como embebido en la aplicación mediante un enganche a los eventos del ORM. Su separación mantiene la aplicación utilizable sin sincronización y permite verificar su motor de mezcla de forma aislada, pues está compuesto por funciones puras.
+
+La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 37 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 31 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
 
 #### 4.2.1.1 Capa de Presentación
 
@@ -167,7 +169,7 @@ Los permisos de operación se organizan de forma análoga: el administrador disp
 
 ### 4.3.1 Pruebas Automatizadas
 
-La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 388 funciones de prueba distribuidas en 20 archivos, con 4 394 líneas de código de prueba. La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
+La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 476 funciones de prueba distribuidas en 26 archivos, con 6 598 líneas de código en `tests/` (27 archivos: se cuenta también `conftest.py`, donde viven las fixtures compartidas). La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
 
 **Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.0)**
 
@@ -177,7 +179,10 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_security.py` | 65 | Validación, sanitización y control de acceso |
 | `test_validators.py` | 36 | Reglas de validación del dominio |
 | `test_nomina_motor.py` | 27 | Motor de cálculo de nómina |
-| `test_auto_updater.py` | 19 | Actualización automática del sistema |
+| `test_sync_cli.py` | 24 | Interfaz de consola del agente: preparación, estado y administración del nodo |
+| `test_sync_servidor.py` | 22 | Nodo central: credenciales, lotes, límites y binarios |
+| `test_auto_updater.py` | 20 | Actualización automática del sistema |
+| `test_sync_merge.py` | 19 | Mezcla por campo y convergencia entre puestos |
 | `test_contratos.py` | 17 | Vigencia y renovación de contratos |
 | `test_reportes.py` | 17 | Generación de documentos PDF |
 | `test_auth.py` | 16 | Autenticación, roles y permisos |
@@ -190,10 +195,13 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_configuracion.py` | 9 | Parámetros configurables |
 | `test_incidencias.py` | 8 | Incidencias y aprobaciones |
 | `test_pagos.py` | 8 | Pagos y deducciones |
+| `test_sync_captura.py` | 8 | Captura de cambios del ORM y modo offline |
 | `test_documentos.py` | 7 | Gestión documental |
+| `test_sync_agente.py` | 7 | Ciclo del agente, reintentos y token rechazado |
+| `test_sync_integracion.py` | 7 | Dos puestos convergen por el nodo central |
 | `test_migraciones.py` | 5 | Evolución y purga del esquema |
 | `test_settings_version.py` | 4 | Versión y parámetros de compilación |
-| **Total** | **388** | |
+| **Total** | **476** | |
 
 *Fuente: conteo de funciones `test_` sobre `tests/`, versión 3.0.0. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
 
@@ -456,7 +464,7 @@ La hipótesis general sostiene que la implementación del sistema mejorará de m
 
 ### 4.7.2 Hipótesis Específicas
 
-**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.0 se incorporó el módulo de contratos, el motor de nómina y 63 funciones de prueba, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
+**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.0 se incorporó el módulo de contratos, el motor de nómina y 87 funciones de prueba, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
 
 **H2. Usabilidad de la interfaz gráfica.** La hipótesis sostiene que la interfaz gráfica mejora la usabilidad respecto de las alternativas de línea de comandos. Los indicadores son el tiempo de aprendizaje, la tasa de éxito en las tareas y la valoración de la interfaz, y se medirán con el protocolo del Anexo 3 conforme al apartado 4.4.2.
 
@@ -492,7 +500,7 @@ Durante el desarrollo, el reto principal fue sostener el equilibrio entre cobert
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 22 013 líneas de código distribuidas en nueve capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 388 funciones de prueba organizadas en 20 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
+Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 23 242 líneas de código en `src/` —más 5 271 del paquete de sincronización— distribuidas en diez capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 476 funciones de prueba organizadas en 26 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
 
 Los apartados de validación empírica definen con precisión qué se medirá, cómo se medirá y con qué umbral se decidirá, de manera que la evidencia pendiente no constituya una indeterminación metodológica, sino un registro preparado para recibirla. Las hipótesis planteadas se resolverán con esa evidencia: tres de ellas cuentan ya con indicadores estructurales verificados, mientras que su magnitud de impacto permanece condicionada al piloto. Las limitaciones identificadas —muestra acotada, periodo breve, contexto regional y dependencia de recursos propios— son consistentes con el alcance de un trabajo de grado y delimitan con honestidad el campo de validez de los resultados.
 

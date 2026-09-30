@@ -10,6 +10,9 @@ from .pago_service import PagoService
 from .configuracion_service import ConfiguracionService
 from .auth_service import AuthService
 from .contrato_service import ContratoService
+from .token_sesion_service import TokenSesionService
+from .academico_service import AcademicoService
+from .nota_service import NotaService
 
 __all__ = [
     "EmpleadoService",
@@ -19,4 +22,7 @@ __all__ = [
     "ConfiguracionService",
     "AuthService",
     "ContratoService",
+    "TokenSesionService",
+    "AcademicoService",
+    "NotaService",
 ]

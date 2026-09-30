@@ -12,7 +12,7 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 |---------|------------------|
 | 1.0.4 | Versión sobre la que se ejecutó la medición de cobertura de pruebas que se conserva como referencia en el Anexo 7 |
 | 2.79 | Versión en la que se documentó por primera vez la suite de 323 pruebas, la autenticación con roles y los módulos iniciales |
-| 3.0.0 | Versión vigente al momento de esta revisión: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 388 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración |
+| 3.0.0 | Versión vigente al momento de esta revisión: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 476 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración. Incorpora el agente de sincronización entre puestos (`sync_agent/`) |
 
 ## 3. INVENTARIO DOCUMENTAL Y ESTADO
 
@@ -39,14 +39,15 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 | Verificación | Procedimiento | Resultado |
 |--------------|---------------|-----------|
 | Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 3.0.0 en ambos archivos |
-| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 22 013 líneas en 59 archivos |
+| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 23 242 líneas en 59 archivos |
 | Distribución por capa | Recuento por directorio | Consignada en la Tabla 4.1 del Capítulo IV |
-| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 388 funciones en 20 archivos |
+| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 476 funciones en 26 archivos |
 | Distribución de pruebas por archivo | Recuento por archivo | Consignada en la Tabla 4.7 del Capítulo IV |
 | Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Siete tablas |
 | Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Siete módulos con atajos `Ctrl+1` a `Ctrl+7` |
 | Matriz de acceso por rol | Lectura de `PermissionChecker` en `src/utils/security.py` | Consignada en la Tabla 4.6 del Capítulo IV |
 | Parámetros de seguridad | Lectura de `SecurityValidator` | PBKDF2-HMAC-SHA256, 200 000 iteraciones, sal de 16 bytes |
+| Análisis estático | Ejecución de `mypy` sobre `src/`, `sync_agent/`, `updater/`, `tools/` y `build.py`, y de `flake8` con la configuración de `.flake8` | Sin hallazgos en los ochenta archivos verificados |
 | Generación documental | Recuento de métodos de generación en `src/utils/pdf_generator.py` | Doce tipos de documento |
 | Retiro de módulos | Verificación de la ausencia de modelos, tablas y claves de configuración de asistencia, préstamos y alertas | Sin referencias residuales en `src/`; purga de esquema y de parámetros al arrancar |
 | Correspondencia entre citas y bibliografía | Revisión cruzada de las citas del cuerpo con la lista de referencias | Sin citas huérfanas ni entradas sin uso |

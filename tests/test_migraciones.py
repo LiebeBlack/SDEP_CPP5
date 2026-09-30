@@ -125,11 +125,22 @@ def test_purgar_esquema_obsoleto_retira_modulos_dados_de_baja(tmp_path):
         )
         conn.execute(
             text(
-                "INSERT INTO pagos (empleado_id, tipo_pago, periodo_inicio, periodo_fin, "
-                "fecha_pago, monto_bruto, monto_neto, salario_base, modalidad_calculo, "
-                "deduccion_prestamo, prestamo_id) VALUES "
-                "(1, 'nomina', '2026-01-01', '2026-01-31', '2026-02-01', "
-                "1500.00, 1350.00, 1500.00, 'porcentaje', 100.00, 1)"
+                # Fila completa del esquema anterior: al ir por SQL directo
+                # hay que dar valor a toda columna no anulable, incluidas las
+                # que el ORM rellenaría con su valor por omisión.
+                "INSERT INTO pagos (empleado_id, tipo_pago, metodo_pago, periodo_inicio, "
+                "periodo_fin, fecha_pago, monto_bruto, monto_neto, descuentos, "
+                "bonificaciones, horas_extra, salario_base, deduccion_seguro, "
+                "deduccion_pension, deduccion_impuesto, otras_deducciones, "
+                "modalidad_calculo, base_gravable, horas_extra_diurnas, "
+                "horas_extra_nocturnas, horas_extra_feriadas, aguinaldo, "
+                "bono_vacacional, aporte_seguro_patronal, aporte_pension_patronal, "
+                "pagado, created_at, updated_at, deduccion_prestamo, prestamo_id) "
+                "VALUES "
+                "(1, 'nomina', 'transferencia', '2026-01-01', '2026-01-31', '2026-02-01', "
+                "1500.00, 1350.00, 0.00, 0.00, 0.00, 1500.00, 0.00, 0.00, 0.00, 0.00, "
+                "'porcentaje', 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0, "
+                "'2026-02-01 09:00:00', '2026-02-01 09:00:00', 100.00, 1)"
             )
         )
 

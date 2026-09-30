@@ -416,6 +416,48 @@ La pestaña **Auditoría** muestra los eventos recientes del sistema:
 - El botón **Manual** abre la guía de uso de la sección: qué se registra,
   cómo leer cada columna y recomendaciones de revisión periódica
 
+### Sincronización entre Puestos (solo administradores)
+
+La pestaña **Sincronización** conecta este equipo con el resto de la intranet:
+los datos institucionales viajan a un servidor central y vuelven desde él, sin
+dejar nunca de guardarse en este computador. **Siempre se puede trabajar**, haya
+red o no: si la conexión falla, los cambios quedan en cola y salen solos cuando
+el servidor vuelve.
+
+Para activarla, el administrador del servidor debe haber dado de alta el puesto
+y entregado tres datos:
+
+1. **Servidor central**: la dirección del servicio (por ejemplo
+   `http://servidor-central:8765`).
+2. **Token del equipo**: la clave secreta de este puesto. Se muestra **una sola
+   vez** al crearlo; si se pierde, hay que revocar el puesto y crear otro.
+3. **Identificador del equipo**: el código del puesto, que se entrega junto al
+   token.
+
+Pasos:
+
+1. Marque **Sincronizar este equipo con la intranet** y complete los tres datos.
+2. Pulse **Probar conexión** para confirmar que el servidor responde.
+3. Pulse **Guardar**. El sistema engancha la captura de cambios, da identidad
+   global a los datos que ya tenía este equipo y arranca el agente.
+
+En la misma pestaña encontrará:
+
+- **Estado**: si está al día, sincronizando, sin conexión o con el token
+  rechazado, con la hora del último ciclo y el error si lo hubo.
+- **Contadores**: operaciones pendientes de enviar, conflictos sin revisar,
+  subidas, bajadas y desfase de reloj respecto del servidor.
+- **Sincronizar ahora**: fuerza un ciclo inmediato sin esperar al siguiente.
+- **Adoptar datos existentes**: da identidad global a todo lo que este equipo
+  ya tenía cargado antes de activar la sincronización, para que también viaje.
+  Es seguro repetirlo y no modifica ningún dato.
+- **Conflictos de mezcla**: cuando dos puestos escriben el **mismo campo** del
+  mismo registro, gana la escritura más reciente y el valor que pierde queda
+  aquí registrado, con la regla aplicada. Nada se descarta en silencio.
+
+La barra de estado de la ventana principal repite el estado en una línea
+(«Sincronización: al día») y ofrece el mismo botón de sincronización inmediata.
+
 ## Panel de Control (Dashboard)
 
 El Dashboard proporciona una vista general del sistema:

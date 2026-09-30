@@ -218,3 +218,28 @@ class ModoCalculoNomina(BaseEnum):
     PORCENTAJE = "porcentaje"
     TRAMOS = "tramos"
 
+
+class NivelEducativo(BaseEnum):
+    """
+    Nivel educativo al que pertenece un estudiante o un grado
+
+    La institución atiende dos niveles: Inicial y Secundaria. El nivel
+    del grado y el del estudiante deben coincidir al matricularlo.
+    """
+
+    INICIAL = "inicial"
+    SECUNDARIA = "secundaria"
+
+
+class EstadoPeriodoAcademico(BaseEnum):
+    """
+    Estado de un periodo académico (año escolar)
+
+    Un periodo ABIERTO permite registrar y corregir notas. Al CERRARLO
+    las notas quedan bloqueadas (inmutables) y solo se consultan o se
+    usan para generar boletines y actas.
+    """
+
+    ABIERTO = "abierto"
+    CERRADO = "cerrado"
+

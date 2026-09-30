@@ -162,7 +162,21 @@ SDEP_CPP5/
 │   │   ├── backup_scheduler.py # Respaldos automáticos programados
 │   │   └── exporter.py        # Exportación Excel/CSV
 │   └── main.py                 # Punto de entrada
-├── tests/                       # Pruebas automatizadas: 20 archivos · 388 funciones
+├── sync_agent/                  # Agente de sincronización (paquete independiente)
+│   ├── comun.py                # UUID, hash y serialización con etiquetas de tipo
+│   ├── registro.py             # Qué se replica de cada tabla
+│   ├── merge.py                # Motor de mezcla por campo (funciones puras)
+│   ├── esquema.py              # Journal, identidad global, marcas y binarios
+│   ├── identidad.py            # Identidad global (UUID) ↔ ids locales
+│   ├── captura.py              # Enganche al ORM: journal en la misma transacción
+│   ├── aplicador.py            # Aplica lo que llega de la red (cliente y servidor)
+│   ├── cliente.py              # Cliente HTTP del protocolo
+│   ├── agente.py               # Hilo de fondo: ciclo, reintentos y estado
+│   ├── servidor.py             # Nodo central (servicio HTTP de la biblioteca estándar)
+│   ├── config.py               # Configuración por equipo
+│   ├── __main__.py             # Interfaz de línea de comandos
+│   └── README.md               # Manual de operación
+├── tests/                       # Pruebas automatizadas: 26 archivos · 476 funciones
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto
@@ -457,13 +471,16 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
 
 ### 7. Calidad
 
-- `mypy` sin errores en los 59 archivos de `src/` y cero `# type: ignore`;
-  `flake8` (F/E9/W6) sin hallazgos.
+- `mypy` sin errores en los ochenta archivos verificados —`src/`,
+  `sync_agent/`, `updater/`, `tools/` y `build.py`— y cero `# type: ignore`;
+  `flake8` (F/E9/W6) sin hallazgos con la configuración declarada en
+  `.flake8`.
 - Los enums del dominio (`BaseEnum.coerce`) normalizan cualquier valor
   recibido como texto a su miembro correspondiente: las columnas tipadas
   de SQLAlchemy dejan de recibir cadenas sueltas.
-- **388 funciones de prueba** en 20 archivos, tras retirar las suites de
-  asistencia, préstamos, alertas y jornada (eran 453 antes del retiro).
+- **476 funciones de prueba** en 26 archivos: las 388 de la versión anterior
+  más las 87 que verifican el agente de sincronización (mezcla, captura,
+  ciclo, nodo central, integración entre dos puestos e interfaz de consola).
 
 ### 8. Correcciones de esta versión
 
@@ -533,6 +550,107 @@ con importes en `Decimal` y redondeo comercial (`ROUND_HALF_UP`):
   los fallos de copia, movimiento y borrado (antes devolvía `False` en
   silencio) y rechaza la categoría de exportación `..`, que escapaba del
   directorio de exportaciones.
+- **Ciclo de vida de las sesiones.** `close_session` solo libera el registry
+  scoped cuando la sesión cerrada es la del hilo; cerrar una sesión
+  independiente (`new_session`, como la de la ventana principal) invalidaba
+  la sesión compartida que otro consumidor del mismo hilo estuviera usando.
+- **Un único listado de extensiones abribles.** `EXTENSIONES_ABRIBLES` vive
+  en `helpers.py` y lo consumen tanto el gestor documental como
+  `abrir_con_aplicacion_predeterminada`, que ahora exige que la ruta sea un
+  archivo real con extensión permitida antes de entregarla al sistema.
+- **Limpieza de datos con criterio.** `cleanup_old_files` ya no borra
+  documentos ni fotografías por fecha de modificación salvo petición
+  explícita (dejaría registros activos sin archivo) y el arranque purga los
+  temporales de la ejecución anterior (`limpiar_temporales`), que antes se
+  acumulaban sin límite en `tmp/`.
+
+### 11. Correcciones de la revisión final (consola y análisis estático)
+
+- **La consola del agente no ensucia su propia salida.** El registro de
+  `py -3 -m sync_agent` se escribía en stdout, de modo que `estado --json` y
+  `conflictos --json` devolvían una línea de registro delante del JSON y
+  ningún programa podía consumirlos. El registro va ahora a stderr, la salida
+  estándar queda solo para el resultado del comando y la suite lo verifica en
+  ambas salidas.
+- **La interfaz de consola entra en las pruebas.** `sync_agent/__main__.py`
+  (los seis subcomandos) no tenía ninguna prueba: se ejecuta ahora de extremo a
+  extremo —la adopción de los datos previos en `init`, el estado y la bandeja
+  de conflictos, el alta y la baja de puestos, la exportación de conflictos del
+  nodo central y los códigos de retorno 0/1/2—, lo que de paso descubrió el
+  defecto anterior.
+- **Tipado estático del paquete de sincronización.** `mypy` no estaba
+  instalado y el paquete nunca se había verificado: aparecieron veintiocho
+  hallazgos (retenciones de `Any`, tablas consultadas a través de un `type` sin
+  atributos, la espera creciente del agente anotada como entero). Quedan
+  corregidos, junto con los de `incidencia_service` y `documento_service`, que
+  declaran `_ruta_gestionada` como `TypeGuard`: la columna puede ser nula y
+  quien pregunta queda con una ruta no nula.
+- **`int ** int` no está tipado.** El tipado de la biblioteca estándar declara
+  esa potencia como `Any`, así que la espera entre reintentos lleva anotación
+  explícita para no perder el tipo numérico ante el verificador.
+- **Lectura de los comandos del sistema.** `reg`, `taskkill`, `tasklist` y
+  `schtasks` escriben en la página de códigos OEM de Windows mientras que
+  Python 3.15 decodifica en UTF-8: un acento en un mensaje localizado hacía
+  fallar la lectura dentro del hilo de `subprocess` y la salida del comando se
+  perdía. Los nueve usos del actualizador se leen ahora con `errors="replace"`.
+- **`.flake8` existe de verdad:** la estructura documentada lo declaraba desde
+  las primeras versiones, pero el archivo no estaba. Declara la verificación
+  que ya se aplicaba (F/E9/W6 y línea de 100) para que `flake8 src/` sea
+  reproducible.
+
+### Sincronización de datos entre puestos (`sync_agent/`)
+
+Los puestos del colegio dejaron de ser islas: ahora replican los datos
+institucionales entre sí a través de un **nodo central** de la intranet, sin
+dejar de escribir en su propio SQLite en ningún momento.
+
+- **Paquete independiente.** `sync_agent/` se puede ejecutar solo
+  (`py -3 -m sync_agent`) o funcionar embebido en la aplicación: la captura se
+  engancha al ORM en el arranque y el agente vive en un hilo de fondo. Nada de
+  esto es obligatorio; una instalación sin configurar sigue funcionando igual.
+- **Modo offline real.** El usuario escribe siempre en local y los cambios
+  quedan encolados con su marca de tiempo. Si no hay red, el ciclo falla sin
+  romper nada y reintenta con espera creciente (30 s → 60 s → 120 s → 300 s,
+  con algo de azar para no golpear todos a la vez cuando vuelve la conexión).
+- **Captura en la misma transacción.** Un enganche a los eventos de `Session`
+  anota qué cambió antes de que el ORM vuelva a la base, y la operación queda en
+  el journal junto al dato. Una transacción deshecha no anuncia nada: el sistema
+  nunca replica lo que no llegó a confirmarse.
+- **Identidad global por UUID.** Cada fila tiene un UUID (`sync_ids`) y se une a
+  su equivalente en otros puestos por su clave natural (`empleados.cedula`,
+  `contratos.numero`, `configuraciones.clave`), de modo que el mismo registro
+  creado en dos equipos es uno solo.
+- **Mezcla por campo, no por fila.** Dos puestos que editan columnas distintas
+  del mismo registro conservan **ambas** ediciones; solo cuando tocan la misma
+  columna hay un ganador, elegido con un orden total y determinista
+  (`momento`, `equipo`, `operación`) que hace converger a todos los nodos sin
+  importar el orden de llegada. Los campos económicos (salarios y montos) dejan
+  conflicto **aunque gane el valor remoto**, para poder auditarlos.
+- **Nada se descarta en silencio.** El valor perdedor de cada choque queda en
+  una bandeja de conflictos, visible en Configuración → Sincronización y por
+  consola (`py -3 -m sync_agent conflictos`).
+- **Borrados con criterio.** Un borrado posterior gana, pero una edición
+  posterior a un borrado **revive** la fila: perder un dato recién editado es
+  peor que resucitar un registro borrado por error.
+- **Binarios por hash.** Documentos e incidencias viajan siempre como hash y
+  tamaño; el contenido se transfiere solo si no supera el límite (5 MB por
+  defecto) y queda deduplicado en el nodo central.
+- **Usuarios y preferencias no viajan.** La tabla `usuarios` no se replica
+  (cada puesto administra sus cuentas) y tampoco las preferencias locales
+  (tema, respaldos, ajustes del propio agente).
+- **Captura de lo que ya existía.** `adoptar_existentes()` da identidad global
+  a los datos cargados antes de instalar el agente —idempotente y sin modificar
+  nada—, que de otro modo nunca se anunciarían (nadie los ha modificado desde
+  entonces).
+- **Nodo central sin dependencias nuevas.** Servicio HTTP de la biblioteca
+  estándar que escribe el SQLite central en WAL como único escritor, con `seq`
+  global autoritativo, autenticación por token hasheado (PBKDF2), límite de
+  peticiones por minuto y TLS opcional.
+- **Interfaz integrada.** Indicador en la barra de estado, botón «Sincronizar
+  ahora» y una pestaña de Sincronización (estado, contadores, prueba de
+  conexión, bandeja de conflictos y adopción de datos previos).
+- **Auditoría.** Los ciclos y sus incidencias se registran con el nuevo tipo de
+  evento `SYNC_ACTIVITY`.
 
 ## Novedades de la Versión 2.79
 

@@ -137,6 +137,18 @@ def setup_environment():
         for directory in directories:
             ensure_directory_exists(directory)
 
+        # Purga de los temporales de ejecuciones anteriores (ReportLab,
+        # previsualizaciones) antes de que la aplicación empiece a escribir:
+        # nadie los borraba y tmp/ crecía sin límite.
+        try:
+            from src.utils.document_manager import document_manager
+
+            eliminados = document_manager.limpiar_temporales()
+            if eliminados:
+                logger.info("Temporales de ejecuciones anteriores eliminados: %s", eliminados)
+        except Exception:
+            logger.debug("paso de arranque ignorado", exc_info=True)
+
         logger.info("Entorno configurado correctamente")
         try:
             from src.utils.audit_logger import get_audit_logger, AuditEventType
@@ -160,6 +172,41 @@ def setup_environment():
                 audit.log_error(e, context={"operation": "setup_environment"})
         except Exception:
             logger.debug("paso de arranque ignorado", exc_info=True)
+        return False
+
+
+def iniciar_sincronizacion():
+    """
+    Arranca el agente de sincronización en segundo plano
+
+    Es opcional por diseño: si el equipo no está configurado, si está
+    deshabilitado o si el paquete del agente no está disponible, la aplicación
+    funciona igual y solo se registra el motivo. La captura de cambios se
+    activa antes de arrancar el hilo, de modo que ninguna escritura del usuario
+    quede fuera del journal.
+    """
+    try:
+        from sync_agent import iniciar_agente
+        from sync_agent.config import cargar
+
+        config = cargar()
+        if not config.activo:
+            problemas = config.problemas()
+            logger.info(
+                "Sincronización inactiva en este equipo: %s",
+                "; ".join(problemas) if problemas else "deshabilitada en la configuración",
+            )
+            return False
+
+        from src.config import db_config
+
+        db_config.preparar_sincronizacion()
+        db_config.activar_captura_sincronizacion()
+        iniciar_agente(config)
+        logger.info("Agente de sincronización iniciado")
+        return True
+    except Exception as e:
+        logger.warning(f"No se pudo iniciar la sincronización: {e}")
         return False
 
 
@@ -363,6 +410,16 @@ def cleanup_application():
 
         # Liberar TODAS las conexiones del pool de la base de datos y el
         # registry de sesiones (anti-fugas de conexiones/archivos).
+        # El agente se detiene ANTES: abre sus propias sesiones y no debe
+        # quedar corriendo contra un pool ya cerrado.
+        try:
+            from sync_agent import detener_agente
+
+            detener_agente(timeout=5.0)
+            logger.info("Agente de sincronización detenido")
+        except Exception as e:
+            logger.warning(f"Error deteniendo el agente de sincronización: {e}")
+
         try:
             db_config.dispose()
             logger.info("Pool de conexiones de base de datos liberado")
@@ -404,6 +461,7 @@ def _selftest() -> bool:
         import src.gui.login_window  # noqa: F401
         import src.gui.main_window  # noqa: F401
         import src.gui.frames  # noqa: F401
+        import sync_agent  # noqa: F401  (agente de sincronización)
 
         from src.config import settings
         from src.utils.backup_manager import get_backup_manager
@@ -448,6 +506,9 @@ def main():
     if not initialize_database():
         logger.error("No se pudo inicializar la base de datos. Saliendo...")
         sys.exit(1)
+
+    # Sincronización con la intranet (opcional; no bloquea el arranque)
+    iniciar_sincronizacion()
 
     # Ejecutar aplicación
     try:

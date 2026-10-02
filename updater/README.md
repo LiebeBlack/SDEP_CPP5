@@ -48,9 +48,9 @@ registro de actividad en `%LOCALAPPDATA%\SDEP_CPP5\updater.log`.
 
 ### Desde el CI (recomendado)
 
-Cada Release publicada por el workflow `build.yml` incluye el adjunto
-`SDEP_CPP5_AutoUpdater.exe` listo para usar (y las Releases firmadas por
-`release.yml` lo firman también).
+El workflow `release.yml` publica el instalador firmado, que ya incluye el
+actualizador. El workflow `build.yml` genera el ejecutable del actualizador
+como artefacto de la ejecución; no publica Releases.
 
 ### Compilar localmente (Windows)
 

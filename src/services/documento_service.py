@@ -54,6 +54,7 @@ class DocumentoService:
         """Crea un nuevo documento"""
         from src.utils.helpers import parse_date
 
+        datos = dict(datos)
         # Normalizar fechas
         fecha_emision = datos.get("fecha_emision")
         if isinstance(fecha_emision, str):
@@ -75,14 +76,13 @@ class DocumentoService:
             nombre_unico = f"{uuid.uuid4().hex}{extension}"
             ruta_completa = settings.get_document_path(nombre_unico)
 
-            # Guardar archivo en disco
+            # Persistir el archivo antes de registrar la ruta en la base de datos.
             try:
                 with open(ruta_completa, "wb") as f:
                     f.write(archivo_binario)
-            except Exception:
-                logger.warning(
-                    "%s: operación auxiliar falló (se continúa)", "crear_documento", exc_info=True
-                )
+            except OSError as e:
+                logger.error("No se pudo guardar el archivo del documento", exc_info=True)
+                raise OSError(f"No se pudo guardar el archivo del documento: {e}") from e
 
             datos["nombre_archivo"] = nombre_unico
             datos["ruta_archivo"] = ruta_completa
@@ -91,23 +91,34 @@ class DocumentoService:
         else:
             datos["ruta_archivo"] = datos.get("ruta_archivo", "")
 
-        documento = Documento(
-            empleado_id=int(datos["empleado_id"]),
-            tipo_documento=tipo_doc,
-            titulo=str(datos["titulo"]).strip(),
-            descripcion=datos.get("descripcion"),
-            numero_documento=datos.get("numero_documento"),
-            fecha_emision=fecha_emision,
-            fecha_vencimiento=fecha_vencimiento,
-            nombre_archivo=datos.get("nombre_archivo", nombre_archivo),
-            ruta_archivo=datos.get("ruta_archivo", ""),
-            tamano_bytes=datos.get("tamano_bytes"),
-            tipo_mime=datos.get("tipo_mime"),
-            contenido_binario=datos.get("contenido_binario"),
-            observaciones=datos.get("observaciones"),
-        )
-
-        return self.repository.create(documento)
+        try:
+            documento = Documento(
+                empleado_id=int(datos["empleado_id"]),
+                tipo_documento=tipo_doc,
+                titulo=str(datos["titulo"]).strip(),
+                descripcion=datos.get("descripcion"),
+                numero_documento=datos.get("numero_documento"),
+                fecha_emision=fecha_emision,
+                fecha_vencimiento=fecha_vencimiento,
+                nombre_archivo=datos.get("nombre_archivo", nombre_archivo),
+                ruta_archivo=datos.get("ruta_archivo", ""),
+                tamano_bytes=datos.get("tamano_bytes"),
+                tipo_mime=datos.get("tipo_mime"),
+                contenido_binario=datos.get("contenido_binario"),
+                observaciones=datos.get("observaciones"),
+            )
+            return self.repository.create(documento)
+        except Exception:
+            if archivo_binario and os.path.exists(ruta_completa):
+                try:
+                    os.remove(ruta_completa)
+                except OSError:
+                    logger.warning(
+                        "No se pudo limpiar el archivo tras fallar la creación del documento: %s",
+                        ruta_completa,
+                        exc_info=True,
+                    )
+            raise
 
     def actualizar_documento(
         self, documento_id: int, datos: dict, archivo_binario: bytes | None = None
@@ -119,64 +130,85 @@ class DocumentoService:
         if not documento:
             raise ValueError("Documento no encontrado")
 
-        # Si se proporciona un nuevo archivo
-        if archivo_binario:
-            # Eliminar archivo anterior (solo dentro del almacén documental)
-            if self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
-                documento.ruta_archivo
-            ):
-                try:
-                    os.remove(documento.ruta_archivo)
-                except Exception:
-                    logger.warning(
-                        "%s: operación auxiliar falló (se continúa)",
-                        "actualizar_documento",
-                        exc_info=True,
-                    )
+        datos = dict(datos)
+        ruta_anterior = documento.ruta_archivo
+        ruta_nueva = None
 
+        # Guardar el reemplazo primero; el archivo actual se conserva hasta
+        # confirmar que el registro apunta correctamente al nuevo archivo.
+        if archivo_binario:
             extension = self._obtener_extension(
                 datos.get("nombre_archivo", documento.nombre_archivo)
             )
             nombre_unico = f"{uuid.uuid4().hex}{extension}"
-            ruta_completa = settings.get_document_path(nombre_unico)
+            ruta_nueva = settings.get_document_path(nombre_unico)
 
             try:
-                with open(ruta_completa, "wb") as f:
+                with open(ruta_nueva, "wb") as f:
                     f.write(archivo_binario)
-            except Exception:
-                logger.warning(
-                    "%s: operación auxiliar falló (se continúa)",
-                    "actualizar_documento",
-                    exc_info=True,
-                )
+            except OSError as e:
+                logger.error("No se pudo guardar el archivo de reemplazo", exc_info=True)
+                raise OSError(f"No se pudo guardar el archivo de reemplazo: {e}") from e
 
             datos["nombre_archivo"] = nombre_unico
-            datos["ruta_archivo"] = ruta_completa
+            datos["ruta_archivo"] = ruta_nueva
             datos["tamano_bytes"] = len(archivo_binario)
             datos["contenido_binario"] = archivo_binario
 
-        # Normalizar fechas si vienen en datos
-        for f_campo in ["fecha_emision", "fecha_vencimiento"]:
-            if f_campo in datos and isinstance(datos[f_campo], str):
-                datos[f_campo] = parse_date(datos[f_campo])
+        try:
+            # Normalizar fechas si vienen en datos
+            for f_campo in ["fecha_emision", "fecha_vencimiento"]:
+                if f_campo in datos and isinstance(datos[f_campo], str):
+                    datos[f_campo] = parse_date(datos[f_campo])
 
-        if "tipo_documento" in datos and hasattr(datos["tipo_documento"], "value"):
-            datos["tipo_documento"] = datos["tipo_documento"].value
+            if "tipo_documento" in datos and hasattr(datos["tipo_documento"], "value"):
+                datos["tipo_documento"] = datos["tipo_documento"].value
 
-        # Actualizar campos
-        for campo, valor in datos.items():
-            if hasattr(documento, campo) and campo != "empleado_id":
-                setattr(documento, campo, valor)
+            # Actualizar campos
+            for campo, valor in datos.items():
+                if hasattr(documento, campo) and campo != "empleado_id":
+                    setattr(documento, campo, valor)
 
-        return self.repository.update(documento)
+            actualizado = self.repository.update(documento)
+        except Exception:
+            if ruta_nueva and os.path.exists(ruta_nueva):
+                try:
+                    os.remove(ruta_nueva)
+                except OSError:
+                    logger.warning(
+                        "No se pudo limpiar el archivo nuevo tras fallar la actualización: %s",
+                        ruta_nueva,
+                        exc_info=True,
+                    )
+            raise
+
+        if (
+            ruta_nueva
+            and self._ruta_gestionada(ruta_anterior)
+            and os.path.exists(ruta_anterior)
+        ):
+            try:
+                os.remove(ruta_anterior)
+            except OSError:
+                logger.warning(
+                    "El documento se actualizó, pero no se pudo eliminar el archivo anterior %s",
+                    ruta_anterior,
+                    exc_info=True,
+                )
+        return actualizado
 
     def eliminar_documento(self, documento_id: int) -> bool:
         """Elimina un documento (desactivación lógica)"""
         documento = self.repository.get_by_id(documento_id)
         if documento:
-            # Eliminar archivo físico (solo dentro del almacén documental)
-            if self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
-                documento.ruta_archivo
+            desactivado = self.repository.desactivar(documento_id)
+            if not desactivado:
+                return False
+
+            # Borrar el archivo solo después de confirmar la desactivación.
+            if (
+                self._ruta_gestionada(documento.ruta_archivo)
+                and os.path.exists(documento.ruta_archivo)
             ):
                 try:
                     os.remove(documento.ruta_archivo)
@@ -186,7 +218,7 @@ class DocumentoService:
                         documento.ruta_archivo,
                         exc_info=True,
                     )
-            return self.repository.desactivar(documento_id)
+            return True
         return False
 
     def obtener_documento(self, documento_id: int) -> Documento | None:

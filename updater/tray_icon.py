@@ -207,8 +207,9 @@ def _icon_path() -> Path | None:
 class TrayIcon:
     """Ícono de bandeja con menú contextual (Windows). No-op en otros SO.
 
-    Los comandos del menú se entregan como diccionarios {"action": ...}
-    a la cola ``commands``: "check_now", "show" o "exit".
+    Los comandos del menú se entregan a la cola como tuplas cuyo primer
+    elemento es "check_now", "show" o "exit", igual que el resto de eventos
+    consumidos por UpdaterGui.
     """
 
     MENU_CHECK = 1001
@@ -342,8 +343,8 @@ class TrayIcon:
 
     def _put(self, action: str) -> None:
         try:
-            self._commands.put_nowait({"action": action})
-        except Exception:
+            self._commands.put_nowait((action,))
+        except queue.Full:
             pass
 
     def _make_nid(self, tip: str | None = None) -> NOTIFYICONDATAW:

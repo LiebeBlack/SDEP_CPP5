@@ -235,8 +235,10 @@ class DashboardFrame(ctk.CTkFrame):
 
         for i, (title_text, key, icon, modulo) in enumerate(cards):
             card = self._create_stat_card(cards_container, title_text, icon, key, modulo)
-            card.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
-            cards_container.grid_columnconfigure(i, weight=1)
+            columna = i % 3
+            fila = i // 3
+            card.grid(row=fila, column=columna, padx=8, pady=8, sticky="nsew")
+            cards_container.grid_columnconfigure(columna, weight=1, uniform="tarjetas")
 
         # Indicadores analíticos y gráficos
         self._crear_indicadores(contenedor)
@@ -351,7 +353,7 @@ class DashboardFrame(ctk.CTkFrame):
         self, parent, title: str, icon: str, key: str, modulo: str = ""
     ) -> ctk.CTkFrame:
         """Crea una tarjeta de estadística (clic navega al módulo indicado)"""
-        card = ctk.CTkFrame(parent, height=150, fg_color=COLORES["campo"], corner_radius=8)
+        card = ctk.CTkFrame(parent, height=170, fg_color=COLORES["campo"], corner_radius=8)
         card.pack_propagate(False)
 
         if modulo:
@@ -369,7 +371,7 @@ class DashboardFrame(ctk.CTkFrame):
             card.configure(cursor="hand2")
 
         icon_label = ctk.CTkLabel(card, text=icon, font=ctk.CTkFont(size=40))
-        icon_label.pack(pady=(15, 5))
+        icon_label.pack(pady=(8, 2))
         if modulo:
             icon_label.bind("<Button-1>", _navegar)
             icon_label.configure(cursor="hand2")
@@ -377,15 +379,19 @@ class DashboardFrame(ctk.CTkFrame):
         value_label = ctk.CTkLabel(
             card, text="0", font=ctk.CTkFont(size=28, weight="bold"), text_color=COLORES["texto"]
         )
-        value_label.pack(pady=5)
+        value_label.pack(pady=2)
         if modulo:
             value_label.bind("<Button-1>", _navegar)
             value_label.configure(cursor="hand2")
 
         title_label = ctk.CTkLabel(
-            card, text=title, font=ctk.CTkFont(size=12), text_color=COLORES["texto_suave"]
+            card,
+            text=title,
+            font=ctk.CTkFont(size=12),
+            text_color=COLORES["texto_suave"],
+            wraplength=165,
         )
-        title_label.pack(pady=(5, 15))
+        title_label.pack(pady=(2, 8))
         if modulo:
             title_label.bind("<Button-1>", _navegar)
             title_label.configure(cursor="hand2")
@@ -3327,6 +3333,8 @@ class NominaFrame(ctk.CTkFrame):
             salario_base = float(pago.salario_base or 0)
             bonif = float(pago.bonificaciones or 0)
             hextra = float(pago.horas_extra or 0)
+            aguinaldo = float(pago.aguinaldo or 0)
+            bono_vacacional = float(pago.bono_vacacional or 0)
             bruto = float(pago.monto_bruto or 0)
 
             d_seg = float(pago.deduccion_seguro or 0)
@@ -3346,6 +3354,8 @@ Referencia: {pago.referencia_pago or 'N/A'}
 Salario Base: {format_currency(salario_base)}
 Bonificaciones: {format_currency(bonif)}
 Horas Extra: {format_currency(hextra)}
+Aguinaldo: {format_currency(aguinaldo)}
+Bono Vacacional: {format_currency(bono_vacacional)}
 Total Bruto: {format_currency(bruto)}
 
 Deducciones:
@@ -3376,6 +3386,8 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         "salario_base": float(pago.salario_base or 0),
                         "bonificaciones": float(pago.bonificaciones or 0),
                         "horas_extra": float(pago.horas_extra or 0),
+                        "aguinaldo": float(pago.aguinaldo or 0),
+                        "bono_vacacional": float(pago.bono_vacacional or 0),
                         "monto_bruto": float(pago.monto_bruto or 0),
                         "deduccion_seguro": float(pago.deduccion_seguro or 0),
                         "deduccion_pension": float(pago.deduccion_pension or 0),
@@ -3430,6 +3442,8 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         "Salario Base": float(pago.salario_base or 0),
                         "Bonificaciones": float(pago.bonificaciones or 0),
                         "Horas Extra": float(pago.horas_extra or 0),
+                        "Aguinaldo": float(pago.aguinaldo or 0),
+                        "Bono Vacacional": float(pago.bono_vacacional or 0),
                         "ISSS": float(pago.deduccion_seguro or 0),
                         "AFP": float(pago.deduccion_pension or 0),
                         "ISR": float(pago.deduccion_impuesto or 0),
@@ -3473,6 +3487,8 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         "salario_base": float(pago.salario_base or 0),
                         "bonificaciones": float(pago.bonificaciones or 0),
                         "horas_extra": float(pago.horas_extra or 0),
+                        "aguinaldo": float(pago.aguinaldo or 0),
+                        "bono_vacacional": float(pago.bono_vacacional or 0),
                         "deduccion_seguro": float(pago.deduccion_seguro or 0),
                         "deduccion_pension": float(pago.deduccion_pension or 0),
                         "deduccion_impuesto": float(pago.deduccion_impuesto or 0),

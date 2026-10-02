@@ -288,59 +288,131 @@ class PagoService:
 
     def actualizar_pago(self, pago_id: int, datos: dict) -> Pago:
         """Actualiza un pago existente"""
-        from src.utils.helpers import parse_date
-
         pago = self.pago_repository.get_by_id(pago_id)
         if not pago:
             raise ValueError("Pago no encontrado")
+
+        datos = dict(datos)
 
         # Normalizar fechas si vienen en datos
         for f_campo in ["periodo_inicio", "periodo_fin", "fecha_pago"]:
             if f_campo in datos and isinstance(datos[f_campo], str):
                 datos[f_campo] = parse_date(datos[f_campo])
 
-        # Recalcular montos si se modifican los componentes
-        recalcular = any(
-            campo in datos
-            for campo in [
+        campos_calculo = {
+            "salario_base",
+            "bonificaciones",
+            "horas_extra",
+            "horas_extra_diurnas",
+            "horas_extra_nocturnas",
+            "horas_extra_feriadas",
+            "descuentos",
+            "deduccion_seguro",
+            "deduccion_pension",
+            "deduccion_impuesto",
+            "otras_deducciones",
+            "aguinaldo",
+            "bono_vacacional",
+        }
+        recalcular = bool(campos_calculo.intersection(datos))
+
+        if recalcular:
+            campos_componentes = (
                 "salario_base",
                 "bonificaciones",
                 "horas_extra",
+                "horas_extra_diurnas",
+                "horas_extra_nocturnas",
+                "horas_extra_feriadas",
                 "descuentos",
-                "deduccion_seguro",
-                "deduccion_pension",
-                "deduccion_impuesto",
                 "otras_deducciones",
-            ]
-        )
+                "aguinaldo",
+                "bono_vacacional",
+            )
+            componentes = {
+                campo: datos.get(campo, getattr(pago, campo) or 0)
+                for campo in campos_componentes
+            }
+            horas_extra_desglosadas = self._horas_extra(componentes)
+            datos_calculo = {
+                campo: componentes[campo]
+                for campo in (
+                    "bonificaciones",
+                    "descuentos",
+                    "otras_deducciones",
+                    "aguinaldo",
+                    "bono_vacacional",
+                )
+            }
+            es_liquidacion = pago.tipo_pago == TipoPago.LIQUIDACION.value
+            # Solo una deducción enviada explícitamente se considera manual.
+            # Si se edita el salario sin tocar las deducciones, el motor las
+            # vuelve a calcular con los parámetros vigentes.
+            for campo in ("deduccion_seguro", "deduccion_pension", "deduccion_impuesto"):
+                if campo in datos or es_liquidacion:
+                    datos_calculo[campo] = datos.get(campo, getattr(pago, campo) or 0)
 
-        if recalcular:
-            salario_base = round(float(datos.get("salario_base", pago.salario_base) or 0), 2)
-            bonificaciones = round(float(datos.get("bonificaciones", pago.bonificaciones) or 0), 2)
-            horas_extra = round(float(datos.get("horas_extra", pago.horas_extra) or 0), 2)
-            descuentos = round(float(datos.get("descuentos", pago.descuentos) or 0), 2)
-
-            deduccion_seguro = round(
-                float(datos.get("deduccion_seguro", pago.deduccion_seguro) or 0), 2
+            resultado = self.calcular_con_motor(
+                salario_base=round(float(componentes["salario_base"] or 0), 2),
+                datos=datos_calculo,
+                horas_extra=horas_extra_desglosadas,
             )
-            deduccion_pension = round(
-                float(datos.get("deduccion_pension", pago.deduccion_pension) or 0), 2
+            monto_horas_extra = (
+                float(resultado.monto_horas_extra)
+                if horas_extra_desglosadas.hay_horas
+                else round(float(componentes["horas_extra"] or 0), 2)
             )
-            deduccion_impuesto = round(
-                float(datos.get("deduccion_impuesto", pago.deduccion_impuesto) or 0), 2
+            monto_bruto = round(
+                float(resultado.salario_base)
+                + float(resultado.bonificaciones)
+                + monto_horas_extra
+                + float(resultado.aguinaldo)
+                + float(resultado.bono_vacacional),
+                2,
             )
-            otras_deducciones = round(
-                float(datos.get("otras_deducciones", pago.otras_deducciones) or 0), 2
-            )
-
             total_deducciones = round(
-                deduccion_seguro + deduccion_pension + deduccion_impuesto + otras_deducciones, 2
+                float(resultado.deduccion_seguro)
+                + float(resultado.deduccion_pension)
+                + float(resultado.deduccion_impuesto)
+                + float(resultado.otras_deducciones),
+                2,
             )
-            monto_bruto = round(salario_base + bonificaciones + horas_extra, 2)
-            monto_neto = round(max(0.0, monto_bruto - total_deducciones - descuentos), 2)
-
+            monto_neto = round(
+                max(0.0, monto_bruto - total_deducciones - float(resultado.descuentos)), 2
+            )
             datos["monto_bruto"] = monto_bruto
             datos["monto_neto"] = monto_neto
+            datos.update(
+                {
+                    "salario_base": float(resultado.salario_base),
+                    "horas_extra": monto_horas_extra,
+                    "horas_extra_diurnas": float(resultado.horas_extra.diurnas),
+                    "horas_extra_nocturnas": float(resultado.horas_extra.nocturnas),
+                    "horas_extra_feriadas": float(resultado.horas_extra.feriadas),
+                    "deduccion_seguro": float(resultado.deduccion_seguro),
+                    "deduccion_pension": float(resultado.deduccion_pension),
+                    "deduccion_impuesto": float(resultado.deduccion_impuesto),
+                    "otras_deducciones": float(resultado.otras_deducciones),
+                    "modalidad_calculo": resultado.modalidad,
+                    "base_gravable": float(resultado.base_gravable),
+                    "aguinaldo": float(resultado.aguinaldo),
+                    "bono_vacacional": float(resultado.bono_vacacional),
+                    "aporte_seguro_patronal": (
+                        float(pago.aporte_seguro_patronal or 0)
+                        if es_liquidacion
+                        else float(resultado.aporte_seguro_patronal)
+                    ),
+                    "aporte_pension_patronal": (
+                        float(pago.aporte_pension_patronal or 0)
+                        if es_liquidacion
+                        else float(resultado.aporte_pension_patronal)
+                    ),
+                    "isr_tramo": pago.isr_tramo if es_liquidacion else resultado.isr_tramo,
+                }
+            )
+            if es_liquidacion:
+                datos["modalidad_calculo"] = pago.modalidad_calculo
+                datos["base_gravable"] = float(pago.base_gravable or 0)
 
         if "tipo_pago" in datos and hasattr(datos["tipo_pago"], "value"):
             datos["tipo_pago"] = datos["tipo_pago"].value

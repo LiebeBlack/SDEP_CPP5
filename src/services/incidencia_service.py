@@ -62,6 +62,7 @@ class IncidenciaService:
         """Crea una nueva incidencia"""
         from src.utils.helpers import parse_date
 
+        datos = dict(datos)
         # Normalizar fechas
         fecha_inicio = datos["fecha_inicio"]
         if isinstance(fecha_inicio, str):
@@ -95,41 +96,51 @@ class IncidenciaService:
             try:
                 with open(ruta_completa, "wb") as f:
                     f.write(archivo_soporte)
-            except Exception:
-                logger.warning(
-                    "%s: operación auxiliar falló (se continúa)", "crear_incidencia", exc_info=True
-                )
+            except OSError as e:
+                logger.error("No se pudo guardar el archivo de soporte", exc_info=True)
+                raise OSError(f"No se pudo guardar el archivo de soporte: {e}") from e
 
             datos["documento_soporte_nombre"] = nombre_unico
             datos["documento_soporte_ruta"] = ruta_completa
             datos["documento_soporte_binario"] = archivo_soporte
 
-        tipo_inc = datos["tipo_incidencia"]
-        if hasattr(tipo_inc, "value"):
-            tipo_inc = tipo_inc.value
+        try:
+            tipo_inc = datos["tipo_incidencia"]
+            if hasattr(tipo_inc, "value"):
+                tipo_inc = tipo_inc.value
 
-        estado = datos.get("estado", EstadoIncidencia.PENDIENTE.value)
-        if hasattr(estado, "value"):
-            estado = estado.value
+            estado = datos.get("estado", EstadoIncidencia.PENDIENTE.value)
+            if hasattr(estado, "value"):
+                estado = estado.value
 
-        incidencia = Incidencia(
-            empleado_id=int(datos["empleado_id"]),
-            tipo_incidencia=tipo_inc,
-            estado=estado,
-            fecha_inicio=fecha_inicio,
-            fecha_fin=fecha_fin,
-            fecha_solicitud=fecha_sol,
-            motivo=str(datos["motivo"]).strip(),
-            descripcion=datos.get("descripcion"),
-            dias_solicitados=dias_solicitados,
-            documento_soporte_nombre=datos.get("documento_soporte_nombre"),
-            documento_soporte_ruta=datos.get("documento_soporte_ruta"),
-            documento_soporte_binario=datos.get("documento_soporte_binario"),
-            afecta_nominas=int(datos.get("afecta_nominas", 1)),
-            observaciones=datos.get("observaciones"),
-        )
-
-        return self.repository.create(incidencia)
+            incidencia = Incidencia(
+                empleado_id=int(datos["empleado_id"]),
+                tipo_incidencia=tipo_inc,
+                estado=estado,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                fecha_solicitud=fecha_sol,
+                motivo=str(datos["motivo"]).strip(),
+                descripcion=datos.get("descripcion"),
+                dias_solicitados=dias_solicitados,
+                documento_soporte_nombre=datos.get("documento_soporte_nombre"),
+                documento_soporte_ruta=datos.get("documento_soporte_ruta"),
+                documento_soporte_binario=datos.get("documento_soporte_binario"),
+                afecta_nominas=int(datos.get("afecta_nominas", 1)),
+                observaciones=datos.get("observaciones"),
+            )
+            return self.repository.create(incidencia)
+        except Exception:
+            if archivo_soporte and os.path.exists(ruta_completa):
+                try:
+                    os.remove(ruta_completa)
+                except OSError:
+                    logger.warning(
+                        "No se pudo limpiar el archivo tras fallar la creación de la incidencia: %s",
+                        ruta_completa,
+                        exc_info=True,
+                    )
+            raise
 
     def actualizar_incidencia(
         self, incidencia_id: int, datos: dict, archivo_soporte: bytes | None = None
@@ -140,6 +151,10 @@ class IncidenciaService:
         incidencia = self.repository.get_by_id(incidencia_id)
         if not incidencia:
             raise ValueError("Incidencia no encontrada")
+
+        datos = dict(datos)
+        ruta_anterior = incidencia.documento_soporte_ruta
+        ruta_nueva = None
 
         # Normalizar fechas si vienen
         if "fecha_inicio" in datos and isinstance(datos["fecha_inicio"], str):
@@ -154,74 +169,90 @@ class IncidenciaService:
             if fecha_inicio and fecha_fin:
                 datos["dias_solicitados"] = max(1, (fecha_fin - fecha_inicio).days + 1)
 
-        # Procesar nuevo archivo de soporte
+        # Guardar el reemplazo antes de modificar la ruta registrada.
         if archivo_soporte:
-            # Eliminar archivo anterior (solo dentro del almacén documental)
-            if self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
-                incidencia.documento_soporte_ruta
-            ):
-                try:
-                    os.remove(incidencia.documento_soporte_ruta)
-                except Exception:
-                    logger.warning(
-                        "%s: operación auxiliar falló (se continúa)",
-                        "actualizar_incidencia",
-                        exc_info=True,
-                    )
-
             extension = self._obtener_extension(
                 datos.get("documento_soporte_nombre", "soporte.pdf")
             )
             nombre_unico = f"soporte_{uuid.uuid4().hex}{extension}"
-            ruta_completa = settings.get_document_path(nombre_unico)
+            ruta_nueva = settings.get_document_path(nombre_unico)
 
             try:
-                with open(ruta_completa, "wb") as f:
+                with open(ruta_nueva, "wb") as f:
                     f.write(archivo_soporte)
-            except Exception:
-                logger.warning(
-                    "%s: operación auxiliar falló (se continúa)",
-                    "actualizar_incidencia",
-                    exc_info=True,
-                )
+            except OSError as e:
+                logger.error("No se pudo guardar el nuevo archivo de soporte", exc_info=True)
+                raise OSError(f"No se pudo guardar el nuevo archivo de soporte: {e}") from e
 
             datos["documento_soporte_nombre"] = nombre_unico
-            datos["documento_soporte_ruta"] = ruta_completa
+            datos["documento_soporte_ruta"] = ruta_nueva
             datos["documento_soporte_binario"] = archivo_soporte
 
-        if "tipo_incidencia" in datos and hasattr(datos["tipo_incidencia"], "value"):
-            datos["tipo_incidencia"] = datos["tipo_incidencia"].value
-        if "estado" in datos and hasattr(datos["estado"], "value"):
-            datos["estado"] = datos["estado"].value
+        try:
+            if "tipo_incidencia" in datos and hasattr(datos["tipo_incidencia"], "value"):
+                datos["tipo_incidencia"] = datos["tipo_incidencia"].value
+            if "estado" in datos and hasattr(datos["estado"], "value"):
+                datos["estado"] = datos["estado"].value
 
-        # Actualizar campos
-        for campo, valor in datos.items():
-            if hasattr(incidencia, campo) and campo not in [
-                "empleado_id",
-                "fecha_aprobacion",
-                "aprobado_por",
-            ]:
-                setattr(incidencia, campo, valor)
+            # Actualizar campos
+            for campo, valor in datos.items():
+                if hasattr(incidencia, campo) and campo not in [
+                    "empleado_id",
+                    "fecha_aprobacion",
+                    "aprobado_por",
+                ]:
+                    setattr(incidencia, campo, valor)
 
-        return self.repository.update(incidencia)
+            actualizado = self.repository.update(incidencia)
+        except Exception:
+            if ruta_nueva and os.path.exists(ruta_nueva):
+                try:
+                    os.remove(ruta_nueva)
+                except OSError:
+                    logger.warning(
+                        "No se pudo limpiar el archivo nuevo tras fallar la actualización: %s",
+                        ruta_nueva,
+                        exc_info=True,
+                    )
+            raise
+
+        if (
+            ruta_nueva
+            and self._ruta_gestionada(ruta_anterior)
+            and os.path.exists(ruta_anterior)
+        ):
+            try:
+                os.remove(ruta_anterior)
+            except OSError:
+                logger.warning(
+                    "La incidencia se actualizó, pero no se pudo eliminar el archivo anterior %s",
+                    ruta_anterior,
+                    exc_info=True,
+                )
+        return actualizado
 
     def eliminar_incidencia(self, incidencia_id: int) -> bool:
         """Elimina una incidencia"""
         incidencia = self.repository.get_by_id(incidencia_id)
         if incidencia:
-            # Eliminar archivo de soporte (solo dentro del almacén documental)
-            if self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
-                incidencia.documento_soporte_ruta
+            eliminada = self.repository.delete(incidencia_id)
+            if not eliminada:
+                return False
+
+            # Borrar el archivo solo después de confirmar la eliminación.
+            if (
+                self._ruta_gestionada(incidencia.documento_soporte_ruta)
+                and os.path.exists(incidencia.documento_soporte_ruta)
             ):
                 try:
                     os.remove(incidencia.documento_soporte_ruta)
-                except Exception:
+                except OSError:
                     logger.warning(
-                        "%s: operación auxiliar falló (se continúa)",
-                        "eliminar_incidencia",
+                        "La incidencia se eliminó, pero no se pudo borrar el archivo de soporte %s",
+                        incidencia.documento_soporte_ruta,
                         exc_info=True,
                     )
-            return self.repository.delete(incidencia_id)
+            return True
         return False
 
     def obtener_incidencia(self, incidencia_id: int) -> Incidencia | None:

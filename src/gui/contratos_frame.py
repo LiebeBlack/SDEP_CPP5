@@ -80,65 +80,73 @@ class ContratosFrame(ctk.CTkFrame):
         barra = ctk.CTkFrame(self, fg_color=COLORES["panel"], corner_radius=8)
         barra.pack(fill="x", padx=20, pady=8)
 
-        ctk.CTkLabel(barra, text="Estado:", text_color=COLORES["texto"]).pack(
-            side="left", padx=(12, 4), pady=10
+        filtros = ctk.CTkFrame(barra, fg_color="transparent")
+        filtros.pack(fill="x", padx=8, pady=(8, 2))
+
+        ctk.CTkLabel(filtros, text="Estado:", text_color=COLORES["texto"]).grid(
+            row=0, column=0, padx=(4, 4), pady=6, sticky="w"
         )
         self.estado_combo = ctk.CTkComboBox(
-            barra, width=140, values=FILTROS_ESTADO, command=lambda _v: self._load_data()
+            filtros, width=130, values=FILTROS_ESTADO, command=lambda _v: self._load_data()
         )
-        self.estado_combo.pack(side="left", pady=10)
+        self.estado_combo.grid(row=0, column=1, padx=(0, 12), pady=6, sticky="w")
         self.estado_combo.set("Vigentes")
 
-        ctk.CTkLabel(barra, text="Empleado:", text_color=COLORES["texto"]).pack(
-            side="left", padx=(12, 4), pady=10
+        ctk.CTkLabel(filtros, text="Empleado:", text_color=COLORES["texto"]).grid(
+            row=0, column=2, padx=(4, 4), pady=6, sticky="w"
         )
-        self.empleado_combo = ctk.CTkComboBox(barra, width=220, values=["Todos"])
-        self.empleado_combo.pack(side="left", pady=10)
+        self.empleado_combo = ctk.CTkComboBox(filtros, width=210, values=["Todos"])
+        self.empleado_combo.grid(row=0, column=3, padx=(0, 8), pady=6, sticky="w")
         self.empleado_combo.set("Todos")
 
-        ctk.CTkButton(barra, text="🔍 Buscar", width=90, command=self._load_data).pack(
-            side="left", padx=8
+        ctk.CTkButton(filtros, text="🔍 Buscar", width=88, command=self._load_data).grid(
+            row=0, column=4, padx=4, pady=6, sticky="w"
         )
 
+        acciones = ctk.CTkFrame(barra, fg_color="transparent")
+        acciones.pack(fill="x", padx=8, pady=(0, 8))
+        for columna in range(5):
+            acciones.grid_columnconfigure(columna, weight=1, uniform="acciones")
+
         ctk.CTkButton(
-            barra,
+            acciones,
             text="📄 Reporte PDF",
-            width=120,
+            height=34,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._exportar_pdf,
-        ).pack(side="right", padx=(4, 12))
+        ).grid(row=0, column=0, padx=4, pady=2, sticky="ew")
 
         ctk.CTkButton(
-            barra,
+            acciones,
             text="📊 Exportar",
-            width=100,
+            height=34,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._exportar,
-        ).pack(side="right", padx=4)
+        ).grid(row=0, column=1, padx=4, pady=2, sticky="ew")
 
         ctk.CTkButton(
-            barra,
+            acciones,
             text="🛑 Terminar",
-            width=110,
+            height=34,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._terminar_contrato,
-        ).pack(side="right", padx=4)
+        ).grid(row=0, column=2, padx=4, pady=2, sticky="ew")
 
         ctk.CTkButton(
-            barra,
+            acciones,
             text="🔄 Renovar",
-            width=110,
+            height=34,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._renovar_contrato,
-        ).pack(side="right", padx=4)
+        ).grid(row=0, column=3, padx=4, pady=2, sticky="ew")
 
         ctk.CTkButton(
-            barra, text="➕ Nuevo contrato", width=150, command=self._nuevo_contrato
-        ).pack(side="right", padx=4)
+            acciones, text="➕ Nuevo contrato", height=34, command=self._nuevo_contrato
+        ).grid(row=0, column=4, padx=4, pady=2, sticky="ew")
 
     def _crear_tabla(self) -> None:
         """Tabla de contratos"""
@@ -170,16 +178,32 @@ class ContratosFrame(ctk.CTkFrame):
         }
         for clave, (texto, ancho) in encabezados.items():
             self.tree.heading(clave, text=texto)
-            self.tree.column(clave, width=ancho, anchor="w" if clave in ("empleado", "cargo") else "center")
+            self.tree.column(
+                clave,
+                width=ancho,
+                minwidth=55 if clave in ("dias", "tipo") else 80,
+                anchor="w" if clave in ("empleado", "cargo") else "center",
+                stretch=False,
+            )
 
         _habilitar_orden_columnas(self.tree)
         self.tree.bind("<ButtonRelease-1>", lambda evento: _seleccionar_fila_click(self.tree, evento))
         self.tree.bind("<Double-1>", lambda _evento: self._ver_detalle())
 
+        contenedor.grid_rowconfigure(0, weight=1)
+        contenedor.grid_columnconfigure(0, weight=1)
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=(8, 0))
+
         scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-        self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
-        scrollbar.pack(side="right", fill="y", padx=(0, 8), pady=8)
+        scrollbar.grid(row=0, column=1, sticky="ns", padx=(0, 8), pady=(8, 0))
+        scrollbar_horizontal = ttk.Scrollbar(
+            contenedor, orient="horizontal", command=self.tree.xview
+        )
+        scrollbar_horizontal.grid(row=1, column=0, sticky="ew", padx=(8, 0), pady=(0, 8))
+        self.tree.configure(
+            yscrollcommand=scrollbar.set,
+            xscrollcommand=scrollbar_horizontal.set,
+        )
 
     def _crear_resumen(self) -> None:
         """Resumen de contratos por vencer y vencidos"""

@@ -348,61 +348,61 @@ class MainWindow(ctk.CTk):
         self.apariencia_btn = ctk.CTkButton(
             self.header,
             text="☀️ Claro" if ctk.get_appearance_mode() == "Dark" else "🌙 Oscuro",
-            width=110,
+            width=95,
             height=35,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._toggle_apariencia,
         )
-        self.apariencia_btn.pack(side="right", padx=5, pady=12)
+        self.apariencia_btn.pack(side="right", padx=3, pady=12)
 
         # Ayuda (guía rápida de uso y atajos)
         self.ayuda_btn = ctk.CTkButton(
             self.header,
             text="Ayuda",
-            width=90,
+            width=75,
             height=35,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._on_ayuda,
         )
-        self.ayuda_btn.pack(side="right", padx=5, pady=12)
+        self.ayuda_btn.pack(side="right", padx=3, pady=12)
 
         # Acerca de (información de la aplicación)
         self.about_btn = ctk.CTkButton(
             self.header,
             text="Acerca de",
-            width=100,
+            width=85,
             height=35,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._on_acerca_de,
         )
-        self.about_btn.pack(side="right", padx=5, pady=12)
+        self.about_btn.pack(side="right", padx=3, pady=12)
 
         # Cerrar sesión
         self.logout_btn = ctk.CTkButton(
             self.header,
             text="Cerrar Sesión",
-            width=120,
+            width=105,
             height=35,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._on_logout,
         )
-        self.logout_btn.pack(side="right", padx=(5, 10), pady=12)
+        self.logout_btn.pack(side="right", padx=(3, 6), pady=12)
 
         # Salir de la aplicación
         self.exit_btn = ctk.CTkButton(
             self.header,
             text="Salir",
-            width=80,
+            width=65,
             height=35,
             fg_color=COLORES["campo"],
             hover_color=COLORES["panel_hover"],
             command=self._on_exit,
         )
-        self.exit_btn.pack(side="right", padx=5, pady=12)
+        self.exit_btn.pack(side="right", padx=3, pady=12)
 
         self.content_frame = ctk.CTkFrame(self.main_container, fg_color=COLORES["fondo"])
         self.content_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)

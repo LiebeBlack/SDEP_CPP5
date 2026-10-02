@@ -73,6 +73,7 @@ API_LATEST_URL = os.environ.get(
 
 APP_NAME = "Sistema de Gestión de Personal"
 APP_EXE_NAME = "SistemaGestionPersonal.exe"
+APP_EXE_NAMES = (APP_EXE_NAME, "SDEP_CPP5.exe")
 APP_INSTALL_DIR = os.environ.get(
     "SDEP_UPDATE_INSTALL_DIR", r"C:\Program Files\Sistema de Gestión de Personal"
 )
@@ -95,7 +96,7 @@ USER_AGENT = (
     "+https://github.com/LiebeBlack/SDEP_CPP5)"
 )
 
-_VERSION_RE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
+_VERSION_RE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?(?:\.(\d+))?")
 
 # Ganchos opcionales que la GUI (updater/updater_gui.py) engancha para
 # mostrar el progreso en su ventana y en la bandeja del sistema.
@@ -106,26 +107,34 @@ on_download: Callable[[int, int], None] | None = None
 # ---------------------------------------------------------------------------
 # Utilidades de versión (puras, testeadas en tests/test_auto_updater.py)
 # ---------------------------------------------------------------------------
-def parse_version(text: str | None) -> tuple[int, int, int] | None:
-    """Extrae (mayor, menor, parche) de una etiqueta o versión libre.
+def parse_version(text: str | None) -> tuple[int, ...] | None:
+    """Extrae componentes de versión (mayor, menor, parche y build opcional).
 
-    "continuous-v2.79.55" -> (2, 79, 55); "v2.79" -> (2, 79, 0); None si no hay.
+    "continuous-v2.79.55" -> (2, 79, 55);
+    "continuous-v3.0.0.55" -> (3, 0, 0, 55);
+    "v2.79" -> (2, 79, 0); None si no hay.
     """
     if not text:
         return None
     m = _VERSION_RE.search(str(text))
     if not m:
         return None
-    return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+    version = (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+    if m.group(4) is not None:
+        return (*version, int(m.group(4)))
+    return version
 
 
-def version_to_str(version: tuple[int, int, int]) -> str:
+def version_to_str(version: tuple[int, ...]) -> str:
     return ".".join(str(part) for part in version)
 
 
-def is_newer(candidate: tuple[int, int, int], current: tuple[int, int, int]) -> bool:
-    """True si candidate es más nueva que current (comparación por partes)."""
-    return candidate > current
+def is_newer(candidate: tuple[int, ...], current: tuple[int, ...]) -> bool:
+    """Compara versiones de tres o cuatro partes (el build por defecto es 0)."""
+    partes = max(len(candidate), len(current))
+    candidata = candidate + (0,) * (partes - len(candidate))
+    actual = current + (0,) * (partes - len(current))
+    return candidata > actual
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +328,7 @@ def app_installed() -> bool:
     """¿Está la aplicación instalada? (registro de desinstalación o carpeta)."""
     if registry_display_version():
         return True
-    return Path(APP_INSTALL_DIR, APP_EXE_NAME).exists()
+    return any(Path(APP_INSTALL_DIR, nombre).exists() for nombre in APP_EXE_NAMES)
 
 
 def close_app_if_running() -> None:
@@ -327,29 +336,31 @@ def close_app_if_running() -> None:
     que el instalador no falle por archivos bloqueados."""
     if sys.platform != "win32":
         return
-    try:
-        result = subprocess.run(
-            ["taskkill", "/IM", APP_EXE_NAME],
-            capture_output=True,
-            text=True,
-            **_TEXTO_SISTEMA,
-            timeout=30,
-        )
-        if result.returncode == 0:
-            log(f"Aplicación {APP_EXE_NAME} cerrada antes de actualizar")
+    for nombre in APP_EXE_NAMES:
+        try:
+            result = subprocess.run(
+                ["taskkill", "/IM", nombre],
+                capture_output=True,
+                text=True,
+                **_TEXTO_SISTEMA,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                continue
+            log(f"Aplicación {nombre} cerrada antes de actualizar")
             for _ in range(30):  # espera hasta 15 s a que termine
                 check = subprocess.run(
-                    ["tasklist", "/FI", f"IMAGENAME eq {APP_EXE_NAME}"],
+                    ["tasklist", "/FI", f"IMAGENAME eq {nombre}"],
                     capture_output=True,
                     text=True,
                     **_TEXTO_SISTEMA,
                     timeout=15,
                 )
-                if APP_EXE_NAME not in check.stdout:
+                if nombre.lower() not in check.stdout.lower():
                     break
                 time.sleep(0.5)
-    except (OSError, subprocess.SubprocessError):
-        pass
+        except (OSError, subprocess.SubprocessError) as exc:
+            log(f"No se pudo cerrar {nombre} antes de actualizar: {exc}")
 
 
 def _script_instalador_powershell(setup_path: Path) -> str:

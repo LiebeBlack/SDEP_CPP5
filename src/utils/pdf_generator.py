@@ -447,6 +447,11 @@ class PDFGenerator:
                 ["Salario Base", format_currency(float(pago_data["salario_base"]))],
                 ["Bonificaciones", format_currency(float(pago_data.get("bonificaciones", 0) or 0))],
                 ["Horas Extra", format_currency(float(pago_data.get("horas_extra", 0) or 0))],
+                ["Aguinaldo", format_currency(float(pago_data.get("aguinaldo", 0) or 0))],
+                [
+                    "Bono Vacacional",
+                    format_currency(float(pago_data.get("bono_vacacional", 0) or 0)),
+                ],
                 ["TOTAL INGRESOS", format_currency(float(pago_data["monto_bruto"]))],
                 ["", ""],
                 [
@@ -480,15 +485,15 @@ class PDFGenerator:
                     ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
                     ("FONTSIZE", (0, 0), (-1, -1), 10),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("LINEABOVE", (0, 4), (-1, 4), 1, colors.black),
-                    ("LINEBELOW", (0, 4), (-1, 4), 1, colors.black),
-                    ("FONTNAME", (0, 4), (1, 4), "Helvetica-Bold"),
-                    ("LINEABOVE", (0, 11), (-1, 11), 1, colors.black),
-                    ("LINEBELOW", (0, 11), (-1, 11), 1, colors.black),
-                    ("FONTNAME", (0, 11), (1, 11), "Helvetica-Bold"),
-                    ("LINEABOVE", (0, 13), (-1, 13), 1.5, colors.darkblue),
-                    ("LINEBELOW", (0, 13), (-1, 13), 1.5, colors.darkblue),
+                    ("LINEABOVE", (0, 6), (-1, 6), 1, colors.black),
+                    ("LINEBELOW", (0, 6), (-1, 6), 1, colors.black),
+                    ("FONTNAME", (0, 6), (1, 6), "Helvetica-Bold"),
+                    ("LINEABOVE", (0, 13), (-1, 13), 1, colors.black),
+                    ("LINEBELOW", (0, 13), (-1, 13), 1, colors.black),
                     ("FONTNAME", (0, 13), (1, 13), "Helvetica-Bold"),
+                    ("LINEABOVE", (0, 15), (-1, 15), 1.5, colors.darkblue),
+                    ("LINEBELOW", (0, 15), (-1, 15), 1.5, colors.darkblue),
+                    ("FONTNAME", (0, 15), (1, 15), "Helvetica-Bold"),
                     ("FONTSIZE", (0, 13), (1, 13), 11),
                 ]
             )
@@ -908,8 +913,14 @@ class PDFGenerator:
         ]
 
         for indice, pago in enumerate(pagos, start=1):
-            extras = self._flotante(pago.get("bonificaciones")) + self._flotante(
-                pago.get("horas_extra")
+            extras = sum(
+                self._flotante(pago.get(campo))
+                for campo in (
+                    "bonificaciones",
+                    "horas_extra",
+                    "aguinaldo",
+                    "bono_vacacional",
+                )
             )
             filas.append(
                 [

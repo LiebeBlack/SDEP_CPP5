@@ -153,8 +153,8 @@ git push origin main
 
 Para una release versionada (opcional):
 ```bash
-git tag v3.0.0
-git push origin v3.0.0
+git tag v3.0.1
+git push origin v3.0.1
 ```
 
 ## 🔧 Instalación
@@ -426,5 +426,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 3.0.0  
-**Última actualización**: 2026
+- **Versión**: 3.0.1
+- **Última actualización**: 2026

@@ -30,6 +30,69 @@ def test_paletas_difieren_entre_si():
     assert theme.PALETA_OSCURA != theme.PALETA_CLARA
 
 
+def _contraste(hex_frente, hex_fondo):
+    def luminancia(color):
+        canales = [int(color[indice : indice + 2], 16) / 255 for indice in (1, 3, 5)]
+        canales = [
+            canal / 12.92 if canal <= 0.04045 else ((canal + 0.055) / 1.055) ** 2.4
+            for canal in canales
+        ]
+        return 0.2126 * canales[0] + 0.7152 * canales[1] + 0.0722 * canales[2]
+
+    luminancia_frente = luminancia(hex_frente)
+    luminancia_fondo = luminancia(hex_fondo)
+    clara, oscura = max(luminancia_frente, luminancia_fondo), min(
+        luminancia_frente, luminancia_fondo
+    )
+    return (clara + 0.05) / (oscura + 0.05)
+
+
+def test_paleta_clara_mantiene_contraste_legible():
+    paleta = theme.PALETA_CLARA
+    assert _contraste(paleta["texto"], paleta["campo"]) >= 4.5
+    assert _contraste(paleta["texto_suave"], paleta["panel"]) >= 4.5
+    assert _contraste("#ffffff", paleta["acento"]) >= 4.5
+
+
+def test_recolorear_listboxes_actualiza_listas_existentes():
+    class TclMock:
+        def __init__(self):
+            self.configuraciones = []
+
+        def splitlist(self, valores):
+            return tuple(valores)
+
+        def call(self, *args):
+            if args[:2] == ("winfo", "children"):
+                return {
+                    ".": (".combo.popdown",),
+                    ".combo.popdown": (".combo.popdown.f",),
+                    ".combo.popdown.f": (".combo.popdown.f.l",),
+                    ".combo.popdown.f.l": (),
+                }[args[2]]
+            if args[:2] == ("winfo", "class"):
+                return "Listbox" if args[2].endswith(".l") else "Frame"
+            if args[0] == ".combo.popdown.f.l" and args[1] == "configure":
+                self.configuraciones.append(args)
+
+    class RootMock:
+        _w = "."
+
+        def __init__(self):
+            self.tk = TclMock()
+
+    theme.aplicar_modo_apariencia("Light")
+    try:
+        root = RootMock()
+        theme._recolorear_listboxes(root)
+        configuracion = root.tk.configuraciones[0]
+        assert configuracion[2:4] == ("-background", theme.PALETA_CLARA["campo"])
+        assert configuracion[4:6] == ("-foreground", theme.PALETA_CLARA["texto"])
+        assert configuracion[6:8] == ("-selectbackground", theme.PALETA_CLARA["acento"])
+    finally:
+        theme.aplicar_modo_apariencia("Dark")
+
+
 def test_colores_inicia_con_paleta_oscura():
     assert theme.COLORES == theme.PALETA_OSCURA
 

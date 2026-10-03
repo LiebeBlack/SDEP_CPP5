@@ -31,9 +31,9 @@ instalador firmado. Los push a `develop` solo producen artefactos de
 ### 2. Release versionada (opcional)
 
 ```bash
-# Para una release con nombre y etiqueta versionados (ej: v3.0.0)
-git tag v3.0.0
-git push origin v3.0.0
+# Para una release con nombre y etiqueta versionados (ej: v3.0.1)
+git tag v3.0.1
+git push origin v3.0.1
 ```
 
 ### 3. Compilación manual
@@ -68,7 +68,7 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow
 1. Instala dependencias y PyInstaller.
 2. Lee la versión desde `VERSION` (fuente única) y genera
    `src/config/build_info.py`; en releases continuas la versión visible añade
-   el número de ejecución (`3.0.0.<run>`).
+   el número de ejecución (`3.0.1.<run>`).
 3. Compila el ejecutable con `spec/app.spec` (onedir, icono, metadatos).
 4. Autoverifica el ejecutable empaquetado con `--selftest`.
 5. Compila el actualizador `SDEP_CPP5_AutoUpdater.exe`.
@@ -92,8 +92,8 @@ Desde la pestaña Actions → "Compilar e Instalar (Windows)" → Run workflow
   con la cadena de confianza completa, en Base64) y `PFX_PASSWORD`. El PFX se
   restaura en el runner, se valida y se elimina al finalizar; nunca viaja
   dentro del instalador.
-- **Versionado**: la versión se lee de `VERSION` (actualmente 3.0.0). Con
-  etiqueta `v*` la versión sale de la etiqueta (`v3.0.0` → `3.0.0`); con push a
+- **Versionado**: la versión se lee de `VERSION` (actualmente 3.0.1). Con
+  etiqueta `v*` la versión sale de la etiqueta (`v3.0.1` → `3.0.1`); con push a
   `main` se añade el número de ejecución.
 - **Etiquetas de release continua**: `continuous-v<versión>.<run_number>`
   (únicas por compilación, no requieren gestión manual).

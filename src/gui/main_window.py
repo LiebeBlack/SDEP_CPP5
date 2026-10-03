@@ -174,9 +174,10 @@ class MainWindow(ctk.CTk):
             aplicar_modo_apariencia("Light")
 
         self._create_ui()
-
-        self.update()
         self._show_frame("dashboard")
+        # Construir y medir la vista inicial antes del primer ciclo de eventos
+        # evita pintar una ventana vacía y procesar callbacks durante el arranque.
+        self.update_idletasks()
         self._programar_respaldo_periodico()
         self._vincular_sincronizacion()
 

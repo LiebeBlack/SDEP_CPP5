@@ -24,6 +24,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -34,7 +35,9 @@ def leer_version() -> str:
     """Lee la versión desde VERSION (fuente única junto a pyproject)"""
     archivo = RAIZ / "VERSION"
     version = archivo.read_text(encoding="utf-8").strip()
-    return version or "2.79"
+    if not version:
+        raise ValueError(f"El archivo de versión está vacío: {archivo}")
+    return version
 
 
 def leer_commit() -> str:
@@ -57,7 +60,7 @@ def leer_commit() -> str:
 def generar_build_info() -> None:
     """Genera src/config/build_info.py con la versión/commit del build.
 
-    El CI pasa BUILD_VERSION/BUILD_COMMIT (p. ej. "2.79.55" en releases
+    El CI pasa BUILD_VERSION/BUILD_COMMIT (p. ej. "3.0.1.55" en releases
     continuas); en local se usan VERSION y el commit de git.
     """
     version = os.environ.get("BUILD_VERSION") or leer_version()
@@ -106,7 +109,7 @@ def build_exe() -> bool:
     print("$", " ".join(cmd))
     try:
         subprocess.run(cmd, cwd=RAIZ, check=True)
-    except subprocess.CalledProcessError as e:
+    except (OSError, subprocess.CalledProcessError) as e:
         print(f"ERROR: PyInstaller falló ({e})")
         return False
 
@@ -133,7 +136,7 @@ def build_updater() -> bool:
     print("$", " ".join(cmd))
     try:
         subprocess.run(cmd, cwd=RAIZ, check=True)
-    except subprocess.CalledProcessError as e:
+    except (OSError, subprocess.CalledProcessError) as e:
         print(f"ERROR: PyInstaller falló ({e})")
         return False
 
@@ -163,23 +166,45 @@ def build_installer() -> bool:
         return True
 
     version = leer_version()
-    print("=== [3/3] Instalador con Inno Setup ===")
-    cmd = [
-        str(iscc),
-        f"/DMyAppVersion={version}",
-        str(RAIZ / "installer" / "setup.iss"),
-    ]
-    print("$", " ".join(cmd))
-    try:
-        subprocess.run(cmd, cwd=RAIZ, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"ERROR: Inno Setup falló ({e})")
+    app_exe = RAIZ / "dist" / "SistemaGestionPersonal" / "SistemaGestionPersonal.exe"
+    updater_exe = RAIZ / "dist_updater" / "SDEP_CPP5_AutoUpdater.exe"
+    if not app_exe.is_file():
+        print(f"ERROR: No se encontró la aplicación compilada: {app_exe}")
+        return False
+    if not updater_exe.is_file():
+        print(f"ERROR: No se encontró el actualizador compilado: {updater_exe}")
         return False
 
-    setup = RAIZ / "dist_installer" / f"SistemaGestionPersonal-Setup-{version}.exe"
-    if setup.exists():
-        tamano = setup.stat().st_size / (1024 * 1024)
-        print(f"[OK] Instalador: {setup} ({tamano:.1f} MB)")
+    print("=== [3/3] Instalador con Inno Setup ===")
+    nombre_setup = f"SistemaGestionPersonal-Setup-{version}.exe"
+    setup = RAIZ / "dist_installer" / nombre_setup
+    with tempfile.TemporaryDirectory(prefix="sgp_installer_") as directorio_temporal:
+        cmd = [
+            str(iscc),
+            f"/DMyAppVersion={version}",
+            f"/O{directorio_temporal}",
+            str(RAIZ / "installer" / "setup.iss"),
+        ]
+        print("$", " ".join(cmd))
+        try:
+            subprocess.run(cmd, cwd=RAIZ, check=True)
+        except (OSError, subprocess.CalledProcessError) as e:
+            print(f"ERROR: Inno Setup falló ({e})")
+            return False
+
+        generado = Path(directorio_temporal) / nombre_setup
+        if not generado.is_file():
+            print(f"ERROR: Inno Setup no generó el instalador esperado: {generado}")
+            return False
+        setup.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.replace(generado, setup)
+        except OSError as e:
+            print(f"ERROR: No se pudo guardar el instalador {setup}: {e}")
+            return False
+
+    tamano = setup.stat().st_size / (1024 * 1024)
+    print(f"[OK] Instalador: {setup} ({tamano:.1f} MB)")
     return True
 
 

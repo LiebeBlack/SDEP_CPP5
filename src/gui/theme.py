@@ -37,14 +37,14 @@ PALETA_OSCURA = {
 
 # Paleta clara (tema alternativo)
 PALETA_CLARA = {
-    "fondo": "#f2f2f2",
-    "panel": "#e2e2e2",
-    "panel_hover": "#d4d4d4",
+    "fondo": "#f3f4f6",
+    "panel": "#f8fafc",
+    "panel_hover": "#e2e8f0",
     "campo": "#ffffff",
-    "texto": "#1a1a1a",
-    "texto_suave": "#555555",
-    "acento": "#2a6fdb",
-    "borde": "#aaaaaa",
+    "texto": "#111827",
+    "texto_suave": "#4b5563",
+    "acento": "#1d4ed8",
+    "borde": "#cbd5e1",
 }
 
 # Paleta activa (se muta en caliente al cambiar de tema, de modo que los
@@ -206,7 +206,8 @@ def habilitar_scroll_rueda(widget) -> None:
 
 def configure_ttk_styles(root=None) -> None:
     """
-    Aplica la paleta activa a Treeview y Combobox (ttk).
+    Aplica la paleta activa a Treeview y Combobox (ttk), incluidos los
+    Listbox internos de los desplegables.
 
     Requiere que exista una ventana raíz Tk (se crea una por defecto si
     no se pasa una). Idempotente: se puede llamar al crear cada ventana
@@ -344,9 +345,43 @@ def configure_ttk_styles(root=None) -> None:
                 root.option_add(clave, valor)
             except Exception:
                 continue
+        _recolorear_listboxes(root)
     except Exception:
         # Nunca impedir que la ventana se muestre por un problema de estilo
         logger.debug("No se pudieron registrar los estilos ttk", exc_info=True)
+
+
+def _recolorear_listboxes(root) -> None:
+    """Actualiza también las listas internas de desplegables ya creados."""
+    opciones = (
+        "-background",
+        COLORES["campo"],
+        "-foreground",
+        COLORES["texto"],
+        "-selectbackground",
+        COLORES["acento"],
+        "-selectforeground",
+        "white",
+        "-highlightbackground",
+        COLORES["borde"],
+        "-highlightcolor",
+        COLORES["acento"],
+    )
+    pendientes = [root._w]
+    while pendientes:
+        padre = pendientes.pop()
+        try:
+            hijos = root.tk.splitlist(root.tk.call("winfo", "children", padre))
+        except Exception:
+            logger.debug("No se pudieron consultar los widgets hijos de %s", padre, exc_info=True)
+            continue
+        for hijo in hijos:
+            try:
+                if root.tk.call("winfo", "class", hijo) == "Listbox":
+                    root.tk.call(hijo, "configure", *opciones)
+                pendientes.append(hijo)
+            except Exception:
+                logger.debug("No se pudo actualizar el color del widget %s", hijo, exc_info=True)
 
 
 def aplicar_escalado_customtkinter(root=None) -> None:

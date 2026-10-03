@@ -1,7 +1,7 @@
 ; Instalador de "Sistema de Gestión de Personal" / SDEP_CPP5
 ;
 ; Compilación local (sin firmar, desde la raíz del proyecto):
-;   ISCC.exe /DMyAppVersion=3.0.0 installer\setup.iss
+;   ISCC.exe /DMyAppVersion=3.0.1 installer\setup.iss
 ;
 ; Compilación firmada (GitHub Actions - .github/workflows/release.yml):
 ;   ISCC.exe /DMyAppVersion=1.0.0 /DMyVersionInfo=1.0.0 ^
@@ -30,7 +30,7 @@
 ;   PFX_BASE64 y se elimina del runner al terminar.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "3.0.0"
+  #define MyAppVersion "3.0.1"
 #endif
 
 ; VersionInfoVersion requiere formato #.#.# o #.#.#.# (Inno Setup).
@@ -94,6 +94,10 @@ MinVersion=10.0
 ; Cert:\LocalMachine\CA (confianza de la MÁQUINA, para todos los usuarios)
 ; exige elevación: el instalador siempre pide privilegios de administrador.
 PrivilegesRequired=admin
+; Cierra procesos que bloqueen archivos de la aplicación durante la actualización.
+; Puede perderse trabajo sin guardar; los procesos cerrados no se reinician.
+CloseApplications=force
+RestartApplications=no
 VersionInfoVersion={#MyVersionInfo}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName}
@@ -126,6 +130,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
+#if !FileExists("..\dist\{#MyDistDir}\{#MyAppExeName}")
+  #pragma error "Falta el ejecutable principal compilado; genere primero el paquete con PyInstaller."
+#endif
+#if !FileExists("..\dist_updater\SDEP_CPP5_AutoUpdater.exe")
+  #pragma error "Falta el actualizador; genere primero dist_updater\SDEP_CPP5_AutoUpdater.exe."
+#endif
 Source: "..\dist\{#MyDistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Cadena de certificados de LiebeBlack Systems: se copian a {tmp} y se
 ; eliminan al terminar la instalación (deleteafterinstall). Los .cer son
@@ -149,11 +159,7 @@ Source: "..\tools\cert_04.cer"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #endif
 ; Actualizador automático: se incluye en el instalador y se programa en
 ; el Programador de tareas de Windows para ejecutarse cada 2 días.
-; La guarda FileExists permite compilar sin el .exe (el instalador
-; simplemente no incluye la actualización automática en ese caso).
-#if FileExists("..\dist_updater\SDEP_CPP5_AutoUpdater.exe")
 Source: "..\dist_updater\SDEP_CPP5_AutoUpdater.exe"; DestDir: "{app}"; Flags: ignoreversion
-#endif
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

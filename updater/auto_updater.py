@@ -295,6 +295,24 @@ def _powershell_executable() -> Path:
     )
 
 
+def _script_instalador_powershell(setup_path: Path) -> str:
+    """Genera el comando de elevación para ejecutar el instalador en modo silencioso.
+
+    Importante: no se usa ``str.format`` ni llaves interpoladas con ``{}`` sobre
+    el script, porque PowerShell interpreta esas llaves como literales y
+    ``format()`` lanza ``ValueError`` al intentar reemplazar campos no válidos.
+    La ruta se escapa con comillas simples dobles para que un nombre como
+    ``O'Brien`` siga siendo un valor único en PowerShell.
+    """
+    safe_path = str(setup_path).replace("'", "''")
+    return (
+        "$process=Start-Process -FilePath '"
+        + safe_path
+        + "' -Verb RunAs -Wait -PassThru -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'); "
+        "exit $process.ExitCode"
+    )
+
+
 def _script_instalador_verificado(setup_path: Path) -> str:
     """Crea una copia protegida, valida su firma y ejecuta esa misma copia."""
     encoded_path = base64.b64encode(str(setup_path.resolve()).encode("utf-8")).decode("ascii")

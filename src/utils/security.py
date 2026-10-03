@@ -439,7 +439,7 @@ class PermissionChecker:
             # update_own is intentionally not treated as update: Usuario has
             # no employee-account ownership link to validate yet.
             "user": ["read", "update_own"],
-            "viewer": ["read", "report"],
+            "viewer": ["read"],
         }
 
         user_permissions = role_permissions.get(user_role, [])

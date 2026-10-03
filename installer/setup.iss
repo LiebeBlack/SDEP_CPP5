@@ -61,7 +61,9 @@
 #endif
 
 ; Nombre de la carpeta de salida de PyInstaller (spec/app.spec)
-#define MyDistDir "SistemaGestionPersonal"
+#ifndef MyDistDir
+  #define MyDistDir "SistemaGestionPersonal"
+#endif
 #define MyAppPublisher "LiebeBlack"
 #define MyAppURL "https://github.com/LiebeBlack/SDEP_CPP5"
 #define MyAppId "{{8C1E9F5A-3B6D-4A2E-9C41-D7F06B2A5E91}"
@@ -130,7 +132,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-#if !FileExists("..\dist\{#MyDistDir}\{#MyAppExeName}")
+#if !FileExists("..\dist\" + MyDistDir + "\" + MyAppExeName)
   #pragma error "Falta el ejecutable principal compilado; genere primero el paquete con PyInstaller."
 #endif
 #if !FileExists("..\dist_updater\SDEP_CPP5_AutoUpdater.exe")

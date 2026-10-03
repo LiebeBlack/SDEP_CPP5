@@ -1507,7 +1507,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         ctk.CTkLabel(
             form_frame,
             text="Ej.: María López (10 años, C.I. 12345678); Juan López (5 años, C.I. 87654321)",
-            text_color="#888888",
+            text_color=COLORES["texto_suave"],
             font=(_familia_fuente(), 9),
         ).grid(row=1, column=1, columnspan=3, padx=5, pady=2, sticky="w")
 
@@ -1747,7 +1747,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         )
         if ruta:
             self.photo_path = ruta
-            self.photo_label.configure(text=os.path.basename(ruta), text_color="#8ab4f8")
+            self.photo_label.configure(text=os.path.basename(ruta), text_color=COLORES["acento"])
 
     def _guardar_foto(self, empleado_id: int):
         """Guarda la foto seleccionada y actualiza la ruta del empleado"""
@@ -5469,7 +5469,7 @@ class UsuarioDialog(ctk.CTkToplevel):
         hint = ctk.CTkLabel(
             form,
             text="La contraseña debe cumplir la política de seguridad configurada.",
-            text_color="#888888",
+            text_color=COLORES["texto_suave"],
             font=ctk.CTkFont(size=11),
         )
         hint.grid(row=5, column=1, padx=8, pady=2, sticky="w")

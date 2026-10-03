@@ -528,11 +528,12 @@ class MainWindow(ctk.CTk):
             "sincronizado": ("al día", "ok"),
             "error_token": ("token rechazado", "error"),
         }
+        es_oscuro = ctk.get_appearance_mode() == "Dark"
         colores = {
             "texto_suave": COLORES["texto_suave"],
             "acento": COLORES["acento"],
-            "ok": "#2ecc71" if COLORES["fondo"] == "#1a1a1a" else "#1e8449",
-            "error": "#e74c3c" if COLORES["fondo"] == "#1a1a1a" else "#c0392b",
+            "ok": "#2ecc71" if es_oscuro else "#1e8449",
+            "error": "#e74c3c" if es_oscuro else "#c0392b",
         }
 
         clave = str(estado.get("estado") or "detenido")

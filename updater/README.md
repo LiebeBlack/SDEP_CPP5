@@ -16,8 +16,13 @@ Ejecutable de Windows que se encarga de **buscar actualizaciones** de
 3. Si la Release es más nueva que la última instalada registrada:
    - cierra la aplicación si está abierta (con aviso amable),
    - descarga `SistemaGestionPersonal-Setup-<versión>.exe` (con
-     reintentos y verificación de tamaño),
-   - lo instala en modo silencioso (`/VERYSILENT /SUPPRESSMSGBOXES`),
+     reintentos y verificación de tamaño) en el directorio del usuario
+     `%LOCALAPPDATA%\SDEP_CPP5\updates` (no en `%TEMP%`),
+   - solicita elevación, copia el archivo a una carpeta de actualización
+     con ACL restringidas y valida allí la firma/cadena oficial antes de
+     ejecutar exactamente esa copia,
+   - lo instala en modo silencioso (`/VERYSILENT /SUPPRESSMSGBOXES`) y
+     elimina la copia temporal protegida al terminar,
    - registra la versión instalada y termina.
 4. Si ya está actualizado, no descarga nada y termina al instante.
 
@@ -39,6 +44,8 @@ hubo un error queda abierta para que puedas leerlo.
 
 El estado se guarda en `%LOCALAPPDATA%\SDEP_CPP5\auto_updater.json` y el
 registro de actividad en `%LOCALAPPDATA%\SDEP_CPP5\updater.log`.
+Si la firma del instalador no coincide con la cadena oficial instalada por
+Setup, la actualización se cancela sin ejecutarlo.
 
 > En la primera ejecución, si la aplicación **no está instalada**, el
 > actualizador instala la última versión disponible (comportamiento

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import customtkinter as ctk
 
 from src.gui.frames import _habilitar_orden_columnas, _seleccionar_fila_click
-from src.gui.theme import COLORES
+from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.models import Contrato, Empleado, EstadoContrato, TipoContrato
 from src.utils.helpers import format_currency, format_date, parse_date
 
@@ -33,6 +33,14 @@ ETIQUETAS_ESTADO = {
     "vencido": "Vencido",
     "terminado": "Terminado",
 }
+
+
+def _verificar_permiso(main_window, permiso: str, accion: str) -> bool:
+    """Verifica el permiso operativo antes de ejecutar una acción contractual."""
+    if main_window is not None and main_window.tiene_permiso(permiso):
+        return True
+    messagebox.showwarning("Acceso denegado", f"Su rol no tiene permiso para {accion}")
+    return False
 
 
 class ContratosFrame(ctk.CTkFrame):
@@ -165,6 +173,7 @@ class ContratosFrame(ctk.CTkFrame):
             "estado",
         )
         self.tree = ttk.Treeview(contenedor, columns=columnas, show="headings", height=15)
+        habilitar_scroll_rueda(self.tree)
         encabezados = {
             "numero": ("Número", 130),
             "empleado": ("Empleado", 220),
@@ -344,6 +353,8 @@ class ContratosFrame(ctk.CTkFrame):
     # ------------------------------------------------------------------
     def _nuevo_contrato(self) -> None:
         """Abre el diálogo de alta de contrato"""
+        if not _verificar_permiso(self.main_window, "create", "crear contratos"):
+            return
         dialogo = ContratoDialog(self, self.main_window, self._empleados, self.servicio)
         self.wait_window(dialogo)
         if getattr(dialogo, "guardado", False):
@@ -351,6 +362,8 @@ class ContratosFrame(ctk.CTkFrame):
 
     def _renovar_contrato(self) -> None:
         """Renueva el contrato seleccionado"""
+        if not _verificar_permiso(self.main_window, "update", "renovar contratos"):
+            return
         contrato = self._contrato_seleccionado()
         if contrato is None or self.servicio is None:
             return
@@ -361,6 +374,8 @@ class ContratosFrame(ctk.CTkFrame):
 
     def _terminar_contrato(self) -> None:
         """Termina el contrato seleccionado y genera su finiquito"""
+        if not _verificar_permiso(self.main_window, "update", "terminar contratos"):
+            return
         contrato = self._contrato_seleccionado()
         if contrato is None or self.servicio is None:
             return
@@ -425,6 +440,8 @@ class ContratosFrame(ctk.CTkFrame):
 
     def _exportar(self) -> None:
         """Exporta el listado de contratos"""
+        if not _verificar_permiso(self.main_window, "report", "exportar contratos"):
+            return
         if not self.contratos:
             messagebox.showinfo("Contratos", "No hay contratos para exportar")
             return
@@ -446,6 +463,8 @@ class ContratosFrame(ctk.CTkFrame):
 
     def _exportar_pdf(self) -> None:
         """Genera el reporte PDF de contratos mostrados"""
+        if not _verificar_permiso(self.main_window, "report", "generar reportes"):
+            return
         if not self.contratos:
             messagebox.showinfo("Contratos", "No hay contratos para el reporte")
             return
@@ -638,6 +657,8 @@ class ContratoDialog(ctk.CTkToplevel):
 
     def _guardar(self) -> None:
         """Valida y crea el contrato"""
+        if not _verificar_permiso(self.main_window, "create", "crear contratos"):
+            return
         if self.servicio is None:
             messagebox.showerror("Contratos", "El servicio de contratos no está disponible")
             return
@@ -691,6 +712,7 @@ class RenovacionDialog(ctk.CTkToplevel):
 
     def __init__(self, parent, servicio: ContratoService | None, contrato: Contrato):
         super().__init__(parent)
+        self.main_window = getattr(parent, "main_window", None)
         self.servicio = servicio
         self.contrato = contrato
         self.guardado = False
@@ -749,6 +771,8 @@ class RenovacionDialog(ctk.CTkToplevel):
 
     def _guardar(self) -> None:
         """Ejecuta la renovación del contrato"""
+        if not _verificar_permiso(self.main_window, "update", "renovar contratos"):
+            return
         if self.servicio is None:
             messagebox.showerror("Contratos", "El servicio de contratos no está disponible")
             return
@@ -787,6 +811,7 @@ class TerminacionDialog(ctk.CTkToplevel):
         empleados: dict[int, Empleado],
     ):
         super().__init__(parent)
+        self.main_window = getattr(parent, "main_window", None)
         self.servicio = servicio
         self.contrato = contrato
         self.empleados = empleados
@@ -885,6 +910,8 @@ class TerminacionDialog(ctk.CTkToplevel):
 
     def _guardar(self) -> None:
         """Termina el contrato generando la liquidación"""
+        if not _verificar_permiso(self.main_window, "update", "terminar contratos"):
+            return
         if self.servicio is None:
             messagebox.showerror("Contratos", "El servicio de contratos no está disponible")
             return

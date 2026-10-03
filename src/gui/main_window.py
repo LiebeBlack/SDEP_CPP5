@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 # Módulos del sistema: (nombre interno, título, ícono)
 MODULOS = [
-    ("dashboard", "Dashboard", "📊"),
+    ("dashboard", "Panel de control", "📊"),
     ("empleados", "Empleados", "👥"),
     ("documentos", "Documentos", "📁"),
     ("incidencias", "Incidencias", "📅"),
@@ -48,7 +48,7 @@ MODULOS = [
 ]
 
 TITULOS_VENTANA = {
-    "dashboard": "Dashboard",
+    "dashboard": "Panel de control",
     "empleados": "Gestión de Empleados",
     "documentos": "Gestión Documental",
     "incidencias": "Incidencias y Permisos",
@@ -158,19 +158,8 @@ class MainWindow(ctk.CTk):
         # Sesión propia y no scoped para toda la ventana: las operaciones
         # internas que usan get_session/close_session (registry) no la
         # cierran ni invalidan sus objetos cargados.
-        self.session = db_config.new_session()
-        self.empleado_service = EmpleadoService(self.session)
-        self.documento_service = DocumentoService(self.session)
-        self.incidencia_service = IncidenciaService(self.session)
-        self.pago_service = PagoService(self.session)
-        self.config_service = ConfiguracionService(self.session)
-
-        # Cargar el usuario autenticado en la sesión dedicada
         self.current_user: Usuario | None = None
-        if username_snapshot:
-            self.current_user = (
-                self.session.query(Usuario).filter(Usuario.username == username_snapshot).first()
-            )
+        self._inicializar_sesion(username_snapshot)
 
         # Estado de la interfaz
         self.current_frame: ctk.CTkFrame | None = None
@@ -234,6 +223,32 @@ class MainWindow(ctk.CTk):
             )
             self.destroy()
             raise
+
+    def _inicializar_sesion(self, username: str | None = None) -> None:
+        """(Re)crea la sesión de la ventana y sus servicios asociados."""
+        session = db_config.new_session()
+        try:
+            current_user = (
+                session.query(Usuario).filter(Usuario.username == username).first()
+                if username
+                else None
+            )
+            empleado_service = EmpleadoService(session)
+            documento_service = DocumentoService(session)
+            incidencia_service = IncidenciaService(session)
+            pago_service = PagoService(session)
+            config_service = ConfiguracionService(session)
+        except Exception:
+            db_config.close_session(session)
+            raise
+
+        self.session = session
+        self.empleado_service = empleado_service
+        self.documento_service = documento_service
+        self.incidencia_service = incidencia_service
+        self.pago_service = pago_service
+        self.config_service = config_service
+        self.current_user = current_user
 
     # ------------------------------------------------------------------
     # Interfaz
@@ -338,7 +353,7 @@ class MainWindow(ctk.CTk):
 
         self.frame_title = ctk.CTkLabel(
             self.header,
-            text="Dashboard",
+            text="Panel de control",
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color=COLORES["texto"],
         )
@@ -449,7 +464,8 @@ class MainWindow(ctk.CTk):
             font=ctk.CTkFont(size=10),
             command=self._on_sincronizar_ahora,
         )
-        self.sync_btn.pack(side="right", padx=(10, 10), pady=4)
+        if self.tiene_permiso("config"):
+            self.sync_btn.pack(side="right", padx=(10, 10), pady=4)
 
         self._update_clock()
 
@@ -536,6 +552,9 @@ class MainWindow(ctk.CTk):
 
     def _on_sincronizar_ahora(self):
         """Pide un ciclo inmediato de sincronización y lo informa en la barra"""
+        if not self.tiene_permiso("config"):
+            self._avisar_acceso_denegado()
+            return
         try:
             from sync_agent import estado_sincronizacion, sincronizar_ahora
         except Exception:
@@ -741,7 +760,7 @@ class MainWindow(ctk.CTk):
             "GUÍA RÁPIDA\n"
             "===========\n\n"
             "Módulos del sistema (barra lateral o Ctrl+1 a Ctrl+7):\n"
-            "  Ctrl+1  Dashboard      Ctrl+2  Empleados\n"
+            "  Ctrl+1  Panel de control  Ctrl+2  Empleados\n"
             "  Ctrl+3  Documentos     Ctrl+4  Incidencias\n"
             "  Ctrl+5  Contratos      Ctrl+6  Nómina\n"
             "  Ctrl+7  Configuración\n\n"
@@ -754,6 +773,8 @@ class MainWindow(ctk.CTk):
             "Consejos:\n"
             "- Doble clic sobre una fila abre sus detalles.\n"
             "- Clic derecho muestra las acciones disponibles.\n"
+            "- Use la rueda del ratón o el trackpad para desplazarse por las tablas;\n"
+            "  mantenga Shift mientras desplaza para moverse horizontalmente.\n"
             "- Los reportes PDF y exportaciones se guardan donde usted elija.\n"
             "- La sección 'Seguridad y Respaldo' permite crear, verificar,\n"
             "  restaurar y eliminar copias de seguridad de la base de datos.\n"
@@ -784,7 +805,8 @@ class MainWindow(ctk.CTk):
             "    respaldos y auditoría).\n"
             "  - Gestor: gestiona empleados, documentos, incidencias y\n"
             "    nómina.\n"
-            "  - Usuario: consulta y gestión básica de personal.\n"
+            "  - Usuario: consulta empleados, documentos e incidencias; no modifica\n"
+            "    registros hasta que exista una asociación segura con su empleado.\n"
             "  - Solo lectura: consulta de empleados y documentos.\n\n"
             "Los datos se almacenan localmente (sin conexión a internet).\n"
             "Las contraseñas se guardan con hash seguro (PBKDF2).\n"
@@ -800,12 +822,17 @@ class MainWindow(ctk.CTk):
             modo_actual = ctk.get_appearance_mode()
             nuevo = "Light" if modo_actual == "Dark" else "Dark"
             aplicar_modo_apariencia(nuevo)
-            self.config_service.establecer_valor("apariencia_modo", nuevo)
+            puede_guardar_preferencia = self.tiene_permiso("config")
+            if puede_guardar_preferencia:
+                self.config_service.establecer_valor("apariencia_modo", nuevo)
             self._recolorear_chrome()
             # Recrear el frame activo para que tome la paleta nueva
             self._show_frame(self.current_frame_name or "dashboard")
             self.apariencia_btn.configure(text="☀️ Claro" if nuevo == "Dark" else "🌙 Oscuro")
-            self.status_label.configure(text=f"Tema {nuevo.lower()} aplicado")
+            mensaje = f"Tema {nuevo.lower()} aplicado"
+            if not puede_guardar_preferencia:
+                mensaje += " (solo para esta sesión)"
+            self.status_label.configure(text=mensaje)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo cambiar el tema: {str(e)}")
 
@@ -842,6 +869,9 @@ class MainWindow(ctk.CTk):
     # ------------------------------------------------------------------
     def show_frame(self, frame_name: str, **kwargs):
         """Muestra un frame y aplica parámetros de selección si el frame lo soporta"""
+        if not self.puede_ver_modulo(frame_name):
+            self._show_frame(frame_name)
+            return
         self._show_frame(frame_name)
         if kwargs and self.current_frame is not None:
             for key, value in kwargs.items():

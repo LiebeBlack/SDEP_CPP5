@@ -21,13 +21,24 @@ from src.utils.helpers import format_date, format_currency, parse_date, mantener
 from src.utils.pdf_generator import PDFGenerator
 from src.utils.exporter import exportar_archivo
 from src.utils.audit_logger import audit_logger, AuditEventType
-from src.services.auth_service import AuthService, LONGITUD_MINIMA_PASSWORD
-from src.gui.theme import COLORES
+from src.services.auth_service import AuthService
+from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.gui.widgets import GraficoBarras, GraficoDona, GraficoLinea, TarjetaIndicador
 
 logger = logging.getLogger(__name__)
 
 _FUENTE_FAMILIA_CACHE: list[str | None] = [None]
+
+
+def _verificar_permiso_accion(main_window, permiso: str, accion: str) -> bool:
+    """Impide ejecutar callbacks protegidos aunque se invoquen fuera del menú."""
+    if main_window.tiene_permiso(permiso):
+        return True
+    messagebox.showwarning(
+        "Acceso denegado",
+        f"Su rol no tiene permiso para {accion}",
+    )
+    return False
 
 
 def _familia_fuente() -> str:
@@ -232,6 +243,9 @@ class DashboardFrame(ctk.CTkFrame):
             ("Incidencias Pendientes", "incidencias", "📅", "incidencias"),
             ("Pagos Pendientes", "pagos", "💰", "nomina"),
         ]
+        cards = [
+            card for card in cards if self.main_window.puede_ver_modulo(card[3])
+        ]
 
         for i, (title_text, key, icon, modulo) in enumerate(cards):
             card = self._create_stat_card(cards_container, title_text, icon, key, modulo)
@@ -305,6 +319,9 @@ class DashboardFrame(ctk.CTkFrame):
             ("por_vencer", "Contratos por vencer", "📜", "contratos"),
             ("dotacion", "Dotación activa", "👥", "empleados"),
         ]
+        definiciones = [
+            item for item in definiciones if self.main_window.puede_ver_modulo(item[3])
+        ]
         for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
             tarjeta = TarjetaIndicador(
                 marco,
@@ -321,23 +338,28 @@ class DashboardFrame(ctk.CTkFrame):
         marco = ctk.CTkFrame(contenedor, fg_color="transparent")
         marco.pack(fill="x", padx=20, pady=6)
 
-        self.grafico_departamentos = GraficoBarras(
-            marco, titulo="Empleados activos por departamento", alto=210
-        )
-        self.grafico_departamentos.grid(row=0, column=0, padx=(0, 6), pady=0, sticky="nsew")
-
-        self.grafico_contratos = GraficoDona(
-            marco, titulo="Contratos por tipo", alto=210
-        )
-        self.grafico_contratos.grid(row=0, column=1, padx=6, pady=0, sticky="nsew")
-
-        self.grafico_egresos = GraficoLinea(
-            marco, titulo="Egresos netos por mes", alto=210
-        )
-        self.grafico_egresos.grid(row=0, column=2, padx=(6, 0), pady=0, sticky="nsew")
-
-        for columna in range(3):
+        self.grafico_departamentos = None
+        self.grafico_contratos = None
+        self.grafico_egresos = None
+        graficos = [
+            (
+                "empleados",
+                "grafico_departamentos",
+                GraficoBarras,
+                "Empleados activos por departamento",
+            ),
+            ("contratos", "grafico_contratos", GraficoDona, "Contratos por tipo"),
+            ("nomina", "grafico_egresos", GraficoLinea, "Egresos netos por mes"),
+        ]
+        columna = 0
+        for modulo, atributo, clase, titulo in graficos:
+            if not self.main_window.puede_ver_modulo(modulo):
+                continue
+            grafico = clase(marco, titulo=titulo, alto=210)
+            grafico.grid(row=0, column=columna, padx=6, pady=0, sticky="nsew")
+            setattr(self, atributo, grafico)
             marco.grid_columnconfigure(columna, weight=1)
+            columna += 1
 
     def _navegar(self, modulo: str) -> None:
         """Navega a un módulo si el rol lo permite"""
@@ -401,45 +423,47 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _load_data(self):
         """Carga los datos del dashboard"""
-        try:
-            # Estadísticas de empleados
+        # Solo se consultan estadísticas de módulos accesibles al rol.
+        if "empleados" in self.stats_cards or "activos" in self.stats_cards:
             try:
                 stats = self.main_window.empleado_service.obtener_estadisticas()
-                self.stats_cards["empleados"].configure(text=str(stats.get("total", 0)))
-                self.stats_cards["activos"].configure(text=str(stats.get("activos", 0)))
+                if "empleados" in self.stats_cards:
+                    self.stats_cards["empleados"].configure(text=str(stats.get("total", 0)))
+                if "activos" in self.stats_cards:
+                    self.stats_cards["activos"].configure(text=str(stats.get("activos", 0)))
             except Exception:
-                self.stats_cards["empleados"].configure(text="0")
-                self.stats_cards["activos"].configure(text="0")
+                logger.exception("No se pudieron cargar las estadísticas de empleados")
+                for key in ("empleados", "activos"):
+                    if key in self.stats_cards:
+                        self.stats_cards[key].configure(text="0")
 
-            # Estadísticas de documentos
+        if "documentos" in self.stats_cards:
             try:
                 doc_stats = self.main_window.documento_service.obtener_estadisticas()
                 self.stats_cards["documentos"].configure(text=str(doc_stats.get("total", 0)))
             except Exception:
+                logger.exception("No se pudieron cargar las estadísticas de documentos")
                 self.stats_cards["documentos"].configure(text="0")
 
-            # Estadísticas de incidencias
+        if "incidencias" in self.stats_cards:
             try:
                 incidencia_stats = self.main_window.incidencia_service.obtener_estadisticas()
                 self.stats_cards["incidencias"].configure(
                     text=str(incidencia_stats.get("pendientes", 0))
                 )
             except Exception:
+                logger.exception("No se pudieron cargar las estadísticas de incidencias")
                 self.stats_cards["incidencias"].configure(text="0")
 
-            # Estadísticas de pagos
+        if "pagos" in self.stats_cards:
             try:
                 pago_stats = self.main_window.pago_service.obtener_estadisticas()
                 self.stats_cards["pagos"].configure(text=str(pago_stats.get("pendientes", 0)))
             except Exception:
+                logger.exception("No se pudieron cargar las estadísticas de pagos")
                 self.stats_cards["pagos"].configure(text="0")
 
-            self._cargar_analitica()
-
-        except Exception:
-            # Error general, establecer todos en 0
-            for key in self.stats_cards:
-                self.stats_cards[key].configure(text="0")
+        self._cargar_analitica()
 
     # ------------------------------------------------------------------
     # Analítica
@@ -454,38 +478,43 @@ class DashboardFrame(ctk.CTkFrame):
         hoy = date.today()
         inicio_mes = hoy.replace(day=1)
 
-        try:
-            resumen = self.main_window.pago_service.obtener_resumen_periodo(inicio_mes, hoy)
-            self.indicadores["nomina_mes"].establecer_valor(
-                format_currency(float(resumen.get("total_neto", 0))),
-                f"{int(resumen.get('cantidad_pagos', 0))} pago(s) del mes",
-            )
-        except Exception:
-            logger.debug("Sin datos de nómina del mes para el panel", exc_info=True)
-            self.indicadores["nomina_mes"].establecer_valor("Sin datos", "sin pagos registrados")
+        if "nomina_mes" in self.indicadores:
+            try:
+                resumen = self.main_window.pago_service.obtener_resumen_periodo(inicio_mes, hoy)
+                self.indicadores["nomina_mes"].establecer_valor(
+                    format_currency(float(resumen.get("total_neto", 0))),
+                    f"{int(resumen.get('cantidad_pagos', 0))} pago(s) del mes",
+                )
+            except Exception:
+                logger.debug("Sin datos de nómina del mes para el panel", exc_info=True)
+                self.indicadores["nomina_mes"].establecer_valor(
+                    "Sin datos", "sin pagos registrados"
+                )
 
-        try:
-            from src.services import ContratoService
+        if "por_vencer" in self.indicadores:
+            try:
+                from src.services import ContratoService
 
-            servicio = ContratoService(self.main_window.session)
-            por_vencer = servicio.listar_por_vencer()
-            self.indicadores["por_vencer"].establecer_valor(
-                str(len(por_vencer)),
-                f"{len(servicio.empleados_sin_contrato())} empleado(s) sin contrato",
-            )
-        except Exception:
-            logger.debug("Sin datos de contratos para el panel", exc_info=True)
-            self.indicadores["por_vencer"].establecer_valor("—", "sin datos")
+                servicio = ContratoService(self.main_window.session)
+                por_vencer = servicio.listar_por_vencer()
+                self.indicadores["por_vencer"].establecer_valor(
+                    str(len(por_vencer)),
+                    f"{len(servicio.empleados_sin_contrato())} empleado(s) sin contrato",
+                )
+            except Exception:
+                logger.debug("Sin datos de contratos para el panel", exc_info=True)
+                self.indicadores["por_vencer"].establecer_valor("—", "sin datos")
 
-        try:
-            stats = self.main_window.empleado_service.obtener_estadisticas()
-            self.indicadores["dotacion"].establecer_valor(
-                str(int(stats.get("total", 0))),
-                f"{int(stats.get('activos', 0))} empleado(s) activo(s)",
-            )
-        except Exception:
-            logger.debug("Sin datos de empleados para el panel", exc_info=True)
-            self.indicadores["dotacion"].establecer_valor("—", "sin datos")
+        if "dotacion" in self.indicadores:
+            try:
+                stats = self.main_window.empleado_service.obtener_estadisticas()
+                self.indicadores["dotacion"].establecer_valor(
+                    str(int(stats.get("total", 0))),
+                    f"{int(stats.get('activos', 0))} empleado(s) activo(s)",
+                )
+            except Exception:
+                logger.debug("Sin datos de empleados para el panel", exc_info=True)
+                self.indicadores["dotacion"].establecer_valor("—", "sin datos")
 
     def _cargar_graficos(self) -> None:
         """Actualiza los tres gráficos del panel"""
@@ -495,6 +524,8 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _grafico_departamentos(self) -> None:
         """Empleados activos por departamento"""
+        if self.grafico_departamentos is None:
+            return
         try:
             stats = self.main_window.empleado_service.obtener_estadisticas()
             por_departamento = stats.get("por_departamento") or {}
@@ -510,6 +541,8 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _grafico_contratos(self) -> None:
         """Distribución de contratos por tipo"""
+        if self.grafico_contratos is None:
+            return
         try:
             from src.services import ContratoService
 
@@ -530,6 +563,8 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _grafico_egresos(self) -> None:
         """Egresos netos por mes de los últimos seis meses"""
+        if self.grafico_egresos is None:
+            return
         try:
             hoy = date.today()
             meses: list[tuple[str, float]] = []
@@ -644,6 +679,7 @@ class EmpleadosFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.tree)
 
         self.tree.heading("cedula", text="Cédula")
         self.tree.heading("nombre", text="Nombre")
@@ -796,6 +832,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_edit(self):
         """Edita el empleado seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "editar empleados"
+        ):
+            return
         empleado = self._get_selected_empleado()
         if empleado:
             self._show_empleado_dialog(empleado, edit_mode=True)
@@ -814,6 +854,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_constancia_trabajo(self):
         """Genera constancia de trabajo en PDF para el empleado seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar constancias"
+        ):
+            return
         empleado = self._get_selected_empleado()
         if not empleado:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
@@ -836,6 +880,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_constancia_estudios(self):
         """Genera constancia de estudios en PDF para el empleado seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar constancias"
+        ):
+            return
         empleado = self._get_selected_empleado()
         if not empleado:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
@@ -858,6 +906,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_reporte_empleados(self):
         """Genera un reporte general de empleados en PDF"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar reportes"
+        ):
+            return
         empleados = self.main_window.empleado_service.listar_empleados_activos()
         if not empleados:
             messagebox.showwarning(
@@ -882,6 +934,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_ficha_empleado(self):
         """Genera la ficha completa del empleado seleccionado en PDF"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar reportes"
+        ):
+            return
         empleado = self._get_selected_empleado()
         if not empleado:
             messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
@@ -904,6 +960,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_exportar_empleados(self):
         """Exporta la lista visible de empleados a Excel o CSV"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "exportar empleados"
+        ):
+            return
         empleados = self._consultar_empleados_visibles()
         if not empleados:
             messagebox.showwarning("Advertencia", "No hay empleados para exportar")
@@ -945,6 +1005,10 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_delete(self):
         """Elimina el empleado seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "delete", "eliminar empleados"
+        ):
+            return
         empleado = self._get_selected_empleado()
         if empleado:
             if messagebox.askyesno(
@@ -1713,6 +1777,10 @@ class EmpleadoDialog(ctk.CTkToplevel):
 
     def _on_save(self):
         """Maneja el guardado del empleado"""
+        permiso = "update" if self.empleado and self.edit_mode else "create"
+        accion = "editar empleados" if permiso == "update" else "crear empleados"
+        if not _verificar_permiso_accion(self.main_window, permiso, accion):
+            return
         try:
             datos = self._get_form_data()
 
@@ -1847,6 +1915,7 @@ class DocumentosFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.tree)
 
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("titulo", text="Título")
@@ -1916,6 +1985,10 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_exportar_documentos(self):
         """Exporta los documentos visibles a Excel o CSV"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "exportar documentos"
+        ):
+            return
         documentos = self._documentos_visibles()
         if not documentos:
             messagebox.showwarning("Advertencia", "No hay documentos para exportar")
@@ -1951,6 +2024,10 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_reporte_vencimientos(self):
         """Genera el control de vencimientos de documentos en PDF"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar reportes"
+        ):
+            return
         documentos = (
             self.main_window.documento_service.listar_vencidos()
             + self.main_window.documento_service.listar_por_vencer(30)
@@ -2042,6 +2119,10 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_edit_documento(self):
         """Edita el documento seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "editar documentos"
+        ):
+            return
         documento = self._get_selected_documento()
         if documento:
             dialog = DocumentoDialog(self, self.main_window, documento.empleado_id, documento)
@@ -2150,6 +2231,10 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_delete_documento(self):
         """Elimina el documento seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "delete", "eliminar documentos"
+        ):
+            return
         documento = self._get_selected_documento()
         if documento:
             if messagebox.askyesno(
@@ -2311,6 +2396,10 @@ class DocumentoDialog(ctk.CTkToplevel):
 
     def _on_save(self):
         """Guarda (crea o actualiza) el documento"""
+        permiso = "update" if self.documento else "create"
+        accion = "editar documentos" if self.documento else "crear documentos"
+        if not _verificar_permiso_accion(self.main_window, permiso, accion):
+            return
         try:
             # Al editar, el archivo solo es obligatorio si no había uno previo
             requiere_archivo = not (self.documento and self.documento.ruta_archivo)
@@ -2432,6 +2521,7 @@ class IncidenciasFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.tree)
 
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("fechas", text="Fechas")
@@ -2505,6 +2595,10 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_exportar_incidencias(self):
         """Exporta las incidencias visibles a Excel o CSV"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "exportar incidencias"
+        ):
+            return
         incidencias = self._incidencias_visibles()
         if not incidencias:
             messagebox.showwarning("Advertencia", "No hay incidencias para exportar")
@@ -2541,6 +2635,10 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_reporte_incidencias(self):
         """Genera el reporte de incidencias en PDF"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar reportes"
+        ):
+            return
         incidencias = self._incidencias_visibles()
         if not incidencias:
             messagebox.showwarning("Advertencia", "No hay incidencias para generar el reporte")
@@ -2643,6 +2741,10 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_edit_incidencia(self):
         """Edita la incidencia seleccionada"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "editar incidencias"
+        ):
+            return
         incidencia = self._get_selected_incidencia()
         if incidencia:
             if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
@@ -2681,6 +2783,10 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_approve_incidencia(self):
         """Aprueba la incidencia seleccionada"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "aprobar incidencias"
+        ):
+            return
         incidencia = self._get_selected_incidencia()
         if incidencia:
             if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
@@ -2703,6 +2809,10 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_reject_incidencia(self):
         """Rechaza la incidencia seleccionada"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "rechazar incidencias"
+        ):
+            return
         incidencia = self._get_selected_incidencia()
         if incidencia:
             if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
@@ -2725,6 +2835,10 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_delete_incidencia(self):
         """Elimina la incidencia seleccionada"""
+        if not _verificar_permiso_accion(
+            self.main_window, "delete", "eliminar incidencias"
+        ):
+            return
         incidencia = self._get_selected_incidencia()
         if incidencia:
             if messagebox.askyesno("Confirmar", "¿Desea eliminar la incidencia?"):
@@ -2895,6 +3009,10 @@ class IncidenciaDialog(ctk.CTkToplevel):
 
     def _on_save(self):
         """Guarda la incidencia"""
+        permiso = "update" if self.incidencia else "create"
+        accion = "editar incidencias" if self.incidencia else "crear incidencias"
+        if not _verificar_permiso_accion(self.main_window, permiso, accion):
+            return
         try:
             datos = {
                 "empleado_id": self.empleado_id,
@@ -3154,6 +3272,7 @@ class NominaFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.tree)
 
         self.tree.heading("empleado", text="Empleado")
         self.tree.heading("periodo", text="Periodo")
@@ -3256,6 +3375,10 @@ class NominaFrame(ctk.CTkFrame):
 
     def _on_generate_nomina(self):
         """Genera nómina para un periodo"""
+        if not _verificar_permiso_accion(
+            self.main_window, "create", "generar nóminas"
+        ):
+            return
         fecha_inicio_str = self.fecha_inicio_entry.get()
         fecha_fin_str = self.fecha_fin_entry.get()
 
@@ -3316,6 +3439,10 @@ class NominaFrame(ctk.CTkFrame):
 
     def _on_edit_pago(self):
         """Edita el pago seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "editar pagos"
+        ):
+            return
         pago = self._get_selected_pago()
         if pago:
             dialog = PagoDialog(self, self.main_window, pago)
@@ -3372,6 +3499,10 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_generate_recibo(self):
         """Genera recibo de pago"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar recibos"
+        ):
+            return
         pago = self._get_selected_pago()
         if pago:
             empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
@@ -3413,6 +3544,10 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_exportar_pagos(self):
         """Exporta los pagos visibles a Excel o CSV"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "exportar pagos"
+        ):
+            return
         pares = self._pagos_con_empleado()
         if not pares:
             messagebox.showwarning("Advertencia", "No hay pagos para exportar")
@@ -3461,6 +3596,10 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_planilla_pdf(self):
         """Genera la planilla de nómina PDF con totales para los pagos visibles"""
+        if not _verificar_permiso_accion(
+            self.main_window, "report", "generar planillas"
+        ):
+            return
         pares = self._pagos_con_empleado()
         if not pares:
             messagebox.showwarning("Advertencia", "No hay pagos para generar la planilla")
@@ -3519,6 +3658,10 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_mark_paid(self):
         """Marca el pago como realizado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "marcar pagos como realizados"
+        ):
+            return
         pago = self._get_selected_pago()
         if pago:
             if pago.pagado:
@@ -3535,6 +3678,10 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_mark_unpaid(self):
         """Marca el pago como pendiente"""
+        if not _verificar_permiso_accion(
+            self.main_window, "update", "marcar pagos como pendientes"
+        ):
+            return
         pago = self._get_selected_pago()
         if pago:
             if not pago.pagado:
@@ -3551,6 +3698,10 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_delete_pago(self):
         """Elimina el pago seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "delete", "eliminar pagos"
+        ):
+            return
         pago = self._get_selected_pago()
         if pago:
             if messagebox.askyesno("Confirmar", "¿Desea eliminar este pago?"):
@@ -3675,6 +3826,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.audit_tree)
         self.audit_tree.heading("fecha", text="Fecha")
         self.audit_tree.heading("tipo", text="Tipo")
         self.audit_tree.heading("usuario", text="Usuario")
@@ -3780,6 +3932,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_exportar_auditoria(self):
         """Exporta los eventos de auditoría recientes a Excel o CSV"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "exportar auditoría"
+        ):
+            return
         eventos = audit_logger.get_recent_events(200)
         if not eventos:
             messagebox.showwarning("Advertencia", "No hay eventos de auditoría para exportar")
@@ -3870,6 +4026,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.backup_tree)
         self.backup_tree.heading("nombre", text="Nombre")
         self.backup_tree.heading("fecha", text="Fecha")
         self.backup_tree.heading("tamano", text="Tamaño")
@@ -3911,6 +4068,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.usuarios_tree)
         self.usuarios_tree.heading("usuario", text="Usuario")
         self.usuarios_tree.heading("rol", text="Rol")
         self.usuarios_tree.heading("nombre", text="Nombre")
@@ -4090,6 +4248,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        habilitar_scroll_rueda(self.sync_conflictos_tree)
         for columna, titulo, ancho in (
             ("fecha", "Fecha", 140),
             ("tabla", "Tabla", 110),
@@ -4206,6 +4365,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_guardar_sincronizacion(self):
         """Guarda los parámetros del agente y (des)arranca el hilo según el caso"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "cambiar la configuración de sincronización"
+        ):
+            return
         from src.config import db_config
 
         try:
@@ -4267,6 +4430,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_probar_conexion(self):
         """Prueba el servicio central sin bloquear la interfaz"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "probar la configuración de sincronización"
+        ):
+            return
         url = self.sync_url_entry.get().strip()
         token = self.sync_token_entry.get().strip()
         if not url:
@@ -4340,6 +4507,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_sincronizar_ahora(self):
         """Solicita un ciclo inmediato y refresca los contadores"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "solicitar la sincronización"
+        ):
+            return
         try:
             from sync_agent import sincronizar_ahora
 
@@ -4355,6 +4526,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_adoptar_datos(self):
         """Da identidad global a los datos que ya existían en este equipo"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "adoptar datos para sincronización"
+        ):
+            return
         if not messagebox.askyesno(
             "Adoptar datos existentes",
             "Se dará identidad global a todos los registros que ya tenía este "
@@ -4530,6 +4705,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_save(self):
         """Guarda la configuración"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "modificar configuración"
+        ):
+            return
         try:
             # Configuración general
             self.main_window.config_service.establecer_valor(
@@ -4588,6 +4767,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
     # ------------------------------------------------------------------
     def _on_save_seguridad(self):
         """Guarda la configuración de seguridad y auditoría"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "modificar la configuración de seguridad"
+        ):
+            return
         try:
             self.main_window.config_service.establecer_valor(
                 "backup_enabled", bool(self.backup_enabled_var.get())
@@ -4648,6 +4831,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_create_backup(self):
         """Crea un respaldo manual de la base de datos"""
+        if not _verificar_permiso_accion(
+            self.main_window, "backup", "crear respaldos"
+        ):
+            return
         try:
             from src.utils.backup_manager import get_backup_manager
             from src.utils.helpers import get_timestamp
@@ -4660,6 +4847,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_verify_backup(self):
         """Verifica la integridad del respaldo seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "backup", "verificar respaldos"
+        ):
+            return
         nombre = self._backup_seleccionado()
         if not nombre:
             messagebox.showwarning("Advertencia", "Seleccione un respaldo")
@@ -4684,6 +4875,11 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_restore_backup(self):
         """Restaura el respaldo seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "restore", "restaurar respaldos"
+        ):
+            return
+        username = getattr(getattr(self.main_window, "current_user", None), "username", None)
         nombre = self._backup_seleccionado()
         if not nombre:
             messagebox.showwarning("Advertencia", "Seleccione un respaldo")
@@ -4706,7 +4902,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     self.main_window.session = None
             except Exception:
                 logger.debug("operación de interfaz ignorada", exc_info=True)
-            db_config.restore_backup(nombre)
+            if not db_config.restore_backup(nombre):
+                raise RuntimeError("La operación de restauración no confirmó el reemplazo")
             messagebox.showinfo(
                 "Restauración exitosa",
                 "Base de datos restaurada. La aplicación se reiniciará.",
@@ -4720,10 +4917,46 @@ class ConfiguracionFrame(ctk.CTkFrame):
             self.main_window._exit_status = "logout"
             self.main_window.destroy()
         except Exception as e:
+            logger.exception("No se pudo restaurar el respaldo %s", nombre)
+            cerrar_ventana = False
+            if getattr(self.main_window, "session", None) is None:
+                try:
+                    self.main_window._inicializar_sesion(username)
+                except Exception:
+                    logger.exception("No se pudo recuperar la sesión tras fallar la restauración")
+                    cerrar_ventana = True
+                else:
+                    user = self.main_window.current_user
+                    if (
+                        user is None
+                        or not user.activo
+                        or not self.main_window.tiene_permiso("config")
+                    ):
+                        cerrar_ventana = True
+                    else:
+                        try:
+                            self._load_configuracion()
+                            self._cargar_seguridad_y_usuarios()
+                            if getattr(self.main_window, "user_label", None) is not None:
+                                self.main_window.user_label.configure(
+                                    text=f"{user.username} · {self.main_window.rol_label()}"
+                                )
+                        except Exception:
+                            logger.exception(
+                                "No se pudo actualizar la interfaz tras recuperar la sesión"
+                            )
             messagebox.showerror("Error", f"Error al restaurar el respaldo: {str(e)}")
+            if cerrar_ventana:
+                self.main_window._cleanup()
+                self.main_window._exit_status = "logout"
+                self.main_window.destroy()
 
     def _on_delete_backup(self):
         """Elimina el respaldo seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "backup", "eliminar respaldos"
+        ):
+            return
         nombre = self._backup_seleccionado()
         if not nombre:
             messagebox.showwarning("Advertencia", "Seleccione un respaldo")
@@ -4784,11 +5017,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_new_usuario(self):
         """Crea un nuevo usuario de sistema"""
-        if not self.main_window.tiene_permiso("create"):
-            messagebox.showwarning(
-                "Acceso denegado",
-                "Su rol no tiene permiso para crear usuarios",
-            )
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "crear usuarios"
+        ):
             return
         dialog = UsuarioDialog(self, self.main_window)
         self.wait_window(dialog)
@@ -4797,6 +5028,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_edit_usuario(self):
         """Edita el usuario seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "editar usuarios"
+        ):
+            return
         usuario_id = self._usuario_seleccionado()
         if usuario_id is None:
             messagebox.showwarning("Advertencia", "Seleccione un usuario")
@@ -4808,6 +5043,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_toggle_usuario(self):
         """Activa o desactiva el usuario seleccionado"""
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "activar o desactivar usuarios"
+        ):
+            return
         from src.config import db_config
         from src.services.auth_service import AuthService
 
@@ -4863,7 +5102,7 @@ class InfoDialog(ctk.CTkToplevel):
         try:
             import tkinter.font as tkfont
 
-            familia_mono = tkfont.nametofont("TkFixedFont").actual("family")
+            familia_mono = tkfont.nametofont("TkFixedFont", self).actual("family")
         except Exception:
             familia_mono = "Courier New"
 
@@ -5075,6 +5314,10 @@ class PagoDialog(ctk.CTkToplevel):
 
     def _on_save(self):
         """Guarda el pago (crea o actualiza)"""
+        permiso = "update" if self.pago else "create"
+        accion = "editar pagos" if self.pago else "crear pagos"
+        if not _verificar_permiso_accion(self.main_window, permiso, accion):
+            return
         try:
             if not self.empleado_combo.get():
                 messagebox.showerror("Error", "Seleccione un empleado")
@@ -5225,7 +5468,7 @@ class UsuarioDialog(ctk.CTkToplevel):
 
         hint = ctk.CTkLabel(
             form,
-            text=f"Mínimo {LONGITUD_MINIMA_PASSWORD} caracteres para la contraseña.",
+            text="La contraseña debe cumplir la política de seguridad configurada.",
             text_color="#888888",
             font=ctk.CTkFont(size=11),
         )
@@ -5249,6 +5492,11 @@ class UsuarioDialog(ctk.CTkToplevel):
     def _on_save(self):
         from src.config import db_config
         from src.services.auth_service import AuthService
+
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "modificar usuarios"
+        ):
+            return
 
         try:
             session = db_config.get_session()
@@ -5334,7 +5582,10 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             form,
-            text=f"La contraseña debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres.",
+            text=(
+                "La contraseña debe tener al menos "
+                f"{AuthService(self.main_window.session).longitud_minima_password()} caracteres."
+            ),
             text_color=COLORES["texto_suave"],
             font=(_familia_fuente(), 9),
         ).grid(row=3, column=0, columnspan=2, pady=(4, 8))

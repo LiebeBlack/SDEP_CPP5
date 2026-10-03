@@ -3,21 +3,22 @@ Settings Configuration
 Configuración general de la aplicación
 
 Todas las rutas de datos (base de datos, documentos, fotos, exportaciones,
-caché, temporales, logs, respaldos y config.json) se resuelven SIEMPRE
-contra un directorio base escribible por el usuario, de modo que el
-software funciona en cualquier cuenta de Windows sin privilegios de
-administrador, sin importar dónde se haya instalado el ejecutable.
+caché, temporales, logs, respaldos y config.json) se resuelven contra un
+directorio escribible del usuario. Los datos persistentes nunca se guardan
+en una carpeta temporal compartida.
 """
 
 import importlib
-import os
-import sys
 import json
+import os
+import stat
+import sys
 import tempfile
 from types import ModuleType
 from pathlib import Path
-from dotenv import load_dotenv
 import logging
+
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +64,31 @@ def _es_dir_escribible(ruta: Path) -> bool:
     """Verifica que un directorio exista y permita escribir (probe real)"""
     try:
         ruta.mkdir(parents=True, exist_ok=True)
-        prueba = ruta / ".sgp_prueba_escritura"
-        prueba.write_text("ok", encoding="utf-8")
-        prueba.unlink()
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=ruta,
+            prefix=".sgp_prueba_escritura_",
+        ) as prueba:
+            prueba.write("ok")
         return True
     except (OSError, PermissionError):
+        return False
+
+
+def _es_dir_privado_usuario(ruta: Path) -> bool:
+    """Prepara un directorio de datos no accesible por otros usuarios en POSIX."""
+    try:
+        ruta.mkdir(parents=True, exist_ok=True)
+        if os.name == "posix":
+            info = ruta.stat()
+            if info.st_uid != os.getuid():
+                return False
+            ruta.chmod(0o700)
+            if stat.S_IMODE(ruta.stat().st_mode) != 0o700:
+                return False
+        return _es_dir_escribible(ruta)
+    except OSError:
         return False
 
 
@@ -83,34 +104,42 @@ def _resolve_base_dir() -> Path:
          perfil de Windows.
       3. Desarrollo: la raíz del repositorio.
 
-    Si el directorio elegido no es escribible (permisos, unidad de solo
-    lectura, etc.), se cae a la carpeta personal del usuario y, en última
-    instancia, al directorio temporal del sistema: el arranque NUNCA
-    debe fallar por una ruta sin permisos.
+    Si el directorio elegido no es escribible, se usa una carpeta privada
+    dentro del perfil del usuario. Nunca se guardan datos persistentes en
+    una carpeta temporal compartida.
     """
     override = os.getenv("SGP_BASE_DIR")
     if override:
         base = Path(override).resolve()
+        proteger_base = os.name == "posix"
     elif getattr(sys, "frozen", False):
-        local_data = os.getenv("LOCALAPPDATA")
+        local_data = os.getenv("LOCALAPPDATA") if sys.platform == "win32" else None
         if local_data:
             base = Path(local_data) / APP_DATA_DIR_NAME
+            proteger_base = False
         else:
-            base = Path(sys.executable).resolve().parent
+            base = Path.home() / APP_DATA_DIR_NAME
+            proteger_base = os.name == "posix"
     else:
         base = Path(__file__).resolve().parent.parent.parent
+        proteger_base = False
 
-    if _es_dir_escribible(base):
+    es_escribible = (
+        _es_dir_privado_usuario(base) if proteger_base else _es_dir_escribible(base)
+    )
+    if es_escribible:
         return base
 
-    # Fallback por permisos: carpeta del usuario o temp del sistema
-    for candidato in (
-        Path.home() / APP_DATA_DIR_NAME,
-        Path(tempfile.gettempdir()) / APP_DATA_DIR_NAME,
-    ):
-        if _es_dir_escribible(candidato):
-            return candidato
-    return Path(tempfile.gettempdir()) / APP_DATA_DIR_NAME
+    # Fallback exclusivamente al perfil del usuario; nunca usar /tmp o TEMP.
+    candidato = Path.home() / APP_DATA_DIR_NAME
+    if _es_dir_privado_usuario(candidato):
+        return candidato
+
+    logger.error("No hay un directorio privado escribible para los datos de la aplicación")
+    raise RuntimeError(
+        "No se pudo preparar una carpeta privada para los datos de la aplicación. "
+        "Revise los permisos del perfil del usuario."
+    )
 
 
 class Settings:

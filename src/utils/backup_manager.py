@@ -15,6 +15,7 @@ import shutil
 import gzip
 import hashlib
 import json
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -37,14 +38,8 @@ class BackupManager:
         try:
             self.backup_dir.mkdir(parents=True, exist_ok=True)
         except (OSError, PermissionError):
-            # Fallback: nunca impedir el arranque por permisos
-            self.backup_dir = Path(tempfile.gettempdir()) / "SistemaGestionPersonal_backups"
-            try:
-                self.backup_dir.mkdir(parents=True, exist_ok=True)
-            except (OSError, PermissionError):
-                logger.warning(
-                    "Sin directorio de backups utilizable: %s", self.backup_dir, exc_info=True
-                )
+            logger.error("No se pudo preparar la carpeta privada de respaldos", exc_info=True)
+            raise RuntimeError("No se pudo preparar la carpeta de respaldos")
 
         # settings.database_path ya es una ruta absoluta y única (se
         # resuelve contra base_dir dentro de settings). Concatenarla otra
@@ -66,20 +61,56 @@ class BackupManager:
         if self.metadata_file.exists():
             try:
                 with open(self.metadata_file, "r", encoding="utf-8") as f:
-                    datos: dict[str, Any] = json.load(f)
-                    return datos
+                    datos = json.load(f)
+                if not isinstance(datos, dict):
+                    raise ValueError("El archivo de metadatos no contiene un objeto JSON")
+                return {
+                    str(nombre): info
+                    for nombre, info in datos.items()
+                    if isinstance(info, dict)
+                }
             except Exception as e:
                 logger.error(f"Error cargando metadatos: {e}")
                 return {}
         return {}
 
     def _save_metadata(self):
-        """Guarda metadatos de backups"""
+        """Guarda metadatos de respaldos mediante reemplazo atómico."""
+        temporal = None
         try:
-            with open(self.metadata_file, "w", encoding="utf-8") as f:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.backup_dir,
+                prefix=".backup_metadata_",
+                suffix=".tmp",
+                delete=False,
+            ) as f:
+                temporal = Path(f.name)
                 json.dump(self.metadata, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            logger.error(f"Error guardando metadatos: {e}")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temporal, self.metadata_file)
+        except Exception:
+            if temporal is not None:
+                try:
+                    temporal.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("No se pudo limpiar metadatos temporales", exc_info=True)
+            logger.error("Error guardando metadatos de respaldos", exc_info=True)
+            raise
+
+    def _backup_path(self, backup_info: dict) -> Path:
+        """Resuelve únicamente rutas de backup contenidas en el almacén privado."""
+        raw_path = backup_info.get("path")
+        if not isinstance(raw_path, str) or not raw_path:
+            raise ValueError("Metadatos de backup sin ruta válida")
+        path = Path(raw_path).resolve()
+        try:
+            path.relative_to(self.backup_dir.resolve())
+        except ValueError as e:
+            raise ValueError("La ruta del backup está fuera del almacén de respaldos") from e
+        return path
 
     def _calculate_checksum(self, file_path: Path) -> str:
         """Calcula checksum SHA256 de un archivo"""
@@ -89,9 +120,9 @@ class BackupManager:
                 for byte_block in iter(lambda: f.read(4096), b""):
                     sha256_hash.update(byte_block)
             return sha256_hash.hexdigest()
-        except Exception as e:
-            logger.error(f"Error calculando checksum: {e}")
-            return ""
+        except OSError as e:
+            logger.error("Error calculando checksum", exc_info=True)
+            raise RuntimeError(f"No se pudo calcular el checksum de {file_path}") from e
 
     @staticmethod
     def _online_copy(source: Path, destination: Path, reintentos: int = 3) -> None:
@@ -196,23 +227,48 @@ class BackupManager:
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = backup_name or f"backup_{timestamp}"
+        if (
+            not isinstance(backup_name, str)
+            or not backup_name
+            or len(backup_name) > 100
+            or any(
+                char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+                for char in backup_name
+            )
+        ):
+            raise ValueError("Nombre de backup no válido")
 
         # Crear archivo de backup
         backup_filename = f"{backup_name}.db"
         backup_path = self.backup_dir / backup_filename
+        if backup_name in self.metadata or backup_path.exists():
+            base_name = backup_name
+            contador = 0
+            while True:
+                marca = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                sufijo = f"_{marca}" if contador == 0 else f"_{marca}_{contador}"
+                backup_name = f"{base_name[:100 - len(sufijo)]}{sufijo}"
+                backup_filename = f"{backup_name}.db"
+                backup_path = self.backup_dir / backup_filename
+                if backup_name not in self.metadata and not backup_path.exists():
+                    break
+                contador += 1
 
         try:
             # Respaldo consistente usando la API de copia de SQLite,
             # segura aunque haya conexiones abiertas al archivo.
             self._online_copy(self.db_path, backup_path)
+            if not self._validate_sqlite(backup_path):
+                raise RuntimeError("La copia del backup no superó la validación de SQLite")
 
             # Comprimir si se solicita
             if compress:
                 compressed_path = backup_path.with_suffix(".db.gz")
-                if self._compress_file(backup_path, compressed_path):
-                    backup_path.unlink()  # Eliminar original
-                    backup_path = compressed_path
-                    backup_filename = compressed_path.name
+                if not self._compress_file(backup_path, compressed_path):
+                    raise RuntimeError("No se pudo comprimir el backup")
+                backup_path.unlink()
+                backup_path = compressed_path
+                backup_filename = compressed_path.name
 
             # Calcular checksum y tamaño sobre el archivo almacenado final
             checksum = self._calculate_checksum(backup_path)
@@ -245,9 +301,16 @@ class BackupManager:
 
         except Exception as e:
             logger.error(f"Error creando backup: {e}")
+            self.metadata.pop(backup_name, None)
             # Limpiar archivos parciales
-            if backup_path.exists():
-                backup_path.unlink()
+            for partial in (
+                self.backup_dir / f"{backup_name}.db",
+                self.backup_dir / f"{backup_name}.db.gz",
+            ):
+                try:
+                    partial.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("No se pudo limpiar un backup parcial: %s", partial, exc_info=True)
             raise
 
     def restore_backup(self, backup_name: str, verify_checksum: bool = True) -> bool:
@@ -265,11 +328,12 @@ class BackupManager:
             raise ValueError(f"Backup no encontrado: {backup_name}")
 
         backup_info = self.metadata[backup_name]
-        backup_path = Path(backup_info["path"])
+        backup_path = self._backup_path(backup_info)
 
         if not backup_path.exists():
             raise FileNotFoundError(f"Archivo de backup no encontrado: {backup_path}")
 
+        restore_temp_path = None
         try:
             # Crear backup del estado actual antes de restaurar
             current_backup = f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -281,12 +345,19 @@ class BackupManager:
                 if self._calculate_checksum(backup_path) != backup_info["checksum"]:
                     raise Exception("Checksum verification failed: backup may be corrupted")
 
-            # Descomprimir si es necesario
+            # Descomprimir en un archivo temporal creado dentro del almacén.
             temp_restore_path = backup_path
             if backup_info["compressed"]:
-                temp_restore_path = self.backup_dir / f"temp_restore_{backup_name}.db"
+                with tempfile.NamedTemporaryFile(
+                    dir=self.backup_dir,
+                    prefix=".restore_",
+                    suffix=".db",
+                    delete=False,
+                ) as temp_restore:
+                    restore_temp_path = Path(temp_restore.name)
+                temp_restore_path = restore_temp_path
                 if not self._decompress_file(backup_path, temp_restore_path):
-                    raise Exception("Error descomprimiendo backup")
+                    raise RuntimeError("Error descomprimiendo backup")
 
             # Legado v1: el checksum correspondía al contenido descomprimido
             if verify_checksum and backup_info.get("checksum") and backup_info.get("version") != 2:
@@ -294,11 +365,8 @@ class BackupManager:
                     raise Exception("Checksum verification failed: backup may be corrupted")
 
             # El contenido debe ser una base SQLite íntegra antes de restaurarla
-            if verify_checksum and backup_info.get("checksum"):
-                if not self._validate_sqlite(temp_restore_path):
-                    raise Exception(
-                        "Verificación fallida: el backup no contiene una base de datos válida"
-                    )
+            if not self._validate_sqlite(temp_restore_path):
+                raise ValueError("El backup no contiene una base de datos SQLite íntegra")
 
             # Liberar conexiones del motor antes de reemplazar el archivo
             try:
@@ -311,8 +379,25 @@ class BackupManager:
                     "%s: operación auxiliar falló (se continúa)", "restore_backup", exc_info=True
                 )
 
-            # Restaurar base de datos
-            shutil.copy2(temp_restore_path, self.db_path)
+            # Preparar en el mismo volumen y reemplazar atómicamente para que
+            # una interrupción no deje la base actual truncada o a medias.
+            with tempfile.NamedTemporaryFile(
+                dir=self.db_path.parent,
+                prefix=f".{self.db_path.name}.restore_",
+                suffix=".tmp",
+                delete=False,
+            ) as staged_file:
+                staged_path = Path(staged_file.name)
+            try:
+                shutil.copy2(temp_restore_path, staged_path)
+                if not self._validate_sqlite(staged_path):
+                    raise ValueError("La copia preparada para restauración no es íntegra")
+                os.replace(staged_path, self.db_path)
+            finally:
+                try:
+                    staged_path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("No se pudo limpiar la copia temporal de restauración", exc_info=True)
 
             try:
                 from src.config import db_config
@@ -324,15 +409,18 @@ class BackupManager:
                 )
 
             # Limpiar archivo temporal
-            if temp_restore_path != backup_path and temp_restore_path.exists():
-                temp_restore_path.unlink()
-
             logger.info(f"Backup restaurado exitosamente: {backup_name}")
             return True
 
         except Exception as e:
             logger.error(f"Error restaurando backup: {e}")
             raise
+        finally:
+            if restore_temp_path is not None:
+                try:
+                    restore_temp_path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("No se pudo limpiar el archivo temporal de restauración", exc_info=True)
 
     def list_backups(self) -> list[dict]:
         """
@@ -344,8 +432,8 @@ class BackupManager:
         backups = []
         for name, info in self.metadata.items():
             try:
-                backup_path = Path(info["path"])
-            except (KeyError, TypeError):
+                backup_path = self._backup_path(info)
+            except (KeyError, TypeError, ValueError):
                 continue
             exists = backup_path.exists()
             info["exists"] = exists
@@ -376,7 +464,7 @@ class BackupManager:
             return False
 
         backup_info = self.metadata[backup_name]
-        backup_path = Path(backup_info["path"])
+        backup_path = self._backup_path(backup_info)
 
         try:
             if backup_path.exists():
@@ -464,7 +552,7 @@ class BackupManager:
             raise ValueError(f"Backup no encontrado: {backup_name}")
 
         backup_info = self.metadata[backup_name]
-        backup_path = Path(backup_info["path"])
+        backup_path = self._backup_path(backup_info)
 
         result = {
             "backup_name": backup_name,

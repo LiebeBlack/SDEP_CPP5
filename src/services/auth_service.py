@@ -80,10 +80,10 @@ class AuthService:
                 usuario.bloqueado_hasta = self._now() + timedelta(
                     minutes=self.bloqueo_minutos()
                 )
-                self.session.commit()
+                self._commit()
                 self._audit_fallido(username, "cuenta bloqueada por intentos fallidos")
                 raise ValueError("Demasiados intentos fallidos. La cuenta ha sido bloqueada.")
-            self.session.commit()
+            self._commit()
             restantes = max_intentos - usuario.intentos_fallidos
             self._audit_fallido(username, "contraseña incorrecta")
             raise ValueError(
@@ -91,9 +91,10 @@ class AuthService:
             )
 
         # Éxito: resetear contadores y registrar acceso
+        self.marcar_cambio_obligatorio_si_caducada(usuario)
         usuario.intentos_fallidos = 0
         usuario.ultimo_login = self._now()
-        self.session.commit()
+        self._commit()
         self._audit_exitoso(AuditEventType.USER_LOGIN, username)
         return usuario
 
@@ -117,6 +118,8 @@ class AuthService:
             ValueError: Si la contraseña actual es incorrecta o la
                 nueva no cumple los requisitos
         """
+        if actual_password is None and not usuario.debe_cambiar_password:
+            raise ValueError("Debe ingresar la contraseña actual")
         if actual_password is not None:
             if not SecurityValidator.verify_password(actual_password, usuario.password_hash):
                 raise ValueError("La contraseña actual es incorrecta")
@@ -145,7 +148,7 @@ class AuthService:
         usuario.debe_cambiar_password = 0
         usuario.intentos_fallidos = 0
         usuario.bloqueado_hasta = None
-        self.session.commit()
+        self._commit()
         self._audit_exitoso(
             AuditEventType.DATA_UPDATE,
             usuario.username,
@@ -211,12 +214,14 @@ class AuthService:
         if not usuario:
             raise ValueError("Usuario no encontrado")
 
+        nuevo_username = None
         if "username" in datos and datos["username"]:
             nuevo_username = str(datos["username"]).strip()
+            if not nuevo_username:
+                raise ValueError("El nombre de usuario es requerido")
             if nuevo_username != usuario.username:
                 if self.repository.get_by_username(nuevo_username):
                     raise ValueError("Ya existe un usuario con ese nombre")
-                usuario.username = nuevo_username
 
         if "rol" in datos and datos["rol"]:
             if datos["rol"] not in RolUsuario.values():
@@ -227,21 +232,39 @@ class AuthService:
                 and datos["rol"] != RolUsuario.ADMIN.value
             ):
                 raise ValueError("No puede degradar su propia cuenta de administrador")
-            usuario.rol = datos["rol"]
 
-        if "nombre_completo" in datos:
-            usuario.nombre_completo = str(datos["nombre_completo"] or "").strip() or None
-
+        nuevo_activo = None
         if "activo" in datos and datos["activo"] is not None:
             if usuario_actual is not None and usuario_actual.id == usuario.id:
                 raise ValueError("No puede desactivar su propia cuenta")
-            usuario.activo = 1 if int(datos["activo"]) else 0
+            nuevo_activo = 1 if int(datos["activo"]) else 0
 
-        if "password" in datos and datos["password"]:
-            usuario.password_hash = SecurityValidator.hash_password(str(datos["password"]))
+        nueva_password = str(datos["password"]) if datos.get("password") else None
+        if nueva_password:
+            minimo = self.longitud_minima_password()
+            if len(nueva_password) < minimo:
+                raise ValueError(f"La contraseña debe tener al menos {minimo} caracteres")
+
+        if nuevo_username and nuevo_username != usuario.username:
+            usuario.username = nuevo_username
+        if "rol" in datos and datos["rol"]:
+            usuario.rol = datos["rol"]
+        if "nombre_completo" in datos:
+            usuario.nombre_completo = str(datos["nombre_completo"] or "").strip() or None
+        if nuevo_activo is not None:
+            usuario.activo = nuevo_activo
+
+        if nueva_password:
+            hash_anterior = usuario.password_hash
+            usuario.password_hash = SecurityValidator.hash_password(nueva_password)
+            usuario.recordar_password(hash_anterior, self.historial_password())
             usuario.debe_cambiar_password = 1
+            usuario.fecha_cambio_password = self._now()
+            usuario.intentos_fallidos = 0
+            usuario.bloqueado = 0
+            usuario.bloqueado_hasta = None
 
-        self.session.commit()
+        self._commit()
         self._audit_exitoso(
             AuditEventType.DATA_UPDATE,
             usuario.username,
@@ -271,8 +294,14 @@ class AuthService:
 
             valor = ConfiguracionRepository(self.session).get_valor(clave, por_defecto)
             return por_defecto if valor is None else valor
-        except (SQLAlchemyError, ValueError, TypeError):
-            logger.debug("No se pudo leer la configuración %s", clave, exc_info=True)
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error("No se pudo leer la configuración de seguridad %s", clave, exc_info=True)
+            raise RuntimeError(
+                f"No se pudo cargar la política de seguridad {clave}"
+            ) from e
+        except (ValueError, TypeError):
+            logger.warning("Valor de configuración no válido para %s", clave, exc_info=True)
             return por_defecto
 
     def _config_int(self, clave: str, por_defecto: int) -> int:
@@ -316,7 +345,7 @@ class AuthService:
         usuario.bloqueado = 0
         usuario.bloqueado_hasta = None
         usuario.intentos_fallidos = 0
-        self.session.commit()
+        self._commit()
         return True
 
     def _password_repetida(self, usuario: Usuario, nueva_password: str, historial: int) -> bool:
@@ -342,7 +371,7 @@ class AuthService:
         if usuario.debe_cambiar_password or not self.password_caducada(usuario):
             return False
         usuario.debe_cambiar_password = 1
-        self.session.commit()
+        self._commit()
         self._audit_exitoso(
             AuditEventType.SECURITY_PERMISSION_DENIED,
             usuario.username,
@@ -359,7 +388,7 @@ class AuthService:
         usuario.bloqueado = 0
         usuario.bloqueado_hasta = None
         usuario.intentos_fallidos = 0
-        self.session.commit()
+        self._commit()
         self._audit_exitoso(
             AuditEventType.DATA_UPDATE,
             usuario.username,
@@ -378,6 +407,15 @@ class AuthService:
         from src.utils.helpers import utcnow
 
         return utcnow()
+
+    def _commit(self) -> None:
+        """Confirma una operación y limpia la transacción si falla."""
+        try:
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            logger.exception("Falló la confirmación de una operación de autenticación")
+            raise
 
     def _audit_exitoso(self, event_type, username, entity_id=None, details=None):
         try:

@@ -14,7 +14,7 @@ import tkinter as tk
 
 import customtkinter as ctk
 
-from src.gui.theme import COLORES
+from src.gui.theme import COLORES, familia_fuente_tk
 
 # Paleta de series (se repite cíclicamente si hay más datos que colores)
 PALETA = (
@@ -27,8 +27,6 @@ PALETA = (
     "#EC4899",
     "#84CC16",
 )
-
-FUENTE = "Helvetica"
 
 
 class GraficoBase(ctk.CTkFrame):
@@ -58,6 +56,13 @@ class GraficoBase(ctk.CTkFrame):
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 10))
         self.canvas.bind("<Configure>", lambda _evento: self.dibujar())
 
+    def _fuente_canvas(
+        self, tamano: int, negrita: bool = False
+    ) -> tuple[str, int] | tuple[str, int, str]:
+        """Resuelve la fuente desde el intérprete Tk de este gráfico."""
+        familia = familia_fuente_tk("TkDefaultFont", "Arial", self.canvas)
+        return (familia, tamano, "bold") if negrita else (familia, tamano)
+
     def color_serie(self, indice: int) -> str:
         """Color de la serie indicada (cicla sobre la paleta)"""
         return PALETA[indice % len(PALETA)]
@@ -82,7 +87,7 @@ class GraficoBase(ctk.CTkFrame):
             self.alto_canvas() / 2,
             text=mensaje,
             fill=COLORES["texto_suave"],
-            font=(FUENTE, 11),
+            font=self._fuente_canvas(11),
         )
 
     def dibujar(self) -> None:
@@ -145,7 +150,7 @@ class GraficoBarras(GraficoBase):
                 y0 - 9,
                 text=self._formato_valor(valor),
                 fill=COLORES["texto"],
-                font=(FUENTE, 9, "bold"),
+                font=self._fuente_canvas(9, negrita=True),
             )
             recorte = etiqueta if len(etiqueta) <= 12 else etiqueta[:11] + "…"
             self.canvas.create_text(
@@ -153,7 +158,7 @@ class GraficoBarras(GraficoBase):
                 base_y + 14,
                 text=recorte,
                 fill=COLORES["texto_suave"],
-                font=(FUENTE, 9),
+                font=self._fuente_canvas(9),
             )
 
     @staticmethod
@@ -220,14 +225,14 @@ class GraficoDona(GraficoBase):
             centro_y - 6,
             text=f"{total:,.0f}".replace(",", "."),
             fill=COLORES["texto"],
-            font=(FUENTE, 14, "bold"),
+            font=self._fuente_canvas(14, negrita=True),
         )
         self.canvas.create_text(
             centro_x,
             centro_y + 12,
             text="total",
             fill=COLORES["texto_suave"],
-            font=(FUENTE, 9),
+            font=self._fuente_canvas(9),
         )
 
         # Leyenda
@@ -245,7 +250,7 @@ class GraficoDona(GraficoBase):
                 text=f"{texto}  {valor / total * 100:.0f}%",
                 anchor="w",
                 fill=COLORES["texto"],
-                font=(FUENTE, 9),
+                font=self._fuente_canvas(9),
             )
 
 
@@ -303,7 +308,7 @@ class GraficoLinea(GraficoBase):
                 text=GraficoBarras._formato_valor(maximo * nivel / 4),
                 anchor="e",
                 fill=COLORES["texto_suave"],
-                font=(FUENTE, 8),
+                font=self._fuente_canvas(8),
             )
 
         for indice_serie, (_nombre, datos) in enumerate(series.items()):
@@ -341,7 +346,7 @@ class GraficoLinea(GraficoBase):
                 base_y + 14,
                 text=etiqueta,
                 fill=COLORES["texto_suave"],
-                font=(FUENTE, 8),
+                font=self._fuente_canvas(8),
             )
 
 

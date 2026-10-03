@@ -14,7 +14,6 @@ from src.models import Usuario
 from src.services.auth_service import (
     AuthService,
     DEFAULT_ADMIN_PASSWORD,
-    LONGITUD_MINIMA_PASSWORD,
 )
 from src.utils.helpers import mantener_ventana_al_frente
 from src.utils.security import SecurityValidator
@@ -138,7 +137,10 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             container,
-            text=f"La contraseña debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres.",
+            text=(
+                "La contraseña debe tener al menos "
+                f"{self.auth_service.longitud_minima_password()} caracteres."
+            ),
             text_color=COLORES["texto_suave"],
             font=ctk.CTkFont(size=11),
             anchor="w",
@@ -367,7 +369,8 @@ class LoginWindow(ctk.CTk):
                 messagebox.showerror("Error", "No se pudo iniciar sesión")
                 return
 
-            # Primer acceso: obligar a cambiar la contraseña inicial.
+            # Primer acceso o contraseña caducada: exigir una nueva antes
+            # de abrir la ventana principal.
             # El propio diálogo gestiona su visibilidad (grab, foco) y se
             # cierra solo si no llega a mostrarse; wait_window solo espera
             # a que termine.

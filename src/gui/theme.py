@@ -21,6 +21,7 @@ except Exception:  # pragma: no cover
     _CTK_DISPONIBLE = False
 
 _DPI_CONFIGURADO = False
+_DPI_INTENTADO = False
 
 # Paleta oscura (tema por defecto)
 PALETA_OSCURA = {
@@ -101,33 +102,38 @@ def enable_windows_dpi_awareness() -> bool:
     Se ejecuta una sola vez por proceso; en sistemas que no son Windows
     no hace nada.
     """
-    global _DPI_CONFIGURADO
-    if _DPI_CONFIGURADO or sys.platform != "win32":
+    global _DPI_CONFIGURADO, _DPI_INTENTADO
+    if _DPI_INTENTADO or sys.platform != "win32":
         return _DPI_CONFIGURADO
-    _DPI_CONFIGURADO = True
+    _DPI_INTENTADO = True
     try:
         import ctypes
 
         # Per-Monitor v2 (Windows 10 1703+)
         try:
-            ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)
-            return True
-        except (AttributeError, OSError):
+            if ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+                _DPI_CONFIGURADO = True
+                return True
+        except (AttributeError, OSError, ctypes.ArgumentError):
             logger.debug("Per-Monitor v2 no disponible; probando el siguiente nivel")
         # Per-Monitor (Windows 8.1+)
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2)
-            return True
-        except (AttributeError, OSError):
+            if ctypes.windll.shcore.SetProcessDpiAwareness(2) == 0:
+                _DPI_CONFIGURADO = True
+                return True
+        except (AttributeError, OSError, ctypes.ArgumentError):
             logger.debug("Per-Monitor no disponible; probando el siguiente nivel")
         # System DPI (Windows Vista+)
-        ctypes.windll.user32.SetProcessDPIAware()
-        return True
-    except Exception:
+        _DPI_CONFIGURADO = bool(ctypes.windll.user32.SetProcessDPIAware())
+        return _DPI_CONFIGURADO
+    except (AttributeError, OSError, ImportError) as error:
+        logger.debug("No se pudo configurar DPI awareness: %s", error, exc_info=True)
         return False
 
 
-def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial") -> str:
+def familia_fuente_tk(
+    nombre: str = "TkDefaultFont", fallback: str = "Arial", root=None
+) -> str:
     """
     Resuelve la familia real de una fuente nombrada de Tk
 
@@ -137,10 +143,65 @@ def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial") ->
     try:
         import tkinter.font as tkfont
 
-        familia = tkfont.nametofont(nombre).actual("family")
+        fuente = (
+            tkfont.nametofont(nombre, root)
+            if root is not None
+            else tkfont.nametofont(nombre)
+        )
+        familia = fuente.actual("family")
         return familia or fallback
     except Exception:
         return fallback
+
+
+def habilitar_scroll_rueda(widget) -> None:
+    """Activa el desplazamiento con rueda/trackpad en un widget con yview."""
+    # Los touchpads de Windows pueden enviar deltas pequeños y fraccionados;
+    # acumularlos evita que se pierdan antes de completar una línea.
+    acumulado = {"vertical": 0, "horizontal": 0}
+
+    def desplazar(evento, eje: str) -> str:
+        delta = getattr(evento, "delta", 0)
+        if delta:
+            if sys.platform == "darwin":
+                pasos = 1 if delta > 0 else -1
+            else:
+                acumulado[eje] += delta
+                pasos = int(acumulado[eje] / 40)
+                acumulado[eje] -= pasos * 40
+            if pasos:
+                vista = getattr(widget, "xview" if eje == "horizontal" else "yview", None)
+                if vista is not None:
+                    vista("scroll", -pasos, "units")
+        else:
+            # Linux genera botones de rueda en vez de <MouseWheel>.
+            numero = getattr(evento, "num", None)
+            if numero not in (4, 5):
+                return "break"
+            pasos = -1 if numero == 4 else 1
+            vista = getattr(widget, "xview" if eje == "horizontal" else "yview", None)
+            if vista is not None:
+                vista("scroll", pasos, "units")
+        return "break"
+
+    widget.bind("<MouseWheel>", lambda evento: desplazar(evento, "vertical"), add="+")
+    widget.bind(
+        "<Shift-MouseWheel>",
+        lambda evento: desplazar(evento, "horizontal"),
+        add="+",
+    )
+    widget.bind("<Button-4>", lambda evento: desplazar(evento, "vertical"), add="+")
+    widget.bind("<Button-5>", lambda evento: desplazar(evento, "vertical"), add="+")
+    widget.bind(
+        "<Shift-Button-4>",
+        lambda evento: desplazar(evento, "horizontal"),
+        add="+",
+    )
+    widget.bind(
+        "<Shift-Button-5>",
+        lambda evento: desplazar(evento, "horizontal"),
+        add="+",
+    )
 
 
 def configure_ttk_styles(root=None) -> None:
@@ -221,6 +282,13 @@ def configure_ttk_styles(root=None) -> None:
         # --- Scrollbar vertical ---
         style.configure(
             "Vertical.TScrollbar",
+            background=COLORES["campo"],
+            troughcolor=COLORES["panel"],
+            bordercolor=COLORES["panel"],
+            arrowcolor=COLORES["texto_suave"],
+        )
+        style.configure(
+            "Horizontal.TScrollbar",
             background=COLORES["campo"],
             troughcolor=COLORES["panel"],
             bordercolor=COLORES["panel"],

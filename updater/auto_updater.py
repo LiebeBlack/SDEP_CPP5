@@ -34,6 +34,7 @@ Uso:
     python updater/auto_updater.py --no-gui        # fuerza modo texto
 """
 
+import base64
 import ctypes
 import json
 import os
@@ -88,6 +89,8 @@ TASK_NAME_LOGON = "SDEP_CPP5 AutoUpdater (Logon)"  # tarea antigua (solo para li
 CHECK_INTERVAL_DAYS = 2
 CHECK_START_TIME = "09:00"
 INSTALL_IF_MISSING = os.environ.get("SDEP_UPDATE_INSTALL_IF_MISSING", "1") == "1"
+SIGNING_ISSUER_NAME = "LiebeBlack Code Signing Issuing CA v2"
+SIGNING_ROOT_NAME = "LiebeBlack Global Master Root Authority 2026"
 LOCK_MAX_AGE_SECONDS = 30 * 60  # una ejecución no debería durar más de 30 min
 LOG_MAX_BYTES = 1024 * 1024  # rotación simple del log (1 MB)
 
@@ -282,6 +285,66 @@ def download(url: str, destination: Path, expected_size: int = 0) -> Path:
     raise RuntimeError(f"Fallo al descargar {url}: {last_error}")
 
 
+def _powershell_executable() -> Path:
+    return (
+        Path(os.environ.get("SystemRoot") or r"C:\Windows")
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+
+
+def _script_instalador_verificado(setup_path: Path) -> str:
+    """Crea una copia protegida, valida su firma y ejecuta esa misma copia."""
+    encoded_path = base64.b64encode(str(setup_path.resolve()).encode("utf-8")).decode("ascii")
+    return (
+        "$ErrorActionPreference='Stop'; "
+        f"$source=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{encoded_path}')); "
+        "$code=1; $staged=$null; try { "
+        "$directory=Join-Path $env:ProgramData 'SDEP_CPP5\\updates'; "
+        "if (-not (Test-Path -LiteralPath $directory)) { "
+        "New-Item -ItemType Directory -Path $directory -Force | Out-Null }; "
+        "$item=Get-Item -LiteralPath $directory -Force; "
+        "if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) "
+        "{ throw 'La carpeta segura de actualización es un enlace no permitido' }; "
+        "$system=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18'); "
+        "$admins=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544'); "
+        "$acl=New-Object System.Security.AccessControl.DirectorySecurity; "
+        "$acl.SetAccessRuleProtection($true,$false); "
+        "$acl.SetOwner($admins); "
+        "$inherit=[System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor "
+        "[System.Security.AccessControl.InheritanceFlags]::ObjectInherit; "
+        "$rule=New-Object System.Security.AccessControl.FileSystemAccessRule("
+        "$system,'FullControl',$inherit,'None','Allow'); $acl.AddAccessRule($rule); "
+        "$rule=New-Object System.Security.AccessControl.FileSystemAccessRule("
+        "$admins,'FullControl',$inherit,'None','Allow'); $acl.AddAccessRule($rule); "
+        "Set-Acl -LiteralPath $directory -AclObject $acl; "
+        "$staged=Join-Path $directory ('setup-' + [Guid]::NewGuid().ToString('N') + '.exe'); "
+        "Copy-Item -LiteralPath $source -Destination $staged; "
+        "$sig=Get-AuthenticodeSignature -LiteralPath $staged; "
+        "if ($null -eq $sig.SignerCertificate -or $sig.Status -eq 'HashMismatch') "
+        "{ throw 'El instalador no tiene una firma válida' }; "
+        "$chain=New-Object System.Security.Cryptography.X509Certificates.X509Chain; "
+        "$chain.ChainPolicy.RevocationMode="
+        "[System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck; "
+        "if (-not $chain.Build($sig.SignerCertificate)) "
+        "{ throw 'No se pudo validar la cadena de certificados del instalador' }; "
+        "$issuer=$sig.SignerCertificate.GetNameInfo("
+        "[System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName,$true); "
+        "$root=$chain.ChainElements[$chain.ChainElements.Count-1].Certificate.GetNameInfo("
+        "[System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName,$false); "
+        f"if ($issuer -ne '{SIGNING_ISSUER_NAME}' -or "
+        f"$root -ne '{SIGNING_ROOT_NAME}') "
+        "{ throw 'El certificado del instalador no pertenece al editor oficial' }; "
+        "$process=Start-Process -FilePath $staged "
+        "-ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') "
+        "-Wait -PassThru; $code=$process.ExitCode "
+        "} finally { if ($staged -and (Test-Path -LiteralPath $staged)) "
+        "{ Remove-Item -LiteralPath $staged -Force } }; exit $code"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Windows: administrador, registro, instalador, tareas programadas
 # ---------------------------------------------------------------------------
@@ -363,39 +426,54 @@ def close_app_if_running() -> None:
             log(f"No se pudo cerrar {nombre} antes de actualizar: {exc}")
 
 
-def _script_instalador_powershell(setup_path: Path) -> str:
-    """Comando PowerShell que ejecuta el instalador elevado y espera.
-
-    Se construye por concatenación (NUNCA con str.format): el script
-    contiene llaves literales de PowerShell y .format lanzaría ValueError.
-    """
-    quoted = str(setup_path).replace("'", "''")
-    return (
-        "& { $p = Start-Process -FilePath '" + quoted + "' "
-        "-ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') "
-        "-Verb RunAs -Wait -PassThru; exit $p.ExitCode }"
-    )
-
-
 def install_setup(setup_path: Path) -> int:
     """Ejecuta el instalador de Inno en silencio y devuelve su código de salida.
 
-    Si el proceso actual no es administrador, se relanza el instalador con
-    elevación (aparecerá una sola confirmación de UAC).
+    Eleva primero y valida/ejecuta una copia en ProgramData protegida por ACL,
+    para evitar sustituciones entre la validación y la ejecución.
     """
-    args = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"]
+    powershell = _powershell_executable()
+    if not powershell.is_file():
+        raise RuntimeError("No se encontró Windows PowerShell para ejecutar la actualización")
+
+    script = _script_instalador_verificado(setup_path)
+    encoded_script = base64.b64encode(script.encode("utf-16le")).decode("ascii")
     if is_admin():
         proc = subprocess.run(
-            [str(setup_path), *args],
+            [
+                str(powershell),
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-EncodedCommand",
+                encoded_script,
+            ],
             capture_output=True,
             text=True,
             **_TEXTO_SISTEMA,
             timeout=30 * 60,
         )
         return proc.returncode
-    script = _script_instalador_powershell(setup_path)
+
+    elevation_script = (
+        "$process=Start-Process -FilePath '"
+        + str(powershell).replace("'", "''")
+        + "' -Verb RunAs -ArgumentList @('-NoProfile','-NonInteractive',"
+        "'-ExecutionPolicy','Bypass','-EncodedCommand','"
+        + encoded_script
+        + "') -Wait -PassThru; exit $process.ExitCode"
+    )
     proc = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+        [
+            str(powershell),
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            elevation_script,
+        ],
         capture_output=True,
         text=True,
         **_TEXTO_SISTEMA,
@@ -595,7 +673,7 @@ def run_check(install: bool) -> int:
         log("ERROR: el instalador de la Release no tiene URL de descarga")
         return 1
 
-    destino = Path(os.environ.get("TEMP") or state_dir()) / "sdep_updater" / asset["name"]
+    destino = state_dir() / "updates" / asset["name"]
     log(f"Descargando {asset['name']} " f"({asset['size'] / (1024 * 1024):.1f} MB) desde GitHub...")
     try:
         download(asset["url"], destino, expected_size=asset["size"])
@@ -608,7 +686,7 @@ def run_check(install: bool) -> int:
     log("Instalando en modo silencioso (esto puede tardar un par de minutos)...")
     try:
         exit_code = install_setup(destino)
-    except (OSError, subprocess.SubprocessError) as exc:
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
         log(f"ERROR al instalar: {exc}")
         return 1
 

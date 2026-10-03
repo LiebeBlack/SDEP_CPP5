@@ -93,21 +93,17 @@ def _activar_claves_foraneas(engine) -> None:
 
     @event.listens_for(engine, "connect")
     def _on_connect(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
         try:
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute("PRAGMA foreign_keys=ON")
-                activo = cursor.execute("PRAGMA foreign_keys").fetchone()
-            finally:
-                cursor.close()
-            if not activo or not activo[0]:
-                logger.warning(
-                    "No se pudo activar la verificación de claves foráneas en SQLite"
-                )
-        except Exception:
-            # El driver pudo cambiar de interfaz: se registra y se continúa
-            # (la aplicación funciona, pero sin integridad referencial).
-            logger.warning("Error activando las claves foráneas", exc_info=True)
+            cursor.execute("PRAGMA foreign_keys=ON")
+            activo = cursor.execute("PRAGMA foreign_keys").fetchone()
+        finally:
+            cursor.close()
+        if not activo or not activo[0]:
+            raise RuntimeError(
+                "SQLite no activó la verificación de claves foráneas; "
+                "se cancela la conexión para proteger la integridad de los datos"
+            )
 
 
 def _columnas_pendientes(engine) -> dict[str, list[tuple[str, str]]]:
@@ -121,28 +117,24 @@ def _columnas_pendientes(engine) -> dict[str, list[tuple[str, str]]]:
         dict: tabla -> lista de pares (columna, tipo) por agregar
     """
     pendientes: dict[str, list[tuple[str, str]]] = {}
-    try:
-        with engine.connect() as conn:
-            for tabla, columnas in MIGRACIONES.items():
-                existe = conn.execute(
-                    text("SELECT name FROM sqlite_master WHERE type='table' AND name = :tabla"),
-                    {"tabla": tabla},
-                ).fetchone()
-                if not existe:
-                    continue
-                existentes = {
-                    fila[1] for fila in conn.execute(text(f"PRAGMA table_info({tabla})"))
-                }
-                faltantes = [
-                    (columna, tipo)
-                    for columna, tipo in columnas.items()
-                    if columna not in existentes
-                ]
-                if faltantes:
-                    pendientes[tabla] = faltantes
-    except SQLAlchemyError as e:
-        logger.warning(f"No se pudo leer el esquema actual de la base de datos: {e}")
-        return {}
+    with engine.connect() as conn:
+        for tabla, columnas in MIGRACIONES.items():
+            existe = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name = :tabla"),
+                {"tabla": tabla},
+            ).fetchone()
+            if not existe:
+                continue
+            existentes = {
+                fila[1] for fila in conn.execute(text(f"PRAGMA table_info({tabla})"))
+            }
+            faltantes = [
+                (columna, tipo)
+                for columna, tipo in columnas.items()
+                if columna not in existentes
+            ]
+            if faltantes:
+                pendientes[tabla] = faltantes
     return pendientes
 
 
@@ -189,7 +181,8 @@ def migrar_columnas(engine) -> int:
 
         get_backup_manager().create_backup("pre_migracion", compress=True)
     except Exception as e:
-        logger.warning(f"No se pudo crear backup antes de migrar el esquema: {e}")
+        logger.error("Se cancela la migración porque no se pudo crear su backup", exc_info=True)
+        raise RuntimeError("No se pudo respaldar la base antes de migrar el esquema") from e
 
     agregadas = 0
     try:
@@ -200,8 +193,8 @@ def migrar_columnas(engine) -> int:
                     logger.info(f"Migración: columna {tabla}.{columna} agregada")
                     agregadas += 1
     except SQLAlchemyError as e:
-        logger.warning(f"No se pudo migrar el esquema de la base de datos: {e}")
-        return 0
+        logger.error("No se pudo migrar el esquema de la base de datos", exc_info=True)
+        raise RuntimeError("La migración del esquema falló y se revirtió") from e
     return agregadas
 
 
@@ -211,9 +204,8 @@ def crear_disparadores_inmutabilidad(engine) -> int:
 
     Se ejecuta en cada arranque (create_tables) después de create_all: las
     tablas nuevas ya existen y las que ya tenían los disparadores no se
-    tocan (CREATE TRIGGER IF NOT EXISTS). Nunca impide el arranque: si algo
-    falla se registra la advertencia y la aplicación sigue funcionando (el
-    servicio de notas sigue validando el cierre).
+    tocan (CREATE TRIGGER IF NOT EXISTS). Si una protección no puede
+    aplicarse, el arranque falla explícitamente en vez de dejarla desactivada.
 
     Returns:
         int: Cantidad de disparadores creados o verificados
@@ -226,10 +218,13 @@ def crear_disparadores_inmutabilidad(engine) -> int:
                     conn.execute(text(sentencia))
                     creados += 1
                 except SQLAlchemyError as e:
-                    logger.warning(f"No se pudo crear el disparador {nombre}: {e}")
+                    logger.error("No se pudo crear el disparador %s", nombre, exc_info=True)
+                    raise RuntimeError(
+                        f"No se pudo instalar la protección de inmutabilidad {nombre}"
+                    ) from e
     except SQLAlchemyError as e:
-        logger.warning(f"No se pudieron crear los disparadores de inmutabilidad: {e}")
-        return 0
+        logger.error("No se pudieron crear los disparadores de inmutabilidad", exc_info=True)
+        raise RuntimeError("No se pudieron aplicar las protecciones de inmutabilidad") from e
     return creados
 
 
@@ -258,8 +253,8 @@ def purgar_esquema_obsoleto(engine) -> int:
                 )
             }
     except SQLAlchemyError as e:
-        logger.warning(f"No se pudo inspeccionar el esquema para purgarlo: {e}")
-        return 0
+        logger.error("No se pudo inspeccionar el esquema para purgarlo", exc_info=True)
+        raise RuntimeError("No se pudo inspeccionar el esquema de la base") from e
 
     obsoletas = [tabla for tabla in TABLAS_OBSOLETAS if tabla in tablas]
     sobrantes: list[str] = []
@@ -270,8 +265,8 @@ def purgar_esquema_obsoleto(engine) -> int:
                     fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos)"))
                 }
         except SQLAlchemyError as e:
-            logger.warning(f"No se pudo leer el esquema de pagos: {e}")
-            return 0
+            logger.error("No se pudo leer el esquema de pagos", exc_info=True)
+            raise RuntimeError("No se pudo leer el esquema de pagos") from e
         sobrantes = [columna for columna in COLUMNAS_OBSOLETAS_PAGOS if columna in existentes]
 
     if not obsoletas and not sobrantes:
@@ -283,7 +278,8 @@ def purgar_esquema_obsoleto(engine) -> int:
 
         get_backup_manager().create_backup("pre_purga_esquema", compress=True)
     except Exception as e:
-        logger.warning(f"No se pudo crear backup antes de purgar el esquema: {e}")
+        logger.error("Se cancela la purga porque no se pudo crear su backup", exc_info=True)
+        raise RuntimeError("No se pudo respaldar la base antes de purgar el esquema") from e
 
     cambios = 0
     try:
@@ -331,8 +327,8 @@ def purgar_esquema_obsoleto(engine) -> int:
                 cambios += 1
                 logger.info(f"Purga: tabla {tabla} eliminada")
     except SQLAlchemyError as e:
-        logger.warning(f"No se pudo purgar el esquema obsoleto: {e}")
-        return 0
+        logger.error("No se pudo purgar el esquema obsoleto", exc_info=True)
+        raise RuntimeError("La purga del esquema falló y se revirtió") from e
     return cambios
 
 
@@ -719,9 +715,15 @@ class DatabaseConfig:
             migrar_columnas(self.engine)
             crear_disparadores_inmutabilidad(self.engine)
             purgar_esquema_obsoleto(self.engine)
-            self.preparar_sincronizacion()
             if self.sincronizacion_configurada():
-                self.activar_captura_sincronizacion()
+                if not self.preparar_sincronizacion():
+                    raise RuntimeError(
+                        "La sincronización está habilitada, pero no se pudo preparar su esquema"
+                    )
+                if not self.activar_captura_sincronizacion():
+                    raise RuntimeError(
+                        "La sincronización está habilitada, pero no se pudo activar la captura"
+                    )
             logger.info("Tablas de base de datos verificadas exitosamente")
             return True
         except SQLAlchemyError as e:
@@ -891,6 +893,9 @@ class DatabaseConfig:
         """Inicializa la base de datos: tablas, verificación y datos semilla"""
         try:
             logger.info("Inicializando base de datos...")
+            db_file = Path(self.database_path)
+            base_de_datos_nueva = not db_file.exists() or db_file.stat().st_size == 0
+            self._check_integrity()
             self.create_tables()
             self._check_integrity()
             self._seed_initial_data()
@@ -898,11 +903,8 @@ class DatabaseConfig:
             self._purgar_configuracion_obsoleta()
             self._seed_initial_user()
 
-            # Crear backup inicial una sola vez (si la BD es nueva)
-            from pathlib import Path as _Path
-
-            db_file = _Path(self.database_path)
-            if not db_file.exists() or db_file.stat().st_size == 0:
+            # Crear el backup inicial después de crear tablas y datos semilla.
+            if base_de_datos_nueva:
                 try:
                     from src.utils.backup_manager import get_backup_manager
 
@@ -925,19 +927,37 @@ class DatabaseConfig:
             raise
 
     def _check_integrity(self):
-        """Ejecuta PRAGMA quick_check y registra advertencias sin abortar"""
+        """Verifica toda la estructura SQLite y bloquea el arranque si está dañada."""
         db_path = Path(self.database_path)
         if not db_path.exists():
             return
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(text("PRAGMA quick_check")).scalar()
-            if result and result != "ok":
-                logger.warning(f"Integridad de base de datos: {result}")
-            else:
-                logger.info("Integridad de base de datos verificada (ok)")
+                resultados = [fila[0] for fila in conn.execute(text("PRAGMA quick_check"))]
+                claves_huerfanas = conn.execute(text("PRAGMA foreign_key_check")).fetchmany(20)
+            if not resultados or any(resultado != "ok" for resultado in resultados):
+                detalle = "; ".join(str(resultado) for resultado in resultados) or "sin resultado"
+                logger.critical("La base de datos no superó quick_check: %s", detalle)
+                raise RuntimeError(
+                    "La base de datos presenta daños de integridad. "
+                    "No se iniciará la aplicación para evitar modificar datos dañados."
+                )
+            if claves_huerfanas:
+                detalle_fk = "; ".join(
+                    f"tabla={fila[0]}, fila={fila[1]}, padre={fila[2]}, fk={fila[3]}"
+                    for fila in claves_huerfanas
+                )
+                logger.critical("La base contiene referencias huérfanas: %s", detalle_fk)
+                raise RuntimeError(
+                    "La base de datos contiene relaciones huérfanas. "
+                    "No se iniciará la aplicación hasta corregir los datos."
+                )
+            logger.info("Integridad de base de datos verificada (ok)")
         except Exception as e:
-            logger.warning(f"No se pudo verificar la integridad de la base de datos: {e}")
+            if isinstance(e, RuntimeError):
+                raise
+            logger.critical("No se pudo comprobar la integridad de la base de datos", exc_info=True)
+            raise RuntimeError("No se pudo verificar la integridad de la base de datos") from e
 
     def _seed_initial_data(self):
         """Inserta la configuración inicial del sistema si no existe"""
@@ -1091,8 +1111,8 @@ class DatabaseConfig:
             return len(nuevas)
         except SQLAlchemyError as e:
             session.rollback()
-            logger.warning(f"No se pudieron agregar los parámetros de configuración: {e}")
-            return 0
+            logger.error("No se pudieron agregar los parámetros de configuración", exc_info=True)
+            raise RuntimeError("No se pudo completar la actualización de configuración") from e
         finally:
             self.close_session(session)
 
@@ -1125,8 +1145,8 @@ class DatabaseConfig:
                 logger.info(f"Parámetros obsoletos eliminados: {eliminados}")
         except SQLAlchemyError as e:
             session.rollback()
-            logger.warning(f"No se pudieron eliminar los parámetros obsoletos: {e}")
-            return 0
+            logger.error("No se pudieron eliminar los parámetros obsoletos", exc_info=True)
+            raise RuntimeError("No se pudo completar la limpieza de configuración") from e
         finally:
             self.close_session(session)
 
@@ -1155,7 +1175,9 @@ class DatabaseConfig:
 
             ensure_default_admin(session)
         except Exception as e:
-            logger.warning(f"No se pudo crear el usuario inicial: {e}")
+            session.rollback()
+            logger.exception("No se pudo crear el usuario inicial")
+            raise RuntimeError("No se pudo inicializar el acceso de administrador") from e
         finally:
             self.close_session(session)
 

@@ -347,9 +347,14 @@ class IncidenciaService:
         incidencias = self.repository.get_by_empleado_periodo(empleado_id, fecha_inicio, fecha_fin)
         dias_totales = 0
         for incidencia in incidencias:
-            # Solo contar incidencias aprobadas que afectan nómina
+            # Cuentan las aprobadas y también las completadas: una incidencia
+            # aprobada que luego se marca completada ya ocurrió y sigue
+            # afectando la nómina del periodo. Era el criterio del finiquito
+            # (que contaba APROBADO y COMPLETADO); ahora ambos usan el mismo.
+            estado = getattr(incidencia.estado, "value", incidencia.estado)
             if (
-                incidencia.estado == EstadoIncidencia.APROBADO.value
+                estado
+                in (EstadoIncidencia.APROBADO.value, EstadoIncidencia.COMPLETADO.value)
                 and getattr(incidencia, "afecta_nominas", 1) == 1
             ):
                 inc_ini = (

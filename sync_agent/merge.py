@@ -235,7 +235,15 @@ def planificar_campos(
     for campo, entrante in entrantes.items():
         actual = actuales.get(campo)
         decision = decidir_campo(actual, entrante)
-        if decision in (DECISION_REPETIDA, DECISION_IGNORAR_IDENTICA):
+        if decision == DECISION_REPETIDA:
+            continue
+        if decision == DECISION_IGNORAR_IDENTICA:
+            # El valor no cambia, pero la marca conocida sí debe avanzar si la
+            # escritura entrante es más reciente: conservar la marca vieja
+            # permite que una operación intermedia, al llegar fuera de orden,
+            # se aplique sobre un valor que el emisor ya había reemplazado.
+            if actual is not None and entrante.clave() > actual.clave():
+                marcas[campo] = entrante
             continue
         if decision == DECISION_APLICAR:
             aplicar[campo] = entrante.valor

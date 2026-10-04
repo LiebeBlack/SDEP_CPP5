@@ -179,7 +179,19 @@ class ContratoRepository(BaseRepository[Contrato]):
                 .group_by(Contrato.tipo)
                 .all()
             }
-            vigentes = len(self.get_vigentes())
+            # Conteo en SQL: antes se hidrataban todas las filas vigentes
+            # solo para contarlas (patrón ya corregido en los repositorios
+            # de incidencias y de pagos).
+            hoy = date.today()
+            vigentes = int(
+                self.session.query(func.count(Contrato.id))
+                .filter(
+                    Contrato.estado != EstadoContrato.TERMINADO.value,
+                    or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
+                )
+                .scalar()
+                or 0
+            )
             return {
                 "total": self.count(),
                 "por_estado": por_estado,

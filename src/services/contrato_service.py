@@ -312,10 +312,12 @@ class ContratoService:
         pago = None
         if generar_liquidacion and finiquito.neto > 0:
             pago = self._registrar_pago_liquidacion(
-                empleado, contrato, finiquito, egreso, metodo_pago, registrado_por
+                empleado, contrato, finiquito, egreso, metodo_pago
             )
 
-        self._auditar(contrato, "terminar_contrato", AuditEventType.DATA_UPDATE)
+        self._auditar(
+            contrato, "terminar_contrato", AuditEventType.DATA_UPDATE, usuario=registrado_por
+        )
         logger.info(
             "Contrato %s terminado (%s). Liquidación: %.2f",
             contrato.numero,
@@ -399,7 +401,6 @@ class ContratoService:
         finiquito: ResultadoFiniquito,
         fecha: date,
         metodo_pago: str | None,
-        registrado_por: str | None,
     ) -> object:
         """
         Registra el pago de la liquidación
@@ -442,8 +443,12 @@ class ContratoService:
         }
         if metodo_pago:
             datos["metodo_pago"] = metodo_pago
-        if registrado_por:
-            datos["referencia_pago"] = f"LIQ-{contrato.numero}"
+        # La referencia de una liquidación es SIEMPRE LIQ-<número>. Antes
+        # dependía de que llegara `registrado_por`, y el flujo real de la
+        # interfaz no lo envía: toda liquidación quedaba con la referencia
+        # genérica REC-. El usuario que ejecuta la terminación se registra
+        # en la auditoría (ver terminar_contrato).
+        datos["referencia_pago"] = f"LIQ-{contrato.numero}"
         return servicio_pagos.crear_pago(datos)
 
     # ------------------------------------------------------------------
@@ -583,7 +588,13 @@ class ContratoService:
                 exc_info=True,
             )
 
-    def _auditar(self, contrato: Contrato, operacion: str, event_type: AuditEventType) -> None:
+    def _auditar(
+        self,
+        contrato: Contrato,
+        operacion: str,
+        event_type: AuditEventType,
+        usuario: str | None = None,
+    ) -> None:
         """Registra la operación contractual en la auditoría"""
         try:
             audit = get_audit_logger()
@@ -593,7 +604,7 @@ class ContratoService:
                 event_type=event_type,
                 entity_type="contrato",
                 entity_id=contrato.id,
-                user=contrato.aprobado_por or "system",
+                user=usuario or contrato.aprobado_por or "system",
                 details={
                     "operacion": operacion,
                     "numero": contrato.numero,

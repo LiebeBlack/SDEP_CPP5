@@ -245,3 +245,24 @@ def test_actualizar_campos_opcionales(session):
     assert emp.institucion_bancaria == "Banco del Pacífico"
     assert emp.tipo_contratacion == "fijo"
     assert emp.numero_cuenta is None
+
+
+def test_actualizar_salario_vacio_falla(session):
+    """Un salario vacío no debe anular la columna: falla con mensaje claro"""
+    servicio = EmpleadoService(session)
+    empleado = servicio.crear_empleado(_datos_empleado(cedula="5550004"))
+    with pytest.raises(ValueError, match="salario"):
+        servicio.actualizar_empleado(empleado.id, {"salario_base": ""})
+    session.expire_all()
+    assert float(servicio.obtener_empleado(empleado.id).salario_base) == pytest.approx(1500.0)
+
+
+def test_actualizar_cedula_vacia_no_la_borra(session):
+    """Una cédula vacía en el formulario se ignora, no se asigna"""
+    servicio = EmpleadoService(session)
+    empleado = servicio.crear_empleado(_datos_empleado(cedula="5550005"))
+    servicio.actualizar_empleado(empleado.id, {"cedula": "", "cargo": "Director"})
+    session.expire_all()
+    actualizado = servicio.obtener_empleado(empleado.id)
+    assert actualizado.cedula == "5550005"
+    assert actualizado.cargo == "Director"

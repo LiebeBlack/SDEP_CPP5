@@ -225,11 +225,11 @@ class TestMisc:
     def test_get_resource_path(self):
         assert helpers.get_resource_path("assets/logo.png").endswith("logo.png")
 
-    def test_log_message(self, capsys):
-        helpers.log_message("mensaje de prueba", "WARNING")
-        captured = capsys.readouterr()
-        assert "[WARNING]" in captured.out
-        assert "mensaje de prueba" in captured.out
+    def test_log_message(self, caplog):
+        with caplog.at_level("WARNING", logger="src.utils.helpers"):
+            helpers.log_message("mensaje de prueba", "WARNING")
+        assert any(registro.levelname == "WARNING" for registro in caplog.records)
+        assert "mensaje de prueba" in caplog.text
 
     def test_mantener_y_quitar_ventana_al_frente(self):
         class VentanaFake:

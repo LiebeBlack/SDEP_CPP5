@@ -140,6 +140,12 @@ src/config/build_info.py
 *.db
 *.sqlite
 *.sqlite3
+# Respaldos comprimidos: pueden contener datos personales reales; no se
+# versionan (el historial antiguo se trata por separado con filter-repo).
+*.db.gz
+backups/
+# Traza de un cuelgue ya corregido; se conserva solo en disco.
+hang_stack.txt
 data/
 config_local.yaml
 

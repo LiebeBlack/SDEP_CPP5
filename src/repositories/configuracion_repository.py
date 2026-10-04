@@ -41,6 +41,7 @@ class ConfiguracionRepository(BaseRepository[Configuracion]):
                 return True
             except Exception:
                 self.session.rollback()
+                logger.exception("No se pudo guardar la configuración '%s'", clave)
                 return False
         return False
 

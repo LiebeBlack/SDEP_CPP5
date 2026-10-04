@@ -183,28 +183,46 @@ class EmpleadoService:
         if not empleado:
             raise ValueError("Empleado no encontrado")
 
-        # Si se actualiza la cédula, verificar que no exista
-        if "cedula" in datos and datos["cedula"]:
-            nueva_cedula = str(datos["cedula"]).strip()
-            if nueva_cedula != empleado.cedula:
-                if self.repository.get_by_cedula(nueva_cedula):
-                    raise ValueError("Ya existe un empleado con esta cédula")
-                datos["cedula"] = nueva_cedula
+        # Si se actualiza la cédula, verificar que no exista. Una cédula
+        # vacía se descarta aquí: antes el guard la ignoraba y el bucle
+        # genérico de más abajo la asignaba, dejando al empleado sin cédula.
+        if "cedula" in datos:
+            if not str(datos["cedula"] or "").strip():
+                datos.pop("cedula")
+            else:
+                nueva_cedula = str(datos["cedula"]).strip()
+                if nueva_cedula != empleado.cedula:
+                    if self.repository.get_by_cedula(nueva_cedula):
+                        raise ValueError("Ya existe un empleado con esta cédula")
+                    datos["cedula"] = nueva_cedula
 
         # Normalizar fechas si vienen en datos
         for f_campo in ["fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"]:
             if f_campo in datos and isinstance(datos[f_campo], str):
                 datos[f_campo] = parse_date(datos[f_campo])
 
-        # Normalizar floats si vienen en datos
+        # Normalizar floats si vienen en datos. El salario base es un campo
+        # obligatorio: un vacío o un valor no numérico falla con un mensaje
+        # claro en lugar de intentar guardarse como NULL (lo que terminaba en
+        # un "Error de integridad" sin indicar el campo). En los campos
+        # opcionales, la normalización no debe dejar texto dentro de una
+        # columna numérica.
         for num_campo in ["salario_base", "peso", "altura"]:
-            if num_campo in datos and datos[num_campo] is not None:
-                try:
-                    datos[num_campo] = (
-                        float(datos[num_campo]) if str(datos[num_campo]).strip() != "" else None
-                    )
-                except (ValueError, TypeError):
-                    logger.debug("Campo numérico inválido: %s", num_campo, exc_info=True)
+            if num_campo not in datos or datos[num_campo] is None:
+                continue
+            try:
+                datos[num_campo] = (
+                    float(datos[num_campo]) if str(datos[num_campo]).strip() != "" else None
+                )
+            except (ValueError, TypeError):
+                if num_campo == "salario_base":
+                    raise ValueError(
+                        "El salario base es requerido y debe ser numérico"
+                    ) from None
+                datos[num_campo] = None
+                logger.warning("Campo numérico inválido en %s: se descarta", num_campo)
+            if num_campo == "salario_base" and datos[num_campo] is None:
+                raise ValueError("El salario base es requerido y debe ser numérico")
 
         # Actualizar campos
         for campo, valor in datos.items():

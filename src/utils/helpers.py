@@ -594,8 +594,12 @@ def log_message(message: str, level: str = "INFO") -> None:
         message: Mensaje a registrar
         level: Nivel de log (INFO, WARNING, ERROR, etc.)
     """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] [{level}] {message}")
+    # El nivel se resuelve por nombre contra el módulo logging; un nombre
+    # desconocido cae a INFO en lugar de fallar. El mensaje viaja como
+    # argumento diferido para que el formateador solo lo evalúe si el
+    # registro se va a emitir.
+    nivel = getattr(logging, str(level).strip().upper(), logging.INFO)
+    logger.log(nivel, "%s", message)
 
 
 def mantener_ventana_al_frente(window) -> None:

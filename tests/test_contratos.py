@@ -201,6 +201,9 @@ def test_terminar_contrato_genera_liquidacion_y_pago(session, servicio, empleado
     pagos = PagoService(session).listar_pagos()
     liquidaciones = [pago for pago in pagos if pago.tipo_pago == TipoPago.LIQUIDACION.value]
     assert len(liquidaciones) == 1
+    # La referencia de una liquidación es LIQ-<número> sin depender del usuario
+    # que la registra (era el defecto I.1: dependía de registrado_por).
+    assert liquidaciones[0].referencia_pago == f"LIQ-{contrato.numero}"
 
 
 def test_no_se_puede_terminar_dos_veces(servicio, empleado):
@@ -251,3 +254,21 @@ def test_obtener_contrato_inexistente(servicio):
     assert servicio.obtener_contrato(9999) is None
     with pytest.raises(ValueError):
         servicio.actualizar_contrato(9999, {"cargo": "X"})
+
+
+def test_liquidacion_sin_usuario_usa_referencia_liq(session, servicio, empleado):
+    """
+    El flujo real de la GUI no envía registrado_por: la referencia debe
+    seguir siendo LIQ-<número> (defecto I.1, corregido).
+    """
+    contrato = servicio.crear_contrato(
+        _datos_contrato(empleado.id, fecha_inicio=date(2024, 1, 1))
+    )
+    resultado = servicio.terminar_contrato(
+        contrato.id,
+        motivo="renuncia",
+        fecha_terminacion=date(2026, 1, 1),
+        generar_liquidacion=True,
+    )
+    assert resultado["pago"] is not None
+    assert resultado["pago"].referencia_pago == f"LIQ-{contrato.numero}"

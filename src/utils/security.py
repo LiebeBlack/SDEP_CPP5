@@ -403,7 +403,6 @@ class PermissionChecker:
         "contratos": ("admin", "manager"),
         "nomina": ("admin", "manager"),
         "configuracion": ("admin",),
-        "reportes": ("admin", "manager", "viewer"),
     }
 
     @classmethod

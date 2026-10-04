@@ -228,7 +228,10 @@ class AplicadorRemoto:
         plan = merge.planificar_campos(tabla, fila_uuid, aplicables, actuales)
         resultado.conflictos.extend(plan.conflictos)
 
-        if plan.sin_cambios and not revivir:
+        # `plan.marcas` puede venir con entradas aunque no haya valores que
+        # escribir: es el caso de un valor idéntico más reciente, cuya marca
+        # debe refrescarse para no perder la convergencia (ver merge.py).
+        if plan.sin_cambios and not revivir and not plan.marcas:
             resultado.motivo = MOTIVO_SUPERADA if plan.conflictos else MOTIVO_DUPLICADA
             return
 

@@ -273,3 +273,43 @@ def test_mismo_borrado_repetido_se_ignora():
     )
     entrante = _marca(True, dispositivo="equipo-a", op_id="op-borrado")
     assert decidir_borrado(version, entrante) == (IGNORAR_BORRADO, None)
+
+
+# ----------------------------------------------------------------------
+# Valor idéntico con marca más reciente (defecto I.4)
+# ----------------------------------------------------------------------
+def test_valor_identico_mas_reciente_actualiza_la_marca():
+    """
+    El valor no cambia, pero el nodo debe recordar la escritura más reciente:
+    si conserva la marca vieja, una operación intermedia fuera de orden se
+    aplica sobre un valor que el emisor ya había reemplazado.
+    """
+    actual = _marca("valor", op_id="op-1", segundos=0)
+    identico = _marca("valor", dispositivo="equipo-b", op_id="op-2", segundos=30)
+    plan = planificar_campos("empleados", "u-1", {"cargo": identico}, {"cargo": actual})
+    assert plan.aplicar == {}
+    assert plan.sin_cambios
+    assert plan.marcas == {"cargo": identico}
+
+
+def test_convergencia_con_un_valor_identico_adelantado():
+    """
+    A tiene "X" en t0; el equipo B escribió "Y" en t10 y volvió a "X" en t20.
+    Si la operación de t20 llega primero y la de t10 después, ambos órdenes
+    deben terminar en "X" (antes el nodo que recibía primero t20 aplicaba Y).
+    """
+    t20 = _marca("X", dispositivo="equipo-b", op_id="b-20", segundos=20)
+    t10 = _marca("Y", dispositivo="equipo-b", op_id="b-10", segundos=10)
+    inicial = _marca("X", dispositivo="equipo-a", op_id="a-0", segundos=0)
+
+    orden_normal = Nodo()
+    orden_normal.campos["cargo"] = inicial
+    orden_normal.recibir("u-1", {"cargo": t20})
+    orden_normal.recibir("u-1", {"cargo": t10})
+
+    orden_inverso = Nodo()
+    orden_inverso.campos["cargo"] = inicial
+    orden_inverso.recibir("u-1", {"cargo": t10})
+    orden_inverso.recibir("u-1", {"cargo": t20})
+
+    assert orden_normal.valores() == orden_inverso.valores() == {"cargo": "X"}

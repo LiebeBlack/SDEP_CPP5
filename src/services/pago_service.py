@@ -210,12 +210,14 @@ class PagoService:
         descontaría; es el mismo cálculo que aplica crear_pago.
         """
         resultado = self.calcular_con_motor(salario_base)
-        seguro, pension, impuesto = self._resolver_deducciones({}, salario_base)
+        # Un solo cálculo: las deducciones ya vienen en el resultado. Antes se
+        # recalculaba la nómina entera una segunda vez para obtener los mismos
+        # tres importes.
         return {
             "modalidad": resultado.modalidad,
-            "deduccion_seguro": seguro,
-            "deduccion_pension": pension,
-            "deduccion_impuesto": impuesto,
+            "deduccion_seguro": round(float(resultado.deduccion_seguro), 2),
+            "deduccion_pension": round(float(resultado.deduccion_pension), 2),
+            "deduccion_impuesto": round(float(resultado.deduccion_impuesto), 2),
             "total_deducciones": float(resultado.total_deducciones),
             "monto_neto": float(resultado.monto_neto),
             "base_gravable": float(resultado.base_gravable),
@@ -265,21 +267,6 @@ class PagoService:
 
         return periodo_inicio, periodo_fin, fecha_pago
 
-    def _resolver_deducciones(self, datos: dict, salario_base: float) -> tuple[float, float, float]:
-        """
-        Deducciones del pago: las capturadas a mano o las calculadas
-
-        Delega en el motor de nómina, que ya distingue entre el cálculo
-        porcentual histórico y el cálculo por tramos, y respeta las
-        deducciones explícitas si vienen en los datos.
-        """
-        resultado = self.calcular_con_motor(salario_base, datos)
-        return (
-            round(float(resultado.deduccion_seguro), 2),
-            round(float(resultado.deduccion_pension), 2),
-            round(float(resultado.deduccion_impuesto), 2),
-        )
-
     @staticmethod
     def _referencia_por_defecto(empleado_id: int, periodo_inicio: date | None) -> str:
         """Referencia REC-<empleado>-<yyyymmdd> cuando no se proporciona una"""
@@ -301,6 +288,9 @@ class PagoService:
 
         campos_calculo = {
             "salario_base",
+            "dias_trabajados",
+            "dias_periodo",
+            "prorratear",
             "bonificaciones",
             "horas_extra",
             "horas_extra_diurnas",
@@ -351,6 +341,12 @@ class PagoService:
             for campo in ("deduccion_seguro", "deduccion_pension", "deduccion_impuesto"):
                 if campo in datos or es_liquidacion:
                     datos_calculo[campo] = datos.get(campo, getattr(pago, campo) or 0)
+            # El prorrateo es parte del cálculo: si el formulario envía los
+            # días, deben viajar al motor en el recálculo. Sin ellos, el
+            # motor usa sus valores por defecto (30/30 días, sin prorratear).
+            for campo in ("dias_trabajados", "dias_periodo", "prorratear"):
+                if campo in datos:
+                    datos_calculo[campo] = datos[campo]
 
             resultado = self.calcular_con_motor(
                 salario_base=round(float(componentes["salario_base"] or 0), 2),
@@ -589,18 +585,6 @@ class PagoService:
             "total_bonificaciones": total_bonificaciones,
             "promedio_neto": round(total_neto / len(pagos), 2) if pagos else 0.0,
         }
-
-    def _calcular_deduccion_seguro(self, salario_base: float) -> float:
-        """Deducción por seguro social con la configuración vigente"""
-        return float(self.calcular_con_motor(salario_base).deduccion_seguro)
-
-    def _calcular_deduccion_pension(self, salario_base: float) -> float:
-        """Deducción por pensión con la configuración vigente"""
-        return float(self.calcular_con_motor(salario_base).deduccion_pension)
-
-    def _calcular_deduccion_impuesto(self, salario_base: float) -> float:
-        """Retención de impuesto con la configuración vigente"""
-        return float(self.calcular_con_motor(salario_base).deduccion_impuesto)
 
     def validar_datos_pago(self, datos: dict) -> list[str]:
         """Valida los datos de un pago"""

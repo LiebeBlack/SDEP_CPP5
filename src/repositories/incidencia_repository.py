@@ -156,6 +156,17 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
         try:
             incidencia = self.get_by_id(id)
             if incidencia:
+                # Solo se completa una incidencia aprobada: COMPLETADO
+                # significa "aprobada y ya ocurrida", que es lo que asumen
+                # los cálculos de vacaciones y de nómina.
+                if incidencia.estado != EstadoIncidencia.APROBADO.value:
+                    logger.warning(
+                        "No se completa la incidencia %s: está en estado %s "
+                        "(solo se completan las aprobadas)",
+                        id,
+                        incidencia.estado,
+                    )
+                    return False
                 incidencia.estado = EstadoIncidencia.COMPLETADO.value
                 self.session.commit()
                 return True

@@ -58,6 +58,8 @@ MODULOS = [
     "contratos",
     "nomina",
     "configuracion",
+    "estudiantes",
+    "notas",
 ]
 
 
@@ -141,6 +143,7 @@ class TestMainWindow:
 
     def test_navegacion_todos_los_modulos(self, main_window):
         from src.gui.contratos_frame import ContratosFrame
+        from src.gui.estudiantes_frame import EstudiantesFrame
         from src.gui.frames import (
             DashboardFrame,
             EmpleadosFrame,
@@ -149,6 +152,7 @@ class TestMainWindow:
             NominaFrame,
             ConfiguracionFrame,
         )
+        from src.gui.notas_frame import NotasFrame
 
         esperados = {
             "dashboard": DashboardFrame,
@@ -158,6 +162,8 @@ class TestMainWindow:
             "contratos": ContratosFrame,
             "nomina": NominaFrame,
             "configuracion": ConfiguracionFrame,
+            "estudiantes": EstudiantesFrame,
+            "notas": NotasFrame,
         }
         for nombre, clase in esperados.items():
             main_window._show_frame(nombre)
@@ -174,6 +180,8 @@ class TestMainWindow:
             "contratos": "tree",
             "nomina": "tree",
             "configuracion": "audit_tree",
+            "estudiantes": "tree",
+            "notas": "tree",
         }
         for modulo, attr in casos.items():
             main_window._show_frame(modulo)
@@ -292,6 +300,113 @@ class TestMainWindow:
         assert len(dialogs) == 1
         assert "Manual de Auditoría" in dialogs[0].title()
         dialogs[0].destroy()
+
+
+class TestModuloAcademico:
+    """Los módulos académicos construyen y muestran los datos sembrados"""
+
+    @pytest.fixture()
+    def datos_academicos(self, session):
+        """Un año escolar con un grado, un estudiante matriculado y una nota"""
+        from src.services import AcademicoService, NotaService
+
+        academico = AcademicoService(session)
+        periodo = academico.crear_periodo(
+            {
+                "nombre": "2025-2026",
+                "fecha_inicio": "01/09/2025",
+                "fecha_fin": "30/06/2026",
+            }
+        )
+        grado = academico.crear_grado(
+            {
+                "periodo_id": int(periodo.id),
+                "nivel": "secundaria",
+                "nombre": "1er Año",
+                "seccion": "A",
+            }
+        )
+        estudiante = academico.crear_estudiante(
+            {
+                "nombres": "Ana",
+                "apellidos": "Pérez",
+                "cedula": "12345678",
+                "nivel": "secundaria",
+            }
+        )
+        academico.matricular(int(estudiante.id), int(grado.id))
+        return {
+            "academico": academico,
+            "notas": NotaService(session),
+            "periodo": periodo,
+            "grado": grado,
+            "estudiante": estudiante,
+        }
+
+    def test_estudiantes_frame_muestra_legajo_y_matriculas(
+        self, datos_academicos, main_window
+    ):
+        main_window._show_frame("estudiantes")
+        main_window.update()
+        frame = main_window.current_frame
+
+        filas = frame.tree.get_children()
+        assert len(filas) == 1
+        valores = frame.tree.item(filas[0], "values")
+        assert valores[0] == "12345678"
+        assert "Ana" in valores[1]
+        assert valores[2] == "Secundaria"
+
+        grados = frame.grados_tree.get_children()
+        assert len(grados) == 1
+        assert frame.grados_tree.item(grados[0], "values")[0] == "1er Año A"
+        frame._load_matriculas(int(grados[0]))
+        assert len(frame.matriculas_tree.get_children()) == 1
+
+    def test_notas_frame_registra_y_muestra_calificaciones(
+        self, datos_academicos, main_window
+    ):
+        main_window._show_frame("notas")
+        main_window.update()
+        frame = main_window.current_frame
+
+        # El token académico se emite al abrir el módulo con la sesión activa
+        assert frame.token
+        grado = frame._grado_seleccionado()
+        assert grado is not None
+        assert frame._puede_escribir(grado)  # la administración escribe siempre
+        # La escala se lee de la configuración sembrada (0 a 20, aprobatoria 10)
+        assert frame._escala == (0.0, 20.0)
+        assert frame._nota_aprobatoria == 10.0
+
+        datos = datos_academicos
+        datos["notas"].registrar(
+            {
+                "grado_id": int(grado.id),
+                "estudiante_id": int(datos["estudiante"].id),
+                "materia": "Matemática",
+                "calificacion": 15,
+            },
+            frame.token,
+        )
+        frame._on_grado_cambio()
+        notas = frame.tree.get_children()
+        assert len(notas) == 1
+        valores = frame.tree.item(notas[0], "values")
+        assert valores[2] == "Matemática"
+        assert valores[3] == "15"
+        assert valores[4] == "Aprobada"
+
+    def test_notas_frame_lista_periodos(self, datos_academicos, main_window):
+        main_window._show_frame("notas")
+        main_window.update()
+        frame = main_window.current_frame
+
+        periodos = frame.periodos_tree.get_children()
+        assert len(periodos) == 1
+        valores = frame.periodos_tree.item(periodos[0], "values")
+        assert valores[0] == "2025-2026"
+        assert valores[3] == "Abierto"
 
 
 class TestTemaYCombobox:

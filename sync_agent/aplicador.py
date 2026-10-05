@@ -287,7 +287,50 @@ class AplicadorRemoto:
                 identidad.registrar(self.session, tabla, fila_uuid, fila.id)
                 return fila
 
+        fila = self._buscar_por_clave_compuesta(tabla, fila_uuid, payload)
+        if fila is not None:
+            return fila
+
         return self._crear_fila(tabla, fila_uuid, payload)
+
+    def _buscar_por_clave_compuesta(self, tabla: str, fila_uuid: str, payload: dict):
+        """
+        Busca una fila por su clave natural de varias columnas
+
+        Se evalúa en el equipo receptor y con el payload ya traducido a ids
+        locales: la misma nota creada en dos puestos comparte estudiante, grado
+        y materia, aunque cada equipo numere esas filas a su manera. Si el
+        payload no trae todas las columnas de la clave, no se puede unificar:
+        la fila se resolverá por identidad global o se creará.
+        """
+        descripcion = registro.ENTIDADES[tabla]
+        columnas_clave = descripcion.clave_natural_compuesta
+        if not columnas_clave:
+            return None
+
+        filtros = []
+        for nombre_columna in columnas_clave:
+            valor = payload.get(nombre_columna)
+            columna_orm = registro.columna(tabla, nombre_columna)
+            if valor is None or columna_orm is None:
+                return None
+            filtros.append((columna_orm, valor))
+
+        consulta = self.session.query(descripcion.clase)
+        for columna_orm, valor in filtros:
+            consulta = consulta.filter(columna_orm == valor)
+        try:
+            fila = consulta.first()
+        except SQLAlchemyError:
+            logger.warning(
+                "No se pudo buscar %s por su clave natural compuesta", tabla, exc_info=True
+            )
+            return None
+        if fila is None:
+            return None
+        logger.info("Se unifica %s por su clave natural compuesta", tabla)
+        identidad.registrar(self.session, tabla, fila_uuid, fila.id)
+        return fila
 
     def _crear_fila(self, tabla: str, fila_uuid: str, payload: dict):
         """Crea la fila local y la vincula a la identidad global"""

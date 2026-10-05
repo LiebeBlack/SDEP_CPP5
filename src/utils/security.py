@@ -403,6 +403,14 @@ class PermissionChecker:
         "contratos": ("admin", "manager"),
         "nomina": ("admin", "manager"),
         "configuracion": ("admin",),
+        # ``estudiantes`` incluye el legajo y la estructura escolar (grados y
+        # matrículas); la escritura sigue exigiendo el permiso operativo
+        # (create/update/delete), de modo que el rol de consulta solo mira.
+        "estudiantes": ("admin", "manager", "user", "viewer"),
+        # ``notas``: los docentes (rol ``user``) necesitan consultar y
+        # registrar las notas de su grado; la escritura efectiva la autoriza
+        # el token académico del servicio de notas, no este mapa.
+        "notas": ("admin", "manager", "user"),
     }
 
     @classmethod

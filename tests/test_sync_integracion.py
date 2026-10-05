@@ -16,8 +16,11 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from src.models import Documento, Empleado
+from src.models import Documento, Empleado, NotaFinal, Usuario
+from src.services.academico_service import AcademicoService
 from src.services.empleado_service import EmpleadoService
+from src.services.nota_service import NotaService
+from src.services.token_sesion_service import TokenSesionService
 from sync_agent.agente import AgenteSincronizacion
 from sync_agent.captura import establecer_dispositivo
 from sync_agent.cliente import ClienteSync
@@ -337,5 +340,146 @@ def test_el_contenido_de_un_documento_llega_al_nodo_central(escenario):
         blob = sesion.get(BlobSync, digest)
         assert blob is not None
         assert blob.estado in (BLOB_SUBIDO, BLOB_DISPONIBLE)
+    finally:
+        escenario.entorno.close_session(sesion)
+
+
+# ----------------------------------------------------------------------
+# Subdominio académico
+# ----------------------------------------------------------------------
+def _crear_estructura_academica(escenario: Escenario) -> dict:
+    """Año escolar con grado, estudiante matriculado y una nota registrada"""
+    sesion = escenario.entorno.new_session()
+    try:
+        academico = AcademicoService(sesion)
+        periodo = academico.crear_periodo(
+            {"nombre": "2025-2026", "fecha_inicio": "01/09/2025", "fecha_fin": "30/06/2026"}
+        )
+        grado = academico.crear_grado(
+            {
+                "periodo_id": int(periodo.id),
+                "nivel": "secundaria",
+                "nombre": "1er Año",
+                "seccion": "A",
+            }
+        )
+        estudiante = academico.crear_estudiante(
+            {
+                "nombres": "Ana",
+                "apellidos": "Gómez",
+                "cedula": "40000001",
+                "nivel": "secundaria",
+            }
+        )
+        academico.matricular(int(estudiante.id), int(grado.id))
+
+        admin = sesion.query(Usuario).filter(Usuario.username == "admin").one()
+        token, _registro = TokenSesionService(sesion).emitir(admin)
+        nota = NotaService(sesion).registrar(
+            {
+                "grado_id": int(grado.id),
+                "estudiante_id": int(estudiante.id),
+                "materia": "Matemática",
+                "calificacion": 15,
+            },
+            token,
+        )
+        return {
+            "periodo_id": int(periodo.id),
+            "grado_id": int(grado.id),
+            "estudiante_id": int(estudiante.id),
+            "nota_id": int(nota.id),
+        }
+    finally:
+        escenario.entorno.close_session(sesion)
+
+
+def test_la_estructura_academica_se_sincroniza(escenario):
+    """Los datos académicos viajan al nodo central con sus claves"""
+    _crear_estructura_academica(escenario)
+    assert escenario.ciclo()["correcto"] is True
+
+    operaciones = escenario.operacion_del_servidor()
+    por_tabla = {operacion["tabla"]: operacion for operacion in operaciones}
+    assert {
+        "periodos_academicos",
+        "grados",
+        "estudiantes",
+        "matriculas",
+        "notas_finales",
+    } <= set(por_tabla)
+
+    payload_estudiante = loads(por_tabla["estudiantes"]["payload"])
+    assert payload_estudiante["cedula"] == "40000001"
+    # La clave foránea viaja como UUID, nunca como id local
+    payload_nota = loads(por_tabla["notas_finales"]["payload"])
+    assert payload_nota["materia"] == "Matemática"
+    # La clave foránea viaja como UUID de 36 caracteres, no como id local
+    assert isinstance(payload_nota["estudiante_id"], str)
+    assert len(payload_nota["estudiante_id"]) == 36
+    assert isinstance(payload_nota["grado_id"], str)
+    assert len(payload_nota["grado_id"]) == 36
+
+
+def test_un_token_de_sesion_no_sale_del_equipo(escenario):
+    """Emitir un token no genera ninguna operación de sincronización"""
+    _crear_estructura_academica(escenario)
+    assert escenario.ciclo()["correcto"] is True
+
+    tablas = {operacion["tabla"] for operacion in escenario.operacion_del_servidor()}
+    assert "tokens_sesion" not in tablas
+
+
+def test_una_nota_ajena_se_unifica_por_su_clave_compuesta(escenario):
+    """
+    Otro puesto creó la misma nota antes de sincronizar
+
+    La nota ajena llega con otra identidad global (otro UUID) pero la misma
+    clave compuesta (estudiante, grado y materia). Al aplicarla debe unificarse
+    con la fila local en vez de chocar contra su restricción de unicidad.
+    """
+    ids = _crear_estructura_academica(escenario)
+    assert escenario.ciclo()["correcto"] is True
+
+    original = next(
+        operacion
+        for operacion in escenario.operacion_del_servidor()
+        if operacion["tabla"] == "notas_finales"
+    )
+    payload = loads(original["payload"])
+    remota = {
+        "op_id": nuevo_uuid(),
+        "tabla": "notas_finales",
+        "fila_uuid": nuevo_uuid(),
+        "operacion": "upsert",
+        "payload": dumps(
+            {
+                "estudiante_id": payload["estudiante_id"],
+                "grado_id": payload["grado_id"],
+                "materia": payload["materia"],
+                "calificacion": 18.0,
+            }
+        ),
+        "base_op_id": None,
+        "dispositivo": escenario.dispositivo_b,
+        "usuario": "otro-puesto",
+        "creado_en": (datetime.now() + timedelta(minutes=5)).isoformat(),
+    }
+    escenario.cliente_b().enviar_ops([remota])
+    assert escenario.ciclo()["correcto"] is True
+
+    sesion = escenario.entorno.new_session()
+    try:
+        notas = (
+            sesion.query(NotaFinal).filter(NotaFinal.grado_id == ids["grado_id"]).all()
+        )
+        assert len(notas) == 1, "la nota ajena debió unificarse, no duplicarse"
+        assert float(notas[0].calificacion) == 18.0
+        identidad = (
+            sesion.query(SyncId)
+            .filter(SyncId.tabla == "notas_finales", SyncId.id_local == notas[0].id)
+            .one()
+        )
+        assert identidad.uuid == remota["fila_uuid"]
     finally:
         escenario.entorno.close_session(sesion)

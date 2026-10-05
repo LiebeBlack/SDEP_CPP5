@@ -69,6 +69,10 @@ CAMPOS_SENSIBLES: dict[str, tuple[str, ...]] = {
         "bono_vacacional",
     ),
     "contratos": ("salario_pactado", "liquidacion_monto"),
+    # Una calificación es un dato académico con consecuencia legal: un choque
+    # entre equipos siempre se registra para su revisión, aunque la marca más
+    # reciente decida por sí sola qué valor queda vigente.
+    "notas_finales": ("calificacion",),
 }
 
 

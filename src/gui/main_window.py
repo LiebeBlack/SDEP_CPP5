@@ -33,6 +33,8 @@ from src.gui.frames import (
     ConfiguracionFrame,
 )
 from src.gui.contratos_frame import ContratosFrame
+from src.gui.estudiantes_frame import EstudiantesFrame
+from src.gui.notas_frame import NotasFrame
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,10 @@ MODULOS = [
     ("contratos", "Contratos", "📜"),
     ("nomina", "Nómina", "💰"),
     ("configuracion", "Configuración", "⚙️"),
+    # Módulos académicos: se añaden al final para que Ctrl+1..7 conserve
+    # exactamente el significado que tenía antes de existir este módulo.
+    ("estudiantes", "Estudiantes", "🎓"),
+    ("notas", "Calificaciones", "📝"),
 ]
 
 TITULOS_VENTANA = {
@@ -55,6 +61,8 @@ TITULOS_VENTANA = {
     "contratos": "Contratos Laborales",
     "nomina": "Nómina y Pagos",
     "configuracion": "Configuración",
+    "estudiantes": "Gestión de Estudiantes",
+    "notas": "Calificaciones y Periodos",
 }
 
 FRAME_CLASSES: dict[str, type[ctk.CTkFrame]] = {
@@ -65,6 +73,8 @@ FRAME_CLASSES: dict[str, type[ctk.CTkFrame]] = {
     "contratos": ContratosFrame,
     "nomina": NominaFrame,
     "configuracion": ConfiguracionFrame,
+    "estudiantes": EstudiantesFrame,
+    "notas": NotasFrame,
 }
 
 ROL_LABELS = {
@@ -615,6 +625,8 @@ class MainWindow(ctk.CTk):
         "ContratosFrame": "_load_data",
         "NominaFrame": "_load_pagos",
         "ConfiguracionFrame": "_load_configuracion",
+        "EstudiantesFrame": "_load_data",
+        "NotasFrame": "_load_data",
     }
 
     # Método canónico de "nuevo registro" por tipo de frame
@@ -625,6 +637,8 @@ class MainWindow(ctk.CTk):
         "ContratosFrame": "_nuevo_contrato",
         "NominaFrame": "_on_new_pago",
         "ConfiguracionFrame": "_on_new_usuario",
+        "EstudiantesFrame": "_on_new_estudiante",
+        "NotasFrame": "_on_nueva_nota",
     }
 
     # Método canónico de "guardar" por tipo de frame
@@ -761,11 +775,12 @@ class MainWindow(ctk.CTk):
         texto = (
             "GUÍA RÁPIDA\n"
             "===========\n\n"
-            "Módulos del sistema (barra lateral o Ctrl+1 a Ctrl+7):\n"
+            "Módulos del sistema (barra lateral o Ctrl+1 a Ctrl+9):\n"
             "  Ctrl+1  Panel de control  Ctrl+2  Empleados\n"
             "  Ctrl+3  Documentos     Ctrl+4  Incidencias\n"
             "  Ctrl+5  Contratos      Ctrl+6  Nómina\n"
-            "  Ctrl+7  Configuración\n\n"
+            "  Ctrl+7  Configuración  Ctrl+8  Estudiantes\n"
+            "  Ctrl+9  Calificaciones\n\n"
             "Atajos generales:\n"
             "  Ctrl+N   Nuevo registro en el módulo activo\n"
             "  Ctrl+F   Buscar / enfocar filtro\n"

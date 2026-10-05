@@ -583,6 +583,58 @@ Si encuentra problemas que no puede resolver:
 3. Contacte al administrador del sistema
 4. Revise los logs del sistema para detalles del error
 
+## Módulos Académicos
+
+El sistema incorpora el subdominio académico en dos módulos que trabajan
+juntos: **Estudiantes** y **Calificaciones**.
+
+### Estudiantes (Ctrl+8)
+
+La pestaña *Estudiantes* administra el legajo: cédula (única cuando se
+registra), nombres y apellidos, fecha de nacimiento, género, nivel
+educativo (Inicial o Secundaria), representante y datos de contacto. Un
+estudiante retirado no se borra: se desactiva y conserva su historial.
+
+La pestaña *Grados y matrículas* administra la estructura escolar del año
+en curso: cada grado pertenece a un periodo, tiene nivel, nombre y
+sección, y puede tener un **docente responsable**. En ella se matricula a
+los estudiantes y se los retira del grado; un estudiante no puede quedar
+matriculado dos veces en el mismo año escolar y su nivel debe coincidir
+con el del grado.
+
+### Calificaciones (Ctrl+9)
+
+La pestaña *Notas* registra la calificación final de cada materia para los
+estudiantes matriculados en el grado seleccionado. La escala (por defecto
+de 0 a 20, aprobatoria 10) se configura en Configuración y la pestaña
+indica si una nota está aprobada o reprobada. Desde aquí también se
+consultan el **consolidado del periodo**, el **boletín** de un estudiante
+y el **acta final** del grado, y se exportan las notas a Excel.
+
+Solo pueden registrar, corregir o eliminar notas dos tipos de cuenta:
+
+- la administración (administrador o gestor), en cualquier grado; y
+- el **docente asignado al grado**, únicamente en el suyo.
+
+La autorización se apoya en un token de sesión académico que el sistema emite
+al abrir el módulo y que vive solo en memoria durante la jornada de trabajo.
+El rol de solo lectura no escribe notas ni aunque figure asignado a un grado.
+
+### Periodos académicos
+
+La pestaña *Periodos* administra el año escolar.
+
+- **Cerrar un periodo** bloquea sus notas de forma efectiva: el sistema
+  rechaza cualquier alta, corrección o borrado y la propia base de datos
+  impide la escritura incluso por medios externos. Ciérrelo cuando las
+  actas del año estén completas.
+- **Reabrir un periodo** solo lo puede hacer un administrador, y la
+  operación queda registrada en la auditoría. Úselo únicamente para
+  corregir un cierre anticipado.
+
+Los periodos y grados se crean antes de matricular: sin un periodo abierto
+no es posible registrar notas.
+
 ## Atajos de Teclado
 
 Los atajos permiten moverse y trabajar sin usar el ratón. Se aplican en
@@ -590,8 +642,8 @@ el módulo que esté visible en ese momento:
 
 | Atajo | Acción |
 | --- | --- |
-| **Ctrl+1 … Ctrl+7** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Contratos, 6 Nómina, 7 Configuración |
-| **Ctrl+N** | Nuevo registro del módulo activo (Empleado, Documento, Incidencia, Pago, Usuario) |
+| **Ctrl+1 … Ctrl+9** | Navegar directamente a cada módulo: 1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Contratos, 6 Nómina, 7 Configuración, 8 Estudiantes, 9 Calificaciones |
+| **Ctrl+N** | Nuevo registro del módulo activo (Empleado, Documento, Incidencia, Pago, Usuario, Estudiante o Nota; la nota exige autorización) |
 | **Ctrl+F** | Enfocar la búsqueda (Empleados) o el filtro del módulo activo |
 | **Ctrl+S** | Guardar cambios en el módulo de Configuración |
 | **F5** | Actualizar la lista o los datos del módulo activo |
@@ -642,5 +694,5 @@ Este sistema ha sido diseñado para ser intuitivo y eficiente. Con la práctica,
 
 ---
 
-**Versión del Sistema**: 3.0.0  
+**Versión del Sistema**: 3.0.1  
 **Última Actualización**: 2026

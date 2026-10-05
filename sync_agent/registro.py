@@ -17,7 +17,19 @@ from typing import Any, TypeGuard
 
 from sqlalchemy import Table
 
-from src.models import Configuracion, Contrato, Documento, Empleado, Incidencia, Pago
+from src.models import (
+    Configuracion,
+    Contrato,
+    Documento,
+    Empleado,
+    Estudiante,
+    Grado,
+    Incidencia,
+    Matricula,
+    NotaFinal,
+    Pago,
+    PeriodoAcademico,
+)
 
 # Columnas presentes en varias tablas que apuntan a archivos del equipo y no
 # al dato: la ruta "C:\\Users\\...\\documents\\x.pdf" de un puesto no significa
@@ -58,6 +70,12 @@ class Entidad:
     # los detalles de las cinco entidades.
     clase: Any
     clave_natural: tuple[str, ...] = ()
+    # Clave natural de varias columnas que solo puede evaluarse en el equipo
+    # receptor, cuando sus valores ya se tradujeron de UUID a ids locales
+    # (``periodo_id``, ``estudiante_id``...). En el equipo emisor esos números
+    # son otros, así que no sirven para adoptar identidad: para eso está
+    # ``clave_natural``, que exige una columna estable entre equipos.
+    clave_natural_compuesta: tuple[str, ...] = ()
     borrado_logico: bool = False
     columna_activo: str = "activo"
     columnas_blob: tuple[str, ...] = ()
@@ -106,6 +124,45 @@ ENTIDADES: dict[str, Entidad] = {
         clase=Configuracion,
         clave_natural=("clave",),
         descripcion="Parámetros compartidos por la institución",
+    ),
+    # --- Subdominio académico ------------------------------------------
+    # ``tokens_sesion`` queda FUERA a propósito: un token es una credencial
+    # local (solo se guarda su hash, pero describe la vigencia y el alcance de
+    # una sesión de este equipo) y no tiene sentido replicarla.
+    "estudiantes": Entidad(
+        tabla="estudiantes",
+        clase=Estudiante,
+        clave_natural=("cedula",),
+        borrado_logico=True,
+        descripcion="Legajo de estudiantes",
+    ),
+    "periodos_academicos": Entidad(
+        tabla="periodos_academicos",
+        clase=PeriodoAcademico,
+        clave_natural=("nombre",),
+        descripcion="Años escolares",
+    ),
+    "grados": Entidad(
+        tabla="grados",
+        clase=Grado,
+        # La unicidad real es (periodo_id, nombre, seccion); se resuelve en el
+        # receptor con la clave compuesta de abajo, porque ``periodo_id`` es
+        # un id local distinto en cada equipo.
+        clave_natural_compuesta=("periodo_id", "nombre", "seccion"),
+        descripcion="Grados y secciones",
+    ),
+    "matriculas": Entidad(
+        tabla="matriculas",
+        clase=Matricula,
+        borrado_logico=True,
+        columna_activo="activa",
+        descripcion="Matrículas por año escolar",
+    ),
+    "notas_finales": Entidad(
+        tabla="notas_finales",
+        clase=NotaFinal,
+        clave_natural_compuesta=("estudiante_id", "grado_id", "materia"),
+        descripcion="Calificaciones finales",
     ),
 }
 

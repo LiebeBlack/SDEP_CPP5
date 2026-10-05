@@ -90,14 +90,13 @@ class BaseRepository[T: BaseModel]:
             # session.get consulta primero el mapa de identidad de la sesión:
             # los listados que resuelven el nombre de cada fila dejan de
             # emitir un SELECT por fila (el patrón N+1 de los reportes).
-            result = self.session.get(self.model, id)
-            if result:
-                self._log_data_operation("read", entity_id=id, data={"result": "found"})
-            else:
-                self._log_data_operation(
-                    "read", entity_id=id, data={"result": "not_found"}, success=False
-                )
-            return result
+            # Política de auditoría: se auditan las operaciones que cambian
+            # datos (create/update/delete), no las lecturas. Auditar cada
+            # lectura escribía una línea en disco por fila --con usuario
+            # "system" y sin valor forense-- en los flujos que resuelven el
+            # nombre de cada registro fila a fila. Un fallo real de lectura
+            # sigue quedando registrado por ``_log_audit_error``.
+            return self.session.get(self.model, id)
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al obtener {self._model_name} ID {id}: {e}")
@@ -125,11 +124,9 @@ class BaseRepository[T: BaseModel]:
             Lista de objetos del modelo
         """
         try:
-            result = self.session.query(self.model).offset(skip).limit(limit).all()
-            self._log_data_operation(
-                "read", data={"skip": skip, "limit": limit, "count": len(result)}
-            )
-            return result
+            # Sin auditoría de lectura (misma política que get_by_id): el
+            # listado es la consulta más frecuente de la aplicación.
+            return self.session.query(self.model).offset(skip).limit(limit).all()
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al obtener {self._model_name}: {e}")

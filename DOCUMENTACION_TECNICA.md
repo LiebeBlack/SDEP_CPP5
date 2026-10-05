@@ -336,7 +336,7 @@ El módulo `src/gui/theme.py` centraliza la apariencia de la aplicación:
 
 - Diseño moderno con tema oscuro por defecto y tema claro configurable
 - Navegación por módulos con barra lateral, clic en tarjetas del
-  Dashboard y atajos de teclado (Ctrl+1..7)
+  Dashboard y atajos de teclado (Ctrl+1..9)
 - Cabecera con acceso a Ayuda, Acerca de, tema de apariencia, cierre de
   sesión y salida
 - Barra de estado inferior con reloj y mensajes contextuales
@@ -350,7 +350,7 @@ El módulo `src/gui/theme.py` centraliza la apariencia de la aplicación:
 
 | Atajo | Acción |
 | --- | --- |
-| Ctrl+1 … Ctrl+7 | Navegar al módulo correspondiente (1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Contratos, 6 Nómina, 7 Configuración) |
+| Ctrl+1 … Ctrl+9 | Navegar al módulo correspondiente (1 Dashboard, 2 Empleados, 3 Documentos, 4 Incidencias, 5 Contratos, 6 Nómina, 7 Configuración, 8 Estudiantes, 9 Calificaciones) |
 | Ctrl+N | Nuevo registro en el módulo activo |
 | Ctrl+F | Enfocar búsqueda/filtro |
 | Ctrl+S | Guardar (Configuración) |
@@ -361,6 +361,39 @@ Los atajos se enlazan en `MainWindow._bind_atajos()` y delegan en
 métodos canónicos por tipo de frame (tablas `METODOS_REFRESCAR`,
 `METODOS_NUEVO` y `METODOS_GUARDAR`), lo que permite ampliarlos sin
 acoplar la ventana principal a cada módulo.
+
+### Módulo Académico
+
+El subdominio académico se expone en dos módulos con pestañas:
+
+- **Estudiantes** (`estudiantes_frame.py`): legajo y estructura escolar sobre
+  `AcademicoService`; pestañas de estudiantes y de grados con sus matrículas.
+- **Calificaciones** (`notas_frame.py`): notas finales y periodos académicos
+  sobre `NotaService`; pestañas de notas (con consolidado, boletín y acta) y de
+  periodos (cierre y reapertura).
+
+**Modelo de datos.** `Estudiante` (cédula única, nivel educativo),
+`PeriodoAcademico` (abierto/cerrado), `Grado` (periodo, nivel, nombre,
+sección, docente), `Matricula` (una sola activa por estudiante y año) y
+`NotaFinal` (una nota por estudiante, grado y materia).
+
+**Autorización por token.** `NotaService` exige un `TokenSesion` con alcance
+`academico`; `TokenSesionService` lo emite con `secrets.token_urlsafe`,
+guarda solo su hash SHA-256 y resuelve `puede_escribir` con el rol **actual**
+del usuario y el grado asignado. En la interfaz el token se emite al abrir el
+módulo y vive solo en memoria. `tokens_sesion` no se replica entre equipos.
+
+**Inmutabilidad del periodo cerrado.** Cerrar un periodo exige token de
+administrador y, a partir de ahí, el servicio rechaza toda escritura de notas
+y los tres disparadores de SQLite (`trg_notas_finales_insert_bloqueado`,
+`trg_notas_finales_update_bloqueado` y `trg_notas_finales_delete_bloqueado`)
+la abortan incluso por SQL directo; se recrean en cada arranque y viajan
+dentro del archivo de base de datos.
+
+**Sincronización.** Las cinco tablas académicas se replican con las claves
+naturales de la sección anterior; `calificacion` es campo sensible (todo
+choque se audita) y el receptor unifica una nota creada en dos puestos por su
+clave compuesta (estudiante, grado y materia).
 
 ## Seguridad y Validación
 

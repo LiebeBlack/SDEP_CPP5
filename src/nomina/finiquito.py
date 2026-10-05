@@ -52,12 +52,32 @@ def _como_fecha(valor: object) -> date | None:
     texto = str(valor).strip()
     if not texto:
         return None
+    # El componente de hora se separa de forma explícita (en lugar de
+    # truncar a diez caracteres) y, si viene, se valida: una cadena que no
+    # sea una fecha --ni una fecha con hora-- se rechaza en vez de colarse
+    # por compartir los diez primeros caracteres.
+    parte_fecha, _, parte_hora = texto.partition(" ")
+    if not parte_hora and "T" in parte_fecha:
+        parte_fecha, _, parte_hora = parte_fecha.partition("T")
+    if parte_hora and not _hora_valida(parte_hora):
+        return None
     for formato in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
         try:
-            return datetime.strptime(texto[:10], formato).date()
+            return datetime.strptime(parte_fecha, formato).date()
         except ValueError:
             continue
     return None
+
+
+def _hora_valida(texto: str) -> bool:
+    """Indica si el texto es una hora (``HH:MM[:SS[.ffffff]]``)"""
+    for formato in ("%H:%M:%S.%f", "%H:%M:%S", "%H:%M"):
+        try:
+            datetime.strptime(texto, formato)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def calcular_finiquito(
@@ -158,8 +178,8 @@ def dias_vacaciones_pendientes(
     """
     if dias_vacaciones_anuales <= CERO:
         return CERO
-    _, dias = meses_y_dias_entre(fecha_ingreso, fecha_egreso)
-    meses_servicio, _ = meses_y_dias_entre(fecha_ingreso, fecha_egreso)
+    # Una sola traza del mismo cálculo: meses y días de la misma llamada.
+    meses_servicio, dias = meses_y_dias_entre(fecha_ingreso, fecha_egreso)
     if anos_servicio is None:
         anos_servicio = antiguedad_en_anos(fecha_ingreso, fecha_egreso)
 

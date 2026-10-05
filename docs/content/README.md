@@ -48,6 +48,19 @@ Este sistema proporciona una solución integral para la administración de recur
 - Control de contratos por vencer y vencidos
 - Reporte PDF de contratos
 
+### Módulo Académico
+- **Estudiantes**: legajo completo con cédula única, nivel educativo, representante y
+  datos de contacto, búsqueda por nombre o cédula y exportación a Excel
+- **Grados y matrículas**: grados y secciones por año escolar, asignación del docente
+  responsable y una sola matrícula activa por estudiante y periodo
+- **Calificaciones**: registro, corrección y eliminación de notas finales por materia,
+  carga por lotes en una única transacción, consolidado del periodo, boletín por
+  estudiante y acta final del grado
+- **Periodos académicos**: alta y edición del año escolar, cierre que bloquea las notas
+  (servicio y base de datos) y reapertura restringida al administrador
+- **Autorización por token**: solo la administración o el docente asignado al grado
+  escriben notas, con token de sesión de una jornada y sin guardarlo en claro
+
 ### Panel Analítico
 - Indicadores clave: nómina del mes, contratos por vencer y dotación activa
 - Gráficos de barras, dona y línea dibujados sobre Canvas (sin dependencias nuevas)
@@ -113,7 +126,7 @@ La integración continua se reparte entre dos workflows complementarios.
 
 **`.github/workflows/build.yml`** (integración y empaquetado):
 
-1. **Pruebas**: ejecuta la suite completa de pytest sobre los 25 archivos de
+1. **Pruebas**: ejecuta la suite completa de pytest sobre los 32 archivos de
    `tests/` en cada push a `main` o `develop`.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
@@ -153,8 +166,8 @@ git push origin main
 
 Para una release versionada (opcional):
 ```bash
-git tag v3.0.0
-git push origin v3.0.0
+git tag v3.0.1
+git push origin v3.0.1
 ```
 
 ## 🔧 Instalación
@@ -291,7 +304,13 @@ El sistema utiliza SQLite como base de datos local. La base de datos se crea aut
 - **empleados**: Información completa de empleados
 - **documentos**: Documentos digitalizados de empleados
 - **incidencias**: Permisos, reposos y ausencias
+- **contratos**: Contratos laborales y su ciclo de vida
 - **pagos**: Registro de nóminas y pagos
+- **estudiantes**, **grados**, **matriculas**, **notas_finales** y
+  **periodos_academicos**: subdominio académico (legajo, estructura escolar y
+  calificaciones)
+- **tokens_sesion**: tokens de sesión con alcance académico (solo su hash; no se
+  sincronizan entre equipos)
 - **configuraciones**: Configuración del sistema
 
 ## 📖 Uso
@@ -300,7 +319,7 @@ El sistema utiliza SQLite como base de datos local. La base de datos se crea aut
 
 | Atajo | Acción |
 | --- | --- |
-| `Ctrl+1` … `Ctrl+7` | Ir al módulo 1 (Dashboard) … 7 (Configuración) |
+| `Ctrl+1` … `Ctrl+9` | Ir al módulo 1 (Dashboard) … 7 (Configuración), 8 (Estudiantes) y 9 (Calificaciones) |
 | `Ctrl+N` | Nuevo registro en el módulo activo |
 | `Ctrl+F` | Buscar / enfocar el filtro del módulo activo |
 | `Ctrl+S` | Guardar cambios (Configuración) |
@@ -426,5 +445,5 @@ Para soporte o consultas, contacte al equipo de desarrollo.
 
 ---
 
-**Versión**: 3.0.0  
-**Última actualización**: 2026
+- **Versión**: 3.0.1
+- **Última actualización**: 2026

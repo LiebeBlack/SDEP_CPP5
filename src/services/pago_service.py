@@ -75,6 +75,11 @@ class PagoService:
             datos=datos,
             horas_extra=horas_extra_desglosadas,
         )
+        # Salario efectivo del período: si el cálculo pidió prorratear, el
+        # motor ya lo redujo a los días trabajados y es ese valor el que se
+        # guarda (el mismo que usan las deducciones y el recálculo al editar).
+        salario_periodo = round(float(resultado.salario_base), 2)
+        dias_laborados, dias_periodo, prorrateado = self._prorrateo_de_datos(datos)
 
         # El monto de horas extra capturado a mano manda cuando no se
         # clasificaron horas por tipo (comportamiento histórico).
@@ -102,7 +107,7 @@ class PagoService:
         )
 
         monto_bruto = round(
-            salario_base + bonificaciones + monto_horas_extra + aguinaldo + bono_vacacional, 2
+            salario_periodo + bonificaciones + monto_horas_extra + aguinaldo + bono_vacacional, 2
         )
         monto_neto = round(max(0.0, monto_bruto - total_deducciones - descuentos), 2)
 
@@ -131,7 +136,10 @@ class PagoService:
             descuentos=descuentos,
             bonificaciones=bonificaciones,
             horas_extra=monto_horas_extra,
-            salario_base=salario_base,
+            salario_base=salario_periodo,
+            dias_laborados=dias_laborados,
+            dias_periodo=dias_periodo,
+            prorrateado=prorrateado,
             deduccion_seguro=deduccion_seguro,
             deduccion_pension=deduccion_pension,
             deduccion_impuesto=deduccion_impuesto,
@@ -223,6 +231,22 @@ class PagoService:
             "base_gravable": float(resultado.base_gravable),
             "isr_tramo": resultado.isr_tramo,
         }
+
+    @staticmethod
+    def _prorrateo_de_datos(datos: dict) -> tuple[int, int, bool]:
+        """
+        Días y bandera de prorrateo con los que se calcula un pago
+
+        Devuelve los mismos valores que ``calcular_con_motor`` entrega al
+        motor (30/30 días sin prorratear cuando no se indican), para poder
+        guardarlos en el propio pago y reconstruir después un recálculo
+        idéntico al editar.
+        """
+        return (
+            int(datos.get("dias_trabajados") or 30),
+            int(datos.get("dias_periodo") or 30),
+            bool(datos.get("prorratear")),
+        )
 
     @staticmethod
     def _horas_extra(datos: dict) -> HorasExtra:
@@ -341,12 +365,32 @@ class PagoService:
             for campo in ("deduccion_seguro", "deduccion_pension", "deduccion_impuesto"):
                 if campo in datos or es_liquidacion:
                     datos_calculo[campo] = datos.get(campo, getattr(pago, campo) or 0)
-            # El prorrateo es parte del cálculo: si el formulario envía los
-            # días, deben viajar al motor en el recálculo. Sin ellos, el
-            # motor usa sus valores por defecto (30/30 días, sin prorratear).
-            for campo in ("dias_trabajados", "dias_periodo", "prorratear"):
-                if campo in datos:
-                    datos_calculo[campo] = datos[campo]
+            # El prorrateo forma parte del cálculo y se decide en dos ramas:
+            # - si el formulario envía los días, el salario que llega se
+            #   interpreta como el del período completo y el motor vuelve a
+            #   prorratearlo con esos días;
+            # - si no los envía, se conservan los días guardados en el pago y
+            #   se recalcula sobre el salario del período ya guardado, sin
+            #   prorratear otra vez (prorratear dos veces descontaría los
+            #   días en cada edición y el neto bajaría solo).
+            campos_prorrateo = {"dias_trabajados", "dias_periodo", "prorratear"}
+            if campos_prorrateo & datos.keys():
+                dias_laborados = int(
+                    datos.get("dias_trabajados") or pago.dias_laborados or 30
+                )
+                dias_periodo = int(datos.get("dias_periodo") or pago.dias_periodo or 30)
+                prorrateado = bool(datos.get("prorratear", pago.prorrateado))
+                datos_calculo.update(
+                    {
+                        "dias_trabajados": dias_laborados,
+                        "dias_periodo": dias_periodo,
+                        "prorratear": prorrateado,
+                    }
+                )
+            else:
+                dias_laborados = pago.dias_laborados
+                dias_periodo = pago.dias_periodo
+                prorrateado = pago.prorrateado
 
             resultado = self.calcular_con_motor(
                 salario_base=round(float(componentes["salario_base"] or 0), 2),
@@ -404,6 +448,9 @@ class PagoService:
                         else float(resultado.aporte_pension_patronal)
                     ),
                     "isr_tramo": pago.isr_tramo if es_liquidacion else resultado.isr_tramo,
+                    "dias_laborados": dias_laborados,
+                    "dias_periodo": dias_periodo,
+                    "prorrateado": prorrateado,
                 }
             )
             if es_liquidacion:
@@ -508,9 +555,10 @@ class PagoService:
         dias_periodo = (periodo_fin - periodo_inicio).days + 1
         dias_trabajados = max(0, dias_periodo - dias_incidencias)
 
-        # Calcular salario proporcional (asumiendo mes comercial de 30 días)
-        salario_diario = float(empleado.salario_base) / 30.0
-        salario_base_periodo = round(salario_diario * min(dias_trabajados, 30), 2)
+        # Días efectivos sobre el mes comercial de 30 días: el prorrateo lo
+        # aplica el motor y el pago guarda con qué días se calculó, de modo
+        # que una edición posterior no devuelva el salario completo.
+        dias_efectivos = min(dias_trabajados, 30)
 
         # Las horas extra del período se capturan por tipo en el formulario
         # de pago; la generación automática solo calcula el salario base.
@@ -519,7 +567,10 @@ class PagoService:
             "tipo_pago": TipoPago.SALARIO_BASE.value,
             "periodo_inicio": periodo_inicio,
             "periodo_fin": periodo_fin,
-            "salario_base": salario_base_periodo,
+            "salario_base": float(empleado.salario_base),
+            "dias_trabajados": dias_efectivos,
+            "dias_periodo": 30,
+            "prorratear": True,
             "descripcion": f"Nómina {periodo_inicio.strftime('%Y-%m-%d')} a {periodo_fin.strftime('%Y-%m-%d')}",
         }
 
@@ -626,5 +677,21 @@ class PagoService:
                     errores.append("El salario base debe ser mayor a 0")
             except (ValueError, TypeError):
                 errores.append("El salario base debe ser un número válido")
+
+        # Días del prorrateo: solo se validan cuando el pago se prorratea,
+        # para no rechazar los pagos que no usan días (la mayoría).
+        if datos.get("prorratear"):
+            try:
+                dias_trabajados = int(datos.get("dias_trabajados") or 0)
+                dias_periodo = int(datos.get("dias_periodo") or 0)
+            except (ValueError, TypeError):
+                errores.append("Los días del período deben ser números enteros")
+            else:
+                if dias_periodo <= 0:
+                    errores.append("Los días del período deben ser mayores que cero")
+                elif dias_trabajados < 0 or dias_trabajados > dias_periodo:
+                    errores.append(
+                        "Los días trabajados deben estar entre 0 y los días del período"
+                    )
 
         return errores

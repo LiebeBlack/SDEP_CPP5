@@ -16,8 +16,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Un solo job de pruebas y calidad: las herramientas ya estaban declaradas
+  # (requirements-dev.txt, .flake8, pyproject.toml) pero no se ejecutaban en
+  # ningún sitio, de modo que el código podía alejarse del estilo y de los
+  # tipos sin que nada avisara. El job de compilación depende de este.
   tests:
-    name: Pruebas (pytest)
+    name: Pruebas y calidad
     runs-on: ubuntu-latest
     steps:
       - name: Clonar repositorio
@@ -35,8 +39,33 @@ jobs:
 
       - name: Instalar dependencias
         run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -r requirements-dev.txt
+
+      - name: Verificar estilo (flake8)
+        run: python -m flake8 src sync_agent updater tools build.py
+
+      - name: Verificar formato (black)
+        run: python -m black --check src sync_agent updater tools tests build.py
+
+      - name: Verificar orden de importaciones (isort)
+        run: python -m isort --check-only src sync_agent updater tools tests build.py
+
+      - name: Verificar tipos (mypy)
+        run: python -m mypy src sync_agent updater tools build.py
+
+      - name: Verificar documentación y espejos del portal
+        run: python tools/verify_docs.py
+
+      - name: Verificar que el catálogo del portal esté regenerado
+        run: |
+          # Alarma de deriva: el portal sirve primero las copias locales, así
+          # que un documento editado sin regenerar el catálogo dejaría al
+          # lector viendo contenido viejo. Si el comando cambia algo, falla.
+          python tools/generate_docs_bundle.py
+          if ! git diff --exit-code -- docs/; then
+            echo "ERROR: docs/ está desincronizado; ejecute tools/generate_docs_bundle.py y confirme los cambios"
+            exit 1
+          fi
 
       - name: Ejecutar pruebas
         run: python -m pytest tests/ -q -p no:cacheprovider

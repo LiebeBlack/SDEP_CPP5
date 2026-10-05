@@ -326,3 +326,79 @@ Las Fases 0, 1 y 2 son de bajo riesgo y pueden ejecutarse de inmediato. La Fase 
 ---
 
 *Documento generado como auditoría y hoja de ruta. Las cifras de cobertura y número de pruebas deben completarse con la medición real de la Fase 0 antes de considerarse cerrado.*
+
+---
+
+# Registro de ejecución (2026-10-05)
+
+La ejecución se hizo **sin intérprete de Python** en la máquina (el alias de
+Microsoft Store intercepta `python` y `py` no existe), así que ninguna fase
+pudo verificarse ejecutando la suite. Cada edición se releyó después de
+aplicarla y el detalle vive en `CORRECCIONES_EJECUTADAS.md`.
+
+| Fase | Estado | Evidencia / desviación |
+|---|---|---|
+| 0 — Línea base verificable | **Bloqueada** | Sin intérprete. Ninguna cifra medida; prohibido citar las heredadas. |
+| 1 — Higiene del repositorio | **Parcial** | `.gitignore` ya excluye `*.db.gz`, `backups/` y `hang_stack.txt`; `git rm --cached` no se ejecutó por ser decisión del responsable. |
+| 2 — Correcciones de código | **Aplicada (sin ejecutar)** | 15 filas en `CORRECCIONES_EJECUTADAS.md` (tanda 1), incluida la prueba de coherencia del mapa de permisos. |
+| 3 — GUI académica | **Aplicada, con ajuste de diseño** | Dos módulos con pestañas (`estudiantes`, `notas`) en lugar de cuatro frames: el tope de `Ctrl+1..9` no admite tres módulos nuevos y el plan exigía no romper ningún atajo. Cubren estudiantes, grados, matrículas, notas y periodos. |
+| 4 — Pruebas académicas | **Aplicada (sin ejecutar)** | `tests/test_academico.py`, `tests/test_notas.py` y `tests/test_tokens_sesion.py`, con la unicidad de cédula contra el esquema, el cierre de periodo por la vía del servicio y por SQL directo, la autorización docente/administración y la expiración/revocación de tokens. |
+| 5 — Sincronización | **Aplicada (sin ejecutar)** | Cinco tablas académicas en `ENTIDADES`, `tokens_sesion` fuera, `notas_finales` en `CAMPOS_SENSIBLES`, clave natural compuesta evaluada en el receptor y pruebas de registro, integración y no-replicación del token. |
+| 6 — Documentación y portal | **Aplicada, con una desviación** | Hallazgo B corregido (`README` 32 archivos, versiones 3.0.1, atajos `Ctrl+1..9`, cifras de 1.0.4 marcadas como históricas), módulo académico documentado en `README.md`, `GUIA_USUARIO.md`, `DOCUMENTACION_TECNICA.md` y `ESTRUCTURA_PROYECTO_COMPLETO.md`, árbol de `ESTRUCTURA` y de `NOTAS` ajustados a la realidad. `docs/content/` sincronizado por copia y `docs/docs_data.js` **reconstruido desde el blob de `HEAD` reproduciendo el serializador oficial** (orden de claves, `ensure_ascii=False`, contenido CRLF→LF y regla de redondeo de Python): verificado con Perl —20/20 entradas idénticas a su `.md`, 15 líneas de diferencia que son exactamente los campos recalculados—. Además se corrigió el dato duro de `docs/index.html` (versión 3.0.0→3.0.1 y «388 pruebas en 20 archivos»→550 funciones en 32) y se añadió la tarjeta del módulo académico. **La herramienta oficial sigue pendiente de ejecutar** (debe reproducir el mismo resultado). |
+| 7 — Verificación de cierre | **Pendiente** | Exige intérprete: suite, linters, `build.py`, `verify_docs.py`. |
+
+## Cambios de alcance respecto al plan
+
+1. **Frames académicos: de cuatro a dos.** El plan preveía `academico_frame.py`,
+   `estudiantes_frame.py`, `grados_frame.py` y `notas_frame.py`. Con nueve módulos
+   de tope, la interfaz se resolvió con dos módulos con pestañas que exponen la
+   misma funcionalidad sin que ningún módulo quede sin atajo.
+2. **Clave natural compuesta.** El plan declaraba claves naturales con columnas
+   foráneas; se comprobó que en el emisor esas columnas son ids locales, de modo
+   que la clave compuesta se evalúa **solo en el receptor**, con el payload ya
+   traducido. La clave simple (cédula, nombre de periodo) sigue gobernando la
+   adopción de identidad entre equipos.
+3. **Regeneración del portal sin Python.** Se actualizó `docs/docs_data.js`
+   reproduciendo el generador oficial (formato, orden de claves, contenido
+   normalizado y redondeo) y se validó contra el blob de `HEAD`: solo cambian
+   los 15 campos recalculados de las cinco entradas editadas. El comando
+   oficial (`python tools/generate_docs_bundle.py`) sigue siendo el paso de
+   cierre y debe producir un archivo equivalente.
+
+## Pendientes que dependen de un equipo con Python
+
+```bash
+python -m pytest tests/ -q
+python -m pytest tests/ -q --cov=src --cov-report=term
+python -m flake8 src sync_agent updater tools tests
+python -m black --check src sync_agent updater tools tests
+python -m isort --check-only src sync_agent updater tools tests
+python -m mypy src
+python tools/generate_docs_bundle.py
+python tools/verify_docs.py
+python build.py --exe
+```
+
+Decisiones del responsable todavía abiertas: retirar del índice `hang_stack.txt`
+y `backups/` (`git rm --cached`) y, si las copias contienen datos personales
+reales, decidir si se reescribe el historial.
+
+## Estado Git al cierre de la tanda
+
+- `HEAD` = `f56c925` («security copy», creado por el responsable): contiene ya el
+  código y las pruebas de esta tanda —`estudiantes_frame.py`, `notas_frame.py`,
+  `main_window.py`, `security.py`, `sync_agent/*` y los seis archivos de prueba—
+  junto con `README.md`, `GUIA_USUARIO.md` y `CORRECCIONES_EJECUTADAS.md`.
+- Queda **sin commitear** el lote de documentación posterior a esa
+  instantánea: `DOCUMENTACION_TECNICA.md`, `ESTRUCTURA_PROYECTO_COMPLETO.md`,
+  `NOTAS_DESARROLLO.md`, `PLAN_MAESTRO_SDP_CPP5.md`, los espejos de
+  `docs/content/`, `docs/docs_data.js` y `docs/index.html`.
+- Verificación estática final con Perl y con el portal en navegador: el
+  catálogo decodifica (20/20 entradas, sin ids duplicados), cada `content` es
+  **idéntico** al de su `.md` normalizado, `wordCount`/`readingTime` siguen la
+  regla oficial, los espejos coinciden y `git diff` del catálogo son 15 líneas
+  (los campos recalculados). El portal servido en local muestra la versión
+  3.0.1, las 550 funciones de prueba y la tarjeta académica, y abre los
+  documentos con el contenido vigente. Sin intérprete Python no hay verificación
+  de ejecución: la suite, los linters, `build.py` y `tools/verify_docs.py`
+  siguen pendientes en este equipo.

@@ -126,7 +126,7 @@ La integración continua se reparte entre dos workflows complementarios.
 
 **`.github/workflows/build.yml`** (integración y empaquetado):
 
-1. **Pruebas**: ejecuta la suite completa de pytest sobre los 27 archivos de
+1. **Pruebas**: ejecuta la suite completa de pytest sobre los 32 archivos de
    `tests/` en cada push a `main` o `develop`.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).

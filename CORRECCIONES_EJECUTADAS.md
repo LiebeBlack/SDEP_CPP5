@@ -40,6 +40,17 @@
 | 23 | 5 | `sync_agent/merge.py` | `notas_finales` entra en `CAMPOS_SENSIBLES` (`calificacion`): todo choque queda auditado aunque la regla general lo resuelva. | `test_sync_academico.py` |
 | 24 | 5 | `tests/test_sync_academico.py`, `tests/test_sync_integracion.py` (nuevo/ampliado) | Registro de las cinco tablas (claves foráneas, baja lógica de matrículas, clave compuesta sobre columnas reales), más tres pruebas de integración contra el nodo central: la estructura académica viaja con las claves foráneas como UUID, un token de sesión no sale del equipo y una nota ajena se unifica por su clave compuesta sin duplicarse. | pytest |
 
+## Tanda 2 — Fase 6 (documentación y portal)
+
+| # | Hallazgo | Archivo(s) | Cambio | Verificación pendiente |
+|---|---|---|---|---|
+| 25 | B.2 | `NOTAS_DESARROLLO.md` | Nueva sección «Versión vigente: 3.0.1» (módulo académico, sincronización y correcciones de la auditoría, con la advertencia de que no se ha ejecutado la suite); pie del documento a 3.0.1. Las cifras de la sección 1.0.4 quedan marcadas como **históricas** en lugar de borrarse. | Revisión manual |
+| 26 | B.1, B.6 | `README.md` | 32 archivos de prueba (eran 25 en la auditoría, 27 al corregirlos y 28 con la prueba de permisos de la tanda 1; la tanda 2 sumó los cuatro académicos), tabla de atajos `Ctrl+1..9`, sección del módulo académico y tablas de base de datos ampliadas. | Revisión manual |
+| 27 | B.3, B.2 | `GUIA_USUARIO.md` | Sección «Módulos Académicos» (estudiantes, grados y matrículas, notas, tokens, cierre y reapertura de periodo), tabla de atajos a `Ctrl+1..9` y versión del sistema a 3.0.1. | Revisión manual |
+| 28 | B.1, B.2 | `DOCUMENTACION_TECNICA.md`, `ESTRUCTURA_PROYECTO_COMPLETO.md` | Atajos a `Ctrl+1..9`; sección técnica del módulo académico (modelo, token, disparadores, sincronización); árbol de `ESTRUCTURA` corregido: archivos que no existen (`setup.py`, `build.spec`, `pytest.ini`, `.pylintrc.json`, `.black`, `.isort.cfg`, `.vscode/`), subcarpetas de `tests/` inexistentes y `assets/` real; sección de herramientas separada entre las que se usan y las evaluadas. | Revisión manual |
+| 29 | F.2 | `docs/content/`, `docs/docs_data.js` | Las copias del portal quedaron sincronizadas por copia directa y el catálogo embebido se **reconstruyó desde el blob de `HEAD`** con un script Perl que reproduce al generador oficial: mismo formato y orden de claves, `ensure_ascii=False`, contenido CRLF→LF y `readingTime` con la regla de redondeo de Python. Comprobado con Perl: 20/20 entradas decodifican, sin ids duplicados, cada `content` es idéntico a su `.md` y `git diff` del catálogo son **15 líneas** (los tres campos recalculados de las cinco entradas editadas). **El portal debe regenerarse con la herramienta oficial** cuando haya intérprete. | `tools/verify_docs.py` + `tools/generate_docs_bundle.py` |
+| 30 | B.2, F.2 | `docs/index.html`, `NOTAS_DESARROLLO.md` | Datos duros del portal corregidos contra la versión vigente y la suite real: `v3.0.0`→`v3.0.1` y «388 pruebas en 20 archivos»→**550 funciones en 32 archivos** (recuento estático), más una tarjeta «Módulo Académico» en la parrilla de módulos. Árbol de `NOTAS_DESARROLLO.md` alineado con el repositorio (módulos, modelos y servicios académicos; 32 archivos de prueba). | Navegador sobre el portal servido en local + relectura |
+
 ### Decisiones de diseño tomadas en esta tanda
 
 - **Dos módulos académicos, no cuatro.** El plan preveía `academico_frame`, `estudiantes_frame`, `grados_frame` y `notas_frame`; con siete módulos previos, tres frames nuevos superan el tope de nueve atajos directos y el cuarto módulo quedaría sin `Ctrl+N`. La interfaz se resolvió con dos módulos por pestañas que dejan **todos** los datos alcanzables dentro del tope, sin romper ningún atajo existente.
@@ -60,7 +71,7 @@
 |---|---|
 | Fase 1 — `git rm --cached hang_stack.txt` y `git rm -r --cached backups` | Es una operación de índice Git; el historial no se reescribe y la decisión es del responsable. No se ejecutó ningún comando git. |
 | Fase 3–5 — GUI académica, pruebas y sincronización de tablas académicas | **Ejecutada** en la tanda 2 (dos módulos con pestañas, tres archivos de pruebas y las cinco tablas sincronizadas). Su verificación con la suite sigue pendiente por falta de intérprete. |
-| Fase 6 — documentación y portal (`NOTAS_DESARROLLO.md`, `GUIA_USUARIO.md`, `docs/content/`, cifras medidas) | Depende de medir la suite (Fase 0), imposible sin intérprete. |
+| Fase 6 — cifras medidas de pruebas y cobertura (`NOTAS_DESARROLLO.md` y documentación derivada) | Depende de medir la suite (Fase 0), imposible sin intérprete. Las desviaciones del Hallazgo B y la documentación del módulo académico sí quedaron corregidas; el portal se regeneró por script y falta el paso oficial (`python tools/generate_docs_bundle.py`). |
 | I.2 completo (persistir días/prorrateo en `pagos`) | Requiere migración de esquema y columnas de sincronización; no se hace sin poder ejecutar las migraciones. |
 | I.9 (auditar lecturas en `get_by_id`) | Es política de auditoría, no un defecto; se deja como decisión. |
 

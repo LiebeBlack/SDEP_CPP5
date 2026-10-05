@@ -4,6 +4,57 @@
 
 El proyecto se encuentra en un estado estable y funcional con todas las funcionalidades principales implementadas y documentadas.
 
+### Versión vigente: 3.0.1
+
+Esta versión hace alcanzable el **subdominio académico** que existía en la capa de
+datos sin interfaz, y cierra la auditoría estática de la versión 3.0.0.
+
+**Módulo académico en el producto**
+
+- Dos módulos nuevos en la barra lateral: **Estudiantes** (`Ctrl+8`), con el legajo y
+  la estructura escolar (grados, secciones y matrículas), y **Calificaciones**
+  (`Ctrl+9`), con las notas finales y los periodos académicos. Se resolvieron como dos
+  módulos con pestañas para no superar el tope de nueve atajos directos; `Ctrl+1..7`
+  conserva exactamente su significado anterior.
+- La escritura de notas se autoriza con un **token de sesión académico** (en memoria,
+  hash en la base): escribe la administración en cualquier grado y el docente asignado
+  solo en el suyo; el rol de solo lectura nunca escribe.
+- **Cerrar un periodo** bloquea sus notas en el servicio y en los disparadores de
+  SQLite (incluso por SQL directo); reabrirlo exige rol administrador y queda auditado.
+- Consolidado del periodo, boletín por estudiante y acta final del grado, además de la
+  exportación de notas y del legajo a Excel.
+
+**Datos académicos en la sincronización**
+
+- Las tablas `estudiantes`, `periodos_academicos`, `grados`, `matriculas` y
+  `notas_finales` se replican entre puestos; `tokens_sesion` queda fuera a propósito
+  por ser una credencial local.
+- `calificacion` es campo sensible: todo choque entre equipos se registra para su
+  revisión, y una nota creada en dos puestos se unifica por su clave compuesta
+  (estudiante, grado y materia) en lugar de duplicarse.
+
+**Correcciones de esta versión**
+
+- Módulo fantasma `reportes` fuera del mapa de permisos, con prueba de coherencia
+  entre menú, marcos y mapa (`tests/test_permisos_modulos.py`).
+- `log_message` usa `logging` (nivel por nombre, mensaje diferido) y su prueba verifica
+  el registro con `caplog` en lugar de stdout.
+- `.env.example` declara `APP_VERSION=3.0.1` y `README.md` cuenta los 32 archivos de prueba de la suite.
+- Liquidaciones con referencia `LIQ-<contrato>` fija; el recálculo de un pago respeta
+  días trabajados y prorrateo; el salario base vacío de un empleado falla con mensaje
+  claro y una cédula vacía no borra la existente.
+- Un valor idéntico con marca más reciente refresca la marca (convergencia del agente);
+  nómina y finiquito cuentan el mismo criterio de incidencias; `completar` solo
+  completa incidencias aprobadas.
+- `.gitignore` excluye `*.db.gz`, `backups/` y `hang_stack.txt` (los archivos siguen
+  en disco; retirarlos del índice de Git es una decisión del responsable).
+
+> **Advertencia de verificación:** estas correcciones se aplicaron por lectura estática,
+> sin intérprete de Python disponible en el equipo de la corrección. La primera
+> ejecución de la suite debe confirmar el resultado y medir de nuevo el número de
+> pruebas y la cobertura; hasta entonces, cualquier cifra heredada (por ejemplo las de
+> la sección 1.0.4) es histórica y no debe citarse como estado vigente.
+
 ## Características Implementadas
 
 ### ✅ Módulos Completos
@@ -50,6 +101,12 @@ El proyecto se encuentra en un estado estable y funcional con todas las funciona
 7. **Panel Analítico**
    - Indicadores clave y gráficos propios (barras, dona, línea)
    - Reportes PDF de contratos, vencimientos y movimiento anual
+
+8. **Módulo Académico** (incorporado en 3.0.1)
+   - Estudiantes: legajo con cédula única, nivel, representante y contactos
+   - Grados, secciones, docente responsable y matrícula por año escolar
+   - Notas finales con autorización por token, consolidado, boletín y acta
+   - Periodos académicos con cierre que bloquea las notas y reapertura auditada
 
 ### ✅ Infraestructura
 
@@ -112,6 +169,8 @@ SDEP_CPP5/
 │   │   ├── main_window.py      # Ventana principal
 │   │   ├── frames.py           # Frames de módulos históricos
 │   │   ├── contratos_frame.py  # Módulo de contratos
+│   │   ├── estudiantes_frame.py # Legajo, grados y matrículas
+│   │   ├── notas_frame.py      # Calificaciones y periodos académicos
 │   │   ├── widgets/            # Gráficos y KPIs propios (Canvas)
 │   │   ├── login_window.py     # Inicio de sesión
 │   │   └── theme.py            # Tema claro/oscuro
@@ -124,6 +183,12 @@ SDEP_CPP5/
 │   │   ├── pago.py           # Modelo pago
 │   │   ├── contrato.py        # Contrato laboral
 │   │   ├── configuracion.py   # Modelo configuración
+│   │   ├── estudiante.py      # Estudiante del legajo académico
+│   │   ├── grado.py           # Grado y sección del periodo
+│   │   ├── matricula.py       # Matrícula por estudiante y grado
+│   │   ├── nota_final.py      # Calificación por materia
+│   │   ├── periodo_academico.py # Año escolar abierto o cerrado
+│   │   ├── token_sesion.py     # Token académico (solo el hash)
 │   │   └── usuario.py        # Modelo usuario
 │   ├── nomina/                  # Motor de cálculo puro
 │   │   ├── tipos.py            # Datos de entrada y resultado
@@ -150,6 +215,9 @@ SDEP_CPP5/
 │   │   ├── pago_service.py
 │   │   ├── contrato_service.py
 │   │   ├── configuracion_service.py
+│   │   ├── academico_service.py # Legajo, grados, matrículas y periodos
+│   │   ├── nota_service.py      # Notas, consolidado, boletín y acta
+│   │   ├── token_sesion_service.py # Autorización de escritura de notas
 │   │   └── auth_service.py
 │   ├── utils/                   # Utilidades
 │   │   ├── helpers.py          # Funciones auxiliares
@@ -176,7 +244,7 @@ SDEP_CPP5/
 │   ├── config.py               # Configuración por equipo
 │   ├── __main__.py             # Interfaz de línea de comandos
 │   └── README.md               # Manual de operación
-├── tests/                       # Pruebas automatizadas: 26 archivos · 476 funciones
+├── tests/                       # Pruebas automatizadas: 32 archivos · 550 funciones (recuento estático)
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto
@@ -693,7 +761,8 @@ dejar de escribir en su propio SQLite en ningún momento.
   aplica también a la ventana de inicio de sesión.
 - **Atajos de teclado** en la ventana principal: Ctrl+1..6 (módulos),
   Ctrl+N (nuevo registro), Ctrl+F (buscar), Ctrl+S (guardar), F5
-  (actualizar) y Esc (cerrar diálogos / limpiar selección).
+  (actualizar) y Esc (cerrar diálogos / limpiar selección). *(En la versión
+  vigente los atajos de módulo son Ctrl+1..9; ver «Versión vigente: 3.0.1».)*
 - **Botones Ayuda y Acerca de** en la cabecera con guía rápida e
   información de la aplicación.
 - **Tarjetas del Dashboard navegables**: un clic lleva al módulo
@@ -723,9 +792,10 @@ dejar de escribir en su propio SQLite en ningún momento.
    - Caching de consultas y lazy loading quedan como mejoras pendientes
      para grandes volúmenes de datos
 
-3. **Testing**
+3. **Testing** *(cifras históricas de la versión 1.0.4; la medición vigente se
+   realiza con cada ejecución de la suite)*
    - **295 pruebas automatizadas** (unitarias, de integración y de humo
-     GUI), todas exitosas
+     GUI), todas exitosas en su momento
    - Cobertura de código: **57% total**; en la lógica de negocio (modelos,
      repositorios, servicios y utilidades) la cobertura supera el 70%
    - **Pruebas de humo GUI** (`tests/test_gui_smoke.py`) instancian la
@@ -800,6 +870,6 @@ Para más información, consulte:
 
 ---
 
-**Versión**: 3.0.0  
-**Estado**: Estable  
+**Versión**: 3.0.1  
+**Estado**: Estable (a la espera de ejecutar la suite en un equipo con Python)  
 **Última actualización**: 2026

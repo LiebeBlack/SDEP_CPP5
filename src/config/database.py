@@ -60,6 +60,11 @@ MIGRACIONES: dict[str, dict[str, str]] = {
         "aporte_seguro_patronal": "NUMERIC(10, 2)",
         "aporte_pension_patronal": "NUMERIC(10, 2)",
         "isr_tramo": "VARCHAR(50)",
+        # Prorrateo del período (días efectivos y bandera): permiten que
+        # editar un pago prorrateado lo recalcule con los mismos días.
+        "dias_laborados": "INTEGER",
+        "dias_periodo": "INTEGER",
+        "prorrateado": "INTEGER",
     },
 }
 

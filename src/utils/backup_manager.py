@@ -105,7 +105,15 @@ class BackupManager:
         raw_path = backup_info.get("path")
         if not isinstance(raw_path, str) or not raw_path:
             raise ValueError("Metadatos de backup sin ruta válida")
-        path = Path(raw_path).resolve()
+        candidato = Path(raw_path)
+        # Los metadatos vigentes guardan solo el nombre del archivo: la ruta
+        # absoluta del equipo de desarrollo no significa nada en otro y expone
+        # la estructura de su disco. Se siguen aceptando rutas absolutas
+        # dentro del almacén para no invalidar metadatos de versiones previas.
+        if candidato.parent == Path("."):
+            path = (self.backup_dir / candidato).resolve()
+        else:
+            path = candidato.resolve()
         try:
             path.relative_to(self.backup_dir.resolve())
         except ValueError as e:
@@ -277,7 +285,8 @@ class BackupManager:
             backup_info = {
                 "name": backup_name,
                 "filename": backup_filename,
-                "path": str(backup_path),
+                # Relativo al almacén de respaldos (ver ``_backup_path``).
+                "path": backup_filename,
                 "timestamp": timestamp,
                 "size_bytes": backup_path.stat().st_size,
                 "checksum": checksum,

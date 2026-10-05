@@ -105,7 +105,7 @@
 ```
 SDEP_CPP5/
 ├── docs/                 # Documentación
-├── src/                  # Código fuente (estructura real, versión 3.0.0)
+├── src/                  # Código fuente (estructura real, versión 3.0.1)
 │   ├── __init__.py
 │   ├── config/           # Configuración y siembra de parámetros
 │   │   ├── settings.py
@@ -114,12 +114,16 @@ SDEP_CPP5/
 │   │   ├── main_window.py     # Ventana principal, módulos y permisos
 │   │   ├── frames.py          # Módulos históricos (empleados, documentos…)
 │   │   ├── contratos_frame.py
+│   │   ├── estudiantes_frame.py  # Legajo, grados y matrículas (Ctrl+8)
+│   │   ├── notas_frame.py        # Notas y periodos académicos (Ctrl+9)
 │   │   ├── login_window.py
 │   │   ├── theme.py           # Paleta clara/oscura y estilos ttk
 │   │   └── widgets/           # Gráficos (barras, dona, línea) y KPIs
 │   ├── models/           # Modelos de datos (SQLAlchemy 2.x)
 │   │   ├── empleado.py, documento.py, incidencia.py, pago.py
 │   │   ├── contrato.py
+│   │   ├── estudiante.py, grado.py, matricula.py, nota_final.py
+│   │   ├── periodo_academico.py, token_sesion.py
 │   │   └── configuracion.py, usuario.py, enums.py, base.py
 │   ├── nomina/           # Motor de cálculo puro (sin BD ni interfaz)
 │   │   ├── tipos.py, parametros.py, motor.py
@@ -129,6 +133,8 @@ SDEP_CPP5/
 │   ├── services/         # Lógica de negocio por dominio
 │   │   ├── empleado, documento, incidencia, pago y configuración
 │   │   ├── contrato
+│   │   ├── academico_service.py, nota_service.py
+│   │   ├── token_sesion_service.py  # Tokens de sesión académicos
 │   │   └── auth_service.py    # Usuarios y política de credenciales
 │   ├── utils/            # Utilidades transversales
 │   │   ├── helpers.py, validators.py, security.py
@@ -137,49 +143,51 @@ SDEP_CPP5/
 │   │   ├── audit_logger.py    # Auditoría
 │   │   └── backup_manager.py, backup_scheduler.py
 │   └── main.py           # Punto de entrada y selftest
-├── tests/                # Tests
-│   ├── __init__.py
-│   ├── unit/
-│   ├── integration/
-│   └── gui/              # Tests de GUI
+├── tests/                # 32 archivos test_*.py (planos) + conftest.py
+│   ├── conftest.py       # Aislamiento de almacenamiento y base de prueba
+│   ├── test_*.py         # Unitarias, de integración, de sincronización y de GUI
+│   └── (sin subcarpetas: la suite es plana)
 ├── assets/               # Assets externos
-│   ├── icons/
-│   ├── images/
-│   └── fonts/
+│   └── app.ico           # Icono de la aplicación y del instalador
 ├── build/                # Directorio de build
 ├── dist/                 # Directorio de distribución (EXE)
 ├── spec/                 # PyInstaller specs
 │   └── app.spec
-├── .github/              # GitHub workflows
-├── .vscode/              # Configuración VS Code
+├── .github/              # GitHub workflows (build.yml: pruebas, build y release)
 ├── .env.example          # Variables de entorno
 ├── requirements.txt      # Dependencias
 ├── requirements-dev.txt  # Dependencias de desarrollo
-├── pyproject.toml       # Configuración Python moderna
-├── setup.py             # Setup package
-├── build.spec           # PyInstaller spec file
+├── pyproject.toml       # Configuración del proyecto y de las herramientas
+├── .flake8              # Configuración Flake8
 ├── build.py             # Script de build personalizado
-├── pytest.ini           # Configuración pytest
-├── .pylintrc.json       # Configuración Pylint
-├── .black              # Configuración Black
-├── .isort.cfg          # Configuración isort
-├── .flake8             # Configuración Flake8
+├── installer/           # Inno Setup (setup.iss) para Windows
+├── tools/               # generate_docs_bundle.py y verify_docs.py
+├── sync_agent/          # Paquete independiente de sincronización entre puestos
 └── README.md           # Documentación del proyecto
 ```
 
+> Nota: `build/` y `dist/` son salidas generadas por `build.py` y no viven en el
+> repositorio; el único spec de PyInstaller es `spec/app.spec`. La configuración
+> de pytest, black, isort y mypy se declara en `pyproject.toml`; no hay
+> `setup.py`, `pytest.ini`, `.pylintrc.json`, `.black` ni `.isort.cfg`.
+
 ### 3.2 Configuración de Herramientas (Python EXE)
+
+Lo que el proyecto **usa realmente**:
+
 ```
-🔧 Git: .gitignore, git hooks (pre-commit con Black/isort)
-🔧 Linting: Pylint, Flake8, Ruff
-🔧 Formateo: Black, isort, autopep8
-🔧 Type checking: mypy, pyright
-🔧 Testing: pytest, unittest, nose2, PyAutoGUI, pytest-qt
-🔧 Build: PyInstaller, cx_Freeze, Nuitka, Briefcase
-🔧 CI/CD: GitHub Actions, GitLab CI, CircleCI
-🔧 Virtual environments: venv, conda, poetry, pipenv
-🔧 PyInstaller: build.spec para configuración avanzada
-🔧 Nuitka: compilación a C++ para mejor rendimiento
+🔧 Git: .gitignore (backups, *.db.gz y residuos de depuración excluidos)
+🔧 Linting: Flake8 (select = F,E9,W6; .flake8)
+🔧 Formateo: Black e isort (declarados en pyproject.toml)
+🔧 Type checking: mypy (declarado en pyproject.toml)
+🔧 Testing: pytest (tests/, sin subcarpetas)
+🔧 Build: PyInstaller con spec/app.spec (Windows y Linux)
+🔧 CI/CD: GitHub Actions (build.yml)
 ```
+
+Herramientas evaluadas pero **no** integradas (no deben citarse como parte del
+flujo de trabajo): Pylint, Ruff, autopep8, pyright, unittest/nose2/PyAutoGUI,
+cx_Freeze, Nuitka, Briefcase, GitLab CI, CircleCI, conda, poetry y pipenv.
 
 ### 3.3 Variables de Entorno (Python EXE)
 ```

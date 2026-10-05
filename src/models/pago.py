@@ -6,7 +6,7 @@ Modelo de datos para pagos y nómina
 import logging
 from datetime import date
 from decimal import Decimal
-from sqlalchemy import Integer, String, Text, Date, ForeignKey, Numeric
+from sqlalchemy import Boolean, Integer, String, Text, Date, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, BaseModel
 from .enums import MetodoPago
@@ -67,6 +67,15 @@ class Pago(Base, BaseModel):
     aporte_seguro_patronal: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     aporte_pension_patronal: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     isr_tramo: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Prorrateo del período: días efectivos frente a los días del período
+    # comercial con que se calculó el pago. Se persisten para que editar un
+    # pago prorrateado lo recalcule con los mismos días (y no con el mes
+    # completo) y para poder auditar de dónde salió el salario pagado. Los
+    # pagos anteriores a estas columnas quedan en nulo: no consta prorrateo.
+    dias_laborados: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    dias_periodo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prorrateado: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     # Detalles adicionales
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -160,6 +169,9 @@ class Pago(Base, BaseModel):
         """Convierte el modelo a diccionario"""
         data = super().to_dict()
         data["dias_trabajados"] = self.dias_trabajados
+        data["dias_laborados"] = self.dias_laborados
+        data["dias_periodo"] = self.dias_periodo
+        data["prorrateado"] = self.prorrateado
         data["salario_diario"] = self.salario_diario
         data["total_deducciones"] = self.total_deducciones
         data["total_ingresos"] = self.total_ingresos

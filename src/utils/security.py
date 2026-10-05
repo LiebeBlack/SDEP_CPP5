@@ -443,8 +443,12 @@ class PermissionChecker:
                 "restore",
             ],
             "manager": ["create", "read", "update", "delete", "report"],
-            # update_own is intentionally not treated as update: Usuario has
-            # no employee-account ownership link to validate yet.
+            # ``update_own``: decisión explícita, no descuido. El rol Usuario
+            # no tiene un vínculo de propiedad con una cuenta de empleado que
+            # validar, así que el permiso NO se trata como ``update`` y hoy
+            # ningún módulo lo consume. Si algún día existe esa relación, el
+            # consumidor debe declararse en el módulo que corresponda y
+            # probarse; se conserva aquí como la capacidad reservada del rol.
             "user": ["read", "update_own"],
             "viewer": ["read"],
         }

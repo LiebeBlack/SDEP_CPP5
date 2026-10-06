@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+import sys
 import threading
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -698,6 +699,22 @@ class ServidorSync(ThreadingHTTPServer):
 
     daemon_threads = True
     allow_reuse_address = True
+
+    def handle_error(self, request, client_address) -> None:
+        """
+        Registra el fallo de una petición en lugar de volcar una traza
+
+        ``socketserver`` imprime la traza completa por consola cuando una
+        petición escapa de su manejador, de modo que una desconexión normal de
+        un cliente (o el fallo al responder a una conexión ya cerrada) parecía
+        una avería del nodo. Se distingue el corte de conexión del fallo
+        inesperado: el primero se anota sin traza y el segundo con ella.
+        """
+        error = sys.exc_info()[1]
+        if isinstance(error, (ConnectionError, TimeoutError, OSError)):
+            logger.info("Conexión con %s interrumpida: %s", client_address, error)
+            return
+        logger.error("Fallo atendiendo a %s", client_address, exc_info=True)
 
     def __init__(self, config: ServidorConfig, nucleo: NucleoCentral | None = None):
         self.nucleo = nucleo or NucleoCentral(config)

@@ -4,6 +4,8 @@
 **Origen:** `OBSERVACIONES_CORRECCIONES.md` (inventario) y `PLAN_MAESTRO_SDP_CPP5.md` (fases).
 **Método:** edición estática, sin ejecución. **No hay Python en la máquina** (el alias de Microsoft Store intercepta `python`; `py` no existe), así que **ninguna corrección fue verificada ejecutando la suite**. Cada edición sí se releyó después de aplicarla para comprobar coherencia sintáctica, y las pruebas existentes se revisaron antes de tocar su comportamiento.
 
+> **Actualización (2026-10-06):** la verificación pendiente ya se ejecutó con CPython 3.15.0rc3 en Windows. El resultado, los defectos que destapó y lo que sigue abierto constan en **«Verificación ejecutada»**, al final de este documento.
+
 > Regla de esta tabla: una fila vale como «aplicado» solo si el código quedó editado en disco; la columna «verificación» dice exactamente qué falta.
 
 ## Correcciones aplicadas
@@ -86,3 +88,57 @@ python tools/verify_docs.py
 ```
 
 **Advertencia honesta:** hasta que esos comandos no se ejecuten, las correcciones son estáticamente razonadas, no verificadas. Cualquier fallo que aparezca debe reportarse como regresión de esta tanda, no maquillarse.
+
+---
+
+# Verificación ejecutada
+
+**Fecha:** 2026-10-06
+**Entorno:** Windows, CPython 3.15.0rc3, SQLAlchemy 2.1.3, customtkinter 6.0.0,
+reportlab 5.0.1, Pillow 12.3.0, openpyxl 3.1.5, pytest 9.1.1.
+**Instalación del intérprete:** `uv python install 3.15` (sin tocar el sistema);
+las dependencias se instalaron en un entorno virtual local del repositorio.
+
+## Resultado de la suite
+
+| Comprobación | Resultado |
+|---|---|
+| `pytest tests/` | **551 pruebas, 32 archivos: 551 exitosas, 0 fallos, 0 errores** (200 s) |
+| Cobertura total (`--cov=src`) | **56 %** (13.464 sentencias, 5.908 sin cubrir) |
+| Cobertura de `src/services` | **76 %** |
+| Cobertura de `src/nomina` | **89 %** |
+| `flake8 src sync_agent updater tools build.py` | sin hallazgos |
+| `black --check` (131 archivos) | sin cambios pendientes |
+| `isort --check-only` | sin cambios pendientes |
+| `mypy src sync_agent updater tools build.py` | **sin errores en 98 archivos** |
+| `tools/verify_docs.py` | todos los chequeos pasan |
+| `tools/generate_docs_bundle.py` | regenera `docs/` de forma idempotente |
+| `python src/main.py --selftest` | código de salida **0** (base nueva y base con esquema anterior de matrículas) |
+
+## Defectos que solo aparecieron al ejecutar
+
+Ninguno de estos se veía por lectura estática; todos están corregidos y con prueba.
+
+| # | Síntoma | Causa | Corrección |
+|---|---|---|---|
+| 1 | **76 errores en cascada** en casi todos los archivos de prueba | `_reset_database` borraba todo en una transacción; los disparadores de inmutabilidad abortaban el `DELETE` de `notas_finales` de un periodo cerrado y **revertían el reseteo completo**, dejando filas de la prueba anterior | `tests/conftest.py`: reabrir los periodos antes de vaciar |
+| 2 | `test_notas` caía tras cerrar un periodo | mismo que el anterior (se reproducía incluso con el archivo aislado) | mismo |
+| 3 | El módulo de **Notas** abría sin grado seleccionado | el selector de periodo nacía en `"Todos"`, que es un valor válido, así que la comprobación `get() not in valores` nunca elegía el año en curso | `src/gui/notas_frame.py`: selección inicial vacía |
+| 4 | Retirar y volver a matricular fallaba con violación de unicidad | restricción `UNIQUE (estudiante_id, grado_id)` global; una matrícula retirada (`activa = 0`) bloqueaba la nueva | índice **parcial** (`WHERE activa = 1`) + migración `migrar_matriculas_unicidad_activa`, con prueba en `test_migraciones.py` |
+| 5 | `test_backup_corrupto_detectado` no encontraba el archivo | la prueba usaba la ruta cruda de los metadatos, que hoy es **relativa** al almacén (a propósito, para no exponer rutas del equipo) | `tests/test_backups.py`: componer la ruta con el directorio del gestor |
+| 6 | El test de fechas invertidas no ejercitaba la regla | los datos del caso (`30/06/2026` → `01/09/2026`) **no estaban invertidos** | `tests/test_academico.py`: invertir el dato |
+| 7 | `flake8`: 4 `F824` en los módulos académicos | `nonlocal fila` declarado sin asignación dentro de la función | `src/gui/estudiantes_frame.py`, `src/gui/notas_frame.py` |
+| 8 | `mypy`: 6 errores | tres variables sin anotación en `pago_service`, un `Any` en `notas_frame`, `os.getuid` (solo POSIX) en `settings.py` y un `Path` inferido como `Any` en `backup_manager` | anotaciones, `bool(...)`, `getattr(os, "getuid", None)` y `path: Path` |
+| 9 | `black`/`isort`: 69 archivos por formatear y 15 con importaciones desordenadas | nunca se habían ejecutado (hallazgo G.1) | `black` + `isort` sobre todo el árbol |
+| 10 | **Error de importación** tras pasar `isort` | reordenó `src/config/__init__.py`, cuya dependencia de orden era implícita | `database.py` importa la **instancia** desde `src.config.settings` (sin depender del orden) |
+| 11 | `test_migraciones.py` fallaba **al ejecutarse solo** | las migraciones crean un respaldo previo y el archivo de la base de la suite no existía | fixture autouse que inicializa la base |
+| 12 | Fuga de conexiones: `QueuePool ... timeout` en pruebas GUI tardías | el fixture de ventana principal nunca cerraba la sesión propia de la ventana (el cierre real usa `_cleanup`) | `tests/test_gui_smoke.py`: llamar a `_cleanup()` al desmontar |
+
+## Lo que sigue abierto (decisión del responsable)
+
+| Asunto | Por qué no se hizo aquí |
+|---|---|
+| `hang_stack.txt` y `backups/` siguen **rastreados** en Git | Retirarlos del índice (`git rm --cached`) cambia el índice del repositorio y el historial no se reescribe; el `.gitignore` ya los excluye. Es una operación de Git que decide el responsable. |
+| I.2 completo (persistir días y prorrateo en `pagos`) | Requiere columnas nuevas y migración de esquema. |
+| I.9 (auditar lecturas en `get_by_id`) | Es política de auditoría, no un defecto. |
+| I.5 (criterio único de vacaciones) | Decisión funcional: qué debe contar para nómina y para finiquito. |

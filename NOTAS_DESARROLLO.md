@@ -49,11 +49,20 @@ datos sin interfaz, y cierra la auditoría estática de la versión 3.0.0.
 - `.gitignore` excluye `*.db.gz`, `backups/` y `hang_stack.txt` (los archivos siguen
   en disco; retirarlos del índice de Git es una decisión del responsable).
 
-> **Advertencia de verificación:** estas correcciones se aplicaron por lectura estática,
-> sin intérprete de Python disponible en el equipo de la corrección. La primera
-> ejecución de la suite debe confirmar el resultado y medir de nuevo el número de
-> pruebas y la cobertura; hasta entonces, cualquier cifra heredada (por ejemplo las de
-> la sección 1.0.4) es histórica y no debe citarse como estado vigente.
+> **Verificación ejecutada (2026-10-06, Windows + CPython 3.15.0rc3):** las
+> correcciones se aplicaron primero por lectura estática y después se ejecutaron.
+> La suite completa quedó en **551 pruebas sobre 32 archivos, todas exitosas**
+> (0 fallos, 0 errores) y la cobertura medida es **56 % total** (servicios 76 %,
+> motor de nómina 89 %). `flake8`, `black --check`, `isort --check-only`,
+> `mypy` (98 archivos) y `tools/verify_docs.py` pasan sin hallazgos, y el arranque
+> real (`python src/main.py --selftest`) devuelve código 0, tanto sobre una base
+> nueva como sobre una base con el esquema anterior de matrículas (la migración
+> reconstruye la tabla y deja solo la matrícula activa como única). Los defectos
+> que esa primera ejecución destapó —reseteo de la base de prueba bloqueado por los
+> disparadores de inmutabilidad, selector de periodo del módulo de notas, rematrícula
+> tras retirar y resolución de la ruta del respaldo en su prueba— quedaron corregidos
+> y cubiertos por pruebas. Las cifras de la sección 1.0.4 siguen marcadas como
+> históricas.
 
 ## Características Implementadas
 
@@ -244,7 +253,7 @@ SDEP_CPP5/
 │   ├── config.py               # Configuración por equipo
 │   ├── __main__.py             # Interfaz de línea de comandos
 │   └── README.md               # Manual de operación
-├── tests/                       # Pruebas automatizadas: 32 archivos · 550 funciones (recuento estático)
+├── tests/                       # Pruebas automatizadas: 32 archivos · 551 casos (medido)
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto

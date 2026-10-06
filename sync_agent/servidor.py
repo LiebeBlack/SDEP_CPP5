@@ -203,7 +203,11 @@ class NucleoCentral:
             return
         ahora = ahora_utc()
         with self._candado:
-            marcas = [m for m in self._peticiones.get(dispositivo_id, []) if ahora - m < timedelta(minutes=1)]
+            marcas = [
+                m
+                for m in self._peticiones.get(dispositivo_id, [])
+                if ahora - m < timedelta(minutes=1)
+            ]
             if len(marcas) >= self.config.peticiones_por_minuto:
                 raise ErrorPeticion("Demasiadas peticiones; intente más tarde", 429)
             marcas.append(ahora)
@@ -353,7 +357,9 @@ class NucleoCentral:
     # ------------------------------------------------------------------
     # Binarios
     # ------------------------------------------------------------------
-    def guardar_blob(self, dispositivo: DispositivoSync, hash_archivo: str, contenido: bytes) -> dict:
+    def guardar_blob(
+        self, dispositivo: DispositivoSync, hash_archivo: str, contenido: bytes
+    ) -> dict:
         """Almacena un archivo verificado por su hash (queda deduplicado)"""
         if len(contenido) > self.config.max_bytes_blob:
             raise ErrorPeticion("El archivo supera el tamaño máximo admitido", 413)
@@ -392,7 +398,6 @@ class NucleoCentral:
         El token no se puede recuperar después: en la base solo queda su hash.
         """
         from src.utils.security import SecurityValidator
-
         from sync_agent.comun import nuevo_uuid
 
         dispositivo_id = nuevo_uuid()
@@ -423,9 +428,9 @@ class NucleoCentral:
                     "nombre": fila.nombre,
                     "activo": bool(fila.activo),
                     "creado_en": fila.creado_en.isoformat() if fila.creado_en else None,
-                    "ultima_conexion": fila.ultima_conexion.isoformat()
-                    if fila.ultima_conexion
-                    else None,
+                    "ultima_conexion": (
+                        fila.ultima_conexion.isoformat() if fila.ultima_conexion else None
+                    ),
                 }
                 for fila in sesion.query(DispositivoSync).order_by(DispositivoSync.nombre).all()
             ]
@@ -480,9 +485,9 @@ class NucleoCentral:
         try:
             limite = ahora_utc() - timedelta(days=max(1, dias))
             borradas = (
-                sesion.query(OpServidor).filter(OpServidor.recibido_en < limite).delete(
-                    synchronize_session=False
-                )
+                sesion.query(OpServidor)
+                .filter(OpServidor.recibido_en < limite)
+                .delete(synchronize_session=False)
             )
             sesion.commit()
             logger.info("Historial del nodo central purgado: %s operaciones", borradas)
@@ -503,9 +508,11 @@ class NucleoCentral:
                 "conflictos_pendientes": int(
                     sesion.query(ConflictoSync).filter(ConflictoSync.resuelto == 0).count()
                 ),
-                "archivos": len(list(self.config.dir_blobs.rglob("*")))
-                if self.config.dir_blobs.exists()
-                else 0,
+                "archivos": (
+                    len(list(self.config.dir_blobs.rglob("*")))
+                    if self.config.dir_blobs.exists()
+                    else 0
+                ),
             }
         finally:
             sesion.close()
@@ -532,7 +539,9 @@ class NucleoCentral:
         ]
 
     @staticmethod
-    def _bitacora(sesion, dispositivo: str | None, evento: str, detalle: str, correcto: bool) -> None:
+    def _bitacora(
+        sesion, dispositivo: str | None, evento: str, detalle: str, correcto: bool
+    ) -> None:
         """Añade una entrada a la bitácora del nodo central"""
         sesion.add(
             BitacoraSync(
@@ -647,9 +656,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
             raise ErrorPeticion("Cabecera Content-Length inválida") from None
         if longitud <= 0:
             return b""
-        limite = max(
-            self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob
-        )
+        limite = max(self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob)
         if longitud > limite:
             raise ErrorPeticion(f"El cuerpo supera el límite de {limite} bytes", 413)
         return self.rfile.read(longitud)
@@ -707,6 +714,7 @@ class ServidorSync(ThreadingHTTPServer):
         contexto.load_cert_chain(certfile=certificado, keyfile=clave)
         self.socket = contexto.wrap_socket(self.socket, server_side=True)
         logger.info("Servicio protegido con TLS")
+
     def detener(self) -> None:
         """Pide el cierre del bucle de servicio sin bloquear a quien llama"""
         threading.Thread(target=self.shutdown, daemon=True).start()

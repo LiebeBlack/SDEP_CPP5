@@ -6,18 +6,18 @@ Este servicio gestiona el ciclo de vida completo de incidencias,
 incluyendo registro, aprobación, rechazo y control de vigencia.
 """
 
+import logging
+import os
+import uuid
 from datetime import date
 from typing import TypeGuard
 
 from sqlalchemy.orm import Session
-import uuid
-import os
 
-from src.models import Incidencia, EstadoIncidencia
-from src.repositories import IncidenciaRepository
 from src.config import settings
+from src.models import EstadoIncidencia, Incidencia
+from src.repositories import IncidenciaRepository
 from src.utils.helpers import ruta_dentro_de
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -216,11 +216,7 @@ class IncidenciaService:
                     )
             raise
 
-        if (
-            ruta_nueva
-            and self._ruta_gestionada(ruta_anterior)
-            and os.path.exists(ruta_anterior)
-        ):
+        if ruta_nueva and self._ruta_gestionada(ruta_anterior) and os.path.exists(ruta_anterior):
             try:
                 os.remove(ruta_anterior)
             except OSError:
@@ -240,9 +236,8 @@ class IncidenciaService:
                 return False
 
             # Borrar el archivo solo después de confirmar la eliminación.
-            if (
-                self._ruta_gestionada(incidencia.documento_soporte_ruta)
-                and os.path.exists(incidencia.documento_soporte_ruta)
+            if self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
+                incidencia.documento_soporte_ruta
             ):
                 try:
                     os.remove(incidencia.documento_soporte_ruta)
@@ -353,8 +348,7 @@ class IncidenciaService:
             # (que contaba APROBADO y COMPLETADO); ahora ambos usan el mismo.
             estado = getattr(incidencia.estado, "value", incidencia.estado)
             if (
-                estado
-                in (EstadoIncidencia.APROBADO.value, EstadoIncidencia.COMPLETADO.value)
+                estado in (EstadoIncidencia.APROBADO.value, EstadoIncidencia.COMPLETADO.value)
                 and getattr(incidencia, "afecta_nominas", 1) == 1
             ):
                 inc_ini = (

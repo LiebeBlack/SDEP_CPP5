@@ -329,7 +329,9 @@ def test_un_token_invalido_se_detecta_por_http(servicio):
     from sync_agent.cliente import ClienteSync, ErrorAutenticacion
 
     dispositivo, _token = servicio.servidor.nucleo.crear_dispositivo("Puesto A")
-    cliente = ClienteSync(f"http://127.0.0.1:{servicio.puerto}", "token-falso", dispositivo, timeout=5)
+    cliente = ClienteSync(
+        f"http://127.0.0.1:{servicio.puerto}", "token-falso", dispositivo, timeout=5
+    )
     with pytest.raises(ErrorAutenticacion):
         cliente.recibir_ops(0)
 

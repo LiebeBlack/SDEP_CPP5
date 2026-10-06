@@ -4,11 +4,12 @@ Modelo de datos para documentos de empleados
 """
 
 from datetime import date
-from sqlalchemy import Integer, String, Text, Date, ForeignKey, LargeBinary
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .base import Base, BaseModel
-
 from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, ForeignKey, Integer, LargeBinary, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base, BaseModel
 
 if TYPE_CHECKING:
     from .empleado import Empleado

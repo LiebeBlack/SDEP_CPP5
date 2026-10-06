@@ -121,7 +121,11 @@ class AplicadorRemoto:
             resultado.motivo = MOTIVO_DUPLICADA
             return resultado
 
-        payload = loads(operacion.get("payload")) if isinstance(operacion.get("payload"), str) else operacion.get("payload")
+        payload = (
+            loads(operacion.get("payload"))
+            if isinstance(operacion.get("payload"), str)
+            else operacion.get("payload")
+        )
         if not isinstance(payload, dict):
             payload = {}
 
@@ -281,9 +285,7 @@ class AplicadorRemoto:
             columna_orm = registro.columna(tabla, clave)
             fila = self.session.query(descripcion.clase).filter(columna_orm == valor_clave).first()
             if fila is not None:
-                logger.info(
-                    "Se unifica %s por su clave natural %s=%s", tabla, clave, valor_clave
-                )
+                logger.info("Se unifica %s por su clave natural %s=%s", tabla, clave, valor_clave)
                 identidad.registrar(self.session, tabla, fila_uuid, fila.id)
                 return fila
 
@@ -428,9 +430,7 @@ class AplicadorRemoto:
                 continue
 
             if tamano > self.max_bytes_binario:
-                self._programar_blob(
-                    tabla, fila_uuid, campo, hash_remoto, tamano, BLOB_OMITIDO
-                )
+                self._programar_blob(tabla, fila_uuid, campo, hash_remoto, tamano, BLOB_OMITIDO)
                 logger.warning(
                     "El archivo de %s/%s (%s bytes) supera el límite; queda pendiente",
                     tabla,
@@ -443,7 +443,13 @@ class AplicadorRemoto:
         return aplicables
 
     def _programar_blob(
-        self, tabla: str, fila_uuid: str, columna: str, hash_remoto: str | None, tamano: int, estado: str
+        self,
+        tabla: str,
+        fila_uuid: str,
+        columna: str,
+        hash_remoto: str | None,
+        tamano: int,
+        estado: str,
     ) -> None:
         """Registra (o actualiza) un binario pendiente de transferencia"""
         if not hash_remoto:

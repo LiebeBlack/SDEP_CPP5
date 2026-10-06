@@ -3,17 +3,18 @@ PDF Generator
 Módulo de generación de documentos PDF
 """
 
-from reportlab.lib.pagesizes import letter, A4, landscape
-from reportlab.lib.units import inch
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 from datetime import date
 from xml.sax.saxutils import escape
 
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from reportlab.lib.pagesizes import A4, landscape, letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
 from src.models import Empleado
-from src.utils.helpers import format_date, format_currency
+from src.utils.helpers import format_currency, format_date
 
 
 class PDFGenerator:
@@ -127,8 +128,8 @@ class PDFGenerator:
 
     def _get_configuracion(self) -> dict:
         """Obtiene configuración de la institución"""
-        from src.services import ConfiguracionService
         from src.config import db_config
+        from src.services import ConfiguracionService
 
         session = db_config.get_session()
         try:
@@ -1245,7 +1246,9 @@ class PDFGenerator:
 
         periodo = self._texto_periodo(desde, hasta)
         if periodo:
-            story.append(Paragraph(f"Período certificado: <b>{periodo}</b>", self.styles["CustomData"]))
+            story.append(
+                Paragraph(f"Período certificado: <b>{periodo}</b>", self.styles["CustomData"])
+            )
             story.append(Spacer(1, 0.1 * inch))
 
         story.append(
@@ -1354,8 +1357,8 @@ class PDFGenerator:
 
         datos_empleado = [
             ["Empleado", escape(empleado.nombre_completo)],
-            ["Cédula", escape(str(empleado.cedula or ''))],
-            ["Cargo", escape(str(empleado.cargo or ''))],
+            ["Cédula", escape(str(empleado.cedula or ""))],
+            ["Cargo", escape(str(empleado.cargo or ""))],
             ["Ingreso", format_date(empleado.fecha_contratacion)],
             ["Egreso", format_date(fecha_egreso or date.today())],
             ["Antigüedad", f"{float(desglose.get('anos_servicio') or 0):.2f} año(s)"],
@@ -1476,7 +1479,12 @@ class PDFGenerator:
 
         config = self._get_configuracion()
         doc = SimpleDocTemplate(
-            output_path, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=28
+            output_path,
+            pagesize=landscape(A4),
+            rightMargin=30,
+            leftMargin=30,
+            topMargin=40,
+            bottomMargin=28,
         )
 
         story = [
@@ -1691,6 +1699,7 @@ class PDFGenerator:
         if hasta:
             return f"hasta {format_date(hasta)}"
         return ""
+
 
 # Instancia global del generador de PDFs
 pdf_generator = PDFGenerator()

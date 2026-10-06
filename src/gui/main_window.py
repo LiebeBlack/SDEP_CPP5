@@ -3,38 +3,39 @@ Main Window
 Ventana principal de la aplicación (requiere sesión iniciada)
 """
 
-import customtkinter as ctk
 import logging
 import threading
 import tkinter as tk
 from datetime import datetime, timedelta
 from tkinter import messagebox, ttk
 
-from src.config import settings, db_config
-from src.models import Usuario
-from src.utils.security import PermissionChecker
-from src.services.empleado_service import EmpleadoService
-from src.services.documento_service import DocumentoService
-from src.services.incidencia_service import IncidenciaService
-from src.services.pago_service import PagoService
-from src.services.configuracion_service import ConfiguracionService
-from src.gui.theme import (
-    setup_ui_raiz,
-    enable_windows_dpi_awareness,
-    aplicar_modo_apariencia,
-    COLORES,
-)
-from src.gui.frames import (
-    DashboardFrame,
-    EmpleadosFrame,
-    DocumentosFrame,
-    IncidenciasFrame,
-    NominaFrame,
-    ConfiguracionFrame,
-)
+import customtkinter as ctk
+
+from src.config import db_config, settings
 from src.gui.contratos_frame import ContratosFrame
 from src.gui.estudiantes_frame import EstudiantesFrame
+from src.gui.frames import (
+    ConfiguracionFrame,
+    DashboardFrame,
+    DocumentosFrame,
+    EmpleadosFrame,
+    IncidenciasFrame,
+    NominaFrame,
+)
 from src.gui.notas_frame import NotasFrame
+from src.gui.theme import (
+    COLORES,
+    aplicar_modo_apariencia,
+    enable_windows_dpi_awareness,
+    setup_ui_raiz,
+)
+from src.models import Usuario
+from src.services.configuracion_service import ConfiguracionService
+from src.services.documento_service import DocumentoService
+from src.services.empleado_service import EmpleadoService
+from src.services.incidencia_service import IncidenciaService
+from src.services.pago_service import PagoService
+from src.utils.security import PermissionChecker
 
 logger = logging.getLogger(__name__)
 
@@ -1026,9 +1027,7 @@ class MainWindow(ctk.CTk):
     def _programar_respaldo_periodico(self):
         """Verifica el respaldo automático y se reprograma cada 30 minutos"""
         if self.winfo_exists():
-            self._backup_timer = self.after(
-                30 * 60 * 1000, self._programar_respaldo_periodico
-            )
+            self._backup_timer = self.after(30 * 60 * 1000, self._programar_respaldo_periodico)
         try:
             self._verificar_respaldo_periodico()
         except Exception:
@@ -1113,8 +1112,7 @@ class MainWindow(ctk.CTk):
     def _on_respaldo_fallado(self) -> None:
         self._mostrar_aviso_respaldo(
             "Respaldo automático",
-            "No se pudo crear la copia de seguridad.\n"
-            "Revise el registro para más detalles.",
+            "No se pudo crear la copia de seguridad.\n" "Revise el registro para más detalles.",
         )
 
     def run(self) -> str:

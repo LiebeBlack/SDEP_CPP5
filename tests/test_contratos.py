@@ -138,9 +138,7 @@ def test_renovacion_encadena_contratos(servicio, empleado):
 
 
 def test_renovar_exige_fecha_de_fin(servicio, empleado):
-    contrato = servicio.crear_contrato(
-        _datos_contrato(empleado.id, fecha_inicio=date(2025, 1, 1))
-    )
+    contrato = servicio.crear_contrato(_datos_contrato(empleado.id, fecha_inicio=date(2025, 1, 1)))
     with pytest.raises(ValueError):
         servicio.renovar_contrato(contrato.id)
 
@@ -181,9 +179,7 @@ def test_empleados_sin_contrato(servicio, empleado):
 
 
 def test_terminar_contrato_genera_liquidacion_y_pago(session, servicio, empleado):
-    contrato = servicio.crear_contrato(
-        _datos_contrato(empleado.id, fecha_inicio=date(2024, 1, 1))
-    )
+    contrato = servicio.crear_contrato(_datos_contrato(empleado.id, fecha_inicio=date(2024, 1, 1)))
     resultado = servicio.terminar_contrato(
         contrato.id,
         motivo="renuncia",
@@ -223,9 +219,7 @@ def test_terminar_sin_liquidacion_no_crea_pago(session, servicio, empleado):
 
 
 def test_calculo_de_liquidacion_previo(servicio, empleado):
-    finiquito = servicio.calcular_liquidacion(
-        empleado.id, "renuncia", date(2026, 3, 1)
-    )
+    finiquito = servicio.calcular_liquidacion(empleado.id, "renuncia", date(2026, 3, 1))
     assert finiquito.anos_servicio >= 0
     assert finiquito.neto >= 0
     assert finiquito.total_asignaciones >= finiquito.neto
@@ -261,9 +255,7 @@ def test_liquidacion_sin_usuario_usa_referencia_liq(session, servicio, empleado)
     El flujo real de la GUI no envía registrado_por: la referencia debe
     seguir siendo LIQ-<número> (defecto I.1, corregido).
     """
-    contrato = servicio.crear_contrato(
-        _datos_contrato(empleado.id, fecha_inicio=date(2024, 1, 1))
-    )
+    contrato = servicio.crear_contrato(_datos_contrato(empleado.id, fecha_inicio=date(2024, 1, 1)))
     resultado = servicio.terminar_contrato(
         contrato.id,
         motivo="renuncia",

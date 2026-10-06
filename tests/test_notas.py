@@ -151,9 +151,7 @@ def test_el_docente_solo_escribe_en_su_grado(session, academico, notas, estructu
     assert nota.registrado_por == "profesor_notas"
 
 
-def test_un_rol_de_consulta_no_escribe_aunque_este_asignado(
-    session, academico, notas, estructura
-):
+def test_un_rol_de_consulta_no_escribe_aunque_este_asignado(session, academico, notas, estructura):
     consulta = Usuario(
         username="consulta_notas",
         password_hash="x",

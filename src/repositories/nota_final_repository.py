@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import Estudiante, Grado, NotaFinal
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -52,9 +53,7 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
     ) -> list[NotaFinal]:
         """Notas de un estudiante (opcionalmente filtradas por periodo)"""
         try:
-            query = self.session.query(NotaFinal).filter(
-                NotaFinal.estudiante_id == estudiante_id
-            )
+            query = self.session.query(NotaFinal).filter(NotaFinal.estudiante_id == estudiante_id)
             if periodo_id is not None:
                 query = query.join(Grado, NotaFinal.grado_id == Grado.id).filter(
                     Grado.periodo_id == periodo_id
@@ -66,9 +65,7 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
             )
             return []
         except Exception as e:
-            logger.error(
-                f"Error inesperado al listar notas del estudiante {estudiante_id}: {e}"
-            )
+            logger.error(f"Error inesperado al listar notas del estudiante {estudiante_id}: {e}")
             return []
 
     def get_una(self, estudiante_id: int, grado_id: int, materia: str) -> NotaFinal | None:
@@ -89,9 +86,7 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
             )
             return None
         except Exception as e:
-            logger.error(
-                f"Error inesperado al buscar la nota de {estudiante_id} en {materia}: {e}"
-            )
+            logger.error(f"Error inesperado al buscar la nota de {estudiante_id} en {materia}: {e}")
             return None
 
     def insertar_lote(self, filas: list[dict[str, Any]]) -> int:
@@ -162,7 +157,5 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
             )
             return []
         except Exception as e:
-            logger.error(
-                f"Error inesperado al consolidar las notas del periodo {periodo_id}: {e}"
-            )
+            logger.error(f"Error inesperado al consolidar las notas del periodo {periodo_id}: {e}")
             return []

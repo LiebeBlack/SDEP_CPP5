@@ -7,10 +7,10 @@ de empleados, incluyendo creación, actualización, eliminación, búsqueda y
 estadísticas.
 """
 
+import logging
 from datetime import date
 from typing import Any
 
-import logging
 from sqlalchemy.orm import Session
 
 from src.models import Empleado, TipoEmpleado
@@ -216,9 +216,7 @@ class EmpleadoService:
                 )
             except (ValueError, TypeError):
                 if num_campo == "salario_base":
-                    raise ValueError(
-                        "El salario base es requerido y debe ser numérico"
-                    ) from None
+                    raise ValueError("El salario base es requerido y debe ser numérico") from None
                 datos[num_campo] = None
                 logger.warning("Campo numérico inválido en %s: se descarta", num_campo)
             if num_campo == "salario_base" and datos[num_campo] is None:

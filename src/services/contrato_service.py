@@ -20,8 +20,8 @@ from src.models import (
     EstadoContrato,
     EstadoIncidencia,
     TipoContrato,
-    TipoPago,
     TipoIncidencia,
+    TipoPago,
 )
 from src.nomina import (
     EntradaFiniquito,
@@ -72,7 +72,11 @@ class ContratoService:
     def umbral_por_vencer(self) -> int:
         """Días de anticipación con los que se avisa de un contrato por vencer"""
         try:
-            return int(self.config_repository.get_valor("umbral_contrato_por_vencer_dias", DIAS_UMBRAL_DEFECTO))
+            return int(
+                self.config_repository.get_valor(
+                    "umbral_contrato_por_vencer_dias", DIAS_UMBRAL_DEFECTO
+                )
+            )
         except (SQLAlchemyError, TypeError, ValueError):
             return DIAS_UMBRAL_DEFECTO
 
@@ -195,9 +199,8 @@ class ContratoService:
         if "renovacion_automatica" in datos:
             contrato.renovacion_automatica = 1 if datos["renovacion_automatica"] else 0
 
-        if (
-            contrato.estado_valor == EstadoContrato.VIGENTE.value
-            and datos.get("sincronizar_empleado", False)
+        if contrato.estado_valor == EstadoContrato.VIGENTE.value and datos.get(
+            "sincronizar_empleado", False
         ):
             empleado = self.empleado_repository.get_by_id(contrato.empleado_id)
             if empleado:
@@ -243,9 +246,9 @@ class ContratoService:
             "tipo": tipo or anterior.tipo_valor,
             "cargo": anterior.cargo,
             "departamento": anterior.departamento,
-            "salario_pactado": nuevo_salario
-            if nuevo_salario is not None
-            else float(anterior.salario_pactado or 0),
+            "salario_pactado": (
+                nuevo_salario if nuevo_salario is not None else float(anterior.salario_pactado or 0)
+            ),
             "horas_semanales": anterior.horas_semanales,
             "fecha_inicio": inicio,
             "fecha_fin": nueva_fecha_fin,
@@ -359,9 +362,11 @@ class ContratoService:
             dias_vacaciones_anuales=dias_vacaciones_anuales,
             fecha_ingreso=ingreso,
             fecha_egreso=egreso,
-            dias_ya_disfrutados=a_decimal(dias_ya_disfrutados)
-            if dias_ya_disfrutados
-            else self._dias_vacaciones_disfrutados(empleado_id),
+            dias_ya_disfrutados=(
+                a_decimal(dias_ya_disfrutados)
+                if dias_ya_disfrutados
+                else self._dias_vacaciones_disfrutados(empleado_id)
+            ),
         )
 
         return calcular_finiquito(
@@ -385,7 +390,10 @@ class ContratoService:
         total = 0
         for incidencia in self.incidencia_repository.get_by_empleado(empleado_id):
             estado = getattr(incidencia.estado, "value", incidencia.estado)
-            if estado != EstadoIncidencia.APROBADO.value and estado != EstadoIncidencia.COMPLETADO.value:
+            if (
+                estado != EstadoIncidencia.APROBADO.value
+                and estado != EstadoIncidencia.COMPLETADO.value
+            ):
                 continue
             tipo = getattr(incidencia, "tipo_incidencia", None)
             tipo_valor = getattr(tipo, "value", tipo)

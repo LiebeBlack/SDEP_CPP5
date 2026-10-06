@@ -4,9 +4,9 @@ from datetime import date, timedelta
 
 import pytest
 
-from src.services.incidencia_service import IncidenciaService
-from src.services.empleado_service import EmpleadoService
 from src.models import EstadoIncidencia
+from src.services.empleado_service import EmpleadoService
+from src.services.incidencia_service import IncidenciaService
 
 
 @pytest.fixture()

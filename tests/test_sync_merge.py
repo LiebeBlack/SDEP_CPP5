@@ -116,7 +116,9 @@ def test_campos_distintos_se_fusionan_sin_conflicto():
     actuales = {"cargo": _marca("Docente", op_id="op-1")}
     entrantes = {"telefono": _marca("555-0000", dispositivo="equipo-b", segundos=5)}
     plan = planificar_campos("empleados", "u-1", entrantes, actuales)
-    assert plan.aplicar == {"telefono": _marca("555-0000", dispositivo="equipo-b", segundos=5).valor}
+    assert plan.aplicar == {
+        "telefono": _marca("555-0000", dispositivo="equipo-b", segundos=5).valor
+    }
     assert plan.conflictos == ()
 
 

@@ -6,11 +6,12 @@ Este servicio gestiona la configuración del sistema, permitiendo
 almacenar y recuperar parámetros configurables por categoría.
 """
 
+import logging
+
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion
 from src.repositories import ConfiguracionRepository
-import logging
 
 logger = logging.getLogger(__name__)
 

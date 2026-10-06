@@ -5,26 +5,26 @@ Ventana de inicio de sesión del sistema
 
 import logging
 import tkinter as tk
-
-import customtkinter as ctk
 from tkinter import messagebox
 
+import customtkinter as ctk
+
 from src.config import db_config
+from src.gui.theme import (
+    COLORES,
+    aplicar_modo_apariencia,
+    cancelar_after_pendientes,
+    centrar_ventana,
+    enable_windows_dpi_awareness,
+    setup_ui_raiz,
+)
 from src.models import Usuario
 from src.services.auth_service import (
-    AuthService,
     DEFAULT_ADMIN_PASSWORD,
+    AuthService,
 )
 from src.utils.helpers import mantener_ventana_al_frente
 from src.utils.security import SecurityValidator
-from src.gui.theme import (
-    enable_windows_dpi_awareness,
-    setup_ui_raiz,
-    centrar_ventana,
-    cancelar_after_pendientes,
-    aplicar_modo_apariencia,
-    COLORES,
-)
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,6 @@ from typing import Any
 
 from sqlalchemy import func
 
-
 # Pares (acentuada, plana) que se reemplazan en ambos lados de la comparación
 _ACENTOS: tuple[tuple[str, str], ...] = (
     ("á", "a"),

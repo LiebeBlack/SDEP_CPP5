@@ -11,9 +11,8 @@ mediante una cola thread-safe.
 
 import queue
 import threading
-from datetime import datetime
-
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk
 
 from updater.tray_icon import TrayIcon

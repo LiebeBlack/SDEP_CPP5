@@ -93,7 +93,9 @@ class TokenSesionService:
         logger.info("Token de sesión emitido para %s (alcance %s)", usuario.username, alcance)
         return token, creado
 
-    def validar(self, token: str | None, alcance: str | None = ALCANCE_ACADEMICO) -> TokenSesion | None:
+    def validar(
+        self, token: str | None, alcance: str | None = ALCANCE_ACADEMICO
+    ) -> TokenSesion | None:
         """
         Valida un token y devuelve su registro, o None si no sirve
 
@@ -124,9 +126,7 @@ class TokenSesionService:
         logger.info("Token de sesión revocado (usuario %s)", registro.username)
         return True
 
-    def revocar_usuario(
-        self, usuario_id: int, alcance: str | None = ALCANCE_ACADEMICO
-    ) -> int:
+    def revocar_usuario(self, usuario_id: int, alcance: str | None = ALCANCE_ACADEMICO) -> int:
         """Revoca todos los tokens vigentes de una cuenta (desactivación, robo)"""
         return self.repository.revocar_usuario(usuario_id, alcance)
 

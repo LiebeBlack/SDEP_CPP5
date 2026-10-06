@@ -45,11 +45,7 @@ class ContratoRepository(BaseRepository[Contrato]):
     def get_by_numero(self, numero: str) -> Contrato | None:
         """Contrato por su número único"""
         try:
-            return (
-                self.session.query(Contrato)
-                .filter(Contrato.numero == numero)
-                .first()
-            )
+            return self.session.query(Contrato).filter(Contrato.numero == numero).first()
         except SQLAlchemyError as e:
             logger.error(f"Error buscando el contrato {numero}: {e}")
             return None

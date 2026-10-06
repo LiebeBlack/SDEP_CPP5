@@ -213,9 +213,7 @@ def test_las_preferencias_del_equipo_no_se_replican(entorno_sync):
             ("apariencia_modo", "Dark", "string"),
             ("sync_habilitado", "true", "bool"),
         ):
-            sesion.add(
-                Configuracion(clave=clave, valor=valor, tipo_dato=tipo, categoria="general")
-            )
+            sesion.add(Configuracion(clave=clave, valor=valor, tipo_dato=tipo, categoria="general"))
         sesion.commit()
     finally:
         entorno_sync.close_session(sesion)
@@ -254,9 +252,7 @@ def test_adoptar_existentes_es_idempotente(entorno_sync):
     finally:
         entorno_sync.close_session(sesion)
     assert adoptadas >= 1
-    assert any(
-        loads(op.payload).get("cedula") == "60000000" for op in _operaciones(entorno_sync)
-    )
+    assert any(loads(op.payload).get("cedula") == "60000000" for op in _operaciones(entorno_sync))
 
     sesion = entorno_sync.new_session()
     try:

@@ -49,6 +49,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict
 
+
 # Los comandos del sistema (``reg``, ``taskkill``, ``tasklist``, ``schtasks``)
 # escriben en la página de códigos OEM de Windows, mientras que Python 3.15
 # decodifica en UTF-8 por omisión: un acento en un mensaje localizado hacía

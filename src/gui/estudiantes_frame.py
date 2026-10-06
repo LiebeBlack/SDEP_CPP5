@@ -214,9 +214,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             contenedor, orient="horizontal", command=self.tree.xview
         )
         scrollbar_horizontal.grid(row=1, column=0, sticky="ew")
-        self.tree.configure(
-            yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set
-        )
+        self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set)
 
         self.stats_label = ctk.CTkLabel(
             parent,
@@ -381,9 +379,7 @@ class EstudiantesFrame(ctk.CTkFrame):
     def _load_estudiantes(self) -> None:
         """Carga los estudiantes según búsqueda, nivel y estado elegidos"""
         if self.servicio is None:
-            messagebox.showerror(
-                "Estudiantes", "El servicio académico no está disponible"
-            )
+            messagebox.showerror("Estudiantes", "El servicio académico no está disponible")
             return
 
         for item in self.tree.get_children():
@@ -465,9 +461,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             estudiante_id = int(seleccion[0])
         except (TypeError, ValueError):
             return None
-        return next(
-            (e for e in self._estudiantes if int(e.id) == estudiante_id), None
-        )
+        return next((e for e in self._estudiantes if int(e.id) == estudiante_id), None)
 
     def _on_new_estudiante(self) -> None:
         """Abre el diálogo de alta de estudiante"""
@@ -861,7 +855,6 @@ class EstudianteDialog(_DialogoBase):
         fila = 0
 
         def etiqueta(texto: str) -> None:
-            nonlocal fila
             ctk.CTkLabel(contenedor, text=texto, text_color=COLORES["texto"]).grid(
                 row=fila, column=0, sticky="w", pady=6
             )
@@ -882,9 +875,7 @@ class EstudianteDialog(_DialogoBase):
         fila += 1
 
         etiqueta("Fecha de nacimiento:")
-        self.nacimiento_entry = ctk.CTkEntry(
-            contenedor, width=150, placeholder_text="dd/mm/aaaa"
-        )
+        self.nacimiento_entry = ctk.CTkEntry(contenedor, width=150, placeholder_text="dd/mm/aaaa")
         self.nacimiento_entry.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
 
@@ -1038,7 +1029,6 @@ class GradoDialog(_DialogoBase):
         fila = 0
 
         def etiqueta(texto: str) -> None:
-            nonlocal fila
             ctk.CTkLabel(contenedor, text=texto, text_color=COLORES["texto"]).grid(
                 row=fila, column=0, sticky="w", pady=6
             )
@@ -1058,9 +1048,7 @@ class GradoDialog(_DialogoBase):
         fila += 1
 
         etiqueta("Nombre del grado:")
-        self.nombre_entry = ctk.CTkEntry(
-            contenedor, width=220, placeholder_text="Ej. 1er Año"
-        )
+        self.nombre_entry = ctk.CTkEntry(contenedor, width=220, placeholder_text="Ej. 1er Año")
         self.nombre_entry.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
 

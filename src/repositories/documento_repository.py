@@ -1,9 +1,11 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from datetime import date, timedelta
 import logging
+from datetime import date, timedelta
+
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
 
 from src.models import Documento, TipoDocumento
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)

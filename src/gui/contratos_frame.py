@@ -196,7 +196,9 @@ class ContratosFrame(ctk.CTkFrame):
             )
 
         _habilitar_orden_columnas(self.tree)
-        self.tree.bind("<ButtonRelease-1>", lambda evento: _seleccionar_fila_click(self.tree, evento))
+        self.tree.bind(
+            "<ButtonRelease-1>", lambda evento: _seleccionar_fila_click(self.tree, evento)
+        )
         self.tree.bind("<Double-1>", lambda _evento: self._ver_detalle())
 
         contenedor.grid_rowconfigure(0, weight=1)
@@ -645,9 +647,7 @@ class ContratoDialog(ctk.CTkToplevel):
             numero = self.servicio.generar_numero(int(empleado.id))
         except (AttributeError, ValueError, TypeError):
             numero = "(se calculará al guardar)"
-        requiere_fin = (
-            self.tipo_combo.get().strip() != TipoContrato.INDEFINIDO.value
-        )
+        requiere_fin = self.tipo_combo.get().strip() != TipoContrato.INDEFINIDO.value
         self.resumen_label.configure(
             text=(
                 f"Número de contrato: {numero} · "
@@ -743,9 +743,9 @@ class RenovacionDialog(ctk.CTkToplevel):
         self.fin_entry = ctk.CTkEntry(contenedor, width=160)
         self.fin_entry.pack(anchor="w", pady=4)
 
-        ctk.CTkLabel(contenedor, text="Nuevo salario (opcional):", text_color=COLORES["texto"]).pack(
-            anchor="w", pady=(8, 0)
-        )
+        ctk.CTkLabel(
+            contenedor, text="Nuevo salario (opcional):", text_color=COLORES["texto"]
+        ).pack(anchor="w", pady=(8, 0))
         self.salario_entry = ctk.CTkEntry(contenedor, width=160)
         self.salario_entry.pack(anchor="w", pady=4)
 

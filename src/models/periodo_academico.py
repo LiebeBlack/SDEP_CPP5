@@ -10,8 +10,9 @@ de todos sus grados quedan bloqueadas y solo se consultan.
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, String, Text
+from sqlalchemy import Date, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BaseModel

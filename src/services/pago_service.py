@@ -12,7 +12,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from src.models import Pago, TipoPago, MetodoPago
+from src.models import MetodoPago, Pago, TipoPago
 from src.nomina import (
     DeduccionesManuales,
     EntradaNomina,
@@ -99,10 +99,7 @@ class PagoService:
         bono_vacacional = float(resultado.bono_vacacional)
 
         total_deducciones = round(
-            deduccion_seguro
-            + deduccion_pension
-            + deduccion_impuesto
-            + otras_deducciones,
+            deduccion_seguro + deduccion_pension + deduccion_impuesto + otras_deducciones,
             2,
         )
 
@@ -344,8 +341,7 @@ class PagoService:
                 "bono_vacacional",
             )
             componentes = {
-                campo: datos.get(campo, getattr(pago, campo) or 0)
-                for campo in campos_componentes
+                campo: datos.get(campo, getattr(pago, campo) or 0) for campo in campos_componentes
             }
             horas_extra_desglosadas = self._horas_extra(componentes)
             datos_calculo = {
@@ -373,11 +369,12 @@ class PagoService:
             #   se recalcula sobre el salario del período ya guardado, sin
             #   prorratear otra vez (prorratear dos veces descontaría los
             #   días en cada edición y el neto bajaría solo).
+            dias_laborados: int | None
+            dias_periodo: int | None
+            prorrateado: bool | None
             campos_prorrateo = {"dias_trabajados", "dias_periodo", "prorratear"}
             if campos_prorrateo & datos.keys():
-                dias_laborados = int(
-                    datos.get("dias_trabajados") or pago.dias_laborados or 30
-                )
+                dias_laborados = int(datos.get("dias_trabajados") or pago.dias_laborados or 30)
                 dias_periodo = int(datos.get("dias_periodo") or pago.dias_periodo or 30)
                 prorrateado = bool(datos.get("prorratear", pago.prorrateado))
                 datos_calculo.update(
@@ -690,8 +687,6 @@ class PagoService:
                 if dias_periodo <= 0:
                     errores.append("Los días del período deben ser mayores que cero")
                 elif dias_trabajados < 0 or dias_trabajados > dias_periodo:
-                    errores.append(
-                        "Los días trabajados deben estar entre 0 y los días del período"
-                    )
+                    errores.append("Los días trabajados deben estar entre 0 y los días del período")
 
         return errores

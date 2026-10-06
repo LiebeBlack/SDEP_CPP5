@@ -8,8 +8,8 @@ El módulo también centraliza las funciones de apariencia que antes vivían
 duplicadas en main_window/login_window.
 """
 
-import sys
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -131,9 +131,7 @@ def enable_windows_dpi_awareness() -> bool:
         return False
 
 
-def familia_fuente_tk(
-    nombre: str = "TkDefaultFont", fallback: str = "Arial", root=None
-) -> str:
+def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial", root=None) -> str:
     """
     Resuelve la familia real de una fuente nombrada de Tk
 
@@ -143,11 +141,7 @@ def familia_fuente_tk(
     try:
         import tkinter.font as tkfont
 
-        fuente = (
-            tkfont.nametofont(nombre, root)
-            if root is not None
-            else tkfont.nametofont(nombre)
-        )
+        fuente = tkfont.nametofont(nombre, root) if root is not None else tkfont.nametofont(nombre)
         familia = fuente.actual("family")
         return familia or fallback
     except Exception:

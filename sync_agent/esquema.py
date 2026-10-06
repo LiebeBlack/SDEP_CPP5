@@ -115,9 +115,7 @@ class CampoRemoto(BaseSync):
     dispositivo: Mapped[str] = mapped_column(String(36), nullable=False)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint("tabla", "fila_uuid", "campo", name="uq_sync_campos_clave"),
-    )
+    __table_args__ = (UniqueConstraint("tabla", "fila_uuid", "campo", name="uq_sync_campos_clave"),)
 
 
 class VersionFila(BaseSync):

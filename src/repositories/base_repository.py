@@ -7,13 +7,13 @@ lectura, actualización y eliminación (CRUD) que pueden ser
 utilizadas por todos los repositorios específicos.
 """
 
-from typing import Any
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 import logging
+from typing import Any
+
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from src.models.base import BaseModel
-
 from src.utils.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)

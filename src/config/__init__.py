@@ -3,9 +3,10 @@ Config Module
 Configuración de la aplicación
 """
 
-# settings debe inicializarse antes que database: la instancia de
-# DatabaseConfig resuelve su ruta a partir de settings en tiempo de import.
-from .settings import Settings, settings
+# ``database`` resuelve la configuración importando la instancia directamente
+# de ``src.config.settings``, de modo que este paquete no depende del orden de
+# estas importaciones.
 from .database import DatabaseConfig, db_config, get_db
+from .settings import Settings, settings
 
 __all__ = ["DatabaseConfig", "db_config", "get_db", "Settings", "settings"]

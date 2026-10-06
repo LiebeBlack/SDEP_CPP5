@@ -221,7 +221,9 @@ def test_una_edicion_remota_posterior_se_aplica(escenario):
         "base_op_id": original["op_id"],
         "dispositivo": escenario.dispositivo_b,
         "usuario": "otro-puesto",
-        "creado_en": (datetime.fromisoformat(original["creado_en"]) + timedelta(minutes=5)).isoformat(),
+        "creado_en": (
+            datetime.fromisoformat(original["creado_en"]) + timedelta(minutes=5)
+        ).isoformat(),
     }
     escenario.cliente_b().enviar_ops([actualizacion])
 
@@ -323,9 +325,7 @@ def test_el_contenido_de_un_documento_llega_al_nodo_central(escenario):
     # La operación viajó sin el contenido...
     sesion = escenario.entorno.new_session()
     try:
-        documentos = (
-            sesion.query(JournalOp).filter(JournalOp.tabla == "documentos").all()
-        )
+        documentos = sesion.query(JournalOp).filter(JournalOp.tabla == "documentos").all()
         assert documentos
         assert "__blob__" in loads(documentos[0].payload)["contenido_binario"]
     finally:
@@ -470,9 +470,7 @@ def test_una_nota_ajena_se_unifica_por_su_clave_compuesta(escenario):
 
     sesion = escenario.entorno.new_session()
     try:
-        notas = (
-            sesion.query(NotaFinal).filter(NotaFinal.grado_id == ids["grado_id"]).all()
-        )
+        notas = sesion.query(NotaFinal).filter(NotaFinal.grado_id == ids["grado_id"]).all()
         assert len(notas) == 1, "la nota ajena debió unificarse, no duplicarse"
         assert float(notas[0].calificacion) == 18.0
         identidad = (

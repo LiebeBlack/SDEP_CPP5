@@ -7,15 +7,16 @@ de empleados, incluyendo carga, almacenamiento, validación y control
 de vencimientos.
 """
 
-from sqlalchemy.orm import Session
+import logging
 import os
 import uuid
 
+from sqlalchemy.orm import Session
+
+from src.config import settings
 from src.models import Documento
 from src.repositories import DocumentoRepository
-from src.config import settings
 from src.utils.helpers import ruta_dentro_de
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -182,11 +183,7 @@ class DocumentoService:
                     )
             raise
 
-        if (
-            ruta_nueva
-            and self._ruta_gestionada(ruta_anterior)
-            and os.path.exists(ruta_anterior)
-        ):
+        if ruta_nueva and self._ruta_gestionada(ruta_anterior) and os.path.exists(ruta_anterior):
             try:
                 os.remove(ruta_anterior)
             except OSError:
@@ -206,9 +203,8 @@ class DocumentoService:
                 return False
 
             # Borrar el archivo solo después de confirmar la desactivación.
-            if (
-                self._ruta_gestionada(documento.ruta_archivo)
-                and os.path.exists(documento.ruta_archivo)
+            if self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
+                documento.ruta_archivo
             ):
                 try:
                     os.remove(documento.ruta_archivo)

@@ -146,9 +146,7 @@ class AcademicoService:
             estudiante.cedula = cedula
 
         nombres = _texto(datos["nombres"]) if "nombres" in datos else estudiante.nombres
-        apellidos = (
-            _texto(datos["apellidos"]) if "apellidos" in datos else estudiante.apellidos
-        )
+        apellidos = _texto(datos["apellidos"]) if "apellidos" in datos else estudiante.apellidos
         if not nombres or not apellidos:
             raise ValueError("Los nombres y apellidos son requeridos")
         estudiante.nombres = nombres
@@ -247,9 +245,7 @@ class AcademicoService:
         if not periodo:
             raise ValueError("Periodo no encontrado")
         if "estado" in datos:
-            raise ValueError(
-                "El estado del periodo se cambia con cerrar/reabrir el periodo"
-            )
+            raise ValueError("El estado del periodo se cambia con cerrar/reabrir el periodo")
 
         if "nombre" in datos:
             nombre = _texto(datos.get("nombre"))
@@ -260,9 +256,7 @@ class AcademicoService:
             periodo.nombre = nombre
 
         inicio = (
-            _fecha(datos.get("fecha_inicio"))
-            if "fecha_inicio" in datos
-            else periodo.fecha_inicio
+            _fecha(datos.get("fecha_inicio")) if "fecha_inicio" in datos else periodo.fecha_inicio
         )
         fin = _fecha(datos.get("fecha_fin")) if "fecha_fin" in datos else periodo.fecha_fin
         if inicio and fin and fin < inicio:
@@ -383,9 +377,7 @@ class AcademicoService:
         seccion = (_texto(datos.get("seccion")) or "A").upper()
 
         if self.grados.get_por_nombre(periodo.id, nombre, seccion):
-            raise ValueError(
-                f"Ya existe {nombre} {seccion} en el periodo {periodo.nombre}"
-            )
+            raise ValueError(f"Ya existe {nombre} {seccion} en el periodo {periodo.nombre}")
 
         grado = Grado(
             periodo_id=periodo.id,
@@ -406,17 +398,13 @@ class AcademicoService:
         if "nombre" in datos or "seccion" in datos:
             nombre = _texto(datos["nombre"]) if "nombre" in datos else grado.nombre
             seccion = (
-                (_texto(datos["seccion"]) or "A").upper()
-                if "seccion" in datos
-                else grado.seccion
+                (_texto(datos["seccion"]) or "A").upper() if "seccion" in datos else grado.seccion
             )
             if not nombre:
                 raise ValueError("El nombre del grado es requerido")
             existente = self.grados.get_por_nombre(grado.periodo_id, nombre, seccion)
             if existente is not None and existente.id != grado.id:
-                raise ValueError(
-                    f"Ya existe {nombre} {seccion} en ese periodo académico"
-                )
+                raise ValueError(f"Ya existe {nombre} {seccion} en ese periodo académico")
             grado.nombre = nombre
             grado.seccion = seccion
 
@@ -526,9 +514,7 @@ class AcademicoService:
         try:
             return NivelEducativo.coerce(valor)
         except ValueError:
-            raise ValueError(
-                "Nivel educativo inválido: use 'inicial' o 'secundaria'"
-            ) from None
+            raise ValueError("Nivel educativo inválido: use 'inicial' o 'secundaria'") from None
 
     @staticmethod
     def _genero(valor: object) -> Genero | None:
@@ -592,6 +578,4 @@ class AcademicoService:
                     success=success,
                 )
         except Exception:
-            logger.warning(
-                "%s: operación auxiliar falló (se continúa)", "_audit", exc_info=True
-            )
+            logger.warning("%s: operación auxiliar falló (se continúa)", "_audit", exc_info=True)

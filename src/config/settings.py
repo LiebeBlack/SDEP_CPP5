@@ -10,13 +10,13 @@ en una carpeta temporal compartida.
 
 import importlib
 import json
+import logging
 import os
 import stat
 import sys
 import tempfile
-from types import ModuleType
 from pathlib import Path
-import logging
+from types import ModuleType
 
 from dotenv import load_dotenv
 
@@ -81,8 +81,12 @@ def _es_dir_privado_usuario(ruta: Path) -> bool:
     try:
         ruta.mkdir(parents=True, exist_ok=True)
         if os.name == "posix":
+            # ``os.getuid`` no existe en Windows; se resuelve por ``getattr``
+            # para que el mismo código pase el análisis estático en todas las
+            # plataformas sin un ``# type: ignore``.
+            getuid = getattr(os, "getuid", None)
             info = ruta.stat()
-            if info.st_uid != os.getuid():
+            if getuid is not None and info.st_uid != getuid():
                 return False
             ruta.chmod(0o700)
             if stat.S_IMODE(ruta.stat().st_mode) != 0o700:
@@ -124,9 +128,7 @@ def _resolve_base_dir() -> Path:
         base = Path(__file__).resolve().parent.parent.parent
         proteger_base = False
 
-    es_escribible = (
-        _es_dir_privado_usuario(base) if proteger_base else _es_dir_escribible(base)
-    )
+    es_escribible = _es_dir_privado_usuario(base) if proteger_base else _es_dir_escribible(base)
     if es_escribible:
         return base
 

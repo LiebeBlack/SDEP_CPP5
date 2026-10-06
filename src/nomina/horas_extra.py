@@ -107,11 +107,7 @@ def desglose_horas_extra(
         "horas_diurnas": float(redondear(horas.diurnas)),
         "monto_diurnas": float(monto_por_recargo(horas.diurnas, valor_hora, recargo_diurno)),
         "horas_nocturnas": float(redondear(horas.nocturnas)),
-        "monto_nocturnas": float(
-            monto_por_recargo(horas.nocturnas, valor_hora, recargo_nocturno)
-        ),
+        "monto_nocturnas": float(monto_por_recargo(horas.nocturnas, valor_hora, recargo_nocturno)),
         "horas_feriadas": float(redondear(horas.feriadas)),
-        "monto_feriadas": float(
-            monto_por_recargo(horas.feriadas, valor_hora, recargo_feriado)
-        ),
+        "monto_feriadas": float(monto_por_recargo(horas.feriadas, valor_hora, recargo_feriado)),
     }

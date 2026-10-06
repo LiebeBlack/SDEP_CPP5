@@ -12,9 +12,9 @@ La extensión del archivo de destino determina el formato elegido.
 
 import csv
 import re
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 from pathlib import Path
-from collections.abc import Mapping, Sequence
 
 from src.utils.helpers import ensure_directory_exists, format_date
 
@@ -126,7 +126,7 @@ def _nombre_hoja_valido(nombre: str, indice: int) -> str:
     caracteres; en lugar de fallar, se sanean.
     """
     limpio = re.sub(r"[\[\]:*?/\\]", "-", str(nombre)).strip()
-    return (limpio[:31] or f"Hoja{indice}")
+    return limpio[:31] or f"Hoja{indice}"
 
 
 def escribir_xlsx(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:

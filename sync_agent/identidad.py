@@ -103,7 +103,9 @@ def uuid_por_clave_natural(session, tabla: str, valor: Any) -> str | None:
         return None
 
 
-def asegurar_uuid(session, tabla: str, id_local: int | None, clave_natural: Any = None) -> str | None:
+def asegurar_uuid(
+    session, tabla: str, id_local: int | None, clave_natural: Any = None
+) -> str | None:
     """
     Devuelve el UUID de una fila y lo crea si aún no lo tiene
 

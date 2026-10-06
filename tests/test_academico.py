@@ -93,9 +93,7 @@ def test_estudiante_sin_nombres_falla(academico):
 
 def test_nivel_invalido_falla(academico):
     with pytest.raises(ValueError, match="Nivel educativo"):
-        academico.crear_estudiante(
-            {"nombres": "Ana", "apellidos": "Gómez", "nivel": "universidad"}
-        )
+        academico.crear_estudiante({"nombres": "Ana", "apellidos": "Gómez", "nivel": "universidad"})
 
 
 def test_cedula_duplicada_se_rechaza(academico, estudiante):
@@ -159,8 +157,8 @@ def test_periodo_duplicado_y_fechas_invertidas(academico, periodo):
         academico.crear_periodo(
             {
                 "nombre": "2026-2027",
-                "fecha_inicio": "30/06/2026",
-                "fecha_fin": "01/09/2026",
+                "fecha_inicio": "01/09/2026",
+                "fecha_fin": "30/06/2026",
             }
         )
 

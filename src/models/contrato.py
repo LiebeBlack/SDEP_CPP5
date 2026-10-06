@@ -13,13 +13,9 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Date,
-    ForeignKey,
-    Integer,
-    Numeric,
-    String,
-    Text,
 )
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BaseModel
@@ -64,9 +60,7 @@ class Contrato(Base, BaseModel):
     empleado_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("empleados.id"), nullable=False, index=True
     )
-    numero: Mapped[str] = mapped_column(
-        String(50), unique=True, nullable=False, index=True
-    )
+    numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     tipo: Mapped[TipoContrato] = mapped_column(
         SQLEnum(TipoContrato, values_callable=valores_sql),
         nullable=False,
@@ -92,9 +86,7 @@ class Contrato(Base, BaseModel):
     clausulas: Mapped[str | None] = mapped_column(Text, nullable=True)
     motivo_terminacion: Mapped[str | None] = mapped_column(Text, nullable=True)
     fecha_terminacion: Mapped[date | None] = mapped_column(Date, nullable=True)
-    liquidacion_monto: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, default=CERO
-    )
+    liquidacion_monto: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=CERO)
     aprobado_por: Mapped[str | None] = mapped_column(String(50), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 

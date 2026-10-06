@@ -276,13 +276,10 @@ class NotaService:
             grado = notas[0].grado
 
         filas: list[dict[str, Any]] = [
-            {"materia": nota.materia, "calificacion": float(nota.calificacion)}
-            for nota in notas
+            {"materia": nota.materia, "calificacion": float(nota.calificacion)} for nota in notas
         ]
         promedio = (
-            round(sum(fila["calificacion"] for fila in filas) / len(filas), 2)
-            if filas
-            else None
+            round(sum(fila["calificacion"] for fila in filas) / len(filas), 2) if filas else None
         )
         minima, maxima = self.escala()
         return {
@@ -396,9 +393,7 @@ class NotaService:
             raise ValueError("la calificación debe ser un número") from None
         minima, maxima = self.escala()
         if calificacion < minima or calificacion > maxima:
-            raise ValueError(
-                f"la calificación debe estar entre {minima:g} y {maxima:g}"
-            )
+            raise ValueError(f"la calificación debe estar entre {minima:g} y {maxima:g}")
         return round(calificacion, 2)
 
     def _materia(self, valor: object) -> str:
@@ -448,9 +443,7 @@ class NotaService:
         if periodo is None:
             raise ValueError("el grado no tiene un periodo académico asociado")
         if periodo.esta_cerrado:
-            raise ValueError(
-                f"el periodo {periodo.nombre} está cerrado: las notas son inmutables"
-            )
+            raise ValueError(f"el periodo {periodo.nombre} está cerrado: las notas son inmutables")
 
     def _exigir_token(self, token: str | None) -> TokenSesion:
         """Valida el token de sesión o falla"""
@@ -523,6 +516,4 @@ class NotaService:
                     success=success,
                 )
         except Exception:
-            logger.warning(
-                "%s: operación auxiliar falló (se continúa)", "_audit", exc_info=True
-            )
+            logger.warning("%s: operación auxiliar falló (se continúa)", "_audit", exc_info=True)

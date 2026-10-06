@@ -11,17 +11,17 @@ Este módulo proporciona funcionalidades para:
 - Verificación de integridad de backups
 """
 
-import shutil
 import gzip
 import hashlib
 import json
+import logging
 import os
+import shutil
 import tempfile
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from datetime import datetime, timedelta
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,7 @@ class BackupManager:
                 if not isinstance(datos, dict):
                     raise ValueError("El archivo de metadatos no contiene un objeto JSON")
                 return {
-                    str(nombre): info
-                    for nombre, info in datos.items()
-                    if isinstance(info, dict)
+                    str(nombre): info for nombre, info in datos.items() if isinstance(info, dict)
                 }
             except Exception as e:
                 logger.error(f"Error cargando metadatos: {e}")
@@ -110,6 +108,7 @@ class BackupManager:
         # absoluta del equipo de desarrollo no significa nada en otro y expone
         # la estructura de su disco. Se siguen aceptando rutas absolutas
         # dentro del almacén para no invalidar metadatos de versiones previas.
+        path: Path
         if candidato.parent == Path("."):
             path = (self.backup_dir / candidato).resolve()
         else:
@@ -319,7 +318,9 @@ class BackupManager:
                 try:
                     partial.unlink(missing_ok=True)
                 except OSError:
-                    logger.warning("No se pudo limpiar un backup parcial: %s", partial, exc_info=True)
+                    logger.warning(
+                        "No se pudo limpiar un backup parcial: %s", partial, exc_info=True
+                    )
             raise
 
     def restore_backup(self, backup_name: str, verify_checksum: bool = True) -> bool:
@@ -406,7 +407,9 @@ class BackupManager:
                 try:
                     staged_path.unlink(missing_ok=True)
                 except OSError:
-                    logger.warning("No se pudo limpiar la copia temporal de restauración", exc_info=True)
+                    logger.warning(
+                        "No se pudo limpiar la copia temporal de restauración", exc_info=True
+                    )
 
             try:
                 from src.config import db_config
@@ -429,7 +432,9 @@ class BackupManager:
                 try:
                     restore_temp_path.unlink(missing_ok=True)
                 except OSError:
-                    logger.warning("No se pudo limpiar el archivo temporal de restauración", exc_info=True)
+                    logger.warning(
+                        "No se pudo limpiar el archivo temporal de restauración", exc_info=True
+                    )
 
     def list_backups(self) -> list[dict]:
         """

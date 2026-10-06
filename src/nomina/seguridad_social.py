@@ -78,12 +78,8 @@ def calcular_seguridad_social(
     return AportesSeguridadSocial(
         seguro_empleado=calcular_aporte(salario, porcentaje_seguro, techo_seguro),
         pension_empleado=calcular_aporte(salario, porcentaje_pension, techo_pension),
-        seguro_patronal=calcular_aporte(
-            salario, porcentaje_seguro_patronal, techo_seguro
-        ),
-        pension_patronal=calcular_aporte(
-            salario, porcentaje_pension_patronal, techo_pension
-        ),
+        seguro_patronal=calcular_aporte(salario, porcentaje_seguro_patronal, techo_seguro),
+        pension_patronal=calcular_aporte(salario, porcentaje_pension_patronal, techo_pension),
         base_seguro=base_afectada(salario, techo_seguro),
         base_pension=base_afectada(salario, techo_pension),
     )

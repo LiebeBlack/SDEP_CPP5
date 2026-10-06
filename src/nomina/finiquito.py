@@ -115,18 +115,12 @@ def calcular_finiquito(
     meses_del_ano_en_curso = meses % MESES_ANO
     dias_del_ano_en_curso = dias if meses_del_ano_en_curso or meses == 0 else 0
 
-    prestaciones = calcular_prestaciones(
-        salario, anos, parametros.dias_prestaciones_por_ano
-    )
-    indemnizacion = calcular_indemnizacion(
-        salario, anos, parametros.dias_prestaciones_por_ano
-    )
+    prestaciones = calcular_prestaciones(salario, anos, parametros.dias_prestaciones_por_ano)
+    indemnizacion = calcular_indemnizacion(salario, anos, parametros.dias_prestaciones_por_ano)
 
     motivo = (entrada.motivo or "").strip().lower()
     aplica_preaviso = motivo not in MOTIVOS_SIN_PREAVISO
-    preaviso = (
-        calcular_preaviso(salario, parametros.dias_preaviso) if aplica_preaviso else CERO
-    )
+    preaviso = calcular_preaviso(salario, parametros.dias_preaviso) if aplica_preaviso else CERO
 
     vacaciones = calcular_vacaciones(salario, entrada.dias_vacaciones_pendientes)
     bono_vacacional = calcular_bono_vacacional(
@@ -184,9 +178,7 @@ def dias_vacaciones_pendientes(
         anos_servicio = antiguedad_en_anos(fecha_ingreso, fecha_egreso)
 
     meses_del_ano_en_curso = meses_servicio % MESES_ANO
-    acumulados = dias_proporcionales(
-        dias_vacaciones_anuales, meses_del_ano_en_curso, dias
-    )
+    acumulados = dias_proporcionales(dias_vacaciones_anuales, meses_del_ano_en_curso, dias)
     anos_completos = Decimal(int(anos_servicio))
     pendientes = acumulados + (dias_vacaciones_anuales * anos_completos) - dias_ya_disfrutados
     return redondear(max(CERO, pendientes))

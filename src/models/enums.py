@@ -57,9 +57,7 @@ class BaseEnum(str, Enum):
         try:
             return cls[texto.upper()]
         except KeyError:
-            raise ValueError(
-                f"{texto!r} no es un valor válido de {cls.__name__}"
-            ) from None
+            raise ValueError(f"{texto!r} no es un valor válido de {cls.__name__}") from None
 
 
 class TipoEmpleado(BaseEnum):
@@ -242,4 +240,3 @@ class EstadoPeriodoAcademico(BaseEnum):
 
     ABIERTO = "abierto"
     CERRADO = "cerrado"
-

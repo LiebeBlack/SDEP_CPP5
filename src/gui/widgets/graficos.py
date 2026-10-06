@@ -181,9 +181,7 @@ class GraficoDona(GraficoBase):
     def establecer_datos(self, datos: list[tuple[str, float]]) -> None:
         """Carga los pares (etiqueta, valor) a representar"""
         self.datos = [
-            (str(etiqueta), float(valor or 0))
-            for etiqueta, valor in datos
-            if float(valor or 0) > 0
+            (str(etiqueta), float(valor or 0)) for etiqueta, valor in datos if float(valor or 0) > 0
         ]
         self.dibujar()
 
@@ -289,9 +287,7 @@ class GraficoLinea(GraficoBase):
         alto = self.alto_canvas()
         margen_sup, margen_inf, margen_lat = 20, 32, 36
         base_y = alto - margen_inf
-        maximo = max(
-            (valor for datos in series.values() for _, valor in datos), default=0
-        ) or 1
+        maximo = max((valor for datos in series.values() for _, valor in datos), default=0) or 1
         etiquetas = [etiqueta for etiqueta, _ in next(iter(series.values()))]
         pasos = max(1, len(etiquetas) - 1)
         ancho_util = ancho - margen_lat - 16

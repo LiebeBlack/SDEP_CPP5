@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import EstadoPeriodoAcademico, PeriodoAcademico
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)

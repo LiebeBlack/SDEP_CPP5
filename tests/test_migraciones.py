@@ -12,11 +12,26 @@ from sqlalchemy import create_engine, text
 
 from src.config.database import (
     COLUMNAS_OBSOLETAS_PAGOS,
+    INDICE_MATRICULAS_ACTIVAS,
     MIGRACIONES_EMPLEADOS,
     TABLAS_OBSOLETAS,
     migrar_columnas,
+    migrar_matriculas_unicidad_activa,
     purgar_esquema_obsoleto,
 )
+
+
+@pytest.fixture(autouse=True)
+def _base_de_datos_de_la_suite(db_config):
+    """
+    Garantiza que el archivo de la base de la suite exista.
+
+    Las migraciones crean un respaldo previo y el gestor de respaldos copia
+    ``settings.database_path``; sin una base ya inicializada el respaldo falla
+    y la migración se cancela. Depender de que otra prueba la haya creado hacía
+    que este archivo fallara al ejecutarse solo.
+    """
+    return db_config
 
 
 @pytest.fixture()
@@ -151,9 +166,7 @@ def test_purgar_esquema_obsoleto_retira_modulos_dados_de_baja(tmp_path):
         columnas = {fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos)"))}
         tablas = {
             fila[0]
-            for fila in conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table'")
-            )
+            for fila in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
         }
         indices = {
             fila[0]
@@ -174,4 +187,93 @@ def test_purgar_esquema_obsoleto_retira_modulos_dados_de_baja(tmp_path):
 
     # Idempotente: una segunda pasada no encuentra nada que purgar
     assert purgar_esquema_obsoleto(engine) == 0
+    engine.dispose()
+
+
+def test_migracion_matriculas_admite_rematricula(tmp_path):
+    """
+    La migración cambia la unicidad global de ``matriculas`` por una parcial
+
+    El esquema anterior impedía volver a matricular a un estudiante en el
+    mismo grado aunque su matrícula estuviera retirada (``activa = 0``). La
+    migración reconstruye la tabla con el índice parcial del modelo vigente
+    (una sola matrícula ACTIVA por estudiante y grado), conserva el historial y
+    es idempotente.
+    """
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+
+    from src.models import Base, Estudiante, Grado, Matricula, NivelEducativo, PeriodoAcademico
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'matriculas.db'}")
+    Base.metadata.create_all(engine)
+
+    # Reproduce el esquema anterior: unicidad global sobre (estudiante, grado)
+    # en lugar del índice parcial que crea el modelo vigente.
+    with engine.begin() as conn:
+        conn.execute(text(f'DROP INDEX IF EXISTS "{INDICE_MATRICULAS_ACTIVAS}"'))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX uq_matriculas_estudiante_grado "
+                "ON matriculas (estudiante_id, grado_id)"
+            )
+        )
+
+    sesion = sessionmaker(bind=engine)()
+    try:
+        periodo = PeriodoAcademico(nombre="2025-2026")
+        sesion.add(periodo)
+        sesion.flush()
+        grado = Grado(
+            periodo_id=periodo.id,
+            nivel=NivelEducativo.SECUNDARIA,
+            nombre="1er Año",
+            seccion="A",
+        )
+        estudiante = Estudiante(
+            nombres="Ana",
+            apellidos="Gómez",
+            cedula="10000001",
+            nivel=NivelEducativo.SECUNDARIA,
+        )
+        sesion.add_all([grado, estudiante])
+        sesion.flush()
+        retirada = Matricula(estudiante_id=estudiante.id, grado_id=grado.id, activa=1)
+        sesion.add(retirada)
+        sesion.commit()
+        retirada.activa = 0  # se retira: queda en el historial
+        sesion.commit()
+        matricula_id = int(retirada.id)
+        estudiante_id = int(estudiante.id)
+        grado_id = int(grado.id)
+    finally:
+        sesion.close()
+
+    assert migrar_matriculas_unicidad_activa(engine) == 1
+
+    with engine.connect() as conn:
+        indices = {
+            fila[0]
+            for fila in conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='matriculas'")
+            )
+        }
+    assert INDICE_MATRICULAS_ACTIVAS in indices
+
+    sesion = sessionmaker(bind=engine)()
+    try:
+        # La matrícula retirada sobrevive con su identificador
+        historica = sesion.get(Matricula, matricula_id)
+        assert historica is not None
+        assert historica.activa == 0
+        # Y ahora se puede volver a matricular al mismo estudiante y grado
+        nueva = Matricula(estudiante_id=estudiante_id, grado_id=grado_id, activa=1)
+        sesion.add(nueva)
+        sesion.commit()
+        assert nueva.id != matricula_id
+    finally:
+        sesion.close()
+
+    # Idempotente: la segunda pasada no vuelve a tocar la base
+    assert migrar_matriculas_unicidad_activa(engine) == 0
     engine.dispose()

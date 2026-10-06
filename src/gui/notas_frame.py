@@ -102,7 +102,7 @@ class NotasFrame(ctk.CTkFrame):
             return False
         if sesion is None:
             return False
-        return self.tokens.puede_escribir(sesion, grado)
+        return bool(self.tokens.puede_escribir(sesion, grado))
 
     # ------------------------------------------------------------------
     # Interfaz
@@ -136,7 +136,10 @@ class NotasFrame(ctk.CTkFrame):
             barra, width=170, values=[TODOS], command=lambda _v: self._on_periodo_cambio()
         )
         self.periodo_combo.grid(row=0, column=1, padx=(0, 10), pady=6, sticky="w")
-        self.periodo_combo.set(TODOS)
+        # Sin selección inicial: al cargar los datos se elige el año escolar en
+        # curso. Si nace en "Todos" (un valor válido), la comprobación de
+        # `_cargar_datos_base` nunca lo reemplaza y el módulo abre sin grado.
+        self.periodo_combo.set("")
 
         ctk.CTkLabel(barra, text="Grado:", text_color=COLORES["texto"]).grid(
             row=0, column=2, padx=(4, 4), pady=6, sticky="w"
@@ -269,9 +272,7 @@ class NotasFrame(ctk.CTkFrame):
         contenedor.pack(fill="both", expand=True, padx=8, pady=4)
 
         columnas = ("nombre", "inicio", "fin", "estado", "cerrado_por", "observaciones")
-        self.periodos_tree = ttk.Treeview(
-            contenedor, columns=columnas, show="headings", height=12
-        )
+        self.periodos_tree = ttk.Treeview(contenedor, columns=columnas, show="headings", height=12)
         habilitar_scroll_rueda(self.periodos_tree)
         encabezados = {
             "nombre": ("Periodo", 130),
@@ -509,9 +510,7 @@ class NotasFrame(ctk.CTkFrame):
         if grado is None or not self._puede_escribir(grado):
             self._avisar_sin_autorizacion()
             return
-        dialogo = NotaDialog(
-            self, self.servicio, self.token, grado, self._matriculas, nota=nota
-        )
+        dialogo = NotaDialog(self, self.servicio, self.token, grado, self._matriculas, nota=nota)
         self.wait_window(dialogo)
         if getattr(dialogo, "guardado", False):
             self._on_grado_cambio()
@@ -820,7 +819,6 @@ class NotaDialog(_DialogoBase):
         fila = 0
 
         def etiqueta(texto: str) -> None:
-            nonlocal fila
             ctk.CTkLabel(contenedor, text=texto, text_color=COLORES["texto"]).grid(
                 row=fila, column=0, sticky="w", pady=6
             )
@@ -944,9 +942,7 @@ class NotaDialog(_DialogoBase):
                     self.token,
                 )
             else:
-                self.servicio.actualizar(
-                    int(self.nota.id), calificacion, self.token, observaciones
-                )
+                self.servicio.actualizar(int(self.nota.id), calificacion, self.token, observaciones)
         except (ValueError, TypeError, AttributeError) as e:
             self.error_label.configure(text=str(e))
             return
@@ -976,15 +972,12 @@ class PeriodoDialog(_DialogoBase):
         fila = 0
 
         def etiqueta(texto: str) -> None:
-            nonlocal fila
             ctk.CTkLabel(contenedor, text=texto, text_color=COLORES["texto"]).grid(
                 row=fila, column=0, sticky="w", pady=6
             )
 
         etiqueta("Nombre:")
-        self.nombre_entry = ctk.CTkEntry(
-            contenedor, width=220, placeholder_text="Ej. 2025-2026"
-        )
+        self.nombre_entry = ctk.CTkEntry(contenedor, width=220, placeholder_text="Ej. 2025-2026")
         self.nombre_entry.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
 
@@ -1260,9 +1253,7 @@ class ActaDialog(ctk.CTkToplevel):
         arbol.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=arbol.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
-        scrollbar_horizontal = ttk.Scrollbar(
-            contenedor, orient="horizontal", command=arbol.xview
-        )
+        scrollbar_horizontal = ttk.Scrollbar(contenedor, orient="horizontal", command=arbol.xview)
         scrollbar_horizontal.grid(row=1, column=0, sticky="ew")
         arbol.configure(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set)
 

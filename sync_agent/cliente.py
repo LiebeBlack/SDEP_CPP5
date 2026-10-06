@@ -152,7 +152,11 @@ class ClienteSync:
     # Transporte
     # ------------------------------------------------------------------
     def _peticion(
-        self, metodo: str, ruta: str, cuerpo: dict | None = None, datos_binarios: bytes | None = None,
+        self,
+        metodo: str,
+        ruta: str,
+        cuerpo: dict | None = None,
+        datos_binarios: bytes | None = None,
         binario: bool = False,
     ) -> Respuesta:
         """Ejecuta una petición y clasifica cualquier fallo"""
@@ -173,7 +177,9 @@ class ClienteSync:
 
         peticion = urllib.request.Request(url, data=datos, headers=cabeceras, method=metodo)
         try:
-            with urllib.request.urlopen(peticion, timeout=self.timeout, context=self.contexto) as resp:
+            with urllib.request.urlopen(
+                peticion, timeout=self.timeout, context=self.contexto
+            ) as resp:
                 crudo = resp.read()
         except urllib.error.HTTPError as error:
             raise self._clasificar(error) from error

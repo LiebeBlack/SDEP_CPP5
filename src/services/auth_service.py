@@ -7,16 +7,16 @@ Maneja el inicio y cierre de sesión, la verificación de credenciales
 cuentas con roles. Registra en auditoría cada operación.
 """
 
+import logging
 from datetime import timedelta
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.models import Usuario, RolUsuario
+from src.models import RolUsuario, Usuario
 from src.repositories import UsuarioRepository
-from src.utils.security import SecurityValidator
 from src.utils.audit_logger import AuditEventType, get_audit_logger
-import logging
+from src.utils.security import SecurityValidator
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,7 @@ class AuthService:
             usuario.intentos_fallidos = (usuario.intentos_fallidos or 0) + 1
             if usuario.intentos_fallidos >= max_intentos:
                 usuario.bloqueado = 1
-                usuario.bloqueado_hasta = self._now() + timedelta(
-                    minutes=self.bloqueo_minutos()
-                )
+                usuario.bloqueado_hasta = self._now() + timedelta(minutes=self.bloqueo_minutos())
                 self._commit()
                 self._audit_fallido(username, "cuenta bloqueada por intentos fallidos")
                 raise ValueError("Demasiados intentos fallidos. La cuenta ha sido bloqueada.")
@@ -126,9 +124,7 @@ class AuthService:
 
         minimo = self.longitud_minima_password()
         if len(nueva_password or "") < minimo:
-            raise ValueError(
-                f"La nueva contraseña debe tener al menos {minimo} caracteres"
-            )
+            raise ValueError(f"La nueva contraseña debe tener al menos {minimo} caracteres")
 
         # Rotar por obligación no tiene sentido si se repite la vigente, así
         # que se compara también contra la contraseña actual.
@@ -137,9 +133,7 @@ class AuthService:
 
         historial = self.historial_password()
         if historial > 0 and self._password_repetida(usuario, nueva_password, historial):
-            raise ValueError(
-                f"No puede reutilizar ninguna de sus últimas {historial} contraseñas"
-            )
+            raise ValueError(f"No puede reutilizar ninguna de sus últimas {historial} contraseñas")
 
         hash_anterior = usuario.password_hash
         usuario.password_hash = SecurityValidator.hash_password(nueva_password)
@@ -297,9 +291,7 @@ class AuthService:
         except SQLAlchemyError as e:
             self.session.rollback()
             logger.error("No se pudo leer la configuración de seguridad %s", clave, exc_info=True)
-            raise RuntimeError(
-                f"No se pudo cargar la política de seguridad {clave}"
-            ) from e
+            raise RuntimeError(f"No se pudo cargar la política de seguridad {clave}") from e
         except (ValueError, TypeError):
             logger.warning("Valor de configuración no válido para %s", clave, exc_info=True)
             return por_defecto

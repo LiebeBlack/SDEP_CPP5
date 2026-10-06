@@ -8,7 +8,7 @@ import pytest
 
 from src.models import TipoEmpleado
 from src.services.empleado_service import EmpleadoService
-from src.utils.exporter import exportar_archivo, escribir_csv, escribir_xlsx
+from src.utils.exporter import escribir_csv, escribir_xlsx, exportar_archivo
 from src.utils.pdf_generator import PDFGenerator
 
 

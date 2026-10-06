@@ -11,8 +11,9 @@ entre módulos, los atajos de teclado y el cambio de tema, por lo que
 detectan errores de ejecución que los análisis estáticos no ven.
 """
 
-import pytest
 import time
+
+import pytest
 
 ctk = pytest.importorskip("customtkinter")
 
@@ -82,6 +83,14 @@ def main_window(session, admin_usuario):
     win.update()  # procesa el mapeo del frame inicial antes de asumir
     yield win
     try:
+        # Igual que el cierre real de la aplicación: libera la sesión propia
+        # de la ventana y cancela sus tareas programadas. Sin esta limpieza,
+        # cada prueba de GUI dejaba una conexión abierta y la suite terminaba
+        # agotando el pool de SQLAlchemy (TimeoutError en pruebas tardías).
+        win._cleanup()
+    except Exception:
+        pass
+    try:
         win.destroy()
     except Exception:
         pass
@@ -145,12 +154,12 @@ class TestMainWindow:
         from src.gui.contratos_frame import ContratosFrame
         from src.gui.estudiantes_frame import EstudiantesFrame
         from src.gui.frames import (
+            ConfiguracionFrame,
             DashboardFrame,
-            EmpleadosFrame,
             DocumentosFrame,
+            EmpleadosFrame,
             IncidenciasFrame,
             NominaFrame,
-            ConfiguracionFrame,
         )
         from src.gui.notas_frame import NotasFrame
 
@@ -269,7 +278,8 @@ class TestMainWindow:
     def test_seleccion_fila_click(self, main_window):
         """El clic/doble clic selecciona la fila bajo el cursor (fallback de selección)"""
         from types import SimpleNamespace
-        from src.gui.frames import _seleccionar_fila_click, _id_fila_seleccionada
+
+        from src.gui.frames import _id_fila_seleccionada, _seleccionar_fila_click
 
         main_window._show_frame("empleados")
         arbol = main_window.current_frame.tree
@@ -343,9 +353,7 @@ class TestModuloAcademico:
             "estudiante": estudiante,
         }
 
-    def test_estudiantes_frame_muestra_legajo_y_matriculas(
-        self, datos_academicos, main_window
-    ):
+    def test_estudiantes_frame_muestra_legajo_y_matriculas(self, datos_academicos, main_window):
         main_window._show_frame("estudiantes")
         main_window.update()
         frame = main_window.current_frame
@@ -363,9 +371,7 @@ class TestModuloAcademico:
         frame._load_matriculas(int(grados[0]))
         assert len(frame.matriculas_tree.get_children()) == 1
 
-    def test_notas_frame_registra_y_muestra_calificaciones(
-        self, datos_academicos, main_window
-    ):
+    def test_notas_frame_registra_y_muestra_calificaciones(self, datos_academicos, main_window):
         main_window._show_frame("notas")
         main_window.update()
         frame = main_window.current_frame
@@ -421,6 +427,7 @@ class TestTemaYCombobox:
         """
         import tkinter as tk
         from tkinter import ttk
+
         from src.gui.theme import configure_ttk_styles
 
         root = tk.Tk()
@@ -440,7 +447,7 @@ class TestTemaYCombobox:
 
     def test_orden_por_encabezado(self, main_window):
         """El clic en un encabezado ordena la lista (ascendente/descendente)"""
-        from src.gui.frames import _ordenar_por_columna, _habilitar_orden_columnas
+        from src.gui.frames import _habilitar_orden_columnas, _ordenar_por_columna
 
         main_window._show_frame("empleados")
         arbol = main_window.current_frame.tree

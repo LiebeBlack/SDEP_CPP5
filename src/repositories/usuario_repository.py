@@ -6,6 +6,7 @@ Repositorio para operaciones de datos de usuarios
 from sqlalchemy.orm import Session
 
 from src.models import Usuario
+
 from .base_repository import BaseRepository
 
 

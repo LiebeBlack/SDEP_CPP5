@@ -278,9 +278,11 @@ def planificar_campos(
                 valor_local=actual.valor if actual else None,
                 valor_remoto=entrante.valor,
                 ganador=GANADOR_LOCAL,
-                regla=evaluar_reloj(entrante.actualizado_en, actual.actualizado_en)
-                if actual
-                else REGLA_MAS_RECIENTE,
+                regla=(
+                    evaluar_reloj(entrante.actualizado_en, actual.actualizado_en)
+                    if actual
+                    else REGLA_MAS_RECIENTE
+                ),
                 op_local_id=actual.op_id if actual else None,
                 op_remoto_id=entrante.op_id,
             )

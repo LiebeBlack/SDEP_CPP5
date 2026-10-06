@@ -5,8 +5,8 @@ from datetime import date
 import pytest
 
 from src.models import MetodoPago, TipoPago
-from src.services.pago_service import PagoService
 from src.services.empleado_service import EmpleadoService
+from src.services.pago_service import PagoService
 
 
 @pytest.fixture()

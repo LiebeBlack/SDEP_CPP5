@@ -11,12 +11,12 @@ Este módulo proporciona:
 - Gestión de contraseñas seguras
 """
 
-import re
 import hashlib
-import secrets
-from typing import Any
-from pathlib import Path
 import logging
+import re
+import secrets
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -502,7 +502,7 @@ class SecurityLogger:
             details: Detalles del evento
             severity: Severidad (INFO, WARNING, ERROR)
         """
-        from src.utils.audit_logger import audit_logger, AuditEventType
+        from src.utils.audit_logger import AuditEventType, audit_logger
 
         event_type_map = {
             "auth_failure": AuditEventType.SECURITY_AUTH_FAILURE,

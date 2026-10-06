@@ -49,8 +49,8 @@ from .seguridad_social import (
     calcular_seguridad_social,
 )
 from .tipos import (
-    CERO,
     CENTAVO,
+    CERO,
     DeduccionesManuales,
     Dinero,
     EntradaFiniquito,

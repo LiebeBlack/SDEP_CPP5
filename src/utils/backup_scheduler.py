@@ -139,9 +139,11 @@ class BackupScheduler:
         if not forzar and not self.debe_ejecutar():
             return {
                 "ejecutado": False,
-                "motivo": "todavía no corresponde"
-                if self.esta_habilitado()
-                else "respaldos automáticos deshabilitados",
+                "motivo": (
+                    "todavía no corresponde"
+                    if self.esta_habilitado()
+                    else "respaldos automáticos deshabilitados"
+                ),
                 "backup": None,
                 "verificacion": None,
             }
@@ -255,7 +257,9 @@ class BackupScheduler:
             respaldo
             for respaldo in respaldos or []
             if str(
-                respaldo.get("name", "") if isinstance(respaldo, dict) else getattr(respaldo, "name", "")
+                respaldo.get("name", "")
+                if isinstance(respaldo, dict)
+                else getattr(respaldo, "name", "")
             ).startswith(PREFIJO_PROGRAMADO)
         ]
 

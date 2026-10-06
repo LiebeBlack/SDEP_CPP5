@@ -1,9 +1,11 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
-from datetime import date
 import logging
+from datetime import date
 
-from src.models import Pago, TipoPago, MetodoPago
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session
+
+from src.models import MetodoPago, Pago, TipoPago
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -153,9 +155,7 @@ class PagoRepository(BaseRepository[Pago]):
         """
         stats = {t.value: 0 for t in TipoPago}
         filas = (
-            self.session.query(Pago.tipo_pago, func.count(Pago.id))
-            .group_by(Pago.tipo_pago)
-            .all()
+            self.session.query(Pago.tipo_pago, func.count(Pago.id)).group_by(Pago.tipo_pago).all()
         )
         for tipo, total in filas:
             clave = tipo.value if hasattr(tipo, "value") else str(tipo)

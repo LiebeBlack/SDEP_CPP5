@@ -23,7 +23,13 @@ from decimal import Decimal, InvalidOperation
 from enum import Enum as EnumPython
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as EnumSQL, Float, Integer, LargeBinary, Numeric
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+)
+from sqlalchemy import Enum as EnumSQL
+from sqlalchemy import Float, Integer, LargeBinary, Numeric
 
 logger = logging.getLogger(__name__)
 

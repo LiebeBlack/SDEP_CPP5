@@ -44,9 +44,7 @@ class TokenSesion(Base, BaseModel):
     usuario_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("usuarios.id"), nullable=False, index=True
     )
-    token_hash: Mapped[str] = mapped_column(
-        String(64), unique=True, nullable=False, index=True
-    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     rol: Mapped[str] = mapped_column(String(20), nullable=False)
     alcance: Mapped[str] = mapped_column(
         String(30), nullable=False, default="academico", index=True

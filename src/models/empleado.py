@@ -7,18 +7,21 @@ incluyendo datos personales, laborales, académicos y de contacto.
 """
 
 from datetime import date
-from sqlalchemy import Integer, String, Float, Date, Text, Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .base import Base, BaseModel
-from .enums import TipoEmpleado, Genero, EstadoCivil
-
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Date
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Float, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base, BaseModel
+from .enums import EstadoCivil, Genero, TipoEmpleado
+
 if TYPE_CHECKING:
+    from .contrato import Contrato
     from .documento import Documento
     from .incidencia import Incidencia
     from .pago import Pago
-    from .contrato import Contrato
 
 
 class Empleado(Base, BaseModel):

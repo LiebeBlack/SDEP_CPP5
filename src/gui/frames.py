@@ -3,27 +3,28 @@ GUI Frames
 Frames específicos para cada módulo de la aplicación
 """
 
-import customtkinter as ctk
-import logging
-from tkinter import ttk, messagebox, filedialog
-import tkinter as tk
 import json
+import logging
 import os
 import subprocess
 import sys
 import tempfile
 import threading
+import tkinter as tk
 import webbrowser
 from datetime import date, timedelta
+from tkinter import filedialog, messagebox, ttk
 
-from src.models import Empleado, EstadoIncidencia
-from src.utils.helpers import format_date, format_currency, parse_date, mantener_ventana_al_frente
-from src.utils.pdf_generator import PDFGenerator
-from src.utils.exporter import exportar_archivo
-from src.utils.audit_logger import audit_logger, AuditEventType
-from src.services.auth_service import AuthService
+import customtkinter as ctk
+
 from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.gui.widgets import GraficoBarras, GraficoDona, GraficoLinea, TarjetaIndicador
+from src.models import Empleado, EstadoIncidencia
+from src.services.auth_service import AuthService
+from src.utils.audit_logger import AuditEventType, audit_logger
+from src.utils.exporter import exportar_archivo
+from src.utils.helpers import format_currency, format_date, mantener_ventana_al_frente, parse_date
+from src.utils.pdf_generator import PDFGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -243,9 +244,7 @@ class DashboardFrame(ctk.CTkFrame):
             ("Incidencias Pendientes", "incidencias", "📅", "incidencias"),
             ("Pagos Pendientes", "pagos", "💰", "nomina"),
         ]
-        cards = [
-            card for card in cards if self.main_window.puede_ver_modulo(card[3])
-        ]
+        cards = [card for card in cards if self.main_window.puede_ver_modulo(card[3])]
 
         for i, (title_text, key, icon, modulo) in enumerate(cards):
             card = self._create_stat_card(cards_container, title_text, icon, key, modulo)
@@ -319,9 +318,7 @@ class DashboardFrame(ctk.CTkFrame):
             ("por_vencer", "Contratos por vencer", "📜", "contratos"),
             ("dotacion", "Dotación activa", "👥", "empleados"),
         ]
-        definiciones = [
-            item for item in definiciones if self.main_window.puede_ver_modulo(item[3])
-        ]
+        definiciones = [item for item in definiciones if self.main_window.puede_ver_modulo(item[3])]
         for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
             tarjeta = TarjetaIndicador(
                 marco,
@@ -549,10 +546,7 @@ class DashboardFrame(ctk.CTkFrame):
             stats = ContratoService(self.main_window.session).obtener_estadisticas()
             por_tipo = stats.get("por_tipo") or {}
             datos = sorted(
-                (
-                    (str(tipo).capitalize(), float(cantidad))
-                    for tipo, cantidad in por_tipo.items()
-                ),
+                ((str(tipo).capitalize(), float(cantidad)) for tipo, cantidad in por_tipo.items()),
                 key=lambda par: par[1],
                 reverse=True,
             )
@@ -832,9 +826,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_edit(self):
         """Edita el empleado seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "update", "editar empleados"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "update", "editar empleados"):
             return
         empleado = self._get_selected_empleado()
         if empleado:
@@ -854,9 +846,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_constancia_trabajo(self):
         """Genera constancia de trabajo en PDF para el empleado seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar constancias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar constancias"):
             return
         empleado = self._get_selected_empleado()
         if not empleado:
@@ -880,9 +870,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_constancia_estudios(self):
         """Genera constancia de estudios en PDF para el empleado seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar constancias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar constancias"):
             return
         empleado = self._get_selected_empleado()
         if not empleado:
@@ -906,9 +894,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_reporte_empleados(self):
         """Genera un reporte general de empleados en PDF"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar reportes"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar reportes"):
             return
         empleados = self.main_window.empleado_service.listar_empleados_activos()
         if not empleados:
@@ -934,9 +920,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_ficha_empleado(self):
         """Genera la ficha completa del empleado seleccionado en PDF"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar reportes"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar reportes"):
             return
         empleado = self._get_selected_empleado()
         if not empleado:
@@ -960,9 +944,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_exportar_empleados(self):
         """Exporta la lista visible de empleados a Excel o CSV"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "exportar empleados"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "exportar empleados"):
             return
         empleados = self._consultar_empleados_visibles()
         if not empleados:
@@ -1005,9 +987,7 @@ class EmpleadosFrame(ctk.CTkFrame):
 
     def _on_delete(self):
         """Elimina el empleado seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "delete", "eliminar empleados"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "delete", "eliminar empleados"):
             return
         empleado = self._get_selected_empleado()
         if empleado:
@@ -1985,9 +1965,7 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_exportar_documentos(self):
         """Exporta los documentos visibles a Excel o CSV"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "exportar documentos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "exportar documentos"):
             return
         documentos = self._documentos_visibles()
         if not documentos:
@@ -2024,9 +2002,7 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_reporte_vencimientos(self):
         """Genera el control de vencimientos de documentos en PDF"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar reportes"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar reportes"):
             return
         documentos = (
             self.main_window.documento_service.listar_vencidos()
@@ -2119,9 +2095,7 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_edit_documento(self):
         """Edita el documento seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "update", "editar documentos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "update", "editar documentos"):
             return
         documento = self._get_selected_documento()
         if documento:
@@ -2231,9 +2205,7 @@ class DocumentosFrame(ctk.CTkFrame):
 
     def _on_delete_documento(self):
         """Elimina el documento seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "delete", "eliminar documentos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "delete", "eliminar documentos"):
             return
         documento = self._get_selected_documento()
         if documento:
@@ -2595,9 +2567,7 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_exportar_incidencias(self):
         """Exporta las incidencias visibles a Excel o CSV"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "exportar incidencias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "exportar incidencias"):
             return
         incidencias = self._incidencias_visibles()
         if not incidencias:
@@ -2635,9 +2605,7 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_reporte_incidencias(self):
         """Genera el reporte de incidencias en PDF"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar reportes"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar reportes"):
             return
         incidencias = self._incidencias_visibles()
         if not incidencias:
@@ -2741,9 +2709,7 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_edit_incidencia(self):
         """Edita la incidencia seleccionada"""
-        if not _verificar_permiso_accion(
-            self.main_window, "update", "editar incidencias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "update", "editar incidencias"):
             return
         incidencia = self._get_selected_incidencia()
         if incidencia:
@@ -2783,9 +2749,7 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_approve_incidencia(self):
         """Aprueba la incidencia seleccionada"""
-        if not _verificar_permiso_accion(
-            self.main_window, "update", "aprobar incidencias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "update", "aprobar incidencias"):
             return
         incidencia = self._get_selected_incidencia()
         if incidencia:
@@ -2809,9 +2773,7 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_reject_incidencia(self):
         """Rechaza la incidencia seleccionada"""
-        if not _verificar_permiso_accion(
-            self.main_window, "update", "rechazar incidencias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "update", "rechazar incidencias"):
             return
         incidencia = self._get_selected_incidencia()
         if incidencia:
@@ -2835,9 +2797,7 @@ class IncidenciasFrame(ctk.CTkFrame):
 
     def _on_delete_incidencia(self):
         """Elimina la incidencia seleccionada"""
-        if not _verificar_permiso_accion(
-            self.main_window, "delete", "eliminar incidencias"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "delete", "eliminar incidencias"):
             return
         incidencia = self._get_selected_incidencia()
         if incidencia:
@@ -3375,9 +3335,7 @@ class NominaFrame(ctk.CTkFrame):
 
     def _on_generate_nomina(self):
         """Genera nómina para un periodo"""
-        if not _verificar_permiso_accion(
-            self.main_window, "create", "generar nóminas"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "create", "generar nóminas"):
             return
         fecha_inicio_str = self.fecha_inicio_entry.get()
         fecha_fin_str = self.fecha_fin_entry.get()
@@ -3439,9 +3397,7 @@ class NominaFrame(ctk.CTkFrame):
 
     def _on_edit_pago(self):
         """Edita el pago seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "update", "editar pagos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "update", "editar pagos"):
             return
         pago = self._get_selected_pago()
         if pago:
@@ -3499,9 +3455,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_generate_recibo(self):
         """Genera recibo de pago"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar recibos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar recibos"):
             return
         pago = self._get_selected_pago()
         if pago:
@@ -3544,9 +3498,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_exportar_pagos(self):
         """Exporta los pagos visibles a Excel o CSV"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "exportar pagos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "exportar pagos"):
             return
         pares = self._pagos_con_empleado()
         if not pares:
@@ -3596,9 +3548,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_planilla_pdf(self):
         """Genera la planilla de nómina PDF con totales para los pagos visibles"""
-        if not _verificar_permiso_accion(
-            self.main_window, "report", "generar planillas"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "report", "generar planillas"):
             return
         pares = self._pagos_con_empleado()
         if not pares:
@@ -3698,9 +3648,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
     def _on_delete_pago(self):
         """Elimina el pago seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "delete", "eliminar pagos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "delete", "eliminar pagos"):
             return
         pago = self._get_selected_pago()
         if pago:
@@ -3932,9 +3880,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_exportar_auditoria(self):
         """Exporta los eventos de auditoría recientes a Excel o CSV"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "exportar auditoría"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "exportar auditoría"):
             return
         eventos = audit_logger.get_recent_events(200)
         if not eventos:
@@ -4178,9 +4124,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
             text_color=COLORES["texto_suave"],
         ).grid(row=3, column=2, padx=5, pady=6, sticky="w")
 
-        ctk.CTkLabel(parametros, text="Identificador del equipo:", text_color=COLORES["texto"]).grid(
-            row=4, column=0, padx=(10, 5), pady=6, sticky="e"
-        )
+        ctk.CTkLabel(
+            parametros, text="Identificador del equipo:", text_color=COLORES["texto"]
+        ).grid(row=4, column=0, padx=(10, 5), pady=6, sticky="e")
         self.sync_dispositivo_entry = ctk.CTkEntry(
             parametros, width=280, fg_color=COLORES["campo"], text_color=COLORES["texto"]
         )
@@ -4215,9 +4161,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
             acciones, text="Adoptar datos existentes", command=self._on_adoptar_datos
         )
         self.sync_adoptar_btn.pack(side="left", padx=5, pady=6)
-        ctk.CTkButton(
-            acciones, text="Actualizar", command=self._load_sincronizacion
-        ).pack(side="left", padx=5, pady=6)
+        ctk.CTkButton(acciones, text="Actualizar", command=self._load_sincronizacion).pack(
+            side="left", padx=5, pady=6
+        )
 
         # Contadores
         self.sync_contadores_label = ctk.CTkLabel(
@@ -4325,10 +4271,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _load_conflictos_sync(self) -> None:
         """Lista los conflictos guardados por el agente en este equipo"""
+        from src.config import db_config
         from sync_agent.comun import loads
         from sync_agent.esquema import ConflictoSync
-
-        from src.config import db_config
 
         for item in self.sync_conflictos_tree.get_children():
             self.sync_conflictos_tree.delete(item)
@@ -4348,9 +4293,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     "end",
                     iid=f"sc_{indice}",
                     values=(
-                        fila.detectado_en.strftime("%Y-%m-%d %H:%M")
-                        if fila.detectado_en
-                        else "",
+                        fila.detectado_en.strftime("%Y-%m-%d %H:%M") if fila.detectado_en else "",
                         fila.tabla,
                         fila.campo,
                         fila.ganador,
@@ -4507,9 +4450,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_sincronizar_ahora(self):
         """Solicita un ciclo inmediato y refresca los contadores"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "solicitar la sincronización"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "solicitar la sincronización"):
             return
         try:
             from sync_agent import sincronizar_ahora
@@ -4705,9 +4646,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_save(self):
         """Guarda la configuración"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "modificar configuración"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "modificar configuración"):
             return
         try:
             # Configuración general
@@ -4831,9 +4770,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_create_backup(self):
         """Crea un respaldo manual de la base de datos"""
-        if not _verificar_permiso_accion(
-            self.main_window, "backup", "crear respaldos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "backup", "crear respaldos"):
             return
         try:
             from src.utils.backup_manager import get_backup_manager
@@ -4847,9 +4784,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_verify_backup(self):
         """Verifica la integridad del respaldo seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "backup", "verificar respaldos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "backup", "verificar respaldos"):
             return
         nombre = self._backup_seleccionado()
         if not nombre:
@@ -4875,9 +4810,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_restore_backup(self):
         """Restaura el respaldo seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "restore", "restaurar respaldos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "restore", "restaurar respaldos"):
             return
         username = getattr(getattr(self.main_window, "current_user", None), "username", None)
         nombre = self._backup_seleccionado()
@@ -4953,9 +4886,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_delete_backup(self):
         """Elimina el respaldo seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "backup", "eliminar respaldos"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "backup", "eliminar respaldos"):
             return
         nombre = self._backup_seleccionado()
         if not nombre:
@@ -5017,9 +4948,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_new_usuario(self):
         """Crea un nuevo usuario de sistema"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "crear usuarios"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "crear usuarios"):
             return
         dialog = UsuarioDialog(self, self.main_window)
         self.wait_window(dialog)
@@ -5028,9 +4957,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_edit_usuario(self):
         """Edita el usuario seleccionado"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "editar usuarios"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "editar usuarios"):
             return
         usuario_id = self._usuario_seleccionado()
         if usuario_id is None:
@@ -5493,9 +5420,7 @@ class UsuarioDialog(ctk.CTkToplevel):
         from src.config import db_config
         from src.services.auth_service import AuthService
 
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "modificar usuarios"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "modificar usuarios"):
             return
 
         try:

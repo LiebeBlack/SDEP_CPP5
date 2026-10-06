@@ -136,7 +136,9 @@ def cargar() -> ConfigSync:
     if os.getenv("SDP_SYNC_TOKEN"):
         config.token = os.environ["SDP_SYNC_TOKEN"].strip()
     if os.getenv("SDP_SYNC_INTERVALO"):
-        config.intervalo_segundos = _a_int(os.environ["SDP_SYNC_INTERVALO"], config.intervalo_segundos)
+        config.intervalo_segundos = _a_int(
+            os.environ["SDP_SYNC_INTERVALO"], config.intervalo_segundos
+        )
     if os.getenv("SDP_SYNC_BINARIO_MAX"):
         config.max_bytes_binario = _a_int(
             os.environ["SDP_SYNC_BINARIO_MAX"], config.max_bytes_binario

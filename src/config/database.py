@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from src.models import Base
@@ -130,13 +130,9 @@ def _columnas_pendientes(engine) -> dict[str, list[tuple[str, str]]]:
             ).fetchone()
             if not existe:
                 continue
-            existentes = {
-                fila[1] for fila in conn.execute(text(f"PRAGMA table_info({tabla})"))
-            }
+            existentes = {fila[1] for fila in conn.execute(text(f"PRAGMA table_info({tabla})"))}
             faltantes = [
-                (columna, tipo)
-                for columna, tipo in columnas.items()
-                if columna not in existentes
+                (columna, tipo) for columna, tipo in columnas.items() if columna not in existentes
             ]
             if faltantes:
                 pendientes[tabla] = faltantes
@@ -253,9 +249,7 @@ def purgar_esquema_obsoleto(engine) -> int:
         with engine.connect() as conn:
             tablas = {
                 fila[0]
-                for fila in conn.execute(
-                    text("SELECT name FROM sqlite_master WHERE type='table'")
-                )
+                for fila in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
             }
     except SQLAlchemyError as e:
         logger.error("No se pudo inspeccionar el esquema para purgarlo", exc_info=True)
@@ -266,9 +260,7 @@ def purgar_esquema_obsoleto(engine) -> int:
     if "pagos" in tablas:
         try:
             with engine.connect() as conn:
-                existentes = {
-                    fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos)"))
-                }
+                existentes = {fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos)"))}
         except SQLAlchemyError as e:
             logger.error("No se pudo leer el esquema de pagos", exc_info=True)
             raise RuntimeError("No se pudo leer el esquema de pagos") from e
@@ -309,13 +301,10 @@ def purgar_esquema_obsoleto(engine) -> int:
                     conn.execute(text(f'DROP INDEX IF EXISTS "{indice}"'))
                 tabla_pagos.create(bind=conn)
                 antiguas = {
-                    fila[1]
-                    for fila in conn.execute(text("PRAGMA table_info(pagos_obsoleto)"))
+                    fila[1] for fila in conn.execute(text("PRAGMA table_info(pagos_obsoleto)"))
                 }
                 comunes = [
-                    columna.name
-                    for columna in tabla_pagos.columns
-                    if columna.name in antiguas
+                    columna.name for columna in tabla_pagos.columns if columna.name in antiguas
                 ]
                 destino = ", ".join(f'"{columna}"' for columna in comunes)
                 conn.execute(
@@ -323,9 +312,7 @@ def purgar_esquema_obsoleto(engine) -> int:
                 )
                 conn.execute(text("DROP TABLE pagos_obsoleto"))
                 cambios += len(sobrantes)
-                logger.info(
-                    "Purga: tabla pagos reconstruida sin %s", ", ".join(sobrantes)
-                )
+                logger.info("Purga: tabla pagos reconstruida sin %s", ", ".join(sobrantes))
 
             for tabla in obsoletas:
                 conn.execute(text(f"DROP TABLE IF EXISTS {tabla}"))
@@ -335,6 +322,104 @@ def purgar_esquema_obsoleto(engine) -> int:
         logger.error("No se pudo purgar el esquema obsoleto", exc_info=True)
         raise RuntimeError("La purga del esquema falló y se revirtió") from e
     return cambios
+
+
+# Nombre del índice parcial que expresa la unicidad de matrículas activas.
+INDICE_MATRICULAS_ACTIVAS = "uq_matriculas_estudiante_grado_activa"
+
+
+def migrar_matriculas_unicidad_activa(engine) -> int:
+    """
+    Reconstruye ``matriculas`` para admitir rematrículas.
+
+    El esquema anterior declaraba una restricción UNIQUE completa sobre
+    ``(estudiante_id, grado_id)``, de modo que una matrícula retirada
+    (``activa = 0``) impedía volver a matricular al mismo estudiante en el
+    mismo grado. La regla correcta —una sola matrícula ACTIVA por estudiante y
+    grado— se expresa con un índice parcial (``WHERE activa = 1``). Como SQLite
+    no permite retirar una restricción UNIQUE de una tabla existente, la tabla
+    se reconstruye: se renombra, se recrea con el esquema del modelo vigente,
+    se copian las filas y se elimina la original.
+
+    La operación es idempotente: si el índice parcial ya existe no toca la base.
+
+    Returns:
+        int: 1 si reconstruyó la tabla, 0 si no había nada que migrar.
+    """
+    try:
+        with engine.connect() as conn:
+            tablas = {
+                fila[0]
+                for fila in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+            }
+            if "matriculas" not in tablas:
+                return 0
+            indices = {
+                fila[0]
+                for fila in conn.execute(
+                    text(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='index' AND tbl_name='matriculas'"
+                    )
+                )
+            }
+    except SQLAlchemyError as e:
+        logger.error("No se pudo inspeccionar matriculas", exc_info=True)
+        raise RuntimeError("No se pudo inspeccionar el esquema de matrículas") from e
+
+    if INDICE_MATRICULAS_ACTIVAS in indices:
+        return 0
+
+    # Respaldo previo: la reconstrucción es irreversible sin él.
+    try:
+        from src.utils.backup_manager import get_backup_manager
+
+        get_backup_manager().create_backup("pre_migracion_matriculas", compress=True)
+    except Exception as e:
+        logger.error(
+            "Se cancela la migración de matrículas porque no se pudo respaldar la base",
+            exc_info=True,
+        )
+        raise RuntimeError("No se pudo respaldar la base antes de migrar matrículas") from e
+
+    try:
+        with engine.begin() as conn:
+            tabla = Base.metadata.tables["matriculas"]
+            # Al renombrar la tabla, SQLite conserva sus índices ligados al
+            # nuevo nombre pero con los mismos nombres: si no se eliminan, el
+            # CREATE INDEX del modelo choca con ellos.
+            indices_heredados = [
+                fila[0]
+                for fila in conn.execute(
+                    text(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='index' AND tbl_name='matriculas' "
+                        "AND name NOT LIKE 'sqlite_%'"
+                    )
+                )
+            ]
+            conn.execute(text("ALTER TABLE matriculas RENAME TO matriculas_obsoleta"))
+            for indice in indices_heredados:
+                conn.execute(text(f'DROP INDEX IF EXISTS "{indice}"'))
+            tabla.create(bind=conn)
+            antiguas = {
+                fila[1] for fila in conn.execute(text("PRAGMA table_info(matriculas_obsoleta)"))
+            }
+            comunes = [columna.name for columna in tabla.columns if columna.name in antiguas]
+            destino = ", ".join(f'"{columna}"' for columna in comunes)
+            conn.execute(
+                text(
+                    f"INSERT INTO matriculas ({destino}) "
+                    f"SELECT {destino} FROM matriculas_obsoleta"
+                )
+            )
+            conn.execute(text("DROP TABLE matriculas_obsoleta"))
+    except SQLAlchemyError as e:
+        logger.error("No se pudo migrar la unicidad de matrículas", exc_info=True)
+        raise RuntimeError("La migración de matrículas falló y se revirtió") from e
+
+    logger.info("Migración: matriculas reconstruida con unicidad parcial (solo activas)")
+    return 1
 
 
 # Parámetros de configuración que llegaron después de la primera versión del
@@ -635,7 +720,11 @@ class DatabaseConfig:
     """Configuración de la base de datos SQLite"""
 
     def __init__(self):
-        from src.config import settings
+        # Se importa la instancia desde su módulo (no desde el paquete):
+        # durante el arranque ``src.config`` aún se está inicializando y el
+        # nombre ``settings`` del paquete puede resolverse al submódulo en
+        # lugar de a la instancia.
+        from src.config.settings import settings
 
         # Ruta absoluta y única de la base de datos
         self.database_path = settings.database_path
@@ -720,6 +809,7 @@ class DatabaseConfig:
             migrar_columnas(self.engine)
             crear_disparadores_inmutabilidad(self.engine)
             purgar_esquema_obsoleto(self.engine)
+            migrar_matriculas_unicidad_activa(self.engine)
             if self.sincronizacion_configurada():
                 if not self.preparar_sincronizacion():
                     raise RuntimeError(
@@ -1073,9 +1163,7 @@ class DatabaseConfig:
                     categoria="seguridad",
                 ),
             ]
-            configuraciones.extend(
-                Configuracion(**datos) for datos in CONFIGURACION_ADICIONAL
-            )
+            configuraciones.extend(Configuracion(**datos) for datos in CONFIGURACION_ADICIONAL)
             session.add_all(configuraciones)
             session.commit()
             logger.info(f"Configuraciones iniciales insertadas: {len(configuraciones)}")
@@ -1155,7 +1243,11 @@ class DatabaseConfig:
         finally:
             self.close_session(session)
 
-        from src.config import settings
+        # Se importa la instancia desde su módulo (no desde el paquete):
+        # durante el arranque ``src.config`` aún se está inicializando y el
+        # nombre ``settings`` del paquete puede resolverse al submódulo en
+        # lugar de a la instancia.
+        from src.config.settings import settings
 
         for clave in CONFIGURACION_OBSOLETA:
             try:

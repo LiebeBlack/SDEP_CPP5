@@ -3,11 +3,11 @@ Main Entry Point
 Punto de entrada principal de la aplicación con mejoras de seguridad
 """
 
-import sys
-import logging
-from pathlib import Path
 import io
+import logging
 import signal
+import sys
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ def setup_environment():
 
         logger.info("Entorno configurado correctamente")
         try:
-            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            from src.utils.audit_logger import AuditEventType, get_audit_logger
 
             audit = get_audit_logger()
             if audit:
@@ -226,7 +226,7 @@ def initialize_database():
 
         logger.info("Base de datos inicializada correctamente")
         try:
-            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            from src.utils.audit_logger import AuditEventType, get_audit_logger
 
             audit = get_audit_logger()
             if audit:
@@ -398,7 +398,7 @@ def cleanup_application():
             logger.warning(f"No se pudo crear backup al cerrar: {e}")
 
         try:
-            from src.utils.audit_logger import get_audit_logger, AuditEventType
+            from src.utils.audit_logger import AuditEventType, get_audit_logger
 
             audit = get_audit_logger()
             if audit:
@@ -458,11 +458,10 @@ def _selftest() -> bool:
 
         # Fuerza la importación de los módulos GUI para detectar paquetes
         # faltantes en el build (customtkinter, tkinter, etc.)
+        import src.gui.frames  # noqa: F401
         import src.gui.login_window  # noqa: F401
         import src.gui.main_window  # noqa: F401
-        import src.gui.frames  # noqa: F401
         import sync_agent  # noqa: F401  (agente de sincronización)
-
         from src.config import settings
         from src.utils.backup_manager import get_backup_manager
 

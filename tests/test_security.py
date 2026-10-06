@@ -1,9 +1,9 @@
 """Pruebas del módulo de seguridad (security.py)"""
 
 from src.utils.security import (
-    SecurityValidator,
     PermissionChecker,
     SecurityLogger,
+    SecurityValidator,
 )
 
 

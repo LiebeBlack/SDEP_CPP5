@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from src.models import TokenSesion
 from src.utils.helpers import utcnow
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -27,9 +28,7 @@ class TokenSesionRepository(BaseRepository[TokenSesion]):
         """Obtiene un token por el hash de su valor (nunca por el valor)"""
         try:
             return (
-                self.session.query(TokenSesion)
-                .filter(TokenSesion.token_hash == token_hash)
-                .first()
+                self.session.query(TokenSesion).filter(TokenSesion.token_hash == token_hash).first()
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar un token: {e}")

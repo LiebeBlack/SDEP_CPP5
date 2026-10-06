@@ -3,12 +3,14 @@ Configuracion Repository
 Repositorio para operaciones de datos de configuración
 """
 
+import logging
 from typing import Any
+
 from sqlalchemy.orm import Session
 
 from src.models import Configuracion
+
 from .base_repository import BaseRepository
-import logging
 
 logger = logging.getLogger(__name__)
 

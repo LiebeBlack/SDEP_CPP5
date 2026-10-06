@@ -32,8 +32,7 @@ def test_todo_modulo_controlado_tiene_permiso():
 def test_el_mapa_no_declara_modulos_inexistentes():
     """El caso «reportes»: un módulo protegido que no existe en el menú."""
     esperados = (
-        frozenset(nombre for nombre, _titulo, _icono in MODULOS)
-        - MODULOS_SIN_CONTROL_DE_ACCESO
+        frozenset(nombre for nombre, _titulo, _icono in MODULOS) - MODULOS_SIN_CONTROL_DE_ACCESO
     )
     assert PermissionChecker.modulos_conocidos() == esperados
 

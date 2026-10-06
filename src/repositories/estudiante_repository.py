@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import Estudiante, NivelEducativo
+
 from .base_repository import BaseRepository
 from .busqueda import normalizar_expr, normalizar_termino
 

@@ -1,9 +1,11 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
-from datetime import date
 import logging
+from datetime import date
 
-from src.models import Incidencia, TipoIncidencia, EstadoIncidencia
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session
+
+from src.models import EstadoIncidencia, Incidencia, TipoIncidencia
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)

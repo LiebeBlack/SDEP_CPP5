@@ -6,12 +6,13 @@ Modelo de datos para pagos y nómina
 import logging
 from datetime import date
 from decimal import Decimal
-from sqlalchemy import Boolean, Integer, String, Text, Date, ForeignKey, Numeric
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base, BaseModel
 from .enums import MetodoPago
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .empleado import Empleado
@@ -55,9 +56,7 @@ class Pago(Base, BaseModel):
     otras_deducciones: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
 
     # Desglose del motor de nómina
-    modalidad_calculo: Mapped[str] = mapped_column(
-        String(20), default="porcentaje", nullable=False
-    )
+    modalidad_calculo: Mapped[str] = mapped_column(String(20), default="porcentaje", nullable=False)
     base_gravable: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     horas_extra_diurnas: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
     horas_extra_nocturnas: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00)
@@ -150,8 +149,7 @@ class Pago(Base, BaseModel):
     def total_aportes_patronales(self):
         """Aportes a cargo del patrono (no descontados del empleado)"""
         return round(
-            float(self.aporte_seguro_patronal or 0)
-            + float(self.aporte_pension_patronal or 0),
+            float(self.aporte_seguro_patronal or 0) + float(self.aporte_pension_patronal or 0),
             2,
         )
 

@@ -455,13 +455,9 @@ def test_la_carpeta_de_binarios_por_omision_vive_junto_a_la_base(tmp_path):
 
     from sync_agent.__main__ import _dir_blobs_por_defecto
 
-    assert _dir_blobs_por_defecto("sqlite:////datos/central.db") == Path(
-        "/datos/central_blobs"
-    )
+    assert _dir_blobs_por_defecto("sqlite:////datos/central.db") == Path("/datos/central_blobs")
     # Una base que no sea SQLite cae en el nombre por omisión, junto al proceso
-    assert _dir_blobs_por_defecto("postgresql://usuario@host/central") == Path(
-        "sync_central_blobs"
-    )
+    assert _dir_blobs_por_defecto("postgresql://usuario@host/central") == Path("sync_central_blobs")
 
 
 def test_la_consola_respeta_la_carpeta_de_binarios_indicada(tmp_path, capsys, monkeypatch):
@@ -547,9 +543,7 @@ def test_solo_se_ofrecen_los_subcomandos_documentados():
     from sync_agent.__main__ import _parser
 
     parser = _parser()
-    acciones = [
-        accion for accion in parser._actions if getattr(accion, "choices", None)
-    ]
+    acciones = [accion for accion in parser._actions if getattr(accion, "choices", None)]
     subcomandos = sorted(acciones[0].choices)
     assert subcomandos == [
         "agente",

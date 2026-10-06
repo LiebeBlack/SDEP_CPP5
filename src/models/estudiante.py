@@ -10,8 +10,9 @@ que cursa en un año escolar se registran en la tabla de matrículas.
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Integer, String, Text
+from sqlalchemy import Date
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BaseModel
@@ -45,9 +46,7 @@ class Estudiante(Base, BaseModel):
     # Datos personales
     nombres: Mapped[str] = mapped_column(String(100), nullable=False)
     apellidos: Mapped[str] = mapped_column(String(100), nullable=False)
-    cedula: Mapped[str | None] = mapped_column(
-        String(20), unique=True, nullable=True, index=True
-    )
+    cedula: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
     fecha_nacimiento: Mapped[date | None] = mapped_column(Date, nullable=True)
     genero: Mapped[Genero | None] = mapped_column(
         SQLEnum(Genero, values_callable=valores_sql), nullable=True
@@ -104,9 +103,7 @@ class Estudiante(Base, BaseModel):
         data = super().to_dict()
         data["nivel"] = self.nivel_valor
         genero = self.genero
-        data["genero"] = (
-            genero.value if genero is not None and hasattr(genero, "value") else genero
-        )
+        data["genero"] = genero.value if genero is not None and hasattr(genero, "value") else genero
         data["nombre_completo"] = self.nombre_completo
         data["edad"] = self.edad
         return data

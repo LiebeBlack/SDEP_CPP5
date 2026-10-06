@@ -48,6 +48,19 @@ def _reset_database(db_config):
     from src.models import Base
 
     with db_config.engine.begin() as conn:
+        # Los disparadores de inmutabilidad abortan el DELETE sobre
+        # ``notas_finales`` cuando su grado pertenece a un periodo cerrado.
+        # Como todos los DELETE van en una sola transacción, ese abort
+        # revertía el reseteo completo y la base quedaba con las filas de la
+        # prueba anterior: eso contaminaba en cascada a todas las pruebas
+        # siguientes. Reabrir los periodos antes de vaciar desactiva la
+        # condición de los disparadores y permite limpiar de verdad.
+        tablas_existentes = {
+            fila[0]
+            for fila in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+        }
+        if "periodos_academicos" in tablas_existentes:
+            conn.execute(text("UPDATE periodos_academicos SET estado = 'abierto'"))
         for tabla in reversed(Base.metadata.sorted_tables):
             conn.execute(text(f'DELETE FROM "{tabla.name}"'))
     db_config.init_db()
@@ -103,8 +116,9 @@ def entorno_sync(db_config, monkeypatch):
 
     import sync_agent
     from src.config import settings
-    from sync_agent import captura, esquema
+    from sync_agent import captura
     from sync_agent import config as config_sync
+    from sync_agent import esquema
 
     _reset_database(db_config)
     db_config.preparar_sincronizacion()

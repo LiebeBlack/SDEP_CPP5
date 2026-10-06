@@ -4,8 +4,8 @@ from datetime import date
 
 import pytest
 
-from src.services.empleado_service import EmpleadoService
 from src.models import TipoEmpleado
+from src.services.empleado_service import EmpleadoService
 
 
 def _datos_empleado(cedula="12345678", **cambios):

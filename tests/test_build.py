@@ -62,9 +62,7 @@ def test_build_installer_confirma_paquete_generado(tmp_path, monkeypatch):
     monkeypatch.setattr(build.subprocess, "run", crear_instalador)
 
     assert build.build_installer() is True
-    assert (
-        tmp_path / "dist_installer" / "SistemaGestionPersonal-Setup-3.0.1.exe"
-    ).is_file()
+    assert (tmp_path / "dist_installer" / "SistemaGestionPersonal-Setup-3.0.1.exe").is_file()
 
 
 def test_instalador_exige_admin_y_cierra_procesos_bloqueantes():

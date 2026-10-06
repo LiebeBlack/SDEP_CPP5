@@ -127,15 +127,15 @@ class AgenteSincronizacion:
                     "Sincronización inactiva: %s",
                     "; ".join(problemas) if problemas else "deshabilitada en la configuración",
                 )
-                self._publicar(estado=ESTADO_INACTIVO, ultimo_error=problemas[0] if problemas else None)
+                self._publicar(
+                    estado=ESTADO_INACTIVO, ultimo_error=problemas[0] if problemas else None
+                )
                 return False
 
             establecer_dispositivo(self.config.dispositivo_id)
             self._detener.clear()
             self._despertar.clear()
-            self._hilo = threading.Thread(
-                target=self._bucle, name="sincronizacion", daemon=True
-            )
+            self._hilo = threading.Thread(target=self._bucle, name="sincronizacion", daemon=True)
             self._hilo.start()
             self._publicar(estado=ESTADO_SINCRONIZANDO)
             logger.info(
@@ -239,7 +239,9 @@ class AgenteSincronizacion:
         try:
             if not self.config.configurado:
                 problemas = self.config.problemas()
-                self._publicar(estado=ESTADO_INACTIVO, ultimo_error=problemas[0] if problemas else None)
+                self._publicar(
+                    estado=ESTADO_INACTIVO, ultimo_error=problemas[0] if problemas else None
+                )
                 resumen["mensaje"] = "sincronización no configurada"
                 return resumen
 
@@ -374,9 +376,7 @@ class AgenteSincronizacion:
                 .limit(limite)
                 .all()
             )
-            lote = [
-                {"op_id": fila.op_id, "operacion": self._a_operacion(fila)} for fila in filas
-            ]
+            lote = [{"op_id": fila.op_id, "operacion": self._a_operacion(fila)} for fila in filas]
             for fila in filas:
                 fila.estado = ENVIANDO
                 fila.intentos = int(fila.intentos or 0) + 1
@@ -704,7 +704,10 @@ class AgenteSincronizacion:
             )
             if marca is not None:
                 vigente = loads(marca.valor)
-                if isinstance(vigente, dict) and vigente.get("__blob__") not in (None, pendiente["hash"]):
+                if isinstance(vigente, dict) and vigente.get("__blob__") not in (
+                    None,
+                    pendiente["hash"],
+                ):
                     # La fila ya apunta a otro archivo: este llegó tarde
                     logger.info(
                         "Se descarta el archivo %s: la fila apunta a otro contenido",

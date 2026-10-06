@@ -63,9 +63,7 @@ def calcular_nomina(
 
     if entrada.prorratear and entrada.dias_periodo > 0:
         dias = max(0, min(int(entrada.dias_trabajados), int(entrada.dias_periodo)))
-        salario_base = redondear(
-            salario_base * Decimal(dias) / Decimal(entrada.dias_periodo)
-        )
+        salario_base = redondear(salario_base * Decimal(dias) / Decimal(entrada.dias_periodo))
 
     horas: HorasExtra = entrada.horas_extra
     monto_horas_extra = (
@@ -195,9 +193,5 @@ def resumen_costo_empleador(resultado: ResultadoNomina) -> dict[str, Any]:
         "neto_empleado": float(resultado.monto_neto),
         "deducciones_empleado": float(resultado.total_deducciones),
         "aportes_patronales": float(resultado.total_aportes_patronales),
-        "costo_total": float(
-            redondear(
-                resultado.monto_bruto + resultado.total_aportes_patronales
-            )
-        ),
+        "costo_total": float(redondear(resultado.monto_bruto + resultado.total_aportes_patronales)),
     }

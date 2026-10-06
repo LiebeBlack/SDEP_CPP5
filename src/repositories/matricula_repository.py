@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import Estudiante, Grado, Matricula
+
 from .base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -38,19 +39,17 @@ class MatriculaRepository(BaseRepository[Matricula]):
             logger.error(f"Error inesperado al listar matrículas del grado {grado_id}: {e}")
             return []
 
-    def get_by_estudiante(
-        self, estudiante_id: int, solo_activas: bool = True
-    ) -> list[Matricula]:
+    def get_by_estudiante(self, estudiante_id: int, solo_activas: bool = True) -> list[Matricula]:
         """Lista las matrículas de un estudiante (historial por año escolar)"""
         try:
-            query = self.session.query(Matricula).filter(
-                Matricula.estudiante_id == estudiante_id
-            )
+            query = self.session.query(Matricula).filter(Matricula.estudiante_id == estudiante_id)
             if solo_activas:
                 query = query.filter(Matricula.activa == 1)
-            return query.join(Grado, Matricula.grado_id == Grado.id).order_by(
-                Grado.nombre, Grado.seccion
-            ).all()
+            return (
+                query.join(Grado, Matricula.grado_id == Grado.id)
+                .order_by(Grado.nombre, Grado.seccion)
+                .all()
+            )
         except SQLAlchemyError as e:
             logger.error(
                 f"Error de base de datos al listar matrículas del estudiante {estudiante_id}: {e}"

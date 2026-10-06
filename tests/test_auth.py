@@ -3,10 +3,10 @@
 import pytest
 
 from src.services.auth_service import (
-    AuthService,
-    ensure_default_admin,
     DEFAULT_ADMIN_PASSWORD,
     DEFAULT_ADMIN_USERNAME,
+    AuthService,
+    ensure_default_admin,
 )
 from src.utils.security import SecurityValidator
 

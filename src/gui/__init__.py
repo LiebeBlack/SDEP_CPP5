@@ -3,15 +3,15 @@ GUI Module
 Componentes de interfaz gráfica de usuario
 """
 
-from .main_window import MainWindow
 from .frames import (
+    ConfiguracionFrame,
     DashboardFrame,
-    EmpleadosFrame,
     DocumentosFrame,
+    EmpleadosFrame,
     IncidenciasFrame,
     NominaFrame,
-    ConfiguracionFrame,
 )
+from .main_window import MainWindow
 
 __all__ = [
     "MainWindow",

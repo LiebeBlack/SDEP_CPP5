@@ -112,7 +112,9 @@ def _resumen_local(como_json: bool = False) -> dict:
     try:
         pendientes = (
             sesion.query(JournalOp)
-            .filter(JournalOp.estado.in_((PENDIENTE, DIFERIDA)), JournalOp.direccion == DIRECCION_SALIDA)
+            .filter(
+                JournalOp.estado.in_((PENDIENTE, DIFERIDA)), JournalOp.direccion == DIRECCION_SALIDA
+            )
             .count()
         )
         conflictos = sesion.query(ConflictoSync).filter(ConflictoSync.resuelto == 0).count()
@@ -245,9 +247,9 @@ def cmd_conflictos(args: argparse.Namespace) -> int:
                 "regla": fila.regla,
                 "valor_local": _texto_corto(loads(fila.valor_local)),
                 "valor_remoto": _texto_corto(loads(fila.valor_remoto)),
-                "detectado_en": fila.detectado_en.isoformat(timespec="seconds")
-                if fila.detectado_en
-                else "",
+                "detectado_en": (
+                    fila.detectado_en.isoformat(timespec="seconds") if fila.detectado_en else ""
+                ),
             }
             for fila in filas
         ]
@@ -263,9 +265,7 @@ def cmd_conflictos(args: argparse.Namespace) -> int:
         ["tabla", "campo", "ganador", "regla", "valor_local", "valor_remoto", "detectado_en"],
     )
     if registros and not args.todos:
-        print(
-            "\nEl valor perdedor se conserva aquí: ninguna mezcla descarta datos en silencio."
-        )
+        print("\nEl valor perdedor se conserva aquí: ninguna mezcla descarta datos en silencio.")
     return SALIDA_CORRECTA
 
 
@@ -315,7 +315,9 @@ def _administrar_dispositivos(args: argparse.Namespace) -> int:
                 "\nGuarde el token ahora: no se puede recuperar después "
                 "(en la base solo queda su hash)."
             )
-            print("En el puesto, regístrelo con SDP_SYNC_TOKEN o en Configuración → Sincronización.")
+            print(
+                "En el puesto, regístrelo con SDP_SYNC_TOKEN o en Configuración → Sincronización."
+            )
             return SALIDA_CORRECTA
 
         if args.revocar_dispositivo:
@@ -417,9 +419,7 @@ def _parser() -> argparse.ArgumentParser:
 
     # --- agente ---
     p_agente = subparsers.add_parser("agente", help="Sincroniza en segundo plano")
-    p_agente.add_argument(
-        "--una-vez", action="store_true", help="Ejecuta un solo ciclo y termina"
-    )
+    p_agente.add_argument("--una-vez", action="store_true", help="Ejecuta un solo ciclo y termina")
     p_agente.add_argument("--json", action="store_true", help="Salida en JSON")
     p_agente.set_defaults(func=cmd_agente)
 
@@ -471,9 +471,7 @@ def _agregar_argumentos_central(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--listar-dispositivos", action="store_true", help="Lista los puestos registrados"
     )
-    parser.add_argument(
-        "--revocar-dispositivo", metavar="ID", help="Revoca el acceso de un puesto"
-    )
+    parser.add_argument("--revocar-dispositivo", metavar="ID", help="Revoca el acceso de un puesto")
     parser.add_argument(
         "--exportar-conflictos", metavar="ARCHIVO", help="Guarda los conflictos en JSON"
     )

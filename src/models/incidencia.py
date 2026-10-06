@@ -4,12 +4,13 @@ Modelo de datos para incidencias y permisos
 """
 
 from datetime import date
-from sqlalchemy import Integer, String, Text, Date, ForeignKey, Float, LargeBinary
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, Float, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base, BaseModel
 from .enums import EstadoIncidencia
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .empleado import Empleado

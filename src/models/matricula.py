@@ -10,7 +10,7 @@ escolar; retirarlo la desactiva sin borrar el historial.
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy import Date, ForeignKey, Index, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BaseModel
@@ -34,7 +34,19 @@ class Matricula(Base, BaseModel):
 
     __tablename__ = "matriculas"
     __table_args__ = (
-        UniqueConstraint("estudiante_id", "grado_id", name="uq_matricula_estudiante_grado"),
+        # Una sola matrícula ACTIVA por estudiante y grado. Retirar al
+        # estudiante desactiva la fila (``activa = 0``) y permite
+        # rematricularlo creando una matrícula nueva, conservando la anterior
+        # en el historial. Un índice parcial (``WHERE activa = 1``) expresa
+        # exactamente esa regla; una restricción UNIQUE completa sobre
+        # (estudiante_id, grado_id) impedía volver a matricular.
+        Index(
+            "uq_matriculas_estudiante_grado_activa",
+            "estudiante_id",
+            "grado_id",
+            unique=True,
+            sqlite_where=text("activa = 1"),
+        ),
     )
 
     estudiante_id: Mapped[int] = mapped_column(
@@ -43,9 +55,7 @@ class Matricula(Base, BaseModel):
     grado_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("grados.id"), nullable=False, index=True
     )
-    fecha_matricula: Mapped[date] = mapped_column(
-        Date, nullable=False, default=date.today
-    )
+    fecha_matricula: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     activa: Mapped[int] = mapped_column(Integer, default=1, nullable=False, index=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 

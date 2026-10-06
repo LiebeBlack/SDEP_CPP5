@@ -9,7 +9,7 @@ heredan, proporcionando campos comunes y métodos utilitarios.
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Integer, DateTime, FromClause
+from sqlalchemy import DateTime, FromClause, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 

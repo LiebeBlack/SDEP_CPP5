@@ -3,27 +3,27 @@ Document Manager
 Módulo de gestión documental
 """
 
+import logging
+import mimetypes
 import os
 import shutil
 from datetime import datetime
-import mimetypes
 from pathlib import Path
 from typing import Any
 
 from src.config import settings
 from src.utils.helpers import (
     EXTENSIONES_ABRIBLES,
+    ensure_directory_exists,
+    escribir_archivo_seguro,
+    format_file_size,
+    generate_unique_filename,
     get_file_extension,
     is_valid_image_file,
     is_valid_pdf_file,
-    generate_unique_filename,
-    ensure_directory_exists,
-    format_file_size,
-    escribir_archivo_seguro,
     leer_archivo_seguro,
     ruta_dentro_de,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -258,9 +258,7 @@ class DocumentManager:
             shutil.move(source_path, destination_path)
             return True
         except OSError:
-            logger.warning(
-                "No se pudo mover %s a %s", source_path, destination_path, exc_info=True
-            )
+            logger.warning("No se pudo mover %s a %s", source_path, destination_path, exc_info=True)
             return False
 
     def get_file_info(self, file_path: str) -> dict | None:
@@ -439,9 +437,7 @@ class DocumentManager:
 
         return file_path, unique_filename
 
-    def cleanup_old_files(
-        self, days: int = 30, incluir_almacen_documental: bool = False
-    ) -> int:
+    def cleanup_old_files(self, days: int = 30, incluir_almacen_documental: bool = False) -> int:
         """
         Limpia archivos antiguos de las carpetas de trabajo
 

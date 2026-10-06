@@ -3,13 +3,15 @@ Empleado Repository
 Repositorio para operaciones de datos de empleados con manejo de errores mejorado
 """
 
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from sqlalchemy.exc import SQLAlchemyError
 import logging
 from typing import Any
 
+from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from src.models import Empleado, TipoEmpleado
+
 from .base_repository import BaseRepository
 from .busqueda import normalizar_expr, normalizar_termino
 

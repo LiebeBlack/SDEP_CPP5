@@ -87,9 +87,7 @@ def test_no_se_repite_una_password_del_historial(session, auth, admin):
     with pytest.raises(ValueError, match="igual a la actual"):
         auth.cambiar_password(admin, "ClaveSegura1", actual_password="ClaveSegura1")
     with pytest.raises(ValueError, match="reutilizar"):
-        auth.cambiar_password(
-            admin, DEFAULT_ADMIN_PASSWORD, actual_password="ClaveSegura1"
-        )
+        auth.cambiar_password(admin, DEFAULT_ADMIN_PASSWORD, actual_password="ClaveSegura1")
 
 
 def test_historial_limita_las_ultimas_claves(session, auth, admin):

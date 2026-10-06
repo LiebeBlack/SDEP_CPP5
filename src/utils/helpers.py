@@ -6,13 +6,13 @@ Este módulo proporciona funciones auxiliares utilizadas en todo
 el sistema para formateo, validación y manipulación de datos.
 """
 
+import logging
 import os
 import subprocess
 import sys
 import time
+from datetime import date, datetime, timezone
 from pathlib import Path
-from datetime import datetime, date, timezone
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -552,11 +552,7 @@ def abrir_con_aplicacion_predeterminada(ruta: str | Path) -> bool:
                 return False
             abrir(str(archivo))
             return True
-        comando = (
-            ["open", str(archivo)]
-            if sys.platform == "darwin"
-            else ["xdg-open", str(archivo)]
-        )
+        comando = ["open", str(archivo)] if sys.platform == "darwin" else ["xdg-open", str(archivo)]
         subprocess.Popen(comando, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except OSError as e:

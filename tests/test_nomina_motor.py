@@ -175,9 +175,7 @@ def test_aguinaldo_y_bono_entran_al_bruto_y_a_las_deducciones():
 # Modalidad por tramos
 # ----------------------------------------------------------------------
 def test_tramos_calculan_isr_sobre_la_base_gravable():
-    resultado = calcular_nomina(
-        EntradaNomina(salario_base=Decimal("2000.00")), PARAMETROS_TRAMOS
-    )
+    resultado = calcular_nomina(EntradaNomina(salario_base=Decimal("2000.00")), PARAMETROS_TRAMOS)
     # Base gravable = 2000 - 90 (seguro) - 100 (pensión) = 1810
     assert resultado.base_gravable == Decimal("1810.00")
     # Excedente sobre 1000 al 10% = 81.00
@@ -216,9 +214,7 @@ def test_ajuste_anual_del_isr_detecta_saldo_a_favor():
         ),
     )
     # Renta anual 12000 -> 1200 de impuesto; si se retuvieron 1500 sobra 300
-    assert calcular_isr_anual(Decimal("12000.00"), tramos, Decimal("1500.00")) == Decimal(
-        "-300.00"
-    )
+    assert calcular_isr_anual(Decimal("12000.00"), tramos, Decimal("1500.00")) == Decimal("-300.00")
     assert calcular_tasa_efectiva(Decimal("12000.00"), tramos) == Decimal("10.0000")
 
 
@@ -291,10 +287,7 @@ def test_horas_extra_en_la_nomina_y_en_el_recibo():
 
 
 def test_sin_horas_extra_el_monto_es_cero():
-    assert (
-        calcular_monto_horas_extra(HorasExtra(), Decimal("2400.00"), *[Decimal(0)] * 3)
-        == CERO
-    )
+    assert calcular_monto_horas_extra(HorasExtra(), Decimal("2400.00"), *[Decimal(0)] * 3) == CERO
 
 
 # ----------------------------------------------------------------------
@@ -310,9 +303,7 @@ def test_antiguedad_en_anos_usa_meses_y_dias_calendario():
 def test_aguinaldo_bono_y_prestaciones_proporcionales():
     assert calcular_aguinaldo(Decimal("3000.00"), 6, 0, Decimal(15)) == Decimal("750.00")
     assert calcular_vacaciones(Decimal("3000.00"), Decimal(15)) == Decimal("1500.00")
-    assert calcular_prestaciones(Decimal("3000.00"), Decimal(2), Decimal(30)) == Decimal(
-        "6000.00"
-    )
+    assert calcular_prestaciones(Decimal("3000.00"), Decimal(2), Decimal(30)) == Decimal("6000.00")
     assert calcular_preaviso(Decimal("3000.00"), Decimal(30)) == Decimal("3000.00")
     # Sin salario no hay importe que pagar
     assert calcular_aguinaldo(CERO, 12, 0, Decimal(15)) == CERO
@@ -387,12 +378,8 @@ def test_validar_parametros_avisa_de_configuraciones_incoherentes():
     # el cálculo de la nómina por una configuración sin sembrar.
     assert validar_parametros(ParametrosNomina()) == []
     # Pero la modalidad por tramos exige una tabla configurada
-    assert validar_parametros(
-        ParametrosNomina(modo=ModoCalculoNomina.TRAMOS)
-    ) != []
-    assert validar_parametros(
-        ParametrosNomina(porcentaje_seguro=Decimal("150.0"))
-    ) != []
+    assert validar_parametros(ParametrosNomina(modo=ModoCalculoNomina.TRAMOS)) != []
+    assert validar_parametros(ParametrosNomina(porcentaje_seguro=Decimal("150.0"))) != []
     parametros = ParametrosNomina(
         modo=ModoCalculoNomina.TRAMOS,
         porcentaje_seguro=Decimal("4.5"),
@@ -409,9 +396,7 @@ def test_validar_parametros_avisa_de_configuraciones_incoherentes():
 
 
 def test_resumen_del_costo_para_el_empleador():
-    resultado = calcular_nomina(
-        EntradaNomina(salario_base=Decimal("2000.00")), PARAMETROS_TRAMOS
-    )
+    resultado = calcular_nomina(EntradaNomina(salario_base=Decimal("2000.00")), PARAMETROS_TRAMOS)
     resumen = resumen_costo_empleador(resultado)
     assert resumen["neto_empleado"] == 1729.0
     assert resumen["deducciones_empleado"] == 271.0

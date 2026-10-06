@@ -21,7 +21,8 @@ import weakref
 from contextlib import contextmanager
 from typing import Any, Iterator
 
-from sqlalchemy import and_, event, inspect as sa_inspect
+from sqlalchemy import and_, event
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 
 from sync_agent import identidad, registro
@@ -180,9 +181,7 @@ def _anotar(session: Session, obj: Any, operacion: str, insertando: bool) -> dic
     if not registro.es_sincronizable(tabla):
         return None
 
-    if tabla == "configuraciones" and registro.configuracion_es_local(
-        getattr(obj, "clave", None)
-    ):
+    if tabla == "configuraciones" and registro.configuracion_es_local(getattr(obj, "clave", None)):
         # Las preferencias del equipo no viajan: tema visual, respaldos, agente...
         return None
 

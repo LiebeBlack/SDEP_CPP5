@@ -72,14 +72,18 @@ def test_integridad_listar_y_eliminar(session):
 
 
 def test_backup_corrupto_detectado(session):
-    from src.utils.backup_manager import get_backup_manager
     from pathlib import Path
+
+    from src.utils.backup_manager import get_backup_manager
 
     gestor = get_backup_manager()
     _crear_empleado(session, "70010004")
     gestor.create_backup("corromper_este")
 
-    ruta = Path(gestor.metadata["corromper_este"]["path"])
+    # Los metadatos vigentes guardan solo el nombre del archivo (relativo al
+    # almacén de respaldos) para no exponer la ruta absoluta del equipo; la
+    # ruta utilizable se compone aquí con el directorio del gestor.
+    ruta = Path(gestor.backup_dir) / gestor.metadata["corromper_este"]["filename"]
     with open(ruta, "rb") as f:
         contenido = bytearray(f.read())
     contenido[len(contenido) // 2] ^= 0xFF  # corromper un byte

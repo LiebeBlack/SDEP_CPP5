@@ -10,8 +10,8 @@ un administrador o gestor puede hacerlo en cualquier grado.
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BaseModel
@@ -39,9 +39,7 @@ class Grado(Base, BaseModel):
 
     __tablename__ = "grados"
     __table_args__ = (
-        UniqueConstraint(
-            "periodo_id", "nombre", "seccion", name="uq_grado_periodo_nombre_seccion"
-        ),
+        UniqueConstraint("periodo_id", "nombre", "seccion", name="uq_grado_periodo_nombre_seccion"),
     )
 
     periodo_id: Mapped[int] = mapped_column(
@@ -63,9 +61,7 @@ class Grado(Base, BaseModel):
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relaciones
-    periodo: Mapped["PeriodoAcademico"] = relationship(
-        "PeriodoAcademico", back_populates="grados"
-    )
+    periodo: Mapped["PeriodoAcademico"] = relationship("PeriodoAcademico", back_populates="grados")
     profesor: Mapped["Usuario | None"] = relationship("Usuario")
     matriculas: Mapped[list["Matricula"]] = relationship(
         "Matricula", back_populates="grado", cascade="all, delete-orphan"

@@ -208,33 +208,33 @@ No se incluirán entradas cuya existencia o localización no pueda comprobarse.
 
 ### 6.2.4 Anexo 4: Diagramas de Diseño del Sistema
 
-Las figuras que se presentan a continuación describen la arquitectura del sistema, su modelo de datos y los tres flujos de mayor criticidad operativa. Todas corresponden a la versión 3.0.0 y provienen de la implementación efectivamente desplegada en `src/`.
+Las figuras que se presentan a continuación describen la arquitectura del sistema, su modelo de datos y los tres flujos de mayor criticidad operativa. Todas corresponden a la versión 3.0.1 y provienen de la implementación efectivamente desplegada en `src/`.
 
 **Figura 6.1. Arquitectura de capas del sistema**
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │                      CAPA DE PRESENTACIÓN                    │
-│   LoginWindow · MainWindow · 7 módulos (Ctrl+1 … Ctrl+7)     │
+│   LoginWindow · MainWindow · 9 módulos (Ctrl+1 … Ctrl+9)     │
 │   Dashboard · Empleados · Documentos · Incidencias ·         │
-│   Contratos · Nómina · Configuración · tema claro/oscuro ·   │
-│   widgets de gráficos                                        │
+│   Contratos · Nómina · Configuración · Estudiantes ·         │
+│   Calificaciones · tema claro/oscuro · widgets de gráficos   │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                      CAPA DE SERVICIOS                       │
 │   auth · empleado · documento · incidencia · contrato ·      │
-│   nómina · configuración                                     │
+│   nómina · configuración · académico · nota · token_sesion   │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                     CAPA DE REPOSITORIOS                     │
-│   base_repository + 7 repositorios concretos                 │
+│   base_repository + 13 repositorios concretos                │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │                       CAPA DE MODELOS                        │
-│   SQLAlchemy ORM · 7 entidades y enumeraciones del dominio    │
+│   SQLAlchemy ORM · 13 entidades y enumeraciones del dominio  │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
@@ -252,7 +252,8 @@ Las figuras que se presentan a continuación describen la arquitectura del siste
 ┌───────────────────────────▼──────────────────────────────────┐
 │                    BASE DE DATOS (SQLite)                    │
 │   empleados · documentos · incidencias · contratos · pagos · │
-│   configuraciones · usuarios                                 │
+│   configuraciones · usuarios · tokens_sesion · estudiantes · │
+│   grados · matriculas · notas_finales · periodos_academicos  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -263,6 +264,13 @@ empleados 1 ──── N documentos
 empleados 1 ──── N incidencias
 empleados 1 ──── N contratos
 empleados 1 ──── N pagos
+usuarios 1 ──── N tokens_sesion
+periodos_academicos 1 ──── N grados
+grados 1 ──── N matriculas
+estudiantes 1 ──── N matriculas
+grados 1 ──── N notas_finales
+estudiantes 1 ──── N notas_finales
+grados N ──── 1 usuarios (docente responsable)
 configuraciones ─── parámetros del sistema (registro institucional)
 usuarios ───────── credenciales, rol y control de acceso
 ```
@@ -314,11 +322,11 @@ Inicio
                           └─ Fin
 ```
 
-*Fuente de las figuras 6.1 a 6.5: elaboración propia a partir de la implementación del sistema, versión 3.0.0.*
+*Fuente de las figuras 6.1 a 6.5: elaboración propia a partir de la implementación del sistema, versión 3.0.1.*
 
 ### 6.2.5 Anexo 5: Guía Resumida de Usuario
 
-**Nota.** La versión completa y actualizada de la guía se encuentra en el archivo `GUIA_USUARIO.md` del repositorio. Este anexo presenta la versión resumida que se entrega a las instituciones participantes, referida a la versión 3.0.0 del sistema.
+**Nota.** La versión completa y actualizada de la guía se encuentra en el archivo `GUIA_USUARIO.md` del repositorio. Este anexo presenta la versión resumida que se entrega a las instituciones participantes, referida a la versión 3.0.1 del sistema.
 
 **1. Requisitos e instalación**
 
@@ -340,7 +348,7 @@ Al iniciar la aplicación se presenta la ventana de autenticación. El usuario i
 
 | Rol | Alcance |
 |-----|---------|
-| Administrador | Acceso a los siete módulos, configuración institucional, respaldos, auditoría y gestión de usuarios |
+| Administrador | Acceso a los nueve módulos, configuración institucional, respaldos, auditoría y gestión de usuarios |
 | Gestor | Empleados, documentos, incidencias, contratos, nómina y reportes |
 | Usuario | Empleados, documentos e incidencias, con actualización de registros propios |
 | Solo lectura | Consulta de empleados, documentos y reportes |
@@ -356,6 +364,8 @@ Al iniciar la aplicación se presenta la ventana de autenticación. El usuario i
 | `Ctrl+5` | Contratos |
 | `Ctrl+6` | Nómina |
 | `Ctrl+7` | Configuración |
+| `Ctrl+8` | Estudiantes |
+| `Ctrl+9` | Calificaciones |
 | `Ctrl+N` | Nuevo registro en el módulo activo |
 | `Ctrl+F` | Enfocar el buscador o el filtro |
 | `Ctrl+S` | Guardar cambios en el módulo de configuración |
@@ -385,7 +395,7 @@ El sistema permite crear, verificar, restaurar y eliminar copias de seguridad de
 
 ### 6.2.6 Anexo 6: Código Fuente del Sistema
 
-**Estructura del repositorio (versión 3.0.0)**
+**Estructura del repositorio (versión 3.0.1)**
 
 ```text
 SDEP_CPP5/
@@ -395,13 +405,16 @@ SDEP_CPP5/
 │   │                      contratos_frame.py · widgets/graficos.py
 │   ├── models/            base.py · enums.py · empleado.py · documento.py
 │   │                      incidencia.py · contrato.py · pago.py
-│   │                      configuracion.py · usuario.py
+│   │                      configuracion.py · usuario.py · token_sesion.py
+│   │                      estudiante.py · grado.py · matricula.py
+│   │                      nota_final.py · periodo_academico.py
 │   ├── nomina/            motor.py · parametros.py · isr.py · horas_extra.py
 │   │                      prestaciones.py · seguridad_social.py
 │   │                      finiquito.py · tipos.py
-│   ├── repositories/      base_repository.py y siete repositorios concretos
+│   ├── repositories/      base_repository.py y trece repositorios concretos
 │   ├── services/          auth · empleado · documento · incidencia · contrato
-│   │                      pago · configuracion
+│   │                      pago · configuracion · academico · nota
+│   │                      token_sesion
 │   ├── utils/             security.py · audit_logger.py · backup_manager.py
 │   │                      backup_scheduler.py · document_manager.py
 │   │                      exporter.py · pdf_generator.py
@@ -411,7 +424,7 @@ SDEP_CPP5/
 │                          merge.py · captura.py · aplicador.py · agente.py
 │                          servidor.py · cliente.py · esquema.py · identidad.py
 │                          registro.py · comun.py · config.py · __main__.py
-├── tests/                 veintiséis archivos de prueba · 476 funciones
+├── tests/                 treinta y dos archivos de prueba · 551 funciones
 ├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
 ├── installer/             configuración de instalación para Windows
 ├── docs/                  portal de documentación
@@ -491,17 +504,17 @@ class AuthService:
         return usuario_bd
 ```
 
-El código completo se encuentra en el repositorio del proyecto. Su extensión es de 23 242 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV, a las que se suman 5 271 líneas del paquete independiente de sincronización (`sync_agent/`, 13 archivos).
+El código completo se encuentra en el repositorio del proyecto. Su extensión es de 29 475 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV, a las que se suman 5 433 líneas del paquete independiente de sincronización (`sync_agent/`, 13 archivos).
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
-**Composición de la suite (versión 3.0.0)**
+**Composición de la suite (versión 3.0.1)**
 
 | Indicador | Valor |
 |-----------|-------|
-| Archivos de prueba | 20 |
-| Funciones de prueba declaradas | 476 |
-| Líneas de código de prueba | 6 598 |
+| Archivos de prueba | 32 |
+| Funciones de prueba declaradas | 551 |
+| Líneas de código de prueba | 8 059 |
 | Distribución por archivo | Tabla 4.7 del Capítulo IV |
 | Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 
@@ -520,9 +533,9 @@ El código completo se encuentra en el repositorio del proyecto. Su extensión e
 
 La cobertura de la lógica de negocio —modelos, repositorios, servicios, utilidades y configuración— alcanzó el 73 % en esa medición.
 
-**Estado de actualización de esta evidencia.** Los porcentajes anteriores corresponden a la versión 1.0.4 y se conservan como referencia. Dado que el código evolucionó hasta la versión 3.0.0, la cobertura debe re-medirse con `pytest --cov=src` y sustituirse en esta tabla antes de la presentación definitiva. El informe de la última ejecución de la suite, con el número de pruebas ejecutadas y su resultado, debe adjuntarse como evidencia documental.
+**Estado de actualización de esta evidencia.** Los porcentajes anteriores corresponden a la versión 1.0.4 y se conservan como referencia. Dado que el código evolucionó hasta la versión 3.0.1, la cobertura debe re-medirse con `pytest --cov=src` y sustituirse en esta tabla antes de la presentación definitiva. El informe de la última ejecución de la suite, con el número de pruebas ejecutadas y su resultado, debe adjuntarse como evidencia documental.
 
-**Cobertura verificada por área** (composición de la suite en la versión 3.0.0):
+**Cobertura verificada por área** (composición de la suite en la versión 3.0.1):
 
 | Área | Funciones de prueba | Archivos |
 |------|--------------------|----------|

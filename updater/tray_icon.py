@@ -92,11 +92,29 @@ class WNDCLASSW(ctypes.Structure):
     ]
 
 
-WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
+        WNDPROC = ctypes.PYFUNCTYPE(ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
+
 
 _user32: ctypes.WinDLL | None = None
 _shell32: ctypes.WinDLL | None = None
 _kernel32: ctypes.WinDLL | None = None
+
+
+def _cast_pointer(source) -> ctypes.c_void_p:
+    """Convierte un manejador nativo (HICON, HINSTANCE) a un puntero genérico ctypes.
+
+    .. nota: esta función solo simplifica el modelado estático.
+
+    Internamente delega en ``ctypes.cast`` con el tipo de origen correcto,
+    de modo que el argumento de ``cast`` siempre sea ``ctypes.c_void_p``,
+    que cumple la firma esperada por mypy.
+
+    .. nota: la versión estática "source: object" solo simplifica
+       el modelado estático.
+    """
+    return ctypes.cast(source, ctypes.c_void_p)
+
+
 
 
 def _win32_api() -> None:
@@ -127,11 +145,29 @@ def _win32_api() -> None:
         wt.HMENU,
         wt.HINSTANCE,
         ctypes.c_void_p,
-    ]
-    _user32.CreateWindowExW.restype = wt.HWND
+    ]        _user32.CreateWindowExW.restype = wt.HWND
 
-    _user32.DefWindowProcW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
+        _user32.CreateWindowExW.argtypes = [
+            wt.DWORD,
+            ctypes.c_wchar_p,
+            ctypes.c_wchar_p,
+            wt.DWORD,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            wt.HWND,
+            wt.HMENU,
+            wt.HINSTANCE,
+            ctypes.POINTER(ctypes.c_void_p),
+        ]        _user32.DefWindowProcW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
+
+_user32.DefWindowProcW.restype = wt.BOOL
+
+        _user32.DefWindowProcW.restype = wt.BOOL
+
     _user32.DefWindowProcW.restype = ctypes.c_ssize_t
+
 
     _user32.PostMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
     _user32.PostMessageW.restype = wt.BOOL
@@ -176,8 +212,8 @@ def _win32_api() -> None:
         ctypes.c_int,
         wt.HWND,
         ctypes.c_void_p,
-    ]
-    _user32.TrackPopupMenu.restype = ctypes.c_ulong
+    ]        _user32.TrackPopupMenu.restype = ctypes.c_int
+
 
     _user32.DestroyMenu.argtypes = [wt.HMENU]
     _user32.DestroyMenu.restype = wt.BOOL
@@ -257,7 +293,9 @@ class TrayIcon:
         assert _user32 is not None and _shell32 is not None and _kernel32 is not None
         self._wndproc_ref = WNDPROC(self._wnd_proc)
         wc = WNDCLASSW()
-        wc.lpfnWndProc = ctypes.cast(self._wndproc_ref, ctypes.c_void_p)
+        wc.lpfnWndProc = _cast_pointer(self._wndproc_ref)
+
+        _user32.CreateWindowExW.restype = wt.HWND
         wc.hInstance = _kernel32.GetModuleHandleW(None)
         wc.lpszClassName = CLASS_NAME
         _user32.RegisterClassW(ctypes.byref(wc))
@@ -366,6 +404,4 @@ class TrayIcon:
             if hicon:
                 return int(hicon)
         # Respaldo: ícono genérico de aplicación de Windows
-        return int(
-            _user32.LoadIconW(None, ctypes.cast(ctypes.c_void_p(IDI_APPLICATION), ctypes.c_wchar_p))
-        )
+        return int(_cast_pointer(_user32.LoadIconW(None, ctypes.cast(ctypes.c_void_p(IDI_APPLICATION), ctypes.c_wchar_p))))

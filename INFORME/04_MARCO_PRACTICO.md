@@ -48,7 +48,7 @@ El sistema comprende nueve módulos de navegación, accesibles con los atajos `C
 | 8 | Estudiantes | Legajo académico del estudiante, búsqueda y exportación |
 | 9 | Calificaciones | Grados, matrículas, notas y periodos académicos |
 
-Los siete primeros módulos corresponden al núcleo de gestión de personal y nómina descrito en la versión 3.0.0 del corpus; los dos últimos corresponden a la extensión académica incorporada en el repositorio vigente 3.0.1. Ambos conjuntos comparten la misma estructura de seguridad, auditoría y acceso por rol.
+Los siete primeros módulos corresponden al núcleo de gestión de personal y nómina; los dos últimos corresponden a la extensión académica incorporada en la versión 3.0.1. Ambos conjuntos comparten la misma estructura de seguridad, auditoría y acceso por rol.
 
 ### 2.3 Funciones documentales y de exportación
 

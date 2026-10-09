@@ -235,7 +235,7 @@ Los principios de diseño que gobiernan esa organización son cuatro: separació
 
 ### 6.3 Consecuencias verificables del modelo
 
-El modelo no es una declaración de intenciones. Sus consecuencias se comprueban en tres hechos documentados. Primero, las reglas de nómina se prueban sin levantar la interfaz: la cobertura del dominio de cálculo alcanza el 89 % en la medición del 6 de octubre de 2026. Segundo, la incorporación y el retiro de módulos no exigió refundar las capas preexistentes entre las versiones 2.79 y 3.0.0, y la extensión posterior hacia el dominio académico se realizó sobre la misma estructura. Tercero, la sustitución de componentes quedó contenida en un solo paquete, como lo demuestra el retiro completo de tres módulos con sus tablas, columnas y parámetros.
+El modelo no es una declaración de intenciones. Sus consecuencias se comprueban en tres hechos documentados. Primero, las reglas de nómina se prueban sin levantar la interfaz: la cobertura del dominio de cálculo alcanza el 89 % en la medición del 6 de octubre de 2026. Segundo, la incorporación y el retiro de módulos no exigió refundar las capas preexistentes entre las versiones 2.79 y 3.0.1, y la extensión posterior hacia el dominio académico se realizó sobre la misma estructura. Tercero, la sustitución de componentes quedó contenida en un solo paquete, como lo demuestra el retiro completo de tres módulos con sus tablas, columnas y parámetros.
 
 ---
 

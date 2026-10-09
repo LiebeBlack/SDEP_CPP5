@@ -161,7 +161,7 @@ La interfaz presenta nueve módulos de navegación, accesibles con los atajos `C
 | 8 | Estudiantes | Legajo, búsqueda por nombre o cédula y exportación |
 | 9 | Calificaciones | Grados, matrículas, notas finales, consolidado y boletín, con cierre de periodo |
 
-Los siete primeros módulos corresponden al núcleo de gestión de personal y nómina descrito en la versión 3.0.0 del corpus académico; los dos últimos corresponden a la extensión académica incorporada en el repositorio vigente. La ampliación se realizó sobre la misma estructura de capas, sin alterar los módulos preexistentes.
+Los siete primeros módulos corresponden al núcleo de gestión de personal y nómina; los dos últimos corresponden a la extensión académica incorporada en la versión 3.0.1. La ampliación se realizó sobre la misma estructura de capas, sin alterar los módulos preexistentes.
 
 ### 4.2 Capa de servicios de negocio
 

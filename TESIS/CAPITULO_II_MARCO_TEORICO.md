@@ -331,26 +331,27 @@ El Sistema de Gestión de Personal y Nómina se organiza conforme al modelo conc
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │ CAPA DE PRESENTACIÓN · CustomTkinter                                   │
-│ LoginWindow · MainWindow · siete módulos con acceso por rol y atajos   │
-│ Ctrl+1 … Ctrl+7: panel de control, empleados, documentos, incidencias, │
-│ contratos, nómina y configuración                                      │
+│ LoginWindow · MainWindow · nueve módulos con acceso por rol y atajos   │
+│ Ctrl+1 … Ctrl+9: panel de control, empleados, documentos, incidencias, │
+│ contratos, nómina, configuración, estudiantes y calificaciones         │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ CAPA DE SERVICIOS · reglas de negocio y orquestación de flujos         │
 │ autenticación · empleados · documentos · incidencias · contratos ·     │
-│ nómina · configuración                                                 │
+│ nómina · configuración · académico · calificaciones · token de sesión  │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ CAPA DE REPOSITORIOS · patrón Repository sobre repositorio base        │
-│ siete repositorios con consultas reutilizables y transacciones         │
+│ trece repositorios con consultas reutilizables y transacciones         │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │ CAPA DE MODELOS · SQLAlchemy ORM                                       │
 │ empleados · documentos · incidencias · contratos · pagos ·             │
-│ configuraciones · usuarios                                             │
+│ configuraciones · usuarios · tokens_sesion · estudiantes · grados ·    │
+│ matriculas · notas_finales · periodos_academicos                       │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
@@ -371,7 +372,7 @@ El Sistema de Gestión de Personal y Nómina se organiza conforme al modelo conc
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-*Fuente: elaboración propia a partir de la arquitectura implementada en `src/`, versión 3.0.0.*
+*Fuente: elaboración propia a partir de la arquitectura implementada en `src/`, versión 3.0.1.*
 
 ### 2.6.2 Relaciones entre Componentes
 

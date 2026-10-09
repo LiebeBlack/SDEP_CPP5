@@ -72,7 +72,7 @@ Los objetivos específicos del proyecto son seis. Se enuncian a continuación co
 > Implementar los módulos de gestión de personal, documentación, incidencias, contratación y nómina con interfaces usables, funcionalidad completa y validaciones integrales, empleando tecnologías de código abierto.
 
 **Producto verificable:** módulos funcionales operativos con control de acceso por rol, validaciones y auditoría.
-**Estado:** cumplido. El corpus documenta siete módulos operativos en la versión 3.0.0 y el repositorio vigente comprende nueve, con la extensión académica posterior.
+**Estado:** cumplido. El corpus y el repositorio comprenden nueve módulos operativos en la versión 3.0.1, con la extensión académica incorporada.
 
 ### 4.4 Objetivo Específico 4: Reportes y documentos oficiales
 
@@ -128,7 +128,7 @@ Las cinco hipótesis específicas y su estado de evidencia son los siguientes.
 
 | Código | Hipótesis | Indicador | Estado de la evidencia |
 |--------|-----------|-----------|------------------------|
-| H1 | La arquitectura modular facilita el mantenimiento y la expansión | Tiempo de incorporación de una funcionalidad nueva; comprensión del código por terceros | Estructural favorable: la evolución entre 2.79 y 3.0.0 se logró sin refactorizaciones |
+| H1 | La arquitectura modular facilita el mantenimiento y la expansión | Tiempo de incorporación de una funcionalidad nueva; comprensión del código por terceros | Estructural favorable: la evolución entre 2.79 y 3.0.1 se logró sin refactorizaciones |
 | H2 | La interfaz gráfica mejora la usabilidad respecto de la línea de comandos | Tiempo de aprendizaje; tasa de éxito; valoración de la interfaz | Pendiente del piloto |
 | H3 | La automatización reduce los errores financieros | Verificación automatizada de las reglas; variación de la tasa de error | Estructural favorable: reglas de cálculo verificadas por la suite |
 | H4 | La digitalización mejora el acceso a la información | Disponibilidad de la información en el sistema; variación del tiempo de búsqueda | Estructural favorable en la disponibilidad; magnitud pendiente del piloto |

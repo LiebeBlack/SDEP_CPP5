@@ -1,7 +1,7 @@
 # INFORME DEL ESTADO DE LA INVESTIGACIÓN DEL PROYECTO SOCIOTECNOLÓGICO
 
 **Proyecto:** Desarrollo e implementación de un sistema de gestión de personal y nómina para instituciones educativas utilizando tecnologías de información.
-**Sistema documentado:** SDEP_CPP5. Corpus académico en versión 3.0.0 (`TESIS/`) y repositorio en versión vigente 3.0.1 (`VERSION`, `pyproject.toml`).
+**Sistema documentado:** SDEP_CPP5, versión 3.0.1, en el corpus académico (`TESIS/`) y en el repositorio vigente (`VERSION`, `pyproject.toml`).
 **Fecha de elaboración:** 9 de octubre de 2026.
 **Fuente única de información:** documentos y código del repositorio `SDEP_CPP5/`.
 **Carácter del documento:** informe integrador. Reúne, en una sola pieza, el estado real de la investigación y remite a los doce documentos complementarios que lo desarrollan, cuyo índice maestro es [00_INDICE_GENERAL_DEL_EXPEDIENTE.md](00_INDICE_GENERAL_DEL_EXPEDIENTE.md).
@@ -30,11 +30,11 @@ El informe se apoya en nueve documentos que desarrollan cada componente del marc
 | Autor | [Nombre del Estudiante] |
 | Tutor académico | [Nombre del Tutor] |
 | Institución | [Nombre de la Universidad o Instituto] |
-| Versión del corpus académico | 3.0.0 ([registro de control documental](../TESIS/REGISTRO_CONTROL_DOCUMENTAL.md)) |
+| Versión del corpus académico | 3.0.1 ([registro de control documental](../TESIS/REGISTRO_CONTROL_DOCUMENTAL.md)) |
 | Versión del repositorio | 3.0.1 ([VERSION](../VERSION), [pyproject.toml](../pyproject.toml)) |
 | Estado general | Desarrollo, verificación técnica y documentación concluidos; validación de usabilidad y aplicación piloto programadas |
 
-La diferencia entre la versión 3.0.0 y la 3.0.1 no es una discrepancia, sino la consecuencia natural de que el producto haya seguido evolucionando después del cierre del corpus académico. El apartado 6 explica en qué consiste esa diferencia y qué verificaciones se practicaron sobre cada una.
+El corpus académico y el repositorio se encuentran en la misma versión, la 3.0.1: la extensión académica, que había quedado fuera de la documentación al cierre de la 3.0.0, fue incorporada al corpus. El apartado 6 declara esa correspondencia y consigna las cifras verificadas en cada versión.
 
 ## 3. Estado de la investigación por componente
 
@@ -91,17 +91,17 @@ Conviene retener tres hechos verificables. El dominio de cálculo de nómina est
 
 ## 6. Correspondencia entre el corpus académico y el repositorio
 
-El corpus académico describe la versión 3.0.0; el repositorio se encuentra en la versión 3.0.1. Mantener la correspondencia entre ambos exige declarar las diferencias con precisión.
+El corpus académico y el repositorio están alineados en la versión 3.0.1. El módulo académico —estudiantes, grados, matrículas, calificaciones y periodos— había quedado fuera de la documentación en la versión 3.0.0; su incorporación al corpus eliminó la única divergencia que subsistía entre lo documentado y lo construido. Las cifras verificadas son las siguientes.
 
-| Rasgo | Corpus académico (3.0.0) | Repositorio vigente (3.0.1) |
-|-------|--------------------------|------------------------------|
+| Rasgo | Versión 3.0.0 (referencia histórica) | Versión 3.0.1 (corpus y repositorio) |
+|-------|--------------------------------------|--------------------------------------|
 | Módulos de interfaz | Siete módulos operativos | Nueve módulos: los siete operativos más estudiantes y calificaciones |
 | Esquema de datos | Siete tablas del núcleo de personal y nómina | Trece tablas: las siete del núcleo más estudiantes, grados, matrículas, notas finales, periodos académicos y tokens de sesión |
 | Funciones de prueba | 476 en veintiséis archivos | 551 en treinta y dos archivos |
 | Extensión de `src/` | 23 242 líneas en 59 archivos | 29 475 líneas en 77 archivos |
 | Paquete de sincronización | Documentado a nivel de descripción | 5 433 líneas en 13 archivos |
 
-La ampliación de alcance hacia el dominio académico —estudiantes, grados, matrículas, calificaciones y periodos— constituye una extensión funcional posterior al cierre del corpus. No altera ninguna de las conclusiones técnicas sobre la versión 3.0.0, pero sí obliga a que toda cifra estructural se presente con la versión a la que pertenece. Los apartados 4 y 5 de este informe se refieren al repositorio vigente y lo declaran así.
+La ampliación de alcance hacia el dominio académico se realizó sobre la misma arquitectura de capas, sin refundar las capas preexistentes y sin alterar las conclusiones técnicas sobre el núcleo de personal y nómina. Los apartados 4 y 5 de este informe se refieren a la versión 3.0.1 y lo declaran así.
 
 ## 7. Pendientes y estatuto de la evidencia faltante
 

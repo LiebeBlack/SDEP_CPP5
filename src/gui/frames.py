@@ -2144,13 +2144,18 @@ class DocumentosFrame(ctk.CTkFrame):
         try:
             match sys.platform:
                 case "win32":
-                    os.startfile(ruta)
+                    _abir_documento(ruta)
                 case "darwin":
                     subprocess.Popen(["open", ruta])
                 case _:
                     subprocess.Popen(["xdg-open", ruta])
         except Exception:
             webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
+
+
+def _abrir_documento(ruta: str) -> None:
+    """Abre un archivo con su aplicación por defecto (Windows)."""
+    os.startfile(ruta)
 
     def _on_view_documento(self):
         """Muestra el documento seleccionado en el visor del sistema"""

@@ -70,8 +70,8 @@ El registro comprende además el historial de versiones del sistema documentado,
 |---------|------------------|
 | 1.0.4 | Versión sobre la que se ejecutó la medición de cobertura que se conserva como referencia |
 | 2.79 | Versión en la que se documentó por primera vez la suite de 323 pruebas, la autenticación con roles y los módulos iniciales |
-| 3.0.0 | Versión vigente del corpus académico: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 476 funciones de prueba |
-| 3.0.1 | Versión vigente del repositorio: incorpora el dominio académico y la gestión de sesiones; 551 funciones de prueba |
+| 3.0.0 | Hito anterior: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 476 funciones de prueba |
+| 3.0.1 | Versión vigente del corpus académico y del repositorio: incorpora el dominio académico y la gestión de sesiones; 551 funciones de prueba en 32 archivos |
 
 ### 3.3 Verificación automática de la documentación
 
@@ -106,7 +106,7 @@ La matriz siguiente sintetiza el estado de cada componente del proyecto, con la 
 | Diagnóstico y planteamiento del problema | Concluido | Instrumentos aplicados y diagnóstico triangulado | Capítulo I |
 | Análisis de requerimientos | Concluido | Requerimientos funcionales y no funcionales priorizados | Capítulo I y anexo de instrumentos |
 | Diseño de la arquitectura | Concluido e implementado | Arquitectura de capas y patrones | Capítulo IV y código |
-| Desarrollo de módulos | Concluido | Siete módulos operativos en 3.0.0; nueve en 3.0.1 | Capítulo IV e interfaz |
+| Desarrollo de módulos | Concluido | Nueve módulos operativos en 3.0.1 | Capítulo IV e interfaz |
 | Reportes y documentos oficiales | Concluido | Doce tipos de documento en PDF | Generador documental |
 | Pruebas técnicas | Concluido | 551 pruebas exitosas y verificadores estáticos | Ejecución del 6 de octubre de 2026 |
 | Pruebas de usabilidad | Programadas | Protocolo de seis tareas con campos de registro | Anexo de usabilidad |

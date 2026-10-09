@@ -31,7 +31,7 @@ La regla que gobierna el expediente es una sola y se repite en cada documento: s
 | Enfoque | Mixto, con predominio cuantitativo en la medición del efecto |
 | Ámbito de aplicación | Instituciones educativas de nivel medio y superior |
 | Jurisdicción de referencia | República Bolivariana de Venezuela |
-| Versión del sistema documentado | Corpus académico 3.0.0; repositorio 3.0.1 |
+| Versión del sistema documentado | 3.0.1, tanto en el corpus académico como en el repositorio |
 | Lugar y fecha de presentación | [Ciudad, País], [Fecha] |
 
 ---
@@ -84,7 +84,7 @@ Cada documento remite a los que le dan continuidad, de modo que ninguna afirmaci
 
 ### 5.1 Convenciones de cita de cifras
 
-Toda cifra estructural del expediente se consigna con la versión del sistema a la que pertenece. Cuando una cifra proviene de una medición, se indica el procedimiento y la fecha. Las magnitudes del corpus académico corresponden a la versión 3.0.0; las del repositorio vigente, a la 3.0.1. Nunca se mezclan sin declaración.
+Toda cifra estructural del expediente se consigna con la versión del sistema a la que pertenece. Cuando una cifra proviene de una medición, se indica el procedimiento y la fecha. Las magnitudes del corpus académico y del repositorio corresponden a la versión 3.0.1, que es a la vez la versión documentada y la vigente. Cuando una cifra de una versión anterior se conserva como referencia, se declara expresamente.
 
 ### 5.2 Convenciones de remisión
 

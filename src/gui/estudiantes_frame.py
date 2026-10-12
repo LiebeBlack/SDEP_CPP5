@@ -1090,7 +1090,7 @@ class GradoDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color=COLORES["texto_suave"],
+            text_color="#e74c3c",
             anchor="w",
             justify="left",
             wraplength=420,
@@ -1156,7 +1156,8 @@ class GradoDialog(_DialogoBase):
                 self.servicio.crear_grado(datos)
             else:
                 self.servicio.actualizar_grado(int(self.grado.id), datos)
-        except (ValueError, TypeError, AttributeError) as e:
+        except (ValueError, TypeError, AttributeError, SQLAlchemyError, Exception) as e:
+            logger.error("Error al guardar grado: %s", e)
             self.error_label.configure(text=str(e))
             return
         self.guardado = True
@@ -1262,7 +1263,7 @@ class MatriculaDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color=COLORES["texto_suave"],
+            text_color="#e74c3c",
             anchor="w",
             justify="left",
             wraplength=500,
@@ -1306,7 +1307,8 @@ class MatriculaDialog(_DialogoBase):
             return
         try:
             self.servicio.matricular(estudiante_id, grado_id)
-        except (ValueError, TypeError, AttributeError) as e:
+        except (ValueError, TypeError, AttributeError, SQLAlchemyError, Exception) as e:
+            logger.error("Error al matricular estudiante: %s", e)
             self.error_label.configure(text=str(e))
             return
         self.guardado = True

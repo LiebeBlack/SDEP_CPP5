@@ -527,6 +527,8 @@ class NotasFrame(ctk.CTkFrame):
 
     def _eliminar_nota(self) -> None:
         """Elimina la nota seleccionada (con autorización y periodo abierto)"""
+        if not _verificar_permiso(self.main_window, "delete", "eliminar notas"):
+            return
         if self.servicio is None:
             return
         nota = self._nota_seleccionada()
@@ -544,7 +546,8 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             self.servicio.eliminar(int(nota.id), self.token)
-        except (ValueError, TypeError, AttributeError) as e:
+        except (ValueError, TypeError, AttributeError, SQLAlchemyError, Exception) as e:
+            logger.error("No se pudo eliminar la nota: %s", e, exc_info=True)
             messagebox.showerror("Notas", f"No se pudo eliminar la nota:\n{e}")
             return
         self._on_grado_cambio()
@@ -576,7 +579,8 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             filas = self.servicio.consolidado_periodo(int(periodo.id))
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+            logger.error("No se pudo generar el consolidado: %s", e, exc_info=True)
             messagebox.showerror("Consolidado", f"No se pudo generar el consolidado:\n{e}")
             return
         if not filas:
@@ -604,7 +608,8 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             datos = self.servicio.datos_acta(int(grado.id))
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+            logger.error("No se pudo generar el acta: %s", e, exc_info=True)
             messagebox.showerror("Acta", f"No se pudo generar el acta:\n{e}")
             return
         if not datos.get("filas"):
@@ -619,21 +624,19 @@ class NotasFrame(ctk.CTkFrame):
         if not self._notas:
             messagebox.showinfo("Notas", "No hay notas para exportar")
             return
-        filas = [
-            {
-                "Estudiante": self._nombre_estudiante(nota),
-                "Cedula": self._cedula_estudiante(nota),
-                "Materia": nota.materia,
-                "Calificacion": float(nota.calificacion),
-                "Estado": (
-                    "Aprobada"
-                    if float(nota.calificacion) >= self._nota_aprobatoria
-                    else "Reprobada"
-                ),
-                "Registrada_por": nota.registrado_por or "",
-            }
-            for nota in self._notas
-        ]
+        filas = []
+        for nota in self._notas:
+            calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
+            filas.append(
+                {
+                    "Estudiante": self._nombre_estudiante(nota),
+                    "Cedula": self._cedula_estudiante(nota),
+                    "Materia": nota.materia,
+                    "Calificacion": calif,
+                    "Estado": "Aprobada" if calif >= self._nota_aprobatoria else "Reprobada",
+                    "Registrada_por": nota.registrado_por or "",
+                }
+            )
         try:
             from pathlib import Path
 
@@ -770,8 +773,8 @@ class NotasFrame(ctk.CTkFrame):
                 academico.cerrar_periodo(int(periodo.id), self.token)
             else:
                 academico.reabrir_periodo(int(periodo.id), self.token)
-        except (ValueError, TypeError, AttributeError, ImportError) as e:
-            logger.error("No se pudo cambiar el estado del periodo: %s", e)
+        except (ValueError, TypeError, AttributeError, ImportError, SQLAlchemyError, Exception) as e:
+            logger.error("No se pudo cambiar el estado del periodo: %s", e, exc_info=True)
             messagebox.showerror("Periodos", f"No se pudo completar la operación:\n{e}")
             return
         self._cargar_datos_base()
@@ -883,7 +886,8 @@ class NotaDialog(_DialogoBase):
         self.calificacion_entry = ctk.CTkEntry(contenedor, width=110)
         self.calificacion_entry.grid(row=fila, column=1, sticky="w", pady=6)
         if self.nota is not None:
-            self.calificacion_entry.insert(0, f"{float(self.nota.calificacion):g}")
+            calif = float(self.nota.calificacion) if self.nota.calificacion is not None else 0.0
+            self.calificacion_entry.insert(0, f"{calif:g}")
         fila += 1
 
         etiqueta("Observaciones:")

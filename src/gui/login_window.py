@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 import customtkinter as ctk
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.config import db_config
 from src.gui.theme import (
@@ -44,7 +45,8 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self.geometry("500x460")
         self.resizable(False, False)
         mantener_ventana_al_frente(self)
-        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Escape>", lambda e: self._on_cancel())
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
         try:
             self.transient(parent)
         except tk.TclError:
@@ -367,6 +369,7 @@ class LoginWindow(ctk.CTk):
             usuario = auth.autenticar(username, password)
             if usuario is None:
                 messagebox.showerror("Error", "No se pudo iniciar sesión")
+                self.password_entry.delete(0, tk.END)
                 return
 
             # Primer acceso o contraseña caducada: exigir una nueva antes
@@ -398,14 +401,14 @@ class LoginWindow(ctk.CTk):
         except ValueError as e:
             messagebox.showerror("Error de Autenticación", str(e))
             self.password_entry.delete(0, tk.END)
+        except SQLAlchemyError as e:
+            logger.error("Error de base de datos durante autenticación: %s", e)
+            messagebox.showerror("Error de Base de Datos", f"Error de conexión o base de datos: {str(e)}")
+            self.password_entry.delete(0, tk.END)
         except Exception as e:
             messagebox.showerror("Error", f"Error al iniciar sesión: {str(e)}")
         finally:
-            # La sesión permanece abierta si el inicio de sesión fue exitoso:
-            # el Usuario autenticado sigue ligado a ella y la ventana principal
-            # (misma sesión scoped) la cerrará al salir o cerrar sesión.
-            if self.user is None:
-                db_config.close_session(session)
+            db_config.close_session(session)
 
     def _on_close(self):
         self.user = None

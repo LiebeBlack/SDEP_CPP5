@@ -22,6 +22,7 @@ from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
 
 import customtkinter as ctk
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.gui.frames import InfoDialog, _habilitar_orden_columnas, _seleccionar_fila_click
 from src.gui.theme import COLORES, habilitar_scroll_rueda
@@ -133,7 +134,11 @@ class NotasFrame(ctk.CTkFrame):
             row=0, column=0, padx=(4, 4), pady=6, sticky="w"
         )
         self.periodo_combo = ctk.CTkComboBox(
-            barra, width=170, values=[TODOS], command=lambda _v: self._on_periodo_cambio()
+            barra,
+            width=170,
+            values=[TODOS],
+            state="readonly",
+            command=lambda _v: self._on_periodo_cambio(),
         )
         self.periodo_combo.grid(row=0, column=1, padx=(0, 10), pady=6, sticky="w")
         # Sin selección inicial: al cargar los datos se elige el año escolar en
@@ -145,7 +150,11 @@ class NotasFrame(ctk.CTkFrame):
             row=0, column=2, padx=(4, 4), pady=6, sticky="w"
         )
         self.grado_combo = ctk.CTkComboBox(
-            barra, width=190, values=["-"], command=lambda _v: self._on_grado_cambio()
+            barra,
+            width=190,
+            values=["-"],
+            state="readonly",
+            command=lambda _v: self._on_grado_cambio(),
         )
         self.grado_combo.grid(row=0, column=3, padx=(0, 10), pady=6, sticky="w")
 
@@ -321,7 +330,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             self._periodos = self.servicio.periodos.get_ordenados()
-        except (AttributeError, ValueError, TypeError):
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
             logger.warning("No se pudieron cargar los periodos", exc_info=True)
             self._periodos = []
         valores = [TODOS] + [periodo.nombre for periodo in self._periodos]
@@ -333,7 +342,7 @@ class NotasFrame(ctk.CTkFrame):
             minima, maxima = self.servicio.escala()
             self._escala = (minima, maxima)
             self._nota_aprobatoria = self.servicio.nota_aprobatoria()
-        except (AttributeError, ValueError, TypeError):
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
             logger.warning("No se pudo leer la escala de calificaciones", exc_info=True)
 
         self._on_periodo_cambio()
@@ -360,7 +369,7 @@ class NotasFrame(ctk.CTkFrame):
         if self.servicio is not None and periodo is not None:
             try:
                 self._grados = self.servicio.grados.get_by_periodo(int(periodo.id))
-            except (AttributeError, ValueError, TypeError):
+            except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
                 logger.warning("No se pudieron cargar los grados del periodo", exc_info=True)
                 self._grados = []
         valores = [grado.nombre_completo for grado in self._grados] or ["-"]
@@ -376,7 +385,7 @@ class NotasFrame(ctk.CTkFrame):
         if self.servicio is not None and grado is not None:
             try:
                 self._matriculas = self.servicio.matriculas.get_by_grado(int(grado.id))
-            except (AttributeError, ValueError, TypeError):
+            except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
                 logger.warning("No se pudieron cargar los matriculados", exc_info=True)
                 self._matriculas = []
         self._load_notas()
@@ -416,8 +425,8 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             notas = self.servicio.listar_notas_de_grado(int(grado.id))
-        except (AttributeError, ValueError, TypeError) as e:
-            logger.error("Error consultando notas: %s", e)
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+            logger.error("Error consultando notas: %s", e, exc_info=True)
             messagebox.showerror("Notas", f"No se pudieron consultar las notas:\n{e}")
             return
 
@@ -431,7 +440,8 @@ class NotasFrame(ctk.CTkFrame):
             ]
         self._notas = list(notas)
         for nota in self._notas:
-            aprobada = float(nota.calificacion) >= self._nota_aprobatoria
+            calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
+            aprobada = calif >= self._nota_aprobatoria
             self.tree.insert(
                 "",
                 "end",
@@ -440,7 +450,7 @@ class NotasFrame(ctk.CTkFrame):
                     self._nombre_estudiante(nota),
                     self._cedula_estudiante(nota),
                     nota.materia,
-                    f"{float(nota.calificacion):g}",
+                    f"{calif:g}",
                     "Aprobada" if aprobada else "Reprobada",
                     nota.registrado_por or "-",
                 ),

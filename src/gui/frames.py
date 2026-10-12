@@ -2144,18 +2144,13 @@ class DocumentosFrame(ctk.CTkFrame):
         try:
             match sys.platform:
                 case "win32":
-                    _abir_documento(ruta)
+                    _abrir_documento(ruta)
                 case "darwin":
                     subprocess.Popen(["open", ruta])
                 case _:
                     subprocess.Popen(["xdg-open", ruta])
         except Exception:
             webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
-
-
-def _abrir_documento(ruta: str) -> None:
-    """Abre un archivo con su aplicación por defecto (Windows)."""
-    os.startfile(ruta)
 
     def _on_view_documento(self):
         """Muestra el documento seleccionado en el visor del sistema"""
@@ -2223,6 +2218,11 @@ def _abrir_documento(ruta: str) -> None:
                     messagebox.showinfo("Éxito", "Documento eliminado correctamente")
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al eliminar documento: {str(e)}")
+
+
+def _abrir_documento(ruta: str) -> None:
+    """Abre un archivo con su aplicación por defecto (Windows)."""
+    os.startfile(ruta)
 
 
 class DocumentoDialog(ctk.CTkToplevel):
@@ -5271,8 +5271,8 @@ class PagoDialog(ctk.CTkToplevel):
                 "empleado_id": empleado_id,
                 "tipo_pago": tipo_valor,
                 "metodo_pago": self.metodo_combo.get(),
-                "periodo_inicio": self.periodo_inicio_entry.get(),
-                "periodo_fin": self.periodo_fin_entry.get(),
+                "periodo_inicio": parse_date(self.periodo_inicio_entry.get().strip()),
+                "periodo_fin": parse_date(self.periodo_fin_entry.get().strip()),
                 "salario_base": self._parse_float(self.salario_entry.get()),
                 "bonificaciones": self._parse_float(self.bonificaciones_entry.get()),
                 "horas_extra": self._parse_float(self.horas_extra_entry.get()),

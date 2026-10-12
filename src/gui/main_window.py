@@ -762,7 +762,7 @@ class MainWindow(ctk.CTk):
                 continue
             try:
                 if arbol.selection():
-                    arbol.selection_remove(arbol.selection())
+                    arbol.selection_remove(*arbol.selection())
                     self.status_label.configure(text="Selección eliminada (Esc)")
                     return
             except Exception:
@@ -850,6 +850,7 @@ class MainWindow(ctk.CTk):
             mensaje = f"Tema {nuevo.lower()} aplicado"
             if not puede_guardar_preferencia:
                 mensaje += " (solo para esta sesión)"
+            mensaje += " — Advertencia: se recargó la vista actual (los cambios no guardados se pierden)"
             self.status_label.configure(text=mensaje)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo cambiar el tema: {str(e)}")
@@ -987,7 +988,12 @@ class MainWindow(ctk.CTk):
                 )
             except tk.TclError:
                 pass
-            self._backup_en_curso.wait(timeout=30)
+        self._esperar_respaldo_y_cerrar()
+
+    def _esperar_respaldo_y_cerrar(self):
+        if self._backup_en_curso.is_set():
+            self.after(500, self._esperar_respaldo_y_cerrar)
+            return
         self._cleanup()
         self._exit_status = "exit"
         self.destroy()

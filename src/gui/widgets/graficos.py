@@ -54,7 +54,16 @@ class GraficoBase(ctk.CTkFrame):
             bd=0,
         )
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 10))
-        self.canvas.bind("<Configure>", lambda _evento: self.dibujar())
+        self._redraw_timer: str | None = None
+        self.canvas.bind("<Configure>", lambda _evento: self._solicitar_redibujo())
+
+    def _solicitar_redibujo(self) -> None:
+        if self._redraw_timer is not None:
+            try:
+                self.after_cancel(self._redraw_timer)
+            except Exception:
+                pass
+        self._redraw_timer = self.after(50, self.dibujar)
 
     def _fuente_canvas(
         self, tamano: int, negrita: bool = False
@@ -92,6 +101,11 @@ class GraficoBase(ctk.CTkFrame):
 
     def dibujar(self) -> None:
         """Redibuja el gráfico (implementado por cada widget)"""
+        try:
+            self.canvas.configure(bg=COLORES["panel"])
+            self.titulo_label.configure(text_color=COLORES["texto"])
+        except Exception:
+            pass
 
 
 class GraficoBarras(GraficoBase):
@@ -112,6 +126,7 @@ class GraficoBarras(GraficoBase):
         self.dibujar()
 
     def dibujar(self) -> None:
+        super().dibujar()
         if not self.datos:
             self.mostrar_vacio()
             return
@@ -121,7 +136,7 @@ class GraficoBarras(GraficoBase):
         alto = self.alto_canvas()
         margen_sup, margen_inf, margen_lat = 22, 34, 28
         base_y = alto - margen_inf
-        maximo = max((valor for _, valor in self.datos), default=0) or 1
+        maximo = max((abs(valor) for _, valor in self.datos), default=0) or 1
 
         disponibles = max(1, len(self.datos))
         ancho_barra = max(8, (ancho - margen_lat * 2) / disponibles * 0.6)
@@ -134,7 +149,7 @@ class GraficoBarras(GraficoBase):
 
         for indice, (etiqueta, valor) in enumerate(self.datos):
             centro_x = margen_lat + paso * indice + paso / 2
-            alto_barra = (base_y - margen_sup) * (valor / maximo)
+            alto_barra = (base_y - margen_sup) * (abs(valor) / maximo)
             x0 = centro_x - ancho_barra / 2
             y0 = base_y - alto_barra
             self.canvas.create_rectangle(
@@ -186,6 +201,7 @@ class GraficoDona(GraficoBase):
         self.dibujar()
 
     def dibujar(self) -> None:
+        super().dibujar()
         if not self.datos:
             self.mostrar_vacio()
             return
@@ -233,10 +249,14 @@ class GraficoDona(GraficoBase):
             font=self._fuente_canvas(9),
         )
 
-        # Leyenda
+        # Leyenda (máximo 8 elementos para evitar desborde)
+        max_items = 8
+        datos_leyenda = self.datos[:max_items]
+        truncado = len(self.datos) > max_items
+        total_items = len(datos_leyenda) + (1 if truncado else 0)
         leyenda_x = centro_x + radio + 28
-        leyenda_y = centro_y - (len(self.datos) * 18) / 2 + 8
-        for indice, (etiqueta, valor) in enumerate(self.datos):
+        leyenda_y = centro_y - (total_items * 18) / 2 + 8
+        for indice, (etiqueta, valor) in enumerate(datos_leyenda):
             y = leyenda_y + indice * 18
             self.canvas.create_rectangle(
                 leyenda_x, y - 5, leyenda_x + 10, y + 5, fill=self.color_serie(indice), outline=""
@@ -248,6 +268,17 @@ class GraficoDona(GraficoBase):
                 text=f"{texto}  {valor / total * 100:.0f}%",
                 anchor="w",
                 fill=COLORES["texto"],
+                font=self._fuente_canvas(9),
+            )
+        if truncado:
+            restantes = len(self.datos) - max_items
+            y = leyenda_y + len(datos_leyenda) * 18
+            self.canvas.create_text(
+                leyenda_x + 16,
+                y,
+                text=f"...+{restantes} más",
+                anchor="w",
+                fill=COLORES["texto_suave"],
                 font=self._fuente_canvas(9),
             )
 
@@ -276,6 +307,7 @@ class GraficoLinea(GraficoBase):
         self.dibujar()
 
     def dibujar(self) -> None:
+        super().dibujar()
         series = self.series or {"Serie": self.puntos}
         series = {nombre: datos for nombre, datos in series.items() if datos}
         if not series:

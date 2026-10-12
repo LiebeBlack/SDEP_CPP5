@@ -20,6 +20,7 @@ from src.gui.frames import _habilitar_orden_columnas, _seleccionar_fila_click
 from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.models import Contrato, Empleado, EstadoContrato, TipoContrato
 from src.utils.helpers import format_currency, format_date, parse_date
+from sqlalchemy.exc import SQLAlchemyError
 
 if TYPE_CHECKING:
     from src.services import ContratoService
@@ -103,7 +104,9 @@ class ContratosFrame(ctk.CTkFrame):
         ctk.CTkLabel(filtros, text="Empleado:", text_color=COLORES["texto"]).grid(
             row=0, column=2, padx=(4, 4), pady=6, sticky="w"
         )
-        self.empleado_combo = ctk.CTkComboBox(filtros, width=210, values=["Todos"])
+        self.empleado_combo = ctk.CTkComboBox(
+            filtros, width=210, values=["Todos"], command=lambda _v: self._load_data()
+        )
         self.empleado_combo.grid(row=0, column=3, padx=(0, 8), pady=6, sticky="w")
         self.empleado_combo.set("Todos")
 
@@ -244,7 +247,7 @@ class ContratosFrame(ctk.CTkFrame):
             ]
             self.empleado_combo.configure(values=valores)
             self.empleado_combo.set("Todos")
-        except (AttributeError, TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError, SQLAlchemyError, Exception):
             logger.warning("No se pudieron cargar los empleados del selector", exc_info=True)
 
     def _empleado_seleccionado(self) -> int | None:
@@ -294,7 +297,7 @@ class ContratosFrame(ctk.CTkFrame):
                 ]
             else:
                 contratos = self.servicio.listar_contratos()
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("Error consultando contratos: %s", e)
             messagebox.showerror("Contratos", f"No se pudieron consultar los contratos:\n{e}")
             return
@@ -369,6 +372,9 @@ class ContratosFrame(ctk.CTkFrame):
         contrato = self._contrato_seleccionado()
         if contrato is None or self.servicio is None:
             return
+        if contrato.estado_valor == "terminado":
+            messagebox.showwarning("Contratos", "No se puede renovar un contrato terminado")
+            return
         dialogo = RenovacionDialog(self, self.servicio, contrato)
         self.wait_window(dialogo)
         if getattr(dialogo, "guardado", False):
@@ -380,6 +386,9 @@ class ContratosFrame(ctk.CTkFrame):
             return
         contrato = self._contrato_seleccionado()
         if contrato is None or self.servicio is None:
+            return
+        if contrato.estado_valor == "terminado":
+            messagebox.showwarning("Contratos", "No se puede terminar un contrato terminado")
             return
         dialogo = TerminacionDialog(self, self.servicio, contrato, self._empleados)
         self.wait_window(dialogo)
@@ -674,6 +683,20 @@ class ContratoDialog(ctk.CTkToplevel):
             messagebox.showwarning("Contratos", "Indique un salario pactado válido")
             return
 
+        horas_texto = self.horas_entry.get().strip()
+        try:
+            horas = int(horas_texto) if horas_texto else 40
+        except (TypeError, ValueError):
+            messagebox.showwarning("Contratos", "Las horas semanales deben ser un número entero")
+            return
+
+        fecha_inicio_texto = self.inicio_entry.get().strip()
+        fecha_inicio = parse_date(fecha_inicio_texto)
+        if fecha_inicio_texto and fecha_inicio is None:
+            messagebox.showwarning("Contratos", "La fecha de inicio no tiene un formato válido (dd/mm/aaaa)")
+            return
+        fecha_inicio = fecha_inicio or date.today()
+
         datos = {
             "empleado_id": int(empleado.id),
             "tipo": self.tipo_combo.get().strip(),
@@ -681,8 +704,8 @@ class ContratoDialog(ctk.CTkToplevel):
             "departamento": self.departamento_entry.get().strip()
             or getattr(empleado, "departamento", None),
             "salario_pactado": salario,
-            "horas_semanales": self.horas_entry.get().strip() or 40,
-            "fecha_inicio": parse_date(self.inicio_entry.get().strip()) or date.today(),
+            "horas_semanales": horas,
+            "fecha_inicio": fecha_inicio,
             "fecha_fin": parse_date(self.fin_entry.get().strip()),
             "renovacion_automatica": bool(self.renovacion_var.get()),
             "clausulas": self.clausulas_text.get("1.0", "end").strip() or None,
@@ -883,7 +906,12 @@ class TerminacionDialog(ctk.CTkToplevel):
         if self.servicio is None:
             self.previa_label.configure(text="El servicio de contratos no está disponible")
             return None
-        fecha = parse_date(self.fecha_entry.get().strip()) or date.today()
+        fecha_texto = self.fecha_entry.get().strip()
+        fecha = parse_date(fecha_texto)
+        if fecha_texto and fecha is None:
+            messagebox.showwarning("Contratos", "La fecha de terminación no tiene un formato válido (dd/mm/aaaa)")
+            return None
+        fecha = fecha or date.today()
         try:
             finiquito = self.servicio.calcular_liquidacion(
                 int(self.contrato.empleado_id), self.motivo_entry.get().strip() or "egreso", fecha
@@ -915,7 +943,12 @@ class TerminacionDialog(ctk.CTkToplevel):
         if self.servicio is None:
             messagebox.showerror("Contratos", "El servicio de contratos no está disponible")
             return
-        fecha = parse_date(self.fecha_entry.get().strip()) or date.today()
+        fecha_texto = self.fecha_entry.get().strip()
+        fecha = parse_date(fecha_texto)
+        if fecha_texto and fecha is None:
+            messagebox.showwarning("Contratos", "La fecha de terminación no tiene un formato válido (dd/mm/aaaa)")
+            return
+        fecha = fecha or date.today()
         motivo = self.motivo_entry.get().strip() or "egreso"
         try:
             self.servicio.terminar_contrato(

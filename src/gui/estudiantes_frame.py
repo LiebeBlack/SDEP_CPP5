@@ -21,6 +21,7 @@ from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
 
 import customtkinter as ctk
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.gui.frames import _habilitar_orden_columnas, _seleccionar_fila_click
 from src.gui.theme import COLORES, habilitar_scroll_rueda
@@ -118,7 +119,10 @@ class EstudiantesFrame(ctk.CTkFrame):
             row=0, column=1, padx=(4, 4), pady=6, sticky="w"
         )
         self.nivel_combo = ctk.CTkComboBox(
-            barra, width=130, values=[TODOS] + NIVELES, command=lambda _v: self._load_estudiantes()
+            barra,
+            width=130,
+            values=[TODOS] + [_titulo_nivel(n) for n in NIVELES],
+            command=lambda _v: self._load_estudiantes(),
         )
         self.nivel_combo.grid(row=0, column=2, padx=(0, 8), pady=6, sticky="w")
         self.nivel_combo.set(TODOS)
@@ -393,14 +397,14 @@ class EstudiantesFrame(ctk.CTkFrame):
             if termino:
                 estudiantes = self.servicio.buscar_estudiantes(termino)
             elif nivel != TODOS:
-                estudiantes = self.servicio.listar_estudiantes_por_nivel(nivel)
+                estudiantes = self.servicio.listar_estudiantes_por_nivel(nivel.lower())
             elif solo_activos:
                 estudiantes = self.servicio.listar_estudiantes_activos()
             else:
                 estudiantes = self.servicio.listar_estudiantes()
             if solo_activos:
                 estudiantes = [e for e in estudiantes if e.activo]
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("Error consultando estudiantes: %s", e)
             messagebox.showerror("Estudiantes", f"No se pudieron consultar los estudiantes:\n{e}")
             return
@@ -430,7 +434,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             datos = self.servicio.estadisticas()
-        except (AttributeError, ValueError, TypeError):
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
             logger.debug("No se pudieron calcular las estadísticas académicas", exc_info=True)
             self.stats_label.configure(text="")
             return
@@ -505,7 +509,7 @@ class EstudiantesFrame(ctk.CTkFrame):
                 self.servicio.desactivar_estudiante(int(estudiante.id))
             else:
                 self.servicio.activar_estudiante(int(estudiante.id))
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("No se pudo cambiar el estado del estudiante: %s", e)
             messagebox.showerror("Estudiantes", f"No se pudo actualizar:\n{e}")
             return
@@ -556,7 +560,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             self._periodos = self.servicio.listar_periodos()
-        except (AttributeError, ValueError, TypeError):
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
             logger.warning("No se pudieron cargar los periodos", exc_info=True)
             self._periodos = []
         valores = [TODOS] + [periodo.nombre for periodo in self._periodos]
@@ -575,7 +579,7 @@ class EstudiantesFrame(ctk.CTkFrame):
                 )
                 for usuario in usuarios
             ]
-        except (AttributeError, TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError, SQLAlchemyError, Exception):
             logger.warning("No se pudieron cargar los docentes", exc_info=True)
             self._profesores = []
 
@@ -599,7 +603,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             grados = self.servicio.listar_grados(self._periodo_seleccionado_id())
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("Error consultando grados: %s", e)
             messagebox.showerror("Grados", f"No se pudieron consultar los grados:\n{e}")
             return
@@ -611,7 +615,7 @@ class EstudiantesFrame(ctk.CTkFrame):
                 profesor = grado.profesor.nombre_completo or grado.profesor.username
             try:
                 matriculados = self.servicio.matriculas.count_activas(int(grado.id))
-            except (AttributeError, ValueError, TypeError):
+            except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
                 matriculados = 0
             self.grados_tree.insert(
                 "",
@@ -658,7 +662,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             matriculas = self.servicio.listar_matriculas_de_grado(grado_id)
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("Error consultando matrículas: %s", e)
             return
         grado = next((g for g in self._grados if int(g.id) == grado_id), None)
@@ -724,7 +728,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             self.servicio.asignar_profesor(int(grado.id), getattr(dialogo, "profesor_id", None))
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("No se pudo asignar el profesor: %s", e)
             messagebox.showerror("Grados", f"No se pudo asignar el profesor:\n{e}")
             return
@@ -738,7 +742,8 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             estudiantes = self.servicio.listar_estudiantes_activos()
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+            logger.error("No se pudieron cargar los estudiantes: %s", e)
             messagebox.showerror("Matrícula", f"No se pudieron cargar los estudiantes:\n{e}")
             return
         if not estudiantes:
@@ -748,12 +753,17 @@ class EstudiantesFrame(ctk.CTkFrame):
             messagebox.showinfo("Matrícula", "No hay grados creados para el filtro elegido")
             return
         grado_actual = self._grado_seleccionado(avisar=False)
+        grado_id = int(grado_actual.id) if grado_actual is not None else None
         dialogo = MatriculaDialog(self, self.servicio, estudiantes, self._grados, grado_actual)
         self.wait_window(dialogo)
         if getattr(dialogo, "guardado", False):
             self._load_grados()
-            if grado_actual is not None:
-                self._load_matriculas(int(grado_actual.id))
+            if grado_id is not None:
+                try:
+                    self.grados_tree.selection_set(str(grado_id))
+                except Exception:
+                    pass
+                self._load_matriculas(grado_id)
 
     def _retirar_matricula(self) -> None:
         """Retira del grado la matrícula seleccionada (queda en el historial)"""
@@ -777,7 +787,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         try:
             self.servicio.retirar_matricula(matricula_id)
-        except (AttributeError, ValueError, TypeError) as e:
+        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
             logger.error("No se pudo retirar la matrícula: %s", e)
             messagebox.showerror("Matrícula", f"No se pudo retirar:\n{e}")
             return
@@ -785,6 +795,10 @@ class EstudiantesFrame(ctk.CTkFrame):
         grado_id = int(grado.id) if grado is not None else None
         self._load_grados()
         if grado_id is not None:
+            try:
+                self.grados_tree.selection_set(str(grado_id))
+            except Exception:
+                pass
             self._load_matriculas(grado_id)
 
 
@@ -996,7 +1010,8 @@ class EstudianteDialog(_DialogoBase):
                 self.servicio.crear_estudiante(datos)
             else:
                 self.servicio.actualizar_estudiante(int(self.estudiante.id), datos)
-        except (ValueError, TypeError, AttributeError) as e:
+        except (ValueError, TypeError, AttributeError, SQLAlchemyError, Exception) as e:
+            logger.error("Error al guardar estudiante: %s", e)
             self.error_label.configure(text=str(e))
             return
         self.guardado = True

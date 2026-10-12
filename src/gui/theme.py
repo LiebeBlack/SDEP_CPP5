@@ -394,7 +394,10 @@ def aplicar_escalado_customtkinter(root=None) -> None:
         if root is None:  # pragma: no cover
             return
         # tk devuelve puntos por pulgada; 72 pt = 100 % de escala
-        factor = float(root.tk.call("tk", "scaling")) / 72.0
+        scaling_raw = float(root.tk.call("tk", "scaling"))
+        if scaling_raw <= 0:
+            return
+        factor = scaling_raw / 72.0
         if 0.5 <= factor <= 3.0:
             ctk.set_widget_scaling(max(0.8, min(1.25, factor)))
             ctk.set_window_scaling(max(0.8, min(1.25, factor)))

@@ -992,11 +992,13 @@ class MainWindow(ctk.CTk):
 
     def _esperar_respaldo_y_cerrar(self):
         if self._backup_en_curso.is_set():
-            self.after(500, self._esperar_respaldo_y_cerrar)
+            if self.winfo_exists():
+                self.after(500, self._esperar_respaldo_y_cerrar)
             return
         self._cleanup()
         self._exit_status = "exit"
-        self.destroy()
+        if self.winfo_exists():
+            self.destroy()
 
     def _cleanup(self):
         # El respaldo periódico también se cancela aquí: _cleanup corre al

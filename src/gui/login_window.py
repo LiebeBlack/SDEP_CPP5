@@ -408,7 +408,8 @@ class LoginWindow(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error", f"Error al iniciar sesión: {str(e)}")
         finally:
-            db_config.close_session(session)
+            if self.user is None:
+                db_config.close_session(session)
 
     def _on_close(self):
         self.user = None

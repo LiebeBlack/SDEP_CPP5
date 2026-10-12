@@ -92,7 +92,9 @@ class WNDCLASSW(ctypes.Structure):
     ]
 
 
-WNDPROC = ctypes.PYFUNCTYPE(ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
+WNDPROC = getattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE)(
+    ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM
+)
 
 
 _user32: ctypes.WinDLL | None = None
@@ -145,27 +147,10 @@ def _win32_api() -> None:
         wt.HMENU,
         wt.HINSTANCE,
         ctypes.c_void_p,
-    ]        _user32.CreateWindowExW.restype = wt.HWND
+    ]
+    _user32.CreateWindowExW.restype = wt.HWND
 
-        _user32.CreateWindowExW.argtypes = [
-            wt.DWORD,
-            ctypes.c_wchar_p,
-            ctypes.c_wchar_p,
-            wt.DWORD,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            wt.HWND,
-            wt.HMENU,
-            wt.HINSTANCE,
-            ctypes.POINTER(ctypes.c_void_p),
-        ]        _user32.DefWindowProcW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
-
-_user32.DefWindowProcW.restype = wt.BOOL
-
-        _user32.DefWindowProcW.restype = wt.BOOL
-
+    _user32.DefWindowProcW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
     _user32.DefWindowProcW.restype = ctypes.c_ssize_t
 
 
@@ -212,7 +197,8 @@ _user32.DefWindowProcW.restype = wt.BOOL
         ctypes.c_int,
         wt.HWND,
         ctypes.c_void_p,
-    ]        _user32.TrackPopupMenu.restype = ctypes.c_int
+    ]
+    _user32.TrackPopupMenu.restype = ctypes.c_ulong
 
 
     _user32.DestroyMenu.argtypes = [wt.HMENU]
@@ -294,8 +280,6 @@ class TrayIcon:
         self._wndproc_ref = WNDPROC(self._wnd_proc)
         wc = WNDCLASSW()
         wc.lpfnWndProc = _cast_pointer(self._wndproc_ref)
-
-        _user32.CreateWindowExW.restype = wt.HWND
         wc.hInstance = _kernel32.GetModuleHandleW(None)
         wc.lpszClassName = CLASS_NAME
         _user32.RegisterClassW(ctypes.byref(wc))
@@ -404,4 +388,7 @@ class TrayIcon:
             if hicon:
                 return int(hicon)
         # Respaldo: ícono genérico de aplicación de Windows
-        return int(_cast_pointer(_user32.LoadIconW(None, ctypes.cast(ctypes.c_void_p(IDI_APPLICATION), ctypes.c_wchar_p))))
+        hicon_fallback = _user32.LoadIconW(
+            None, ctypes.cast(ctypes.c_void_p(IDI_APPLICATION), ctypes.c_wchar_p)
+        )
+        return int(hicon_fallback) if hicon_fallback else 0

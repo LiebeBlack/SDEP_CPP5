@@ -2222,7 +2222,11 @@ class DocumentosFrame(ctk.CTkFrame):
 
 def _abrir_documento(ruta: str) -> None:
     """Abre un archivo con su aplicación por defecto (Windows)."""
-    os.startfile(ruta)
+    startfile = getattr(os, "startfile", None)
+    if startfile is not None:
+        startfile(ruta)
+    else:
+        webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
 
 
 class DocumentoDialog(ctk.CTkToplevel):

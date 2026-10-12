@@ -55,15 +55,38 @@ class GraficoBase(ctk.CTkFrame):
         )
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 10))
         self._redraw_timer: str | None = None
+        self._last_size: tuple[int, int] = (0, 0)
         self.canvas.bind("<Configure>", lambda _evento: self._solicitar_redibujo())
 
     def _solicitar_redibujo(self) -> None:
+        if not self.winfo_exists():
+            return
+        w = int(self.canvas.winfo_width())
+        h = int(self.canvas.winfo_height())
+        if (w, h) == self._last_size and w > 1 and h > 1:
+            return
         if self._redraw_timer is not None:
             try:
                 self.after_cancel(self._redraw_timer)
             except Exception:
                 pass
-        self._redraw_timer = self.after(50, self.dibujar)
+            self._redraw_timer = None
+        self._redraw_timer = self.after(40, self._ejecutar_redibujo)
+
+    def _ejecutar_redibujo(self) -> None:
+        self._redraw_timer = None
+        if self.winfo_exists():
+            self._last_size = (int(self.canvas.winfo_width()), int(self.canvas.winfo_height()))
+            self.dibujar()
+
+    def destroy(self) -> None:
+        if self._redraw_timer is not None:
+            try:
+                self.after_cancel(self._redraw_timer)
+            except Exception:
+                pass
+            self._redraw_timer = None
+        super().destroy()
 
     def _fuente_canvas(
         self, tamano: int, negrita: bool = False
@@ -78,11 +101,13 @@ class GraficoBase(ctk.CTkFrame):
 
     def ancho(self) -> int:
         """Ancho útil del canvas en píxeles"""
-        return max(120, int(self.canvas.winfo_width() or 320))
+        w = int(self.canvas.winfo_width())
+        return w if w > 1 else 320
 
     def alto_canvas(self) -> int:
         """Alto útil del canvas en píxeles"""
-        return max(80, int(self.canvas.winfo_height() or self.alto))
+        h = int(self.canvas.winfo_height())
+        return h if h > 1 else max(80, self.alto)
 
     def limpiar(self) -> None:
         """Borra el contenido y muestra el estado vacío si corresponde"""
@@ -131,16 +156,16 @@ class GraficoBarras(GraficoBase):
             self.mostrar_vacio()
             return
 
-        self.limpiar()
-        ancho = self.ancho()
-        alto = self.alto_canvas()
+        ancho = max(120, self.ancho())
+        alto = max(80, self.alto_canvas())
         margen_sup, margen_inf, margen_lat = 22, 34, 28
-        base_y = alto - margen_inf
+        base_y = max(margen_sup + 20, alto - margen_inf)
         maximo = max((abs(valor) for _, valor in self.datos), default=0) or 1
 
         disponibles = max(1, len(self.datos))
-        ancho_barra = max(8, (ancho - margen_lat * 2) / disponibles * 0.6)
-        paso = (ancho - margen_lat * 2) / disponibles
+        ancho_util = max(40.0, float(ancho - margen_lat * 2))
+        ancho_barra = max(8.0, (ancho_util / disponibles) * 0.6)
+        paso = ancho_util / disponibles
 
         # Línea base
         self.canvas.create_line(
@@ -211,7 +236,7 @@ class GraficoDona(GraficoBase):
         alto = self.alto_canvas()
         total = sum(valor for _, valor in self.datos) or 1
 
-        diametro = min(alto - 20, ancho * 0.45)
+        diametro = max(20.0, min(alto - 20, ancho * 0.45))
         radio = diametro / 2
         centro_x = 16 + radio
         centro_y = alto / 2
@@ -315,14 +340,14 @@ class GraficoLinea(GraficoBase):
             return
 
         self.limpiar()
-        ancho = self.ancho()
-        alto = self.alto_canvas()
+        ancho = max(120, self.ancho())
+        alto = max(80, self.alto_canvas())
         margen_sup, margen_inf, margen_lat = 20, 32, 36
-        base_y = alto - margen_inf
+        base_y = max(margen_sup + 20, alto - margen_inf)
         maximo = max((valor for datos in series.values() for _, valor in datos), default=0) or 1
         etiquetas = [etiqueta for etiqueta, _ in next(iter(series.values()))]
         pasos = max(1, len(etiquetas) - 1)
-        ancho_util = ancho - margen_lat - 16
+        ancho_util = max(40.0, float(ancho - margen_lat - 16))
 
         # Rejilla horizontal de referencia (cuatro niveles)
         for nivel in range(5):

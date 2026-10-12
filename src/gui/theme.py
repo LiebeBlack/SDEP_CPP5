@@ -150,52 +150,135 @@ def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial", ro
 
 def habilitar_scroll_rueda(widget) -> None:
     """Activa el desplazamiento con rueda/trackpad en un widget con yview."""
-    # Los touchpads de Windows pueden enviar deltas pequeños y fraccionados;
-    # acumularlos evita que se pierdan antes de completar una línea.
     acumulado = {"vertical": 0, "horizontal": 0}
 
     def desplazar(evento, eje: str) -> str:
-        delta = getattr(evento, "delta", 0)
-        if delta:
-            if sys.platform == "darwin":
-                pasos = 1 if delta > 0 else -1
+        try:
+            if not getattr(widget, "winfo_exists", lambda: True)():
+                return "break"
+            delta = getattr(evento, "delta", 0)
+            if delta:
+                if sys.platform == "darwin":
+                    pasos = 1 if delta > 0 else -1
+                else:
+                    if (acumulado[eje] > 0 and delta < 0) or (acumulado[eje] < 0 and delta > 0):
+                        acumulado[eje] = 0
+                    acumulado[eje] += delta
+                    pasos = int(acumulado[eje] / 40)
+                    if pasos != 0:
+                        acumulado[eje] -= pasos * 40
+                if pasos != 0:
+                    vista = getattr(widget, "xview" if eje == "horizontal" else "yview", None)
+                    if vista is not None:
+                        vista("scroll", -pasos, "units")
             else:
-                acumulado[eje] += delta
-                pasos = int(acumulado[eje] / 40)
-                acumulado[eje] -= pasos * 40
-            if pasos:
+                numero = getattr(evento, "num", None)
+                if numero not in (4, 5):
+                    return "break"
+                pasos = -1 if numero == 4 else 1
                 vista = getattr(widget, "xview" if eje == "horizontal" else "yview", None)
                 if vista is not None:
-                    vista("scroll", -pasos, "units")
-        else:
-            # Linux genera botones de rueda en vez de <MouseWheel>.
-            numero = getattr(evento, "num", None)
-            if numero not in (4, 5):
-                return "break"
-            pasos = -1 if numero == 4 else 1
-            vista = getattr(widget, "xview" if eje == "horizontal" else "yview", None)
-            if vista is not None:
-                vista("scroll", pasos, "units")
+                    vista("scroll", pasos, "units")
+        except Exception:
+            logger.debug("Desplazamiento local ignorado", exc_info=True)
         return "break"
 
-    widget.bind("<MouseWheel>", lambda evento: desplazar(evento, "vertical"), add="+")
-    widget.bind(
-        "<Shift-MouseWheel>",
-        lambda evento: desplazar(evento, "horizontal"),
-        add="+",
-    )
-    widget.bind("<Button-4>", lambda evento: desplazar(evento, "vertical"), add="+")
-    widget.bind("<Button-5>", lambda evento: desplazar(evento, "vertical"), add="+")
-    widget.bind(
-        "<Shift-Button-4>",
-        lambda evento: desplazar(evento, "horizontal"),
-        add="+",
-    )
-    widget.bind(
-        "<Shift-Button-5>",
-        lambda evento: desplazar(evento, "horizontal"),
-        add="+",
-    )
+    try:
+        widget.bind("<MouseWheel>", lambda evento: desplazar(evento, "vertical"), add="+")
+        widget.bind(
+            "<Shift-MouseWheel>",
+            lambda evento: desplazar(evento, "horizontal"),
+            add="+",
+        )
+        widget.bind("<Button-4>", lambda evento: desplazar(evento, "vertical"), add="+")
+        widget.bind("<Button-5>", lambda evento: desplazar(evento, "vertical"), add="+")
+        widget.bind(
+            "<Shift-Button-4>",
+            lambda evento: desplazar(evento, "horizontal"),
+            add="+",
+        )
+        widget.bind(
+            "<Shift-Button-5>",
+            lambda evento: desplazar(evento, "horizontal"),
+            add="+",
+        )
+    except Exception:
+        logger.debug("No se pudo habilitar scroll en el widget", exc_info=True)
+
+
+def habilitar_scroll_global(root) -> None:
+    """
+    Activa el desplazamiento universal con rueda de ratón y trackpad/touchpad
+    para toda la interfaz (Treeviews, Canvas, CTkScrollableFrame, Text, Listbox).
+
+    Detecta el widget bajo el cursor (o su contenedor desplazable más cercano)
+    y aplica el desplazamiento vertical u horizontal sin requerir foco previo
+    ni producir excepciones si el widget se destruye.
+    """
+    if root is None:
+        return
+    acumulado = {"vertical": 0, "horizontal": 0}
+
+    def _scroll_global(evento, eje: str = "vertical"):
+        try:
+            x_root = getattr(evento, "x_root", None)
+            y_root = getattr(evento, "y_root", None)
+            if x_root is None or y_root is None:
+                return
+
+            w = root.winfo_containing(x_root, y_root)
+            if w is None:
+                return
+
+            target = None
+            curr = w
+            while curr is not None:
+                if hasattr(curr, "_parent_canvas"):
+                    target = curr._parent_canvas
+                    break
+                attr = "xview" if eje == "horizontal" else "yview"
+                if hasattr(curr, attr) and callable(getattr(curr, attr)):
+                    target = curr
+                    break
+                curr = getattr(curr, "master", None)
+
+            if target is None:
+                return
+
+            delta = getattr(evento, "delta", 0)
+            if delta != 0:
+                if sys.platform == "darwin":
+                    pasos = 1 if delta > 0 else -1
+                else:
+                    if (acumulado[eje] > 0 and delta < 0) or (acumulado[eje] < 0 and delta > 0):
+                        acumulado[eje] = 0
+                    acumulado[eje] += delta
+                    pasos = int(acumulado[eje] / 40)
+                    if pasos != 0:
+                        acumulado[eje] -= pasos * 40
+                if pasos != 0:
+                    vista = getattr(target, "xview" if eje == "horizontal" else "yview", None)
+                    if vista is not None:
+                        vista("scroll", -pasos, "units")
+            else:
+                num = getattr(evento, "num", None)
+                if num in (4, 5):
+                    pasos = -1 if num == 4 else 1
+                    vista = getattr(target, "xview" if eje == "horizontal" else "yview", None)
+                    if vista is not None:
+                        vista("scroll", pasos, "units")
+        except Exception:
+            logger.debug("Desplazamiento global ignorado", exc_info=True)
+
+    try:
+        root.bind_all("<MouseWheel>", lambda e: _scroll_global(e, "vertical"), add="+")
+        root.bind_all("<Shift-MouseWheel>", lambda e: _scroll_global(e, "horizontal"), add="+")
+        root.bind_all("<Button-4>", lambda e: _scroll_global(e, "vertical"), add="+")
+        root.bind_all("<Button-5>", lambda e: _scroll_global(e, "vertical"), add="+")
+        root.bind_all("<Shift-Button-4>", lambda e: _scroll_global(e, "horizontal"), add="+")
+        root.bind_all("<Shift-Button-5>", lambda e: _scroll_global(e, "horizontal"), add="+")
+    except Exception:
+        logger.debug("No se pudo registrar scroll global", exc_info=True)
 
 
 def configure_ttk_styles(root=None) -> None:
@@ -498,11 +581,13 @@ def setup_ui_raiz(root) -> None:
     """
     Aplicación completa de apariencia al crear una ventana raíz:
     estilos ttk, listbox de combos, escalado de CustomTkinter,
+    desplazamiento con rueda/touchpad para toda la interfaz,
     limpieza de errores de fondo de Tcl y manejador de errores de
     callbacks (nunca congelar en silencio).
     """
     enable_windows_dpi_awareness()
     configure_ttk_styles(root)
     aplicar_escalado_customtkinter(root)
+    habilitar_scroll_global(root)
     silenciar_errores_fondo(root)
     configurar_report_callback_exception(root)

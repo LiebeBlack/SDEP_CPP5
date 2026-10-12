@@ -92,7 +92,7 @@ class WNDCLASSW(ctypes.Structure):
     ]
 
 
-        WNDPROC = ctypes.PYFUNCTYPE(ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
+WNDPROC = ctypes.PYFUNCTYPE(ctypes.c_ssize_t, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
 
 
 _user32: ctypes.WinDLL | None = None

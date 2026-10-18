@@ -63,10 +63,11 @@ def main():
 
     esperados = expected_document_count()
     print(f"Total documentos indexados: {len(data)} (esperados según manifiesto: {esperados})")
-    assert len(data) == esperados, (
-        f"El catálogo tiene {len(data)} documentos y el manifiesto declara {esperados}. "
-        "Ejecute 'python tools/generate_docs_bundle.py' para regenerar docs/docs_data.js."
-    )
+    if len(data) != esperados:
+        raise RuntimeError(
+            f"El catálogo tiene {len(data)} documentos y el manifiesto declara {esperados}. "
+            "Ejecute 'python tools/generate_docs_bundle.py' para regenerar docs/docs_data.js."
+        )
 
     total_words = 0
     categories = set()
@@ -76,7 +77,8 @@ def main():
             raise RuntimeError(f"Falta 'id' en documento {d}")
         if not d.get("title"):
             raise RuntimeError(f"Falta 'title' en documento ID {d.get('id')}")
-        assert d.get("category"), f"Falta 'category' en {d.get('id')}"
+        if not d.get("category"):
+            raise RuntimeError(f"Falta 'category' en documento ID {d.get('id')}")
         if not d.get("content"):
             raise RuntimeError(f"Falta 'content' en documento ID {d.get('id')}")
         if not d.get("readingTime") or d.get("readingTime", 0) <= 0:

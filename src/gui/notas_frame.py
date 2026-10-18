@@ -330,7 +330,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             self._periodos = self.servicio.periodos.get_ordenados()
-        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
+        except Exception:
             logger.warning("No se pudieron cargar los periodos", exc_info=True)
             self._periodos = []
         valores = [TODOS] + [periodo.nombre for periodo in self._periodos]
@@ -342,7 +342,7 @@ class NotasFrame(ctk.CTkFrame):
             minima, maxima = self.servicio.escala()
             self._escala = (minima, maxima)
             self._nota_aprobatoria = self.servicio.nota_aprobatoria()
-        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
+        except Exception:
             logger.warning("No se pudo leer la escala de calificaciones", exc_info=True)
 
         self._on_periodo_cambio()
@@ -369,7 +369,7 @@ class NotasFrame(ctk.CTkFrame):
         if self.servicio is not None and periodo is not None:
             try:
                 self._grados = self.servicio.grados.get_by_periodo(int(periodo.id))
-            except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
+            except Exception:
                 logger.warning("No se pudieron cargar los grados del periodo", exc_info=True)
                 self._grados = []
         valores = [grado.nombre_completo for grado in self._grados] or ["-"]
@@ -385,7 +385,7 @@ class NotasFrame(ctk.CTkFrame):
         if self.servicio is not None and grado is not None:
             try:
                 self._matriculas = self.servicio.matriculas.get_by_grado(int(grado.id))
-            except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception):
+            except Exception:
                 logger.warning("No se pudieron cargar los matriculados", exc_info=True)
                 self._matriculas = []
         self._load_notas()
@@ -425,7 +425,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             notas = self.servicio.listar_notas_de_grado(int(grado.id))
-        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+        except Exception as e:
             logger.error("Error consultando notas: %s", e, exc_info=True)
             messagebox.showerror("Notas", f"No se pudieron consultar las notas:\n{e}")
             return
@@ -546,7 +546,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             self.servicio.eliminar(int(nota.id), self.token)
-        except (ValueError, TypeError, AttributeError, SQLAlchemyError, Exception) as e:
+        except Exception as e:
             logger.error("No se pudo eliminar la nota: %s", e, exc_info=True)
             messagebox.showerror("Notas", f"No se pudo eliminar la nota:\n{e}")
             return
@@ -579,7 +579,10 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             filas = self.servicio.consolidado_periodo(int(periodo.id))
-        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+        except (ValueError, TypeError, SQLAlchemyError) as e:
+            # Errores operativos esperables (periodo inexistente, datos
+            # inconsistentes, base bloqueada). Un fallo inesperado no se
+            # oculta aquí: lo registra y avisa el manejador global.
             logger.error("No se pudo generar el consolidado: %s", e, exc_info=True)
             messagebox.showerror("Consolidado", f"No se pudo generar el consolidado:\n{e}")
             return
@@ -608,7 +611,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         try:
             datos = self.servicio.datos_acta(int(grado.id))
-        except (AttributeError, ValueError, TypeError, SQLAlchemyError, Exception) as e:
+        except Exception as e:
             logger.error("No se pudo generar el acta: %s", e, exc_info=True)
             messagebox.showerror("Acta", f"No se pudo generar el acta:\n{e}")
             return
@@ -773,7 +776,14 @@ class NotasFrame(ctk.CTkFrame):
                 academico.cerrar_periodo(int(periodo.id), self.token)
             else:
                 academico.reabrir_periodo(int(periodo.id), self.token)
-        except (ValueError, TypeError, AttributeError, ImportError, SQLAlchemyError, Exception) as e:
+        except (
+            ValueError,
+            TypeError,
+            AttributeError,
+            ImportError,
+            SQLAlchemyError,
+            Exception,
+        ) as e:
             logger.error("No se pudo cambiar el estado del periodo: %s", e, exc_info=True)
             messagebox.showerror("Periodos", f"No se pudo completar la operación:\n{e}")
             return

@@ -206,6 +206,25 @@ def habilitar_scroll_rueda(widget) -> None:
         logger.debug("No se pudo habilitar scroll en el widget", exc_info=True)
 
 
+def _tiene_scroll_propio(widget, secuencia: str) -> bool:
+    """
+    ¿Ese widget (o su clase Tk) ya atiende esa rueda por su cuenta?
+
+    Las clases estándar (Text, Listbox, ttk.Treeview) traen su propio binding
+    de rueda. El binding global corre al final de la cadena de *bindtags*, así
+    que sin esta comprobación el mismo giro desplazaría el widget dos veces.
+    Ante cualquier duda se responde True: es preferible dejar el
+    desplazamiento nativo a duplicarlo.
+    """
+    try:
+        if widget.bind(secuencia):
+            return True
+        return bool(widget.bind_class(widget.winfo_class(), secuencia))
+    except Exception:
+        logger.debug("No se pudo comprobar el scroll nativo del widget", exc_info=True)
+        return True
+
+
 def habilitar_scroll_global(root) -> None:
     """
     Activa el desplazamiento universal con rueda de ratón y trackpad/touchpad
@@ -213,7 +232,9 @@ def habilitar_scroll_global(root) -> None:
 
     Detecta el widget bajo el cursor (o su contenedor desplazable más cercano)
     y aplica el desplazamiento vertical u horizontal sin requerir foco previo
-    ni producir excepciones si el widget se destruye.
+    ni producir excepciones si el widget se destruye. Los widgets que ya traen
+    su propio binding de rueda se dejan intactos para no desplazarlos dos
+    veces.
     """
     if root is None:
         return
@@ -228,6 +249,19 @@ def habilitar_scroll_global(root) -> None:
 
             w = root.winfo_containing(x_root, y_root)
             if w is None:
+                return
+
+            delta = getattr(evento, "delta", 0)
+            numero = getattr(evento, "num", None)
+            if delta:
+                secuencia = "<Shift-MouseWheel>" if eje == "horizontal" else "<MouseWheel>"
+            elif numero in (4, 5):
+                secuencia = (
+                    f"<Shift-Button-{numero}>" if eje == "horizontal" else f"<Button-{numero}>"
+                )
+            else:
+                return
+            if _tiene_scroll_propio(w, secuencia):
                 return
 
             target = None
@@ -245,8 +279,7 @@ def habilitar_scroll_global(root) -> None:
             if target is None:
                 return
 
-            delta = getattr(evento, "delta", 0)
-            if delta != 0:
+            if delta:
                 if sys.platform == "darwin":
                     pasos = 1 if delta > 0 else -1
                 else:
@@ -261,12 +294,11 @@ def habilitar_scroll_global(root) -> None:
                     if vista is not None:
                         vista("scroll", -pasos, "units")
             else:
-                num = getattr(evento, "num", None)
-                if num in (4, 5):
-                    pasos = -1 if num == 4 else 1
-                    vista = getattr(target, "xview" if eje == "horizontal" else "yview", None)
-                    if vista is not None:
-                        vista("scroll", pasos, "units")
+                pasos = -1 if numero == 4 else 1
+                vista = getattr(target, "xview" if eje == "horizontal" else "yview", None)
+                if vista is not None:
+                    vista("scroll", pasos, "units")
+            return "break"
         except Exception:
             logger.debug("Desplazamiento global ignorado", exc_info=True)
 

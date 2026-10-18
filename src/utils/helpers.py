@@ -516,6 +516,26 @@ def leer_archivo_seguro(ruta: str, reintentos: int = 3) -> bytes | None:
     return None
 
 
+def ruta_a_uri(ruta: str | Path) -> str:
+    """
+    Devuelve la URI ``file://`` de una ruta local
+
+    Se usa como último recurso para abrir un archivo cuando el lanzador del
+    sistema falla. La URI se construye con ``Path.as_uri()`` y no a mano:
+    así se escapan espacios y acentos (que rompen la orden) y en Windows la
+    ruta queda con la forma correcta ``file:///C:/...`` en lugar de
+    ``file://C:/...``. Se resuelve primero porque ``as_uri()`` exige una
+    ruta absoluta.
+
+    Args:
+        ruta: Ruta del archivo a convertir
+
+    Returns:
+        str: URI ``file://`` absoluta y escapada
+    """
+    return Path(ruta).resolve().as_uri()
+
+
 def abrir_con_aplicacion_predeterminada(ruta: str | Path) -> bool:
     """
     Abre un archivo con la aplicación predeterminada del sistema

@@ -23,7 +23,13 @@ from src.models import Empleado, EstadoIncidencia
 from src.services.auth_service import AuthService
 from src.utils.audit_logger import AuditEventType, audit_logger
 from src.utils.exporter import exportar_archivo
-from src.utils.helpers import format_currency, format_date, mantener_ventana_al_frente, parse_date
+from src.utils.helpers import (
+    format_currency,
+    format_date,
+    mantener_ventana_al_frente,
+    parse_date,
+    ruta_a_uri,
+)
 from src.utils.pdf_generator import PDFGenerator
 
 logger = logging.getLogger(__name__)
@@ -2150,7 +2156,8 @@ class DocumentosFrame(ctk.CTkFrame):
                 case _:
                     subprocess.Popen(["xdg-open", ruta])
         except Exception:
-            webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
+            logger.debug("Lanzador del sistema falló; se abre vía URI", exc_info=True)
+            webbrowser.open(ruta_a_uri(ruta))
 
     def _on_view_documento(self):
         """Muestra el documento seleccionado en el visor del sistema"""
@@ -2226,7 +2233,7 @@ def _abrir_documento(ruta: str) -> None:
     if startfile is not None:
         startfile(ruta)
     else:
-        webbrowser.open(f"file://{ruta.replace(os.sep, '/')}")
+        webbrowser.open(ruta_a_uri(ruta))
 
 
 class DocumentoDialog(ctk.CTkToplevel):

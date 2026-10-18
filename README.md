@@ -126,7 +126,7 @@ La integración continua se reparte entre dos workflows complementarios.
 
 **`.github/workflows/build.yml`** (integración y empaquetado):
 
-1. **Pruebas**: ejecuta la suite completa de pytest sobre los 32 archivos de
+1. **Pruebas**: ejecuta la suite completa de pytest sobre los 33 archivos de (32 test_*.py + conftest.py)
    `tests/` en cada push a `main` o `develop`.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
@@ -422,8 +422,8 @@ La configuración se puede modificar desde la sección "Configuración" de la ap
 
 ### Error de base de datos
 
-- Elimine el archivo `personal_management.db`
-- Reinicie la aplicación para recrear la base de datos
+- No elimine el archivo `personal_management.db`. Conserve el archivo dañado para diagnóstico.
+- En su lugar, use la función de respaldo automático o recupere desde `%LOCALAPPDATA%\SistemaGestionPersonal`
 
 ### Problemas con PyInstaller
 

@@ -19,6 +19,7 @@ import sys
 import threading
 from ctypes import wintypes as wt
 from pathlib import Path
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Constantes de Windows
@@ -97,9 +98,14 @@ WNDPROC = getattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE)(
 )
 
 
-_user32: ctypes.WinDLL | None = None
-_shell32: ctypes.WinDLL | None = None
-_kernel32: ctypes.WinDLL | None = None
+# ``ctypes.WinDLL`` solo existe en Windows y las anotaciones se evalúan al
+# definir el módulo (hasta Python 3.13), así que anotar con ese tipo impedía
+# importar este archivo en Linux o macOS. El módulo se declara no-op fuera de
+# Windows y debe poder importarse en cualquier plataforma: las referencias
+# nativas se guardan como ``Any`` y solo se usan tras comprobar la plataforma.
+_user32: Any = None
+_shell32: Any = None
+_kernel32: Any = None
 
 
 def _cast_pointer(source) -> ctypes.c_void_p:
@@ -115,8 +121,6 @@ def _cast_pointer(source) -> ctypes.c_void_p:
        el modelado estático.
     """
     return ctypes.cast(source, ctypes.c_void_p)
-
-
 
 
 def _win32_api() -> None:
@@ -152,7 +156,6 @@ def _win32_api() -> None:
 
     _user32.DefWindowProcW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
     _user32.DefWindowProcW.restype = ctypes.c_ssize_t
-
 
     _user32.PostMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
     _user32.PostMessageW.restype = wt.BOOL
@@ -199,7 +202,6 @@ def _win32_api() -> None:
         ctypes.c_void_p,
     ]
     _user32.TrackPopupMenu.restype = ctypes.c_ulong
-
 
     _user32.DestroyMenu.argtypes = [wt.HMENU]
     _user32.DestroyMenu.restype = wt.BOOL

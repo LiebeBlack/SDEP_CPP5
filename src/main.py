@@ -277,11 +277,12 @@ def run_application():
                 logger.info("Sesión cancelada por el usuario")
                 break
 
-            # Copiar a valores simples mientras el usuario sigue ligado a la
-            # sesión de login; la ventana principal re-liga el objeto a su
-            # propia sesión (ver MainWindow).
-            username = user.username
-            rol = user.rol_valor
+            # La ventana de login cierra su sesión al autenticar: se usan
+            # los valores simples que copió antes de cerrarla y la ventana
+            # principal vuelve a consultar el usuario en su propia sesión
+            # (ver MainWindow._inicializar_sesion).
+            username = login.username_autenticado or ""
+            rol = login.rol_autenticado or ""
             logger.info(f"Sesión iniciada: {username} ({rol})")
 
             # 2. Ventana principal (con limpieza garantizada ante fallos).
@@ -292,7 +293,7 @@ def run_application():
             # deja la segunda ventana en negro sin responder.
             app = None
             try:
-                app = MainWindow(current_user=user)
+                app = MainWindow(current_user=username)
                 try:
                     app.update()
                 except Exception:

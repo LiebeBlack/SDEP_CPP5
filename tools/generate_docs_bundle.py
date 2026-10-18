@@ -284,7 +284,7 @@ def build_bundle():
             # Write atomically for each synced content file
             dest_path = CONTENT_DIR / item["file"]
             dest_path.parent.mkdir(parents=True, exist_ok=True)
-            temp_dest = dest_path.with_suffix(dest_path.suffix + '.tmp')
+            temp_dest = dest_path.with_suffix(dest_path.suffix + ".tmp")
             temp_dest.write_bytes(src_path.read_bytes())
             os.replace(temp_dest, dest_path)
 
@@ -298,7 +298,7 @@ def build_bundle():
     )
 
     # Write atomically: first to temp file, then os.replace to avoid partial writes
-    temp_output = OUTPUT_FILE.with_suffix(OUTPUT_FILE.suffix + '.tmp')
+    temp_output = OUTPUT_FILE.with_suffix(OUTPUT_FILE.suffix + ".tmp")
     temp_output.write_text(js_content, encoding="utf-8")
     os.replace(temp_output, OUTPUT_FILE)
     file_size_kb = OUTPUT_FILE.stat().st_size / 1024

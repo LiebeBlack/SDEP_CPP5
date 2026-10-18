@@ -115,12 +115,12 @@ def main():
         if not origen.exists():
             continue
         # Find the corresponding entry in docs_data.js by matching the file field
-        doc_entry = next((d for d in data if d.get('filename') == item['file']), None)
-        if doc_entry and doc_entry.get('content'):
+        doc_entry = next((d for d in data if d.get("filename") == item["file"]), None)
+        if doc_entry and doc_entry.get("content"):
             try:
-                orig_content = origen.read_text(encoding='utf-8')
-                if orig_content != doc_entry['content'][:len(orig_content)]:
-                    content_mismatches.append(item['file'])
+                orig_content = origen.read_text(encoding="utf-8")
+                if not doc_entry["content"].startswith(orig_content):
+                    content_mismatches.append(item["file"])
             except Exception:
                 pass
     if content_mismatches:

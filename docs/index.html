@@ -119,19 +119,19 @@
                     <div class="hero-code-body">
                         <!-- Tab 1: Service -->
                         <pre class="hero-code-snippet active" id="snippet-service"><code class="language-python">from src.services.empleado_service import EmpleadoService
-from src.repositories.empleado_repository import EmpleadoRepository
 
-repo = EmpleadoRepository()
-service = EmpleadoService(empleado_repo=repo)
+service = EmpleadoService(session)
 
 nuevo_empleado = service.crear_empleado({
     "cedula": "V-20123456",
     "nombres": "María Elena",
+    "apellidos": "Gómez",
+    "tipo_empleado": "docente",
     "cargo": "Profesora Titular",
     "salario_base": 850.00
 })
 
-print(f"Registrado: {nuevo_empleado.codigo} | ACTIVO")</code></pre>
+print(f"Registrado: {nuevo_empleado.id} | ACTIVO")</code></pre>
 
                         <!-- Tab 2: Model -->
                         <pre class="hero-code-snippet" id="snippet-model"><code class="language-python">class Empleado(Base):
@@ -302,9 +302,9 @@ python src/main.py</code></pre>
 
                 <div class="catalog-controls">
                     <div class="catalog-tabs" role="tablist" aria-label="Filtrar catálogo">
-                        <button class="catalog-tab active" data-filter="all">Todos (20)</button>
-                        <button class="catalog-tab" data-filter="tesis">🎓 Tesis (13)</button>
-                        <button class="catalog-tab" data-filter="tecnica">💻 Técnica (7)</button>
+                        <button class="catalog-tab active" data-filter="all" role="tab" aria-selected="true">Todos (20)</button>
+                        <button class="catalog-tab" data-filter="tesis" role="tab" aria-selected="false">🎓 Tesis (13)</button>
+                        <button class="catalog-tab" data-filter="tecnica" role="tab" aria-selected="false">💻 Técnica (7)</button>
                     </div>
 
                     <div class="catalog-search-wrap">
@@ -362,7 +362,7 @@ python src/main.py</code></pre>
     <!-- ======================================================================
          IN-WEB MARKDOWN READER (Full Experience)
          ====================================================================== -->
-    <div id="reader-view" role="dialog" aria-label="Visor de Documentos">
+    <div id="reader-view" role="dialog" aria-label="Visor de Documentos" aria-modal="true">
         <!-- Top Navbar of Reader -->
         <div class="reader-navbar">
             <div class="reader-nav-left">
@@ -469,7 +469,7 @@ python src/main.py</code></pre>
     <!-- ======================================================================
          COMMAND PALETTE / MODAL SEARCH (Ctrl + K)
          ====================================================================== -->
-    <div class="palette-overlay" id="palette-overlay" role="dialog" aria-modal="true">
+    <div class="palette-overlay" id="palette-overlay" role="dialog" aria-modal="true" aria-label="Paleta de búsqueda (Ctrl+K)">
         <div class="palette-box">
             <div class="palette-input-wrap">
                 <span class="palette-icon">🔍</span>
@@ -494,7 +494,7 @@ python src/main.py</code></pre>
     <!-- ======================================================================
          TOAST FEEDBACK MESSAGE
          ====================================================================== -->
-    <div class="toast-msg" id="toast-msg">Enlace copiado al portapapeles</div>
+    <div class="toast-msg" id="toast-msg" role="status">Enlace copiado al portapapeles</div>
 
     <!-- ======================================================================
          GLOBAL FOOTER

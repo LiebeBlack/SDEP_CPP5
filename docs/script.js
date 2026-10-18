@@ -139,11 +139,27 @@
             const plainText = html.replace(/<[^>]*>/g, '')
                 .replace(/&[^;]+;/g, '')
                 .trim();
-            const slug = plainText.toLowerCase()
+            // Normalize using NFD to separate base characters from diacritics,
+            // then remove diacritical marks (accents, tilde, umlaut)
+            const normalized = plainText.toLowerCase().normalize('NFD')
                 .replace(/[^\w\s-]/g, '')
+                .replace(/\u0300-\u036f/g, '')  // Remove combining diacritical marks
                 .replace(/\s+/g, '-')
                 .replace(/-+/g, '-')
                 .replace(/^-|-$/g, '');
+
+            // Ensure unique slugs: track used slugs and append numeric suffix for duplicates
+            if (window.SDEP_SLUG_COUNTS === undefined) {
+                window.SDEP_SLUG_COUNTS = {};
+            }
+            const baseSlug = normalized;
+            if (!window.SDEP_SLUG_COUNTS[baseSlug]) {
+                window.SDEP_SLUG_COUNTS[baseSlug] = 0;
+                slug = baseSlug;
+            } else {
+                window.SDEP_SLUG_COUNTS[baseSlug]++;
+                slug = `${baseSlug}-${window.SDEP_SLUG_COUNTS[baseSlug]}`;
+            }
 
             const safeSlug = slug || 'seccion';
 
@@ -348,6 +364,19 @@
                 markdownRenderTarget.innerHTML = `<pre>${escapeHtml(doc.content)}</pre>`;
             }
 
+            // Generate normalized slug for this document's title
+            const titleSlug = doc.title.normalize('NFD').replace(/\u0300-\u036f/g, '').toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+            // Update URL hash to standardized format: #doc=<id>#<slug>
+            if (!isRefresh) {
+                const newHash = `#doc=${docId}#${titleSlug}`;
+                // Use replaceState to update URL without triggering full page reload
+                history.replaceState(null, document.title, window.location.pathname + window.location.search + newHash);
+            }
+
+            // Attach copy buttons inside rendered code blocks
+            markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
+
             // Apply syntax highlighting with Prism
             if (typeof Prism !== 'undefined') {
                 Prism.highlightAllUnder(markdownRenderTarget);
@@ -430,8 +459,15 @@
     function convertGitHubUrlToRaw(url) {
         if (!url) return '';
         let clean = url.trim();
+        // Only allow GitHub raw content from the official SDEP repository
         if (clean.includes('github.com') && clean.includes('/blob/')) {
-            clean = clean.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+            // Restrict to LiebeBlack SDEP_CPP5 repository only
+            if (clean.includes('LiebeBlack/SDEP_CPP5') || clean.includes('github.com/LiebeBlack')) {
+                clean = clean.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+            } else {
+                showToast('URL no permitida: solo se cargan documentos del repositorio oficial');
+                return '';
+            }
         }
         return clean;
     }
@@ -502,6 +538,11 @@
         }
 
         showToast('Cargando archivo desde GitHub...');
+        // Sanitize Markdown content with DOMPurify if available
+        let sanitizedContent = marked.parse(markdown);
+        if (typeof DOMPurify !== 'undefined') {
+            sanitizedContent = DOMPurify.sanitize(markdown);
+        }
         fetch(rawUrl)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -524,14 +565,14 @@
                     githubUrl: rawOrBlobUrl,
                     wordCount: markdown.split(/\s+/).length,
                     readingTime: Math.max(1, Math.round(markdown.split(/\s+/).length / 200)),
-                    content: markdown
+                    content: sanitizedContent
                 };
 
                 // Render document in reader
                 currentDocId = customDoc.id;
                 if (typeof marked !== 'undefined') {
                     configureMarkedRenderer();
-                    markdownRenderTarget.innerHTML = marked.parse(customDoc.content);
+                    markdownRenderTarget.innerHTML = marked.parse(sanitizedContent);
                     if (typeof Prism !== 'undefined') {
                         Prism.highlightAllUnder(markdownRenderTarget);
                     }
@@ -753,7 +794,9 @@
     }
 
     function runPaletteSearch(query) {
-        const q = query.trim().toLowerCase();
+        // Normalize search term: NFD + remove diacritics for accent-insensitive matching
+        const normalize = (str) => str.normalize('NFD').replace(/\u0300-\u036f/g, '').toLowerCase();
+        const q = normalize(query.trim());
         let matches = [];
 
         if (!q) {
@@ -764,15 +807,23 @@
                 let score = 0;
                 let snippet = '';
 
-                if (doc.title.toLowerCase().includes(q)) score += 10;
-                if (doc.subtitle.toLowerCase().includes(q)) score += 5;
+                const titleNorm = normalize(doc.title);
+                const subtitleNorm = normalize(doc.subtitle);
 
-                const bodyIndex = doc.content.toLowerCase().indexOf(q);
+                if (titleNorm.includes(q)) score += 10;
+                if (subtitleNorm.includes(q)) score += 5;
+
+                const bodyIndex = doc.content.indexOf(q);
+                // Also try without diacritics normalization for body search
+                const bodyIndexNorm = doc.content.normalize('NFD').replace(/\u0300-\u036f/g, '').indexOf(q);
                 if (bodyIndex !== -1) {
                     score += 2;
                     const start = Math.max(0, bodyIndex - 40);
                     const end = Math.min(doc.content.length, bodyIndex + 90);
                     snippet = doc.content.slice(start, end).replace(/[\r\n#*_`]/g, ' ');
+                }
+                if (bodyIndexNorm !== -1) {
+                    score += 2;
                 }
 
                 if (score > 0) {
@@ -1021,6 +1072,7 @@
             return;
         }
 
+        // Support both old (#slug) and new (#doc=<id>#<slug>) formats
         if (hash.startsWith('#doc=')) {
             const docParam = hash.replace('#doc=', '');
             const parts = docParam.split('#');
@@ -1039,6 +1091,26 @@
                     }, 80);
                 }
             }
+            // Update URL to standardized format using replaceState
+            const newHash = currentDocId ? `#doc=${currentDocId}` : '';
+            if (newHash && window.location.hash !== newHash) {
+                history.replaceState(null, document.title, window.location.pathname + window.location.search + '#' + newHash);
+            }
+            return;
+        }
+
+        // Handle old #slug format - convert to #doc=<id>#<slug>
+        if (hash.startsWith('#') && hash.length > 1) {
+            const potentialSlug = hash.substring(1);
+            // Check if this is a slug that corresponds to a known document
+            const doc = docsData.find(d => {
+                const slugNorm = d.id.normalize('NFD').replace(/\u0300-\u036f/g, '').toLowerCase().replace(/\s+/g, '-');
+                return slugNorm === potentialSlug;
+            });
+            if (doc) {
+                openDocument(doc.id);
+            }
+            return;
         }
     }
 

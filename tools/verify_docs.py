@@ -72,11 +72,15 @@ def main():
     categories = set()
 
     for d in data:
-        assert d.get("id"), "Falta 'id'"
-        assert d.get("title"), f"Falta 'title' en {d.get('id')}"
+        if not d.get("id"):
+            raise RuntimeError(f"Falta 'id' en documento {d}")
+        if not d.get("title"):
+            raise RuntimeError(f"Falta 'title' en documento ID {d.get('id')}")
         assert d.get("category"), f"Falta 'category' en {d.get('id')}"
-        assert d.get("content"), f"Falta 'content' en {d.get('id')}"
-        assert d.get("readingTime", 0) > 0, f"readingTime invalido en {d.get('id')}"
+        if not d.get("content"):
+            raise RuntimeError(f"Falta 'content' en documento ID {d.get('id')}")
+        if not d.get("readingTime") or d.get("readingTime", 0) <= 0:
+            raise RuntimeError(f"readingTime invalido en documento ID {d.get('id')}")
         total_words += d.get("wordCount", 0)
         categories.add(d.get("category"))
         print(
@@ -102,6 +106,27 @@ def main():
     ]
 
     check_content_mirrors()
+
+    # Additional: Compare embedded content in docs_data.js with actual .md files
+    print("\nComparando contenido embebido con archivos originales...")
+    content_mismatches = []
+    for item in DOCUMENTS_MANIFEST:
+        origen = REPO_ROOT / item["file"]
+        if not origen.exists():
+            continue
+        # Find the corresponding entry in docs_data.js by matching the file field
+        doc_entry = next((d for d in data if d.get('filename') == item['file']), None)
+        if doc_entry and doc_entry.get('content'):
+            try:
+                orig_content = origen.read_text(encoding='utf-8')
+                if orig_content != doc_entry['content'][:len(orig_content)]:
+                    content_mismatches.append(item['file'])
+            except Exception:
+                pass
+    if content_mismatches:
+        print(f"  Advertencia: contenido desactualizado en: {', '.join(content_mismatches)}.")
+    else:
+        print("  [OK] Todo el contenido embebido coincide con los archivos originales.")
 
     print("\nVerificando archivos requeridos de la web...")
     for rf in required_files:

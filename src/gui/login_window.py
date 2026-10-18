@@ -215,6 +215,12 @@ class LoginWindow(ctk.CTk):
         setup_ui_raiz(self)
 
         self.user: Usuario | None = None
+        # Copia simple de la identidad autenticada. La sesión de base de
+        # datos se cierra al terminar el acceso, así que el objeto ORM no
+        # debe usarse fuera de esta ventana: estos dos valores son los que
+        # consume la aplicación para abrir la ventana principal.
+        self.username_autenticado: str | None = None
+        self.rol_autenticado: str | None = None
 
         # Respetar el modo de apariencia guardado por el usuario
         try:
@@ -388,6 +394,11 @@ class LoginWindow(ctk.CTk):
                     self.password_entry.delete(0, tk.END)
                     return
 
+            # Copiar la identidad mientras la sesión sigue abierta: al
+            # cerrarla en el ``finally`` el objeto queda detached y sus
+            # atributos ya no se pueden leer sin volver a consultarlos.
+            self.username_autenticado = usuario.username
+            self.rol_autenticado = usuario.rol_valor
             self.user = usuario
             # Transición a la ventana principal: la ventana de login se
             # OCULTA (no se destruye) y se sale del mainloop. Destruir la
@@ -403,13 +414,17 @@ class LoginWindow(ctk.CTk):
             self.password_entry.delete(0, tk.END)
         except SQLAlchemyError as e:
             logger.error("Error de base de datos durante autenticación: %s", e)
-            messagebox.showerror("Error de Base de Datos", f"Error de conexión o base de datos: {str(e)}")
+            messagebox.showerror(
+                "Error de Base de Datos", f"Error de conexión o base de datos: {str(e)}"
+            )
             self.password_entry.delete(0, tk.END)
         except Exception as e:
             messagebox.showerror("Error", f"Error al iniciar sesión: {str(e)}")
         finally:
-            if self.user is None:
-                db_config.close_session(session)
+            # La sesión del login se cierra siempre: la ventana principal
+            # abre su propia sesión (ver MainWindow) y mantener esta viva
+            # retenía una conexión del pool durante toda la sesión de uso.
+            db_config.close_session(session)
 
     def _on_close(self):
         self.user = None
@@ -417,6 +432,11 @@ class LoginWindow(ctk.CTk):
         self.destroy()
 
     def run(self) -> Usuario | None:
-        """Muestra la ventana y devuelve el usuario autenticado o None"""
+        """Muestra la ventana y devuelve el usuario autenticado o None
+
+        El usuario devuelto pertenece a una sesión ya cerrada. Para abrir la
+        ventana principal se usan ``username_autenticado`` y
+        ``rol_autenticado``, que son valores simples y siempre legibles.
+        """
         self.mainloop()
         return self.user

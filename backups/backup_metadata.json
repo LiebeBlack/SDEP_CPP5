@@ -2,35 +2,34 @@
   "initial_setup": {
     "name": "initial_setup",
     "filename": "initial_setup.db.gz",
-    "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\initial_setup.db.gz",
-    "timestamp": "20260903_043525",
-    "size_bytes": 4344,
-    "checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
+    "path": "initial_setup.db.gz",
+    "timestamp": "20261018_132332",
+    "size_bytes": 8324,
+    "checksum": "1fc2c0a1c8b5b879b8bbbc1e118bd17965fcbf0f2caba114392a668e1942bb28",
     "compressed": true,
-    "original_db_checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
-    "exists": true,
-    "age_days": 1
+    "version": 2,
+    "original_db_checksum": "fad25891f4b8140e8425293061c284bb50acbfba390d1a6345ea7a14096c91f3"
   },
   "auto_shutdown": {
     "name": "auto_shutdown",
     "filename": "auto_shutdown.db.gz",
-    "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\auto_shutdown.db.gz",
-    "timestamp": "20260904_051801",
-    "size_bytes": 4982,
-    "checksum": "16e60314bf95f75e4e0472ec3a6345ddb890fe7b821a159e3573950245f994b3",
+    "path": "auto_shutdown.db.gz",
+    "timestamp": "20261018_132332",
+    "size_bytes": 8409,
+    "checksum": "9c81b70bf2131ba51bde255cafdc92d6b27021c7195d95d2f8784a95ea66b049",
     "compressed": true,
-    "version": 2
+    "version": 2,
+    "original_db_checksum": "bc0c064f49dd1f1a0aee03bf822f3ef302ec5e6c3f0bd4b4a9bb75013557aa36"
   },
   "test_security": {
     "name": "test_security",
     "filename": "test_security.db.gz",
-    "path": "C:\\Users\\L\\Documents\\GitHub\\SDEP_CPP5\\backups\\test_security.db.gz",
-    "timestamp": "20260903_043540",
-    "size_bytes": 4344,
-    "checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
+    "path": "test_security.db.gz",
+    "timestamp": "20261018_132332",
+    "size_bytes": 8321,
+    "checksum": "9b754e4268f670bbc563d0259ccd2e589a801b4fb005681c39250d05faae6c5c",
     "compressed": true,
-    "original_db_checksum": "470cb29bc62a29347a543a04a0e132476b38f33aa591f156d37c60bc508dc7c1",
-    "exists": true,
-    "age_days": 1
+    "version": 2,
+    "original_db_checksum": "106f7e83d136a184c9f139e4c15b4c6043b29e7e5d0c403778c9830781dc8ab2"
   }
 }

@@ -142,3 +142,61 @@ Ninguno de estos se veía por lectura estática; todos están corregidos y con p
 | I.2 completo (persistir días y prorrateo en `pagos`) | Requiere columnas nuevas y migración de esquema. |
 | I.9 (auditar lecturas en `get_by_id`) | Es política de auditoría, no un defecto. |
 | I.5 (criterio único de vacaciones) | Decisión funcional: qué debe contar para nómina y para finiquito. |
+
+---
+
+# Tanda 3 — Revisión funcional (2026-10-18)
+
+**Método:** lectura del código y edición de archivos. **No se ejecutó nada**: ni la suite, ni linters, ni la aplicación. El entorno no tiene las dependencias instaladas y así se decidió. Ninguna afirmación de esta tanda procede de una ejecución.
+
+| # | Hallazgo | Archivo(s) | Cambio |
+|---|---|---|---|
+| 1 | La sesión del login no se cerraba al autenticar y el objeto `Usuario` quedaba dependiendo de ella | `src/gui/login_window.py`, `src/gui/main_window.py`, `src/main.py` | El login copia `username`/`rol` y cierra la sesión siempre; la ventana principal acepta el nombre y re consulta el usuario en su propia sesión |
+| 2 | `updater/tray_icon.py` decía ser no-op fuera de Windows y fallaba al importarse (`ctypes.WinDLL` en la anotación) | `updater/tray_icon.py` | Referencias nativas anotadas como `Any`; el módulo se importa en cualquier plataforma |
+| 3 | La URI `file://` se armaba con `replace(os.sep, '/')`: inválida en Windows y sin escapar espacios ni acentos | `src/utils/helpers.py`, `src/gui/frames.py` | Nuevo `ruta_a_uri()` con `Path.as_uri()` usado en los dos puntos de apertura |
+| 4 | Un `except` incluía `Exception` junto a tipos más específicos (código muerto y errores enmascarados) | `src/gui/notas_frame.py` | El consolidado captura solo los errores operativos esperados |
+| 5 | Cambiar el tema recreaba la vista y descartaba formularios a medio llenar, avisando después | `src/gui/main_window.py` | Confirmación previa cuando el módulo activo no es el dashboard |
+| 6 | El handler global de rueda no comprobaba los bindings nativos: el mismo giro podía desplazar dos veces | `src/gui/theme.py` | Se omite el widget que ya trae scroll propio y se devuelve `"break"` tras desplazar |
+| 7 | El gráfico de barras no limpiaba el canvas: al reducir los datos quedaban barras viejas y cada redibujado acumulaba elementos | `src/gui/widgets/graficos.py` | `self.limpiar()` antes de dibujar |
+| 8 | La terminación de contrato desde la interfaz no enviaba `registrado_por`: la auditoría quedaba como `system` | `src/gui/contratos_frame.py` | Se envía el usuario de la sesión |
+| 9 | `crear_empleado` no validaba nombre, apellidos ni tipo (podía fallar con `KeyError`); la edición podía dejar el nombre vacío | `src/services/empleado_service.py` | Validación de campos obligatorios en el servicio, también en la actualización |
+
+## Límites de esta tanda
+
+- Sin ejecución no se puede afirmar que la suite, los linters o la interfaz funcionen: todo lo anterior está razonado por lectura y debe confirmarse con `pytest`, `flake8`, `black --check`, `isort --check-only`, `mypy` y una sesión real de la aplicación.
+- Queda detectado y **sin cambiar** el patrón `except (…, Exception)` repetido en 24 puntos de `src/gui/`: es redundante, pero su corrección masiva excede el alcance de esta tanda y no se puede validar sin ejecutar.
+
+---
+
+# Tanda 4 — Bases de datos (2026-10-18)
+
+**Alcance:** los tres respaldos versionados en `backups/`. Se trabajó sobre copias; los originales se conservaron fuera del repositorio durante la sesión y siguen recuperables desde Git.
+
+## Auditoría inicial
+
+| Comprobación | Resultado |
+|---|---|
+| Integridad SQLite (`PRAGMA integrity_check`) | `ok` en los tres |
+| Claves foráneas (`PRAGMA foreign_key_check`) | Sin huérfanos |
+| Esquema | 5-6 tablas: faltaban las tablas de contratos, académicas y de sesión; sin los tres disparadores de inmutabilidad |
+| `usuarios` | Solo en `auto_shutdown`; las otras dos no tenían cuenta de acceso |
+| Datos de empleados | 9 por base, sin cédulas duplicadas, salarios inválidos ni fechas invertidas |
+| Metadatos | Rutas absolutas de Windows, `exists`/`age_days` obsoletos y checksums duplicados |
+
+## Reparación aplicada
+
+- Migración ejecutada con el **propio** `DatabaseConfig.init_db()` del proyecto (SQLAlchemy 2.1.5), no con SQL escrito a mano: columnas nuevas, tablas faltantes, índices, configuración inicial, usuario administrador donde no existía y los tres disparadores de inmutabilidad.
+- `VACUUM` + recompresión determinista de los tres `.db.gz`.
+- Metadatos normalizados al formato vigente: `path` relativo al almacén, `checksum` del archivo `.gz`, tamaño, `version: 2` y checksum de la base sin comprimir como dato de trazabilidad.
+- Verificación con el código de la aplicación (`BackupManager.list_backups()` y `verify_backup_integrity()`): **checksum, tamaño e integridad correctos en los tres**.
+
+## Verificación ejecutada
+
+- `pytest` sobre los módulos sin interfaz: **513 pruebas aprobadas**, 0 fallos (79 s).
+- `tests/test_helpers.py`, `test_empleados.py`, `test_migraciones.py` y `test_backups.py`: **99 aprobadas**, incluida la validación nueva de alta de empleado.
+- No se ejecutaron `test_gui_smoke.py`, `test_theme.py` ni `test_permisos_modulos.py`: dependen de `tkinter`/`customtkinter` y de una pantalla, que este entorno no tiene.
+
+## Pendiente (requiere decisión)
+
+- Los tres respaldos **siguen rastreados en Git** y contienen datos personales de nueve empleados. Lo recomendable es retirarlos del índice (`git rm --cached backups/*.db.gz backups/backup_metadata.json`) y dejar que la aplicación genere respaldos locales; no se ejecutó porque es una operación de índice Git.
+- Las rutas absolutas del desarrollador siguen en el historial de Git; eliminarlas de ahí exige reescribir el historial, decisión que no corresponde a esta tanda.

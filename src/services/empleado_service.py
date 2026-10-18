@@ -89,6 +89,18 @@ class EmpleadoService:
         if not cedula:
             raise ValueError("La cédula es requerida")
 
+        # Los campos obligatorios se validan también aquí, no solo en el
+        # formulario: cualquier llamada directa al servicio (importaciones,
+        # sincronización, scripts) debe rechazar un registro incompleto con
+        # un mensaje claro en lugar de crear un empleado sin nombre o fallar
+        # con KeyError por ``tipo_empleado``.
+        if not str(datos.get("nombres", "") or "").strip():
+            raise ValueError("El nombre del empleado es requerido")
+        if not str(datos.get("apellidos", "") or "").strip():
+            raise ValueError("Los apellidos del empleado son requeridos")
+        if not datos.get("tipo_empleado"):
+            raise ValueError("El tipo de empleado es requerido")
+
         # Validar que la cédula no exista
         if self.repository.get_by_cedula(cedula):
             raise ValueError("Ya existe un empleado con esta cédula")
@@ -182,6 +194,12 @@ class EmpleadoService:
         empleado = self.repository.get_by_id(empleado_id)
         if not empleado:
             raise ValueError("Empleado no encontrado")
+
+        # El nombre y los apellidos son obligatorios: un vacío no puede
+        # borrarlos por la vía de la edición.
+        for obligatorio in ("nombres", "apellidos"):
+            if obligatorio in datos and not str(datos[obligatorio] or "").strip():
+                raise ValueError("El nombre y los apellidos son requeridos")
 
         # Si se actualiza la cédula, verificar que no exista. Una cédula
         # vacía se descarta aquí: antes el guard la ignoraba y el bucle

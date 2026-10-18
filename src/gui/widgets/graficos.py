@@ -156,6 +156,10 @@ class GraficoBarras(GraficoBase):
             self.mostrar_vacio()
             return
 
+        # Sin este borrado, cada redibujado (cambio de datos o de tamaño)
+        # dejaba encima las barras y etiquetas anteriores: al reducirse el
+        # número de datos seguían visibles las barras que ya no existían.
+        self.limpiar()
         ancho = max(120, self.ancho())
         alto = max(80, self.alto_canvas())
         margen_sup, margen_inf, margen_lat = 22, 34, 28

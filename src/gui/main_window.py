@@ -105,7 +105,7 @@ def configure_treeview_style():
 class MainWindow(ctk.CTk):
     """Ventana principal del sistema"""
 
-    def __init__(self, current_user: Usuario | None = None):
+    def __init__(self, current_user: Usuario | str | None = None):
         enable_windows_dpi_awareness()
         # Tema claro por defecto (coherente con el login). La preferencia
         # guardada del usuario se aplica más abajo, antes de crear la
@@ -154,11 +154,14 @@ class MainWindow(ctk.CTk):
             lambda _evento: self._pintar_estado_sincronizacion(),
         )
 
-        # Copiar el nombre de usuario MIENTRAS el objeto sigue ligado a la
-        # sesión de login; cualquier cierre de sesión scoped posterior lo
-        # dejaría detached (incluso para atributos de clave primaria).
+        # Identidad de la sesión: se acepta el nombre de usuario (texto) o
+        # el objeto ya cargado. Con texto no hay dependencia de ninguna
+        # sesión ajena; con objeto se copia el nombre antes de tocar la base
+        # para no depender de que siga ligado a su sesión de origen.
         username_snapshot = None
-        if current_user is not None:
+        if isinstance(current_user, str):
+            username_snapshot = current_user.strip() or None
+        elif current_user is not None:
             try:
                 username_snapshot = current_user.username
             except Exception:
@@ -837,6 +840,17 @@ class MainWindow(ctk.CTk):
     def _toggle_apariencia(self):
         """Alterna entre tema oscuro y claro y guarda la preferencia"""
         try:
+            # Aplicar el tema recrea el frame activo (los widgets guardan la
+            # paleta al construirse), así que se confirma antes cuando puede
+            # haber un formulario a medio llenar. El dashboard no tiene
+            # datos que perder y cambia sin preguntar.
+            if (self.current_frame_name or "dashboard") != "dashboard" and not messagebox.askyesno(
+                "Cambiar tema",
+                "Para aplicar el tema se recargará la vista actual y se perderán\n"
+                "los cambios que no haya guardado.\n\n¿Desea continuar?",
+            ):
+                return
+
             modo_actual = ctk.get_appearance_mode()
             nuevo = "Light" if modo_actual == "Dark" else "Dark"
             aplicar_modo_apariencia(nuevo)
@@ -850,7 +864,6 @@ class MainWindow(ctk.CTk):
             mensaje = f"Tema {nuevo.lower()} aplicado"
             if not puede_guardar_preferencia:
                 mensaje += " (solo para esta sesión)"
-            mensaje += " — Advertencia: se recargó la vista actual (los cambios no guardados se pierden)"
             self.status_label.configure(text=mensaje)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo cambiar el tema: {str(e)}")

@@ -6,6 +6,7 @@ y en cualquier navegador (sin problemas de CORS en file://).
 """
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -280,9 +281,12 @@ def build_bundle():
     for item in DOCUMENTS_MANIFEST:
         src_path = REPO_ROOT / item["file"]
         if src_path.exists():
+            # Write atomically for each synced content file
             dest_path = CONTENT_DIR / item["file"]
             dest_path.parent.mkdir(parents=True, exist_ok=True)
-            dest_path.write_bytes(src_path.read_bytes())
+            temp_dest = dest_path.with_suffix(dest_path.suffix + '.tmp')
+            temp_dest.write_bytes(src_path.read_bytes())
+            os.replace(temp_dest, dest_path)
 
     js_content = "/**\n"
     js_content += " * Catálogo Centralizado de Documentos SDEP_CPP5\n"
@@ -293,7 +297,10 @@ def build_bundle():
         "window.SDEP_DOCS_DATA = " + json.dumps(documents, ensure_ascii=False, indent=2) + ";\n"
     )
 
-    OUTPUT_FILE.write_text(js_content, encoding="utf-8")
+    # Write atomically: first to temp file, then os.replace to avoid partial writes
+    temp_output = OUTPUT_FILE.with_suffix(OUTPUT_FILE.suffix + '.tmp')
+    temp_output.write_text(js_content, encoding="utf-8")
+    os.replace(temp_output, OUTPUT_FILE)
     file_size_kb = OUTPUT_FILE.stat().st_size / 1024
     print(f"Catalogo generado exitosamente en {OUTPUT_FILE} ({file_size_kb:.1f} KB)")
     print(f"Archivos sincronizados en {CONTENT_DIR}")

@@ -10,32 +10,32 @@ Conviene precisar, antes de continuar, el estatuto de la evidencia que se presen
 
 ### 4.2.1 Arquitectura General
 
-El sistema se materializó en una arquitectura de capas con separación estricta de responsabilidades. La organización del código en `src/` responde a cinco capas y a un dominio de cálculo independiente, decisión que permitió aislar la complejidad del cálculo de nómina del resto de la aplicación. La Tabla 4.1 resume la distribución del código fuente por capa, medida sobre la versión 3.0.0 del repositorio.
+El sistema se materializó en una arquitectura de capas con separación estricta de responsabilidades. La organización del código en `src/` responde a cinco capas y a un dominio de cálculo independiente, decisión que permitió aislar la complejidad del cálculo de nómina del resto de la aplicación. La Tabla 4.1 resume la distribución del código fuente por capa, medida sobre la versión 3.0.1 del repositorio.
 
-**Tabla 4.1. Distribución del código fuente por capa (versión 3.0.0)**
+**Tabla 4.1. Distribución del código fuente por capa (versión 3.0.1)**
 
 | Capa | Archivos | Líneas de código | Responsabilidad principal |
 |------|----------|------------------|---------------------------|
-| `src/models` | 10 | 1 337 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
-| `src/repositories` | 9 | 1 608 | Acceso a datos y consultas reutilizables |
-| `src/services` | 8 | 2 821 | Reglas de negocio y orquestación de flujos |
-| `src/utils` | 10 | 5 389 | Seguridad, auditoría, respaldos, PDF y utilidades |
-| `src/config` | 3 | 1 425 | Configuración, rutas y sesión de base de datos |
-| `src/gui` | 8 | 8 615 | Interfaz gráfica (CustomTkinter) |
-| `src/nomina` | 9 | 1 504 | Motor de cálculo de nómina y prestaciones |
+| `src/models` | 16 | 1 887 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
+| `src/repositories` | 16 | 2 383 | Acceso a datos y consultas reutilizables |
+| `src/services` | 11 | 4 332 | Reglas de negocio y orquestación de flujos |
+| `src/utils` | 10 | 5 525 | Seguridad, auditoría, respaldos, PDF y utilidades |
+| `src/config` | 3 | 1 706 | Configuración, rutas y sesión de base de datos |
+| `src/gui` | 10 | 11 598 | Interfaz gráfica (CustomTkinter) |
+| `src/nomina` | 9 | 1 502 | Motor de cálculo de nómina y prestaciones |
 | `src/__init__.py` | 1 | 8 | Declaración del paquete raíz |
-| `src/main.py` | 1 | 535 | Punto de entrada de la aplicación |
-| **Total** | **59** | **23 242** | |
+| `src/main.py` | 1 | 534 | Punto de entrada de la aplicación |
+| **Total** | **77** | **29 475** | |
 
-*Fuente: medición directa con `wc -l` sobre `src/` en la versión 3.0.0. El conteo de archivos incluye los módulos `__init__.py`.*
+*Fuente: medición directa con `wc -l` sobre `src/` en la versión 3.0.1. El conteo de archivos incluye los módulos `__init__.py`.*
 
-A esta extensión se suma el agente de sincronización, deliberadamente construido como **paquete independiente** en `sync_agent/` (13 archivos, 5 271 líneas) para que funcione tanto ejecutado por sí solo —`py -3 -m sync_agent`— como embebido en la aplicación mediante un enganche a los eventos del ORM. Su separación mantiene la aplicación utilizable sin sincronización y permite verificar su motor de mezcla de forma aislada, pues está compuesto por funciones puras.
+A esta extensión se suma el agente de sincronización, deliberadamente construido como **paquete independiente** en `sync_agent/` (13 archivos, 5 433 líneas) para que funcione tanto ejecutado por sí solo —`py -3 -m sync_agent`— como embebido en la aplicación mediante un enganche a los eventos del ORM. Su separación mantiene la aplicación utilizable sin sincronización y permite verificar su motor de mezcla de forma aislada, pues está compuesto por funciones puras.
 
-La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 37 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 31 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
+La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 39 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 34 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
 
 #### 4.2.1.1 Capa de Presentación
 
-La interfaz se construyó con CustomTkinter y se organiza en siete módulos accesibles desde la barra lateral o mediante atajos de teclado. El sistema de navegación comprende los módulos de Panel de control, Empleados, Documentos, Incidencias, Contratos, Nómina y Configuración, asociados a las combinaciones `Ctrl+1` a `Ctrl+7`, respectivamente. La Tabla 4.2 detalla los componentes principales de esta capa.
+La interfaz se construyó con CustomTkinter y se organiza en nueve módulos accesibles desde la barra lateral o mediante atajos de teclado. El sistema de navegación comprende los módulos del núcleo de gestión de personal —Panel de control, Empleados, Documentos, Incidencias, Contratos, Nómina y Configuración— y los módulos del dominio académico —Estudiantes y Calificaciones—, asociados a las combinaciones `Ctrl+1` a `Ctrl+9`, respectivamente. La Tabla 4.2 detalla los componentes principales de esta capa.
 
 **Tabla 4.2. Componentes de la capa de presentación**
 
@@ -50,23 +50,25 @@ La interfaz se construyó con CustomTkinter y se organiza en siete módulos acce
 | `ContratosFrame` | `contratos_frame.py` | Vigencia y renovación de contratos laborales |
 | `NominaFrame` | `frames.py` | Generación de nómina, recibos y planillas |
 | `ConfiguracionFrame` | `frames.py` | Parámetros institucionales, apariencia y respaldos |
+| `EstudiantesFrame` | `estudiantes_frame.py` | Legajo del estudiante, grados, matrículas y exportación |
+| `NotasFrame` | `notas_frame.py` | Calificaciones, consolidado, boletín y cierre de periodo |
 | `theme.py` y `widgets/graficos.py` | `theme.py`, `widgets/graficos.py` | Paletas claro/oscuro y gráficos del panel |
 
-*Fuente: inspección de `src/gui/` en la versión 3.0.0.*
+*Fuente: inspección de `src/gui/` en la versión 3.0.1.*
 
 La interfaz incorpora validación de formularios con retroalimentación visual inmediata, tablas con búsqueda y filtrado, menús contextuales por clic derecho, apariencia clara y oscura persistida en la configuración institucional, y un conjunto de atajos generales que comprende `Ctrl+N` para crear registros, `Ctrl+F` para enfocar el buscador, `Ctrl+S` para guardar cambios en configuración, `F5` para refrescar y `Esc` para cerrar diálogos o limpiar la selección.
 
 #### 4.2.1.2 Capa de Servicios
 
-Los servicios encapsulan las reglas de negocio y constituyen el único punto de entrada desde la interfaz hacia los datos. Se implementaron siete servicios: autenticación y control de acceso, empleados, documentos, incidencias, contratos, nómina y configuración. Cada uno valida las reglas del dominio, coordina los repositorios que le corresponden, ejecuta los cálculos y deja constancia de las operaciones sensibles en el registro de auditoría. Esta capa concentra 2 783 líneas y es, junto con el motor de nómina, el núcleo funcional del sistema.
+Los servicios encapsulan las reglas de negocio y constituyen el único punto de entrada desde la interfaz hacia los datos. Se implementaron los servicios del núcleo de gestión de personal —autenticación y control de acceso, empleados, documentos, incidencias, contratos, nómina y configuración— y los del dominio académico —académico, calificaciones y token de sesión—: diez servicios en total. Cada uno valida las reglas del dominio, coordina los repositorios que le corresponden, ejecuta los cálculos y deja constancia de las operaciones sensibles en el registro de auditoría. Esta capa concentra 4 332 líneas y es, junto con el motor de nómina, el núcleo funcional del sistema.
 
 #### 4.2.1.3 Capa de Repositorios
 
-La capa de acceso a datos aplica el patrón Repository sobre un repositorio base genérico, del cual heredan los siete repositorios concretos. Gracias a esta abstracción, las consultas frecuentes —búsqueda por cédula, por periodo o por estado— se escriben una sola vez, se reutilizan desde cualquier servicio y pueden probarse con independencia de la interfaz. Los repositorios gestionan además las transacciones y las relaciones entre entidades, de modo que ninguna otra capa manipula la sesión de base de datos directamente.
+La capa de acceso a datos aplica el patrón Repository sobre un repositorio base genérico, del cual heredan los repositorios concretos de cada entidad: empleados, documentos, incidencias, contratos, pagos, usuarios, configuración, estudiantes, grados, matrículas, calificaciones y periodos académicos. Gracias a esta abstracción, las consultas frecuentes —búsqueda por cédula, por periodo o por estado— se escriben una sola vez, se reutilizan desde cualquier servicio y pueden probarse con independencia de la interfaz. Los repositorios gestionan además las transacciones y las relaciones entre entidades, de modo que ninguna otra capa manipula la sesión de base de datos directamente.
 
 #### 4.2.1.4 Capa de Modelos
 
-Los modelos se declararon con el ORM SQLAlchemy y representan las entidades del dominio junto con sus enumeraciones de apoyo. El esquema consta de siete tablas: `empleados`, `documentos`, `incidencias`, `contratos`, `pagos`, `configuraciones` y `usuarios`. Las relaciones principales responden a la naturaleza del negocio: un empleado concentra documentos, incidencias, contratos y pagos; cada pago pertenece a un empleado y a un periodo; y los contratos conservan la vigencia de la relación laboral que alimenta el finiquito.
+Los modelos se declararon con el ORM SQLAlchemy y representan las entidades del dominio junto con sus enumeraciones de apoyo. El esquema consta de trece tablas: las siete del núcleo de gestión de personal y nómina —`empleados`, `documentos`, `incidencias`, `contratos`, `pagos`, `configuraciones` y `usuarios`— y las seis del dominio académico y la gestión de sesiones —`estudiantes`, `grados`, `matriculas`, `notas_finales`, `periodos_academicos` y `tokens_sesion`—. Las relaciones principales responden a la naturaleza del negocio: un empleado concentra documentos, incidencias, contratos y pagos; cada pago pertenece a un empleado y a un periodo; y los contratos conservan la vigencia de la relación laboral que alimenta el finiquito.
 
 #### 4.2.1.5 Dominio de Cálculo de Nómina
 
@@ -135,15 +137,23 @@ La nómina constituye el proceso de mayor criticidad financiera y, por ello, el 
 
 La configuración institucional comprende los datos de la institución —denominación, dirección, contacto e identificación—, los parámetros de nómina —porcentajes de deducción, salario mínimo de referencia y criterios de cálculo— y las políticas de recursos humanos —días de vacaciones, horas laborales semanales y reglas de incidencias—. El módulo administra además la apariencia clara u oscura, el cambio de contraseña del usuario autenticado, el visor de auditoría para el rol administrador y las operaciones de respaldo y restauración de la base de datos. La totalidad de los parámetros se modifica sin intervenir el código fuente, condición indispensable para que una misma distribución del sistema atienda a instituciones con políticas distintas.
 
+#### 4.2.2.7 Módulo Académico: Estudiantes, Grados y Matrículas
+
+El módulo académico amplía el alcance del sistema hacia la gestión escolar y se incorporó sobre la misma arquitectura de capas, sin alterar el núcleo de personal y nómina. Forma parte de la versión 3.0.1 documentada en este capítulo, posterior al cierre de la versión 3.0.0. Comprende el legajo del estudiante —con cédula única, nivel educativo, representante y datos de contacto—, la estructura escolar de grados y secciones por año, la designación del docente responsable y la matrícula que vincula al estudiante con un grado y un periodo. El sistema impone una sola matrícula activa por estudiante y periodo, ofrece la búsqueda por nombre o cédula y permite la exportación a formato abierto.
+
+#### 4.2.2.8 Módulo Académico: Calificaciones y Periodos
+
+El módulo de calificaciones administra las notas finales por materia y periodo, con registro, corrección y eliminación, carga por lotes en una única transacción, consolidado del periodo, boletín por estudiante y acta final del grado. Los periodos académicos se gestionan con alta y edición del año escolar y con un cierre que bloquea la carga de notas tanto en el servicio como en la base de datos; la reapertura queda restringida al rol administrador. La escritura de calificaciones exige una autorización por token de alcance limitado —vigente por una jornada y almacenado únicamente como resumen criptográfico— que corresponde al administrador o al docente asignado al grado, lo que refuerza el control de acceso más allá del rol del usuario.
+
 ### 4.2.3 Características Técnicas
 
 #### 4.2.3.1 Base de Datos
 
-El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de mapeo objeto-relacional. El esquema comprende siete tablas con integridad referencial mediante claves foráneas, índices sobre los campos de consulta frecuente —cédula, nombre y periodo— y un mecanismo de migración que permite evolucionar la estructura sin pérdida de datos. La elección de SQLite responde a las condiciones de operación previstas: instalación local, ausencia de servidor dedicado y volumen de información acotado. Las mediciones de rendimiento del apartado 4.3.3 determinarán si esa elección se sostiene en el rango superior de volumen previsto.
+El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de mapeo objeto-relacional. El esquema comprende trece tablas con integridad referencial mediante claves foráneas, índices sobre los campos de consulta frecuente —cédula, nombre y periodo— y un mecanismo de migración que permite evolucionar la estructura sin pérdida de datos. La elección de SQLite responde a las condiciones de operación previstas: instalación local, ausencia de servidor dedicado y volumen de información acotado. Las mediciones de rendimiento del apartado 4.3.3 determinarán si esa elección se sostiene en el rango superior de volumen previsto.
 
 #### 4.2.3.2 Interfaz Gráfica
 
-La interfaz mantiene un diseño consistente en los siete módulos, con temas claro y oscuro persistidos en la configuración, validación en tiempo real, retroalimentación visual de las acciones, navegación completa por teclado y diálogos auxiliares de ayuda y de información del sistema. Las tarjetas del panel de control son navegables y conducen al módulo correspondiente, lo que reduce la profundidad de navegación para las consultas habituales.
+La interfaz mantiene un diseño consistente en los nueve módulos, con temas claro y oscuro persistidos en la configuración, validación en tiempo real, retroalimentación visual de las acciones, navegación completa por teclado y diálogos auxiliares de ayuda y de información del sistema. Las tarjetas del panel de control son navegables y conducen al módulo correspondiente, lo que reduce la profundidad de navegación para las consultas habituales.
 
 #### 4.2.3.3 Seguridad
 
@@ -159,9 +169,11 @@ Las medidas de seguridad implementadas abarcan la autenticación de usuarios, el
 | Contratos | Sí | Sí | No | No |
 | Nómina | Sí | Sí | No | No |
 | Configuración | Sí | No | No | No |
+| Estudiantes | Sí | Sí | Sí | Sí |
+| Calificaciones | Sí | Sí | Sí | No |
 | Reportes | Sí | Sí | No | Sí |
 
-*Fuente: `PermissionChecker.can_access_module` en `src/utils/security.py`, versión 3.0.0.*
+*Fuente: `PermissionChecker.can_access_module` en `src/utils/security.py`, versión 3.0.1.*
 
 Los permisos de operación se organizan de forma análoga: el administrador dispone de creación, lectura, actualización, eliminación, reportes, configuración, respaldo y restauración; el rol gestor de creación, lectura, actualización, eliminación y reportes; el rol usuario de lectura y actualización de registros propios; y el rol de solo lectura exclusivamente de consulta.
 
@@ -169,9 +181,9 @@ Los permisos de operación se organizan de forma análoga: el administrador disp
 
 ### 4.3.1 Pruebas Automatizadas
 
-La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.0 —objeto de este informe— declara 476 funciones de prueba distribuidas en 26 archivos, con 6 598 líneas de código en `tests/` (27 archivos: se cuenta también `conftest.py`, donde viven las fixtures compartidas). La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
+La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.1 —objeto de este informe— declara 551 funciones de prueba distribuidas en 32 archivos, con 8 059 líneas de código en `tests/` (33 archivos: se cuenta también `conftest.py`, donde viven las fixtures compartidas). La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
 
-**Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.0)**
+**Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.1)**
 
 | Archivo de prueba | Funciones | Área verificada |
 |-------------------|-----------|-----------------|
@@ -181,16 +193,20 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_nomina_motor.py` | 27 | Motor de cálculo de nómina |
 | `test_sync_cli.py` | 24 | Interfaz de consola del agente: preparación, estado y administración del nodo |
 | `test_sync_servidor.py` | 22 | Nodo central: credenciales, lotes, límites y binarios |
+| `test_sync_merge.py` | 21 | Mezcla por campo y convergencia entre puestos |
 | `test_auto_updater.py` | 20 | Actualización automática del sistema |
-| `test_sync_merge.py` | 19 | Mezcla por campo y convergencia entre puestos |
-| `test_contratos.py` | 17 | Vigencia y renovación de contratos |
+| `test_gui_smoke.py` | 19 | Humo de la interfaz gráfica |
+| `test_academico.py` | 18 | Legajo del estudiante, grados y matrículas |
+| `test_contratos.py` | 18 | Vigencia y renovación de contratos |
+| `test_empleados.py` | 18 | Gestión de empleados |
+| `test_notas.py` | 17 | Calificaciones, consolidado y cierre de periodo |
 | `test_reportes.py` | 17 | Generación de documentos PDF |
 | `test_auth.py` | 16 | Autenticación, roles y permisos |
-| `test_empleados.py` | 16 | Gestión de empleados |
-| `test_gui_smoke.py` | 16 | Humo de la interfaz gráfica |
 | `test_credenciales.py` | 15 | Credenciales y política de contraseñas |
 | `test_document_manager.py` | 15 | Almacenamiento de documentos |
-| `test_theme.py` | 13 | Paletas de apariencia |
+| `test_theme.py` | 15 | Paletas de apariencia |
+| `test_tokens_sesion.py` | 11 | Tokens de sesión de alcance académico |
+| `test_sync_integracion.py` | 10 | Dos puestos convergen por el nodo central |
 | `test_backups.py` | 9 | Respaldo y restauración |
 | `test_configuracion.py` | 9 | Parámetros configurables |
 | `test_incidencias.py` | 8 | Incidencias y aprobaciones |
@@ -198,14 +214,16 @@ La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el con
 | `test_sync_captura.py` | 8 | Captura de cambios del ORM y modo offline |
 | `test_documentos.py` | 7 | Gestión documental |
 | `test_sync_agente.py` | 7 | Ciclo del agente, reintentos y token rechazado |
-| `test_sync_integracion.py` | 7 | Dos puestos convergen por el nodo central |
-| `test_migraciones.py` | 5 | Evolución y purga del esquema |
+| `test_migraciones.py` | 6 | Evolución y purga del esquema |
+| `test_sync_academico.py` | 6 | Sincronización del dominio académico |
+| `test_build.py` | 5 | Construcción y empaquetado |
+| `test_permisos_modulos.py` | 4 | Permisos de acceso por módulo |
 | `test_settings_version.py` | 4 | Versión y parámetros de compilación |
-| **Total** | **476** | |
+| **Total** | **551** | |
 
-*Fuente: conteo de funciones `test_` sobre `tests/`, versión 3.0.0. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
+*Fuente: conteo de funciones `test_` sobre `tests/`, versión 3.0.1. La suite se ejecuta con `pytest` y la configuración de cobertura está declarada en `pyproject.toml`.*
 
-La distinción entre ambas mediciones merece precisión metodológica. Los porcentajes de cobertura que se exponen en la Tabla 4.8 corresponden a la medición ejecutada sobre la versión 1.0.4 del sistema; se conservan como referencia histórica y como evidencia de que la estrategia de pruebas alcanzó niveles altos en la lógica de negocio. Dado que el código creció de manera sustancial desde entonces, esos porcentajes no pueden atribuirse a la versión vigente: la cobertura de la versión 3.0.0 debe re-medirse con `pytest --cov=src` y sustituir los valores de la tabla antes de la presentación definitiva. La misma exigencia se aplica al estado de ejecución de la suite, cuya verificación corresponde al flujo de integración continua del repositorio y cuyo informe debe adjuntarse como evidencia.
+La distinción entre ambas mediciones merece precisión metodológica. Los porcentajes de cobertura que se exponen en la Tabla 4.8 corresponden a la medición ejecutada sobre la versión 1.0.4 del sistema; se conservan como referencia histórica y como evidencia de que la estrategia de pruebas alcanzó niveles altos en la lógica de negocio. Dado que el código creció de manera sustancial desde entonces, esos porcentajes no pueden atribuirse a la versión vigente. La re-medición practicada con `pytest --cov=src` sobre la versión 3.0.1 arrojó una cobertura total del 56 %, con un 76 % en la capa de servicios y un 89 % en el dominio de cálculo de nómina, valores que se consignan como medición corriente del estado actual del software. La misma exigencia se aplica al estado de ejecución de la suite, cuya verificación corresponde al flujo de integración continua del repositorio y cuyo informe debe adjuntarse como evidencia.
 
 **Tabla 4.8. Cobertura de referencia medida en la versión 1.0.4**
 
@@ -238,7 +256,7 @@ La suite verifica flujos completos sobre una base de datos aislada y sembrada pa
 8. Reportes: generación de los documentos PDF y de las exportaciones en formatos abiertos (`test_reportes.py`).
 9. Actualización del sistema: funcionamiento del actualizador automático (`test_auto_updater.py`).
 
-El informe de ejecución de la suite sobre la versión 3.0.0 deberá acompañarse como evidencia en el anexo correspondiente, con el número de pruebas ejecutadas, el resultado obtenido y la fecha de la ejecución.
+La última ejecución de la suite sobre la versión 3.0.1 registró 551 pruebas en 32 archivos, 551 exitosas, sin fallos ni errores, con una duración de doscientos segundos, conforme al informe de verificación del 6 de octubre de 2026 que se acompaña en el anexo correspondiente.
 
 ### 4.3.3 Pruebas de Rendimiento
 
@@ -260,7 +278,7 @@ El protocolo de rendimiento se definió conforme a la metodología del Capítulo
 
 ### 4.3.4 Pruebas de Seguridad
 
-Los controles de seguridad implementados fueron verificados mediante pruebas automatizadas dedicadas, presentes en `test_security.py`, `test_auth.py` y `test_credenciales.py`. La revisión abarcó seis frentes. En materia de inyección de código, el riesgo se mitiga con consultas parametrizadas a través del ORM y con la sanitización complementaria de entradas; en una aplicación de escritorio no existe superficie de ataque web, si bien los campos se sanitizan antes de almacenarse. La autenticación se apoya en PBKDF2-HMAC-SHA256 con doscientas mil iteraciones, sal aleatorio y comparación en tiempo constante, y rechaza las credenciales inválidas sin revelar cuál de los dos datos falló. La autorización se resuelve con la matriz de roles y permisos expuesta en la Tabla 4.6. La auditoría registra los eventos de seguridad y las acciones críticas, y el tratamiento de archivos valida nombre, extensión, tamaño y tipo antes del almacenamiento. El respaldo y la restauración cierran el conjunto con políticas de retención configurables. El informe de cobertura específica del módulo de seguridad deberá actualizarse a la versión 3.0.0 conforme a la exigencia señalada en el apartado 4.3.1.
+Los controles de seguridad implementados fueron verificados mediante pruebas automatizadas dedicadas, presentes en `test_security.py`, `test_auth.py` y `test_credenciales.py`. La revisión abarcó seis frentes. En materia de inyección de código, el riesgo se mitiga con consultas parametrizadas a través del ORM y con la sanitización complementaria de entradas; en una aplicación de escritorio no existe superficie de ataque web, si bien los campos se sanitizan antes de almacenarse. La autenticación se apoya en PBKDF2-HMAC-SHA256 con doscientas mil iteraciones, sal aleatorio y comparación en tiempo constante, y rechaza las credenciales inválidas sin revelar cuál de los dos datos falló. La autorización se resuelve con la matriz de roles y permisos expuesta en la Tabla 4.6. La auditoría registra los eventos de seguridad y las acciones críticas, y el tratamiento de archivos valida nombre, extensión, tamaño y tipo antes del almacenamiento. El respaldo y la restauración cierran el conjunto con políticas de retención configurables. La cobertura específica del módulo de seguridad queda comprendida en la medición de la versión 3.0.1 señalada en el apartado 4.3.1.
 
 ## 4.4 RESULTADOS DE PRUEBAS DE USABILIDAD
 
@@ -464,7 +482,7 @@ La hipótesis general sostiene que la implementación del sistema mejorará de m
 
 ### 4.7.2 Hipótesis Específicas
 
-**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.0 se incorporó el módulo de contratos, el motor de nómina y 87 funciones de prueba, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
+**H1. Arquitectura modular y mantenibilidad.** La hipótesis sostiene que la arquitectura modular facilita el mantenimiento y la expansión del sistema. Los indicadores son el tiempo requerido para incorporar una funcionalidad nueva y la comprensión del código por parte de un desarrollador ajeno al proyecto. La evidencia disponible a favor de esta hipótesis es la propia evolución del sistema: entre la versión 2.79 y la 3.0.1 se incorporó el módulo de contratos, el motor de nómina, el dominio académico y las funciones de prueba correspondientes, y se retiraron los módulos de asistencia, préstamos y alertas con sus tablas, columnas y parámetros asociados, sin refactorizaciones estructurales de las capas preexistentes. Los indicadores de percepción de terceros se registrarán durante el piloto.
 
 **H2. Usabilidad de la interfaz gráfica.** La hipótesis sostiene que la interfaz gráfica mejora la usabilidad respecto de las alternativas de línea de comandos. Los indicadores son el tiempo de aprendizaje, la tasa de éxito en las tareas y la valoración de la interfaz, y se medirán con el protocolo del Anexo 3 conforme al apartado 4.4.2.
 
@@ -500,7 +518,7 @@ Durante el desarrollo, el reto principal fue sostener el equilibrio entre cobert
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.0 comprende 23 242 líneas de código en `src/` —más 5 271 del paquete de sincronización— distribuidas en diez capas y componentes, siete módulos funcionales con acceso por rol, siete tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 476 funciones de prueba organizadas en 26 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, resultado que debe re-medirse sobre la versión vigente para que la afirmación conserve validez sobre el estado actual del software.
+Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.1 comprende 29 475 líneas de código en `src/` —más 5 433 del paquete de sincronización— distribuidas en diez capas y componentes, nueve módulos funcionales con acceso por rol, trece tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 551 funciones de prueba organizadas en 32 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, y la re-medición sobre la versión 3.0.1 confirmó esa tendencia con un 76 % en la capa de servicios y un 89 % en el dominio de cálculo de nómina.
 
 Los apartados de validación empírica definen con precisión qué se medirá, cómo se medirá y con qué umbral se decidirá, de manera que la evidencia pendiente no constituya una indeterminación metodológica, sino un registro preparado para recibirla. Las hipótesis planteadas se resolverán con esa evidencia: tres de ellas cuentan ya con indicadores estructurales verificados, mientras que su magnitud de impacto permanece condicionada al piloto. Las limitaciones identificadas —muestra acotada, periodo breve, contexto regional y dependencia de recursos propios— son consistentes con el alcance de un trabajo de grado y delimitan con honestidad el campo de validez de los resultados.
 

@@ -12,7 +12,8 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 |---------|------------------|
 | 1.0.4 | Versión sobre la que se ejecutó la medición de cobertura de pruebas que se conserva como referencia en el Anexo 7 |
 | 2.79 | Versión en la que se documentó por primera vez la suite de 323 pruebas, la autenticación con roles y los módulos iniciales |
-| 3.0.0 | Versión vigente al momento de esta revisión: siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 476 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración. Incorpora el agente de sincronización entre puestos (`sync_agent/`) |
+| 3.0.0 | Siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 476 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración. Incorpora el agente de sincronización entre puestos (`sync_agent/`) |
+| 3.0.1 | Versión vigente al momento de esta revisión y sobre la que se documenta el informe: incorpora el dominio académico (estudiantes, grados, matrículas, calificaciones y periodos), la gestión de tokens de sesión y 75 funciones de prueba adicionales, y extiende el esquema a trece tablas y la interfaz a nueve módulos, con las cifras elevadas a 551 funciones de prueba en 32 archivos y 29 475 líneas de código en `src/` |
 
 ## 3. INVENTARIO DOCUMENTAL Y ESTADO
 
@@ -23,7 +24,7 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 | Capítulo I | `CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md` | Reestructurado | Diagnóstico anclado en instrumentos y literatura; tiempos verbales coherentes con el trabajo realizado |
 | Capítulo II | `CAPITULO_II_MARCO_TEORICO.md` | Actualizado | Citas armonizadas con la lista de referencias; modelo conceptual alineado con la arquitectura real |
 | Capítulo III | `CAPITULO_III_METODOLOGIA.md` | Reestructurado | Distingue fases ejecutadas y pendientes; respaldo metodológico citado |
-| Capítulo IV | `CAPITULO_IV_RESULTADOS.md` | Reestructurado | Datos verificados sobre la versión 3.0.0; estructura de registro para la evidencia del piloto |
+| Capítulo IV | `CAPITULO_IV_RESULTADOS.md` | Reestructurado | Datos verificados sobre la versión 3.0.1; estructura de registro para la evidencia del piloto |
 | Capítulo V | `CAPITULO_V_CONCLUSIONES.md` | Reestructurado | Conteos actualizados; conclusiones ajustadas al estatuto de la evidencia disponible |
 | Bibliografía y anexos | `BIBLIOGRAFIA_ANEXOS.md` | Reestructurado | Referencias verificables; anexos alineados con el sistema real |
 | Índice general | `INDICE_GENERAL.md` | Reestructurado | Resumen, abstract e inventario actualizados; control de datos pendientes |
@@ -38,13 +39,13 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 
 | Verificación | Procedimiento | Resultado |
 |--------------|---------------|-----------|
-| Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 3.0.0 en ambos archivos |
-| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 23 242 líneas en 59 archivos |
+| Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 3.0.1 en ambos archivos |
+| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 29 475 líneas en 77 archivos |
 | Distribución por capa | Recuento por directorio | Consignada en la Tabla 4.1 del Capítulo IV |
-| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 476 funciones en 26 archivos |
+| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 551 funciones en 32 archivos |
 | Distribución de pruebas por archivo | Recuento por archivo | Consignada en la Tabla 4.7 del Capítulo IV |
-| Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Siete tablas |
-| Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Siete módulos con atajos `Ctrl+1` a `Ctrl+7` |
+| Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Trece tablas |
+| Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Nueve módulos con atajos `Ctrl+1` a `Ctrl+9` |
 | Matriz de acceso por rol | Lectura de `PermissionChecker` en `src/utils/security.py` | Consignada en la Tabla 4.6 del Capítulo IV |
 | Parámetros de seguridad | Lectura de `SecurityValidator` | PBKDF2-HMAC-SHA256, 200 000 iteraciones, sal de 16 bytes |
 | Análisis estático | Ejecución de `mypy` sobre `src/`, `sync_agent/`, `updater/`, `tools/` y `build.py`, y de `flake8` con la configuración de `.flake8` | Sin hallazgos en los ochenta archivos verificados |
@@ -57,7 +58,7 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 
 Se relacionan los elementos cuya incorporación depende de mediciones aún no realizadas. Ninguno de ellos se declara cumplido en el informe.
 
-1. Cobertura de pruebas re-medida sobre la versión 3.0.0 e informe de la última ejecución de la suite, con número de pruebas, resultado y fecha.
+1. Cobertura de pruebas re-medida sobre la versión 3.0.1 e informe de la última ejecución de la suite, con número de pruebas, resultado y fecha.
 2. Resultados de las pruebas de rendimiento y de carga previstas en el apartado 4.3.3.
 3. Resultados de las pruebas de usabilidad con sus mediciones de tiempo, éxito, errores y valoración.
 4. Resultados de las encuestas de satisfacción y cálculo del coeficiente alfa de Cronbach.
@@ -84,8 +85,20 @@ El quinto criterio fue la honestidad del alcance: se evitó presentar como medid
 
 Este registro debe actualizarse cada vez que se modifique un documento del expediente, indicando la fecha, el documento afectado y la naturaleza del cambio. Cuando la evidencia pendiente se incorpore, el informe y este registro deberán actualizarse de manera simultánea para que la constancia de verificación y el contenido verificado mantengan su correspondencia.
 
+### 7.1 Correcciones de coherencia registradas
+
+| Fecha | Documento | Naturaleza del cambio |
+|-------|-----------|-----------------------|
+| 9 de octubre de 2026 | `CAPITULO_V_CONCLUSIONES.md` | Se corrige la extensión del código fuente de «21 991 líneas» a «29 475 líneas», para hacerla coincidir con el valor consignado en el Capítulo IV, el índice general, el resumen, los oficios y este registro |
+| 9 de octubre de 2026 | `BIBLIOGRAFIA_ANEXOS.md` | Se corrige el número de archivos de prueba del Anexo 7 de «20» a «32», para hacerlo coincidir con el recuento de 551 funciones en 32 archivos consignado en el Capítulo IV y en este registro |
+| 9 de octubre de 2026 | `CAPITULO_IV_RESULTADOS.md` | Se documenta el módulo académico, se elevan las cifras estructurales a la versión 3.0.1 (nueve módulos, trece tablas, 551 funciones de prueba en 32 archivos, 29 475 líneas en `src/`) y se corrige la referencia al cierre de la versión anterior |
+| 9 de octubre de 2026 | `CAPITULO_II_MARCO_TEORICO.md`, `BIBLIOGRAFIA_ANEXOS.md` | Se actualizan el modelo conceptual, la arquitectura de capas, el modelo entidad-relación, el inventario de código y la tabla de atajos para reflejar los nueve módulos, los trece repositorios concretos y las trece tablas de la versión 3.0.1 |
+| 9 de octubre de 2026 | `CAPITULO_V_CONCLUSIONES.md`, `RESUMEN_INVESTIGACION.md`, `INDICE_GENERAL.md`, `PROYECTO_SOCIAL_TECNOLOGICO.md` | Se elevan a la versión 3.0.1 el alcance declarado (nueve módulos), las cifras de código, tablas y pruebas, y el delta de funciones de prueba incorporadas desde la versión 2.79 (228 funciones: de 323 a 551) |
+
+Estas correcciones se practicaron sobre contradicciones internas del corpus y sobre la divergencia entre la tesis y el producto, y no alteran ninguna conclusión: restituyen la correspondencia entre documentos para un mismo dato y entre el corpus y la versión vigente del repositorio. Se conserva constancia de que el valor de referencia adoptado es el que resulta de la medición directa declarada sobre el repositorio.
+
 ---
 
 **Responsable del registro:** [Nombre del Estudiante]
 **Última revisión:** [Fecha]
-**Versión del sistema documentado:** 3.0.0
+**Versión del sistema documentado:** 3.0.1

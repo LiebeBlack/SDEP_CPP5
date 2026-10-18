@@ -21,7 +21,7 @@
 | Tipo de investigación | Aplicada y tecnológica |
 | Enfoque | Mixto, con predominio cuantitativo en la medición del efecto |
 | Ámbito de aplicación | Instituciones educativas de nivel medio y superior |
-| Versión del sistema | 3.0.0 |
+| Versión del sistema | 3.0.1 |
 | Fecha de presentación | [Fecha] |
 
 ---
@@ -64,22 +64,22 @@ El procedimiento se organizó en cuatro fases: análisis de requerimientos, dise
 
 ## 6. RESULTADOS VERIFICABLES
 
-Los resultados que se enuncian a continuación fueron comprobados de forma directa sobre el repositorio del proyecto, en la versión 3.0.0, y pueden replicarse con los procedimientos indicados en el registro de control documental.
+Los resultados que se enuncian a continuación fueron comprobados de forma directa sobre el repositorio del proyecto, en la versión 3.0.1, y pueden replicarse con los procedimientos indicados en el registro de control documental.
 
 | Aspecto verificado | Resultado |
 |--------------------|-----------|
-| Extensión del código fuente | 23 242 líneas en 59 archivos, organizadas en diez capas y componentes |
+| Extensión del código fuente | 29 475 líneas en 77 archivos, organizadas en diez capas y componentes |
 | Módulos funcionales | Siete, con control de acceso por rol y atajos de teclado |
 | Módulos implementados | Panel de control, empleados, documentos, incidencias, contratos, nómina y configuración |
 | Esquema de base de datos | Siete tablas con integridad referencial y migraciones |
 | Dominio de cálculo | Motor de nómina aislado con deducciones, impuesto sobre la renta, horas extra, prestaciones, seguridad social y finiquito |
-| Suite de pruebas | 476 funciones de prueba en 26 archivos, con 6 598 líneas de código de prueba |
+| Suite de pruebas | 551 funciones de prueba en 32 archivos, con 8 059 líneas de código de prueba |
 | Seguridad | Autenticación con PBKDF2-HMAC-SHA256 de 200 000 iteraciones y sal de 16 bytes; control de acceso por cuatro roles; auditoría; respaldos sujetos a política de retención |
 | Generación documental | Doce tipos de documentos oficiales en formato PDF |
 | Exportación | Formatos abiertos para empleados, documentos, incidencias, pagos y reportes |
 | Cobertura de referencia | Medición de la versión 1.0.4: 43 % total y 73 % en la lógica de negocio; debe re-medirse sobre la versión vigente |
 
-Adicionalmente, tres de las hipótesis específicas cuentan ya con evidencia estructural favorable: la arquitectura modular se verificó durante la evolución del sistema entre las versiones 2.79 y 3.0.0 —el módulo de contratación, el motor de nómina y 87 funciones de prueba incorporados, y los módulos de asistencia, préstamos y alertas retirados por completo, todo ello sin refactorizaciones estructurales—; la disponibilidad de la información y el acceso a ella se verificaron sobre la funcionalidad implementada; y la reducción de errores financieros se sustenta en la verificación automatizada de las reglas de cálculo.
+Adicionalmente, tres de las hipótesis específicas cuentan ya con evidencia estructural favorable: la arquitectura modular se verificó durante la evolución del sistema entre las versiones 2.79 y 3.0.1 —el módulo de contratación, el motor de nómina, el dominio académico y 228 funciones de prueba incorporados, y los módulos de asistencia, préstamos y alertas retirados por completo, todo ello sin refactorizaciones estructurales—; la disponibilidad de la información y el acceso a ella se verificaron sobre la funcionalidad implementada; y la reducción de errores financieros se sustenta en la verificación automatizada de las reglas de cálculo.
 
 ---
 
@@ -126,8 +126,8 @@ Gestión de personal, nómina, instituciones educativas, ingeniería de software
 | Proyecto sociotecnológico | `PROYECTO_SOCIAL_TECNOLOGICO.md` |
 | Índice general | `INDICE_GENERAL.md` |
 | Registro de control documental | `REGISTRO_CONTROL_DOCUMENTAL.md` |
-| Código fuente del sistema | Directorio `src/` del repositorio, versión 3.0.0 |
-| Suite de pruebas | Directorio `tests/`, 476 funciones de prueba |
+| Código fuente del sistema | Directorio `src/` del repositorio, versión 3.0.1 |
+| Suite de pruebas | Directorio `tests/`, 551 funciones de prueba |
 
 ---
 

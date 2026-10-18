@@ -27,7 +27,7 @@ El segundo cuerpo comprende los diez anexos del trabajo de grado, que se relacio
 | 3 | Protocolo de pruebas de usabilidad | Guion de sesión de sesenta a noventa minutos, seis tareas evaluadas, hoja de registro de métricas y entrevista de cierre |
 | 4 | Diagramas de diseño del sistema | Diagramas de arquitectura de capas, modelo entidad-relación, flujo de generación de nómina, flujo de autenticación y control de acceso, y flujo de respaldo y restauración |
 | 5 | Guía resumida de usuario | Versión condensada de la guía de usuario, con requisitos de instalación, autenticación, roles, atajos de teclado, operaciones por módulo y solución de problemas frecuentes |
-| 6 | Código fuente del sistema | Estructura del repositorio, fragmentos representativos del modelo, del servicio, del repositorio, de la gestión de contraseñas y de la autenticación, y la descripción de su alcance en la versión 3.0.0 |
+| 6 | Código fuente del sistema | Estructura del repositorio, fragmentos representativos del modelo, del servicio, del repositorio, de la gestión de contraseñas y de la autenticación, y la descripción de su alcance en la versión 3.0.1 |
 | 7 | Resultados de pruebas técnicas | Composición de la suite, cobertura de referencia, distribución de pruebas por área, y constancia del estado de actualización de la evidencia |
 | 8 | Resultados de encuestas de satisfacción | Estructura de registro estadístico por dimensión y de distribución de respuestas, con los campos por completar durante el pilotaje |
 | 9 | Cronograma detallado de actividades | Desglose por semanas, con responsable y estado de ejecución de cada actividad |

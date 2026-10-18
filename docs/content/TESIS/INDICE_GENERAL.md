@@ -17,7 +17,7 @@
 | Facultad y sede | [Facultad], [Sede] |
 | Línea de investigación | Sistemas de información e ingeniería de software |
 | Lugar y fecha de presentación | [Ciudad, País], [Fecha] |
-| Versión del sistema documentado | 3.0.0 |
+| Versión del sistema documentado | 3.0.1 |
 
 ---
 
@@ -25,7 +25,7 @@
 
 La presente investigación tuvo como propósito diseñar, desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas, con el fin de automatizar los procesos administrativos críticos, garantizar la exactitud de los cálculos financieros, ordenar el control documental y proporcionar información oportuna para la toma de decisiones, empleando tecnologías de información accesibles y sostenibles.
 
-El sistema se construyó sobre una arquitectura de capas —presentación, servicios, repositorios, modelos, dominio de nómina y servicios transversales— con Python, SQLAlchemy y CustomTkinter, y se distribuye bajo licencia de código abierto. Comprende siete módulos funcionales que abarcan la gestión de empleados, el control documental con vencimientos, las incidencias y permisos, los contratos laborales, el cálculo de nómina con deducciones y horas extra, y la configuración institucional. A ello se suman la autenticación con control de acceso por rol, el registro de auditoría, los respaldos, la exportación de datos y la generación de doce tipos de documentos oficiales en formato PDF. El sistema documentado corresponde a la versión 3.0.0 y alberga 23 242 líneas de código fuente, más 5 271 del paquete independiente de sincronización entre puestos; su calidad técnica se respalda en una suite de 476 funciones de prueba distribuidas en veintiséis archivos.
+El sistema se construyó sobre una arquitectura de capas —presentación, servicios, repositorios, modelos, dominio de nómina y servicios transversales— con Python, SQLAlchemy y CustomTkinter, y se distribuye bajo licencia de código abierto. Comprende nueve módulos funcionales que abarcan la gestión de empleados, el control documental con vencimientos, las incidencias y permisos, los contratos laborales, el cálculo de nómina con deducciones y horas extra, y la configuración institucional. A ello se suman la autenticación con control de acceso por rol, el registro de auditoría, los respaldos, la exportación de datos y la generación de doce tipos de documentos oficiales en formato PDF. El sistema documentado corresponde a la versión 3.0.1 y alberga 29 475 líneas de código fuente, más 5 433 del paquete independiente de sincronización entre puestos; su calidad técnica se respalda en una suite de 551 funciones de prueba distribuidas en treinta y dos archivos.
 
 La metodología combinó la investigación aplicada con el desarrollo iterativo y la investigación-acción, apoyándose en instrumentos definidos y validados: entrevistas semiestructuradas, observación directa, cuestionarios de satisfacción y protocolos de usabilidad. La evidencia técnica se verificó de manera directa sobre el repositorio del proyecto, mientras que la medición del impacto en la eficiencia administrativa se obtendrá mediante la implementación piloto en un conjunto de instituciones educativas y se incorporará al capítulo de resultados conforme al diseño metodológico establecido.
 
@@ -37,7 +37,7 @@ La metodología combinó la investigación aplicada con el desarrollo iterativo 
 
 The purpose of this research was to design, develop and implement a comprehensive personnel and payroll management system for educational institutions, aimed at automating critical administrative processes, ensuring the accuracy of financial calculations, organizing document control and providing timely information for decision-making, through accessible and sustainable information technologies.
 
-The system was built on a layered architecture —presentation, services, repositories, models, payroll domain and cross-cutting services— using Python, SQLAlchemy and CustomTkinter, and it is distributed under an open-source license. It comprises seven functional modules covering personnel records, document control with expiry dates, absences and leave, employment contracts, payroll calculation with deductions and overtime, and institutional configuration. These are complemented by role-based authentication and access control, audit logging, backup management, data export and the generation of twelve types of official documents in PDF format. The documented system corresponds to version 3.0.0 and comprises 23,242 lines of source code, plus 5,271 lines in the standalone peer-to-peer synchronization package; its technical quality is supported by a suite of 476 test functions distributed across twenty-six files.
+The system was built on a layered architecture —presentation, services, repositories, models, payroll domain and cross-cutting services— using Python, SQLAlchemy and CustomTkinter, and it is distributed under an open-source license. It comprises nine functional modules covering personnel records, document control with expiry dates, absences and leave, employment contracts, payroll calculation with deductions and overtime, institutional configuration, and the academic domain of students, grades, enrollments and final grades. These are complemented by role-based authentication and access control, audit logging, backup management, data export and the generation of twelve types of official documents in PDF format. The documented system corresponds to version 3.0.1 and comprises 29,475 lines of source code, plus 5,433 lines in the standalone peer-to-peer synchronization package; its technical quality is supported by a suite of 551 test functions distributed across thirty-two files.
 
 The methodology combined applied research with iterative development and action research, supported by defined and validated instruments: semi-structured interviews, direct observation, satisfaction questionnaires and usability protocols. Technical evidence was verified directly on the project repository, whereas the measurement of impact on administrative efficiency will be obtained through pilot implementation in a set of educational institutions and will be incorporated into the results chapter in accordance with the established methodological design.
 
@@ -83,14 +83,14 @@ The methodology combined applied research with iterative development and action 
 SDEP_CPP5/
 ├── src/
 │   ├── config/            configuración, rutas y sesión de base de datos
-│   ├── gui/               interfaz gráfica y siete módulos de navegación
+│   ├── gui/               interfaz gráfica y nueve módulos de navegación
 │   ├── models/            entidades del dominio y enumeraciones
 │   ├── nomina/            motor de cálculo, prestaciones y seguridad social
 │   ├── repositories/      acceso a datos (patrón Repository)
 │   ├── services/          reglas de negocio (patrón Service Layer)
 │   ├── utils/             seguridad, auditoría, respaldos, PDF y utilidades
 │   └── main.py            punto de entrada de la aplicación
-├── tests/                 veintiséis archivos con 476 funciones de prueba
+├── tests/                 treinta y dos archivos con 551 funciones de prueba
 ├── updater/               actualización automática del sistema
 ├── installer/             configuración del instalador para Windows
 ├── docs/                  portal de documentación del proyecto
@@ -100,7 +100,7 @@ SDEP_CPP5/
 ├── requirements-dev.txt   dependencias de desarrollo
 ├── pyproject.toml         configuración del proyecto y de las herramientas
 ├── build.py               script de construcción del ejecutable
-├── VERSION                versión vigente del sistema (3.0.0)
+├── VERSION                versión vigente del sistema (3.0.1)
 └── README.md              documentación general del proyecto
 ```
 
@@ -149,7 +149,7 @@ Los campos señalados con corchetes en los documentos del informe corresponden a
 
 ### 8.3 Evidencia técnica por actualizar
 
-- Re-medición de la cobertura de código con `pytest --cov=src` sobre la versión 3.0.0.
+- Re-medición de la cobertura de código con `pytest --cov=src` sobre la versión 3.0.1.
 - Informe de la última ejecución de la suite de pruebas, con número de pruebas ejecutadas, resultado y fecha.
 
 ### 8.4 Evidencia del piloto
@@ -174,13 +174,13 @@ Las tablas numeradas corresponden a los cuadros de resultados del Capítulo IV; 
 
 | Tabla | Título | Fuente |
 |-------|--------|--------|
-| 4.1 | Distribución del código fuente por capa | Medición sobre `src/`, versión 3.0.0 |
+| 4.1 | Distribución del código fuente por capa | Medición sobre `src/`, versión 3.0.1 |
 | 4.2 | Componentes de la capa de presentación | Inspección de `src/gui/` |
 | 4.3 | Registro de empleado: contraste proceso manual y sistema | Módulo de empleados y mediciones del piloto |
 | 4.4 | Gestión documental: contraste proceso manual y sistema | Módulo documental y mediciones del piloto |
 | 4.5 | Generación de nómina: contraste proceso manual y sistema | Motor de nómina y mediciones del piloto |
 | 4.6 | Matriz de acceso por rol y módulo | `PermissionChecker` de `src/utils/security.py` |
-| 4.7 | Distribución de funciones de prueba por archivo | Recuento sobre `tests/`, versión 3.0.0 |
+| 4.7 | Distribución de funciones de prueba por archivo | Recuento sobre `tests/`, versión 3.0.1 |
 | 4.8 | Cobertura de referencia medida en la versión 1.0.4 | `pytest --cov=src` sobre la versión 1.0.4 |
 | 4.9 | Protocolo de rendimiento y umbrales de aceptación | Protocolo del apartado 3.4.1.5 |
 | 4.10 | Composición de los participantes en las pruebas de usabilidad | Protocolo del Anexo 3 |

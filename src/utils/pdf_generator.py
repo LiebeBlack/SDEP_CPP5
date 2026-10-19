@@ -236,7 +236,8 @@ class PDFGenerator:
 
         # Cierre
         cierre = """
-        Esta constancia se expide a solicitud del interesado para los fines que considere conveniente.
+        Esta constancia se expide a solicitud del interesado para los fines que
+        considere conveniente.
         """
 
         story.append(Paragraph(cierre, self.styles["CustomBody"]))
@@ -422,7 +423,8 @@ class PDFGenerator:
                 ["Cédula:", pago_data.get("cedula", "N/A")],
                 [
                     "Periodo:",
-                    f"{format_date(pago_data['periodo_inicio'])} a {format_date(pago_data['periodo_fin'])}",
+                    f"{format_date(pago_data['periodo_inicio'])} a "
+                    f"{format_date(pago_data['periodo_fin'])}",
                 ],
             ],
             colWidths=[1.5 * inch, 4 * inch],
@@ -455,7 +457,10 @@ class PDFGenerator:
             [
                 ["Concepto", "Monto"],
                 ["Salario Base", format_currency(float(pago_data["salario_base"]))],
-                ["Bonificaciones", format_currency(float(pago_data.get("bonificaciones", 0) or 0))],
+                [
+                    "Bonificaciones",
+                    format_currency(float(pago_data.get("bonificaciones", 0) or 0)),
+                ],
                 ["Horas Extra", format_currency(float(pago_data.get("horas_extra", 0) or 0))],
                 ["Aguinaldo", format_currency(float(pago_data.get("aguinaldo", 0) or 0))],
                 [
@@ -1111,7 +1116,8 @@ class PDFGenerator:
         story.append(Spacer(1, 0.15 * inch))
         story.append(
             Paragraph(
-                f"Total de incidencias: <b>{len(filas)}</b> | Días solicitados: <b>{int(total_dias)}</b>",
+                f"Total de incidencias: <b>{len(filas)}</b> | "
+                f"Días solicitados: <b>{int(total_dias)}</b>",
                 self.styles["CustomData"],
             )
         )
@@ -1155,7 +1161,9 @@ class PDFGenerator:
             )
         )
         story.append(Spacer(1, 0.15 * inch))
-        story.append(Paragraph("CONTROL DE VENCIMIENTOS DE DOCUMENTOS", self.styles["CustomTitle"]))
+        story.append(
+            Paragraph("CONTROL DE VENCIMIENTOS DE DOCUMENTOS", self.styles["CustomTitle"])
+        )
         if titulo:
             story.append(Paragraph(titulo, self.styles["CustomData"]))
         story.append(Spacer(1, 0.15 * inch))
@@ -1204,7 +1212,9 @@ class PDFGenerator:
         )
         story.append(tabla)
         story.append(Spacer(1, 0.15 * inch))
-        resumen = " | ".join(f"{nombre}: <b>{cantidad}</b>" for nombre, cantidad in conteos.items())
+        resumen = " | ".join(
+            f"{nombre}: <b>{cantidad}</b>" for nombre, cantidad in conteos.items()
+        )
         story.append(
             Paragraph(
                 f"Total de documentos: <b>{len(filas)}</b> | {resumen}", self.styles["CustomData"]

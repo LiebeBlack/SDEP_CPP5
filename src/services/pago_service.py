@@ -348,7 +348,10 @@ class PagoService:
         # parámetros de nómina del día.
         recalcular = any(
             campo in datos
-            and (not hasattr(pago, campo) or not _mismo_importe(getattr(pago, campo), datos[campo]))
+            and (
+                not hasattr(pago, campo)
+                or not _mismo_importe(getattr(pago, campo), datos[campo])
+            )
             for campo in campos_calculo - {"prorratear"}
         )
         if "prorratear" in datos and bool(datos["prorratear"]) != bool(pago.prorrateado):
@@ -737,6 +740,8 @@ class PagoService:
                 if dias_periodo <= 0:
                     errores.append("Los días del período deben ser mayores que cero")
                 elif dias_trabajados < 0 or dias_trabajados > dias_periodo:
-                    errores.append("Los días trabajados deben estar entre 0 y los días del período")
+                    errores.append(
+                        "Los días trabajados deben estar entre 0 y los días del período"
+                    )
 
         return errores

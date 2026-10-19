@@ -150,7 +150,7 @@ def test_los_contratos_vencidos_se_sincronizan(servicio, empleado):
             tipo=TipoContrato.TEMPORAL.value,
             fecha_inicio=date(2020, 1, 1),
             fecha_fin=date(2020, 12, 31),
-            estado=EstadoContrato.VENCIDO.value,
+            estado=EstadoContrato.VIGENTE.value,
         )
     )
     actualizados = servicio.sincronizar_estados()

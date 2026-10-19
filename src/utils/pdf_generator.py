@@ -1526,7 +1526,9 @@ class PDFGenerator:
             # mayúscula: "Empleado", "Salario_pactado"...) o de un diccionario
             # normalizado. Se aceptan ambas formas para que el reporte no
             # salga con columnas vacías.
-            salario = float(_dato(fila, "salario_pactado", "Salario_pactado", defecto=0) or 0)
+            salario = float(
+                _dato(fila, "salario_pactado", "Salario_pactado", defecto=0) or 0  # type: ignore[arg-type]
+            )
             total_salarios += salario
             dias = _dato(fila, "dias_para_vencer", defecto=None)
             if dias in (None, ""):
@@ -1539,8 +1541,10 @@ class PDFGenerator:
                     str(_dato(fila, "empleado", "Empleado"))[:28],
                     str(_dato(fila, "tipo", "Tipo")).capitalize(),
                     str(_dato(fila, "cargo", "Cargo"))[:22],
-                    format_date(_dato(fila, "fecha_inicio", "Inicio", defecto=None)),
-                    format_date(fin) if fin not in (None, "") else "Indefinido",
+                    format_date(
+                        _dato(fila, "fecha_inicio", "Inicio", defecto=None)  # type: ignore[arg-type]
+                    ),
+                    format_date(fin) if fin not in (None, "") else "Indefinido",  # type: ignore[arg-type]
                     "-" if dias in (None, "") else str(dias),
                     format_currency(salario),
                     str(_dato(fila, "estado", "Estado")).capitalize(),

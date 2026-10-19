@@ -35,7 +35,7 @@ from src.utils.helpers import parse_date
 logger = logging.getLogger(__name__)
 
 
-def _mismo_importe(actual, nuevo) -> bool:
+def _mismo_importe(actual: object, nuevo: object) -> bool:
     """
     Compara dos importes monetarios con la precisión de la nómina
 

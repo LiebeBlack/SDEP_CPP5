@@ -137,7 +137,7 @@ class MainWindow(ctk.CTk):
         self._clock_timer: str | None = None
         # Los hilos de fondo (respaldo, sincronización) no llaman nunca a
         # Tk: depositan el evento aquí y el hilo principal lo genera.
-        self._eventos_hilo = queue.Queue()
+        self._eventos_hilo: queue.Queue = queue.Queue()
         self._eventos_poll_id: str | None = None
 
         # Resultados del respaldo automático: el hilo de respaldo encola el

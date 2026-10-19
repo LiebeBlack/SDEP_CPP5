@@ -325,7 +325,9 @@ class DashboardFrame(ctk.CTkFrame):
             ("por_vencer", "Contratos por vencer", "📜", "contratos"),
             ("dotacion", "Dotación activa", "👥", "empleados"),
         ]
-        definiciones = [item for item in definiciones if self.main_window.puede_ver_modulo(item[3])]
+        definiciones = [
+            item for item in definiciones if self.main_window.puede_ver_modulo(item[3])
+        ]
         for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
             tarjeta = TarjetaIndicador(
                 marco,
@@ -649,7 +651,9 @@ class EmpleadosFrame(ctk.CTkFrame):
         btn_frame.pack(side="right", padx=5)
 
         if self.main_window.tiene_permiso("create"):
-            new_btn = ctk.CTkButton(btn_frame, text="Nuevo Empleado", command=self._on_new_empleado)
+            new_btn = ctk.CTkButton(
+                btn_frame, text="Nuevo Empleado", command=self._on_new_empleado
+            )
             new_btn.pack(side="left", padx=5)
 
         if self.main_window.tiene_permiso("report"):
@@ -1110,7 +1114,9 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         )
 
         self.salario_base_label = self._create_detail_field(form_frame, "Salario Base:", 2, 0)
-        self.nivel_educativo_label = self._create_detail_field(form_frame, "Nivel Educativo:", 2, 2)
+        self.nivel_educativo_label = self._create_detail_field(
+            form_frame, "Nivel Educativo:", 2, 2
+        )
         self.especialidad_label = self._create_detail_field(form_frame, "Especialidad:", 3, 0)
         self.titulo_obtenido_label = self._create_detail_field(
             form_frame, "Título Universitario:", 3, 2
@@ -1210,13 +1216,17 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.apellidos_label.configure(text=self.empleado.apellidos)
         self.cedula_label.configure(text=self.empleado.cedula)
         if self.empleado.fecha_nacimiento:
-            self.fecha_nacimiento_label.configure(text=format_date(self.empleado.fecha_nacimiento))
+            self.fecha_nacimiento_label.configure(
+                text=format_date(self.empleado.fecha_nacimiento)
+            )
 
         self.genero_label.configure(text=self.empleado.genero or "-")
         self.estado_civil_label.configure(text=self.empleado.estado_civil or "-")
 
         self.peso_label.configure(text=str(self.empleado.peso) if self.empleado.peso else "-")
-        self.altura_label.configure(text=str(self.empleado.altura) if self.empleado.altura else "-")
+        self.altura_label.configure(
+            text=str(self.empleado.altura) if self.empleado.altura else "-"
+        )
         self.tipo_sangre_label.configure(text=self.empleado.tipo_sangre or "-")
         self.nacionalidad_label.configure(text=self.empleado.nacionalidad or "-")
 
@@ -1362,7 +1372,9 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.nombres_entry = self._create_form_field(form_frame, "Nombres:", 0, 0)
         self.apellidos_entry = self._create_form_field(form_frame, "Apellidos:", 0, 2)
         self.cedula_entry = self._create_form_field(form_frame, "Cédula:", 1, 0)
-        self.fecha_nacimiento_entry = self._create_form_field(form_frame, "Fecha Nacimiento:", 1, 2)
+        self.fecha_nacimiento_entry = self._create_form_field(
+            form_frame, "Fecha Nacimiento:", 1, 2
+        )
 
         self.genero_combo = self._create_combo_field(
             form_frame, "Género:", 2, 0, ["masculino", "femenino", "otro"]
@@ -1506,7 +1518,11 @@ class EmpleadoDialog(ctk.CTkToplevel):
             row=row, column=col, padx=5, pady=5, sticky="ne"
         )
         textbox = ctk.CTkTextbox(
-            parent, width=400, height=height, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+            parent,
+            width=400,
+            height=height,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
         )
         textbox.grid(row=row, column=col + 1, columnspan=3, padx=5, pady=5, sticky="ew")
         return textbox
@@ -1881,7 +1897,9 @@ class DocumentosFrame(ctk.CTkFrame):
 
         if self.main_window.tiene_permiso("report"):
             venc_btn = ctk.CTkButton(
-                actions_frame, text="Control de Vencimientos", command=self._on_reporte_vencimientos
+                actions_frame,
+                text="Control de Vencimientos",
+                command=self._on_reporte_vencimientos,
             )
             venc_btn.pack(side="left", padx=5)
             export_doc_btn = ctk.CTkButton(

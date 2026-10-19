@@ -1161,9 +1161,7 @@ class PDFGenerator:
             )
         )
         story.append(Spacer(1, 0.15 * inch))
-        story.append(
-            Paragraph("CONTROL DE VENCIMIENTOS DE DOCUMENTOS", self.styles["CustomTitle"])
-        )
+        story.append(Paragraph("CONTROL DE VENCIMIENTOS DE DOCUMENTOS", self.styles["CustomTitle"]))
         if titulo:
             story.append(Paragraph(titulo, self.styles["CustomData"]))
         story.append(Spacer(1, 0.15 * inch))
@@ -1212,9 +1210,7 @@ class PDFGenerator:
         )
         story.append(tabla)
         story.append(Spacer(1, 0.15 * inch))
-        resumen = " | ".join(
-            f"{nombre}: <b>{cantidad}</b>" for nombre, cantidad in conteos.items()
-        )
+        resumen = " | ".join(f"{nombre}: <b>{cantidad}</b>" for nombre, cantidad in conteos.items())
         story.append(
             Paragraph(
                 f"Total de documentos: <b>{len(filas)}</b> | {resumen}", self.styles["CustomData"]

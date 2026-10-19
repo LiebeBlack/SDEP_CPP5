@@ -898,9 +898,7 @@ class MainWindow(ctk.CTk):
             )
             self.ayuda_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
             self.about_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.logout_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"]
-            )
+            self.logout_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
             self.exit_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)

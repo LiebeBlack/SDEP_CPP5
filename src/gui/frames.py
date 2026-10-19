@@ -2860,7 +2860,9 @@ Afecta Nómina: {'Sí' if incidencia.afecta_nominas else 'No'}
 Motivo: {incidencia.motivo}
 Descripción: {incidencia.descripcion or 'N/A'}
 Aprobado Por: {incidencia.aprobado_por or 'N/A'}
-Fecha Aprobación: {format_date(incidencia.fecha_aprobacion) if incidencia.fecha_aprobacion else 'N/A'}
+Fecha Aprobación: {
+    format_date(incidencia.fecha_aprobacion) if incidencia.fecha_aprobacion else 'N/A'
+}
 Comentarios: {incidencia.comentarios_aprobacion or 'N/A'}
 Soporte: {incidencia.documento_soporte_nombre or 'N/A'}
 """
@@ -2950,7 +2952,11 @@ class IncidenciaDialog(ctk.CTkToplevel):
             row=3, column=0, padx=5, pady=5, sticky="ne"
         )
         self.motivo_text = ctk.CTkTextbox(
-            form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+            form_frame,
+            width=300,
+            height=80,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
         )
         self.motivo_text.grid(row=3, column=1, padx=5, pady=5, sticky="w")
 
@@ -2959,7 +2965,11 @@ class IncidenciaDialog(ctk.CTkToplevel):
             row=4, column=0, padx=5, pady=5, sticky="ne"
         )
         self.descripcion_text = ctk.CTkTextbox(
-            form_frame, width=300, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+            form_frame,
+            width=300,
+            height=60,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
         )
         self.descripcion_text.grid(row=4, column=1, padx=5, pady=5, sticky="w")
 
@@ -3121,7 +3131,11 @@ class ApprovalDialog(ctk.CTkToplevel):
             anchor="w", padx=5
         )
         self.comments_text = ctk.CTkTextbox(
-            form_frame, width=300, height=80, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+            form_frame,
+            width=300,
+            height=80,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
         )
         self.comments_text.pack(padx=5, pady=5)
 

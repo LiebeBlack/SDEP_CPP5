@@ -3349,7 +3349,9 @@ class NominaFrame(ctk.CTkFrame):
             pagos = self._obtener_pagos_filtrados()
 
             if not pagos:
-                self.tree.insert("", "end", values=("", "No hay pagos registrados", "", "", "", ""))
+                self.tree.insert(
+                    "", "end", values=("", "No hay pagos registrados", "", "", "", "")
+                )
                 return
 
             for pago in pagos:
@@ -4550,7 +4552,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_sincronizar_ahora(self):
         """Solicita un ciclo inmediato y refresca los contadores"""
-        if not _verificar_permiso_accion(self.main_window, "config", "solicitar la sincronización"):
+        if not _verificar_permiso_accion(
+            self.main_window, "config", "solicitar la sincronización"
+        ):
             return
         try:
             from sync_agent import sincronizar_ahora

@@ -137,7 +137,7 @@ class MainWindow(ctk.CTk):
         self._clock_timer: str | None = None
         # Los hilos de fondo (respaldo, sincronización) no llaman nunca a
         # Tk: depositan el evento aquí y el hilo principal lo genera.
-        self._eventos_hilo: queue.Queue[str] = queue.Queue()
+        self._eventos_hilo = queue.Queue()
         self._eventos_poll_id: str | None = None
 
         # Resultados del respaldo automático: el hilo de respaldo encola el
@@ -1039,10 +1039,18 @@ class MainWindow(ctk.CTk):
         # válido hasta ocho horas después de cerrar sesión (o de salir de la
         # aplicación) y la tabla de tokens crecía sin control.
         try:
-            if self.session is not None and self.current_user is not None:
+            if self.current_user is not None:
                 from src.services import TokenSesionService
 
-                TokenSesionService(self.session).revocar_usuario(int(self.current_user.id))
+                # Sesión propia: revocar no debe confirmar ni descartar
+                # cambios pendientes de la sesión de la ventana.
+                sesion_tokens = db_config.new_session()
+                try:
+                    TokenSesionService(sesion_tokens).revocar_usuario(
+                        int(self.current_user.id)
+                    )
+                finally:
+                    db_config.close_session(sesion_tokens)
         except Exception:
             logger.debug("No se pudieron revocar los tokens de la sesión", exc_info=True)
         try:

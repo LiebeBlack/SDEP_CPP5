@@ -499,7 +499,14 @@ def _selftest() -> bool:
         import src.gui.frames  # noqa: F401
         import src.gui.login_window  # noqa: F401
         import src.gui.main_window  # noqa: F401
-        import sync_agent  # noqa: F401  (agente de sincronización)
+
+        # El agente de sincronización es opcional en la instalación local:
+        # su ausencia no debe hacer fallar la autoverificación del ejecutable.
+        try:
+            import sync_agent  # noqa: F401
+        except ImportError:
+            logger.info("Selftest: agente de sincronización no incluido (opcional)")
+
         from src.config import settings
         from src.utils.backup_manager import get_backup_manager
 

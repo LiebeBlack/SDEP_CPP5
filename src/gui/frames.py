@@ -3692,7 +3692,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         # Tk (ni siquiera con self.after): Tkinter no es seguro entre hilos
         # y en Windows eso congela o cierra la ventana. El hilo solo deposita
         # el resultado en esta cola y el hilo principal la vacía.
-        self._sync_resultados: queue.Queue = queue.Queue()
+        self._sync_resultados = queue.Queue()
         self._sync_poll_id: str | None = None
         self._sync_refresh_id: str | None = None
         self._create_widgets()

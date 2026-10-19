@@ -113,7 +113,13 @@ def calcular_finiquito(
     meses, dias = meses_y_dias_entre(ingreso, egreso)
     anos = antiguedad_en_anos(ingreso, egreso)
     meses_del_ano_en_curso = meses % MESES_ANO
-    dias_del_ano_en_curso = dias if meses_del_ano_en_curso or meses == 0 else 0
+    # ``dias`` son siempre los transcurridos desde el último aniversario
+    # mensual, es decir, los del año de servicio en curso. Antes solo se
+    # conservaban cuando el residuo de meses era distinto de cero, de modo
+    # que un empleado con años completos más unos días (por ejemplo 12
+    # meses y 15 días) perdía esos días en el aguinaldo y el bono
+    # vacacional proporcionales.
+    dias_del_ano_en_curso = dias
 
     prestaciones = calcular_prestaciones(salario, anos, parametros.dias_prestaciones_por_ano)
     indemnizacion = calcular_indemnizacion(salario, anos, parametros.dias_prestaciones_por_ano)

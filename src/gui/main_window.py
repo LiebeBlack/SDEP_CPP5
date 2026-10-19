@@ -4,6 +4,7 @@ Ventana principal de la aplicación (requiere sesión iniciada)
 """
 
 import logging
+import queue
 import threading
 import tkinter as tk
 from datetime import datetime, timedelta
@@ -134,6 +135,10 @@ class MainWindow(ctk.CTk):
         # _cleanup para no dejar una tarea programada sobre una ventana que
         # ya se destruyó.
         self._clock_timer: str | None = None
+        # Los hilos de fondo (respaldo, sincronización) no llaman nunca a
+        # Tk: depositan el evento aquí y el hilo principal lo genera.
+        self._eventos_hilo: queue.Queue[str] = queue.Queue()
+        self._eventos_poll_id: str | None = None
 
         # Resultados del respaldo automático: el hilo de respaldo encola el
         # evento y este hilo principal muestra el aviso al usuario.
@@ -194,6 +199,7 @@ class MainWindow(ctk.CTk):
         self.update_idletasks()
         self._programar_respaldo_periodico()
         self._vincular_sincronizacion()
+        self._procesar_eventos_hilo()
 
     # ------------------------------------------------------------------
     # Permisos del usuario actual
@@ -1020,12 +1026,25 @@ class MainWindow(ctk.CTk):
         # programada viva fallaría contra la sesión de base de datos ya
         # cerrada).
         self._cancelar_respaldo_programado()
-        if getattr(self, "_clock_timer", None) is not None:
-            try:
-                self.after_cancel(self._clock_timer)
-            except Exception:
-                logger.debug("operación de interfaz ignorada", exc_info=True)
-            self._clock_timer = None
+        for atributo in ("_clock_timer", "_eventos_poll_id"):
+            identificador = getattr(self, atributo, None)
+            if identificador is not None:
+                try:
+                    self.after_cancel(identificador)
+                except Exception:
+                    logger.debug("operación de interfaz ignorada", exc_info=True)
+                setattr(self, atributo, None)
+        # Revocar los tokens académicos de esta sesión ANTES de cerrar la
+        # sesión de base de datos. Sin esto, un token de notas seguía siendo
+        # válido hasta ocho horas después de cerrar sesión (o de salir de la
+        # aplicación) y la tabla de tokens crecía sin control.
+        try:
+            if self.session is not None and self.current_user is not None:
+                from src.services import TokenSesionService
+
+                TokenSesionService(self.session).revocar_usuario(int(self.current_user.id))
+        except Exception:
+            logger.debug("No se pudieron revocar los tokens de la sesión", exc_info=True)
         try:
             if self.session is not None:
                 db_config.close_session(self.session)
@@ -1106,15 +1125,33 @@ class MainWindow(ctk.CTk):
     def _notificar_hilo_principal(self, evento: str) -> None:
         """Encola un evento virtual para que lo procese el hilo principal
 
-        ``when="tail"`` garantiza que el manejador se ejecute en el bucle
-        principal, nunca dentro del hilo de respaldo.
+        El hilo de fondo NO llama a ``event_generate`` (Tk no es seguro
+        entre hilos): solo deposita el nombre del evento en una cola. El
+        hilo principal la vacía en ``_procesar_eventos_hilo`` y genera el
+        evento, que es cuando los manejadores ``bind`` se ejecutan.
         """
         try:
-            self.event_generate(evento, when="tail")
+            self._eventos_hilo.put(str(evento))
         except Exception:
-            # La ventana pudo cerrarse durante el respaldo; el aviso es
-            # prescindible en ese escenario.
-            logger.debug("no se pudo notificar %s: ventana cerrada", evento)
+            logger.debug("no se pudo encolar el evento %s", evento)
+
+    def _procesar_eventos_hilo(self) -> None:
+        """Genera en el hilo principal los eventos encolados por los hilos"""
+        self._eventos_poll_id = None
+        while True:
+            try:
+                evento = self._eventos_hilo.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                self.event_generate(evento, when="tail")
+            except Exception:
+                logger.debug("Evento %s omitido: ventana cerrada", evento)
+        try:
+            if self.winfo_exists():
+                self._eventos_poll_id = self.after(100, self._procesar_eventos_hilo)
+        except tk.TclError:
+            logger.debug("La ventana se cerró durante el procesamiento de eventos")
 
     def _mostrar_aviso_respaldo(self, titulo: str, mensaje: str) -> None:
         """Muestra el resultado del respaldo automático desde el hilo principal"""

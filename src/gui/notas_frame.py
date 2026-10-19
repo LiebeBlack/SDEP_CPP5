@@ -66,6 +66,16 @@ class NotasFrame(ctk.CTkFrame):
         self._emitir_token()
         self._cargar_datos_base()
 
+    def destroy(self) -> None:
+        """Revoca el token académico al salir del módulo y destruye el frame"""
+        if self.token and self.tokens is not None:
+            try:
+                self.tokens.revocar(self.token)
+            except Exception:
+                logger.debug("No se pudo revocar el token académico", exc_info=True)
+            self.token = None
+        super().destroy()
+
     def _crear_servicio(self) -> NotaService | None:
         """Crea el servicio de notas con la sesión activa"""
         try:

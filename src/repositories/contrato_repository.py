@@ -54,8 +54,11 @@ class ContratoRepository(BaseRepository[Contrato]):
         """
         Contrato vigente de un empleado
 
-        Se considera vigente el contrato sin fecha de fin o con fecha de
-        fin no vencida, siempre que no esté terminado.
+        Solo cuenta el contrato en estado VIGENTE: RENOVADO, VENCIDO y
+        TERMINADO describen contratos que ya fueron sustituidos o cerrados.
+        Antes se excluía únicamente TERMINADO, así que un contrato RENOVADO
+        seguía apareciendo como vigente y bloqueaba la creación del nuevo
+        contrato en el flujo de renovación.
         """
         try:
             hoy = date.today()
@@ -63,7 +66,7 @@ class ContratoRepository(BaseRepository[Contrato]):
                 self.session.query(Contrato)
                 .filter(
                     Contrato.empleado_id == empleado_id,
-                    Contrato.estado != EstadoContrato.TERMINADO.value,
+                    Contrato.estado == EstadoContrato.VIGENTE.value,
                     or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
                 )
                 .order_by(Contrato.fecha_inicio.desc())
@@ -74,13 +77,13 @@ class ContratoRepository(BaseRepository[Contrato]):
             return None
 
     def get_vigentes(self) -> list[Contrato]:
-        """Todos los contratos vigentes del sistema"""
+        """Todos los contratos vigentes del sistema (solo estado VIGENTE)"""
         try:
             hoy = date.today()
             return (
                 self.session.query(Contrato)
                 .filter(
-                    Contrato.estado != EstadoContrato.TERMINADO.value,
+                    Contrato.estado == EstadoContrato.VIGENTE.value,
                     or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
                 )
                 .order_by(Contrato.fecha_fin.is_(None), Contrato.fecha_fin)
@@ -117,7 +120,11 @@ class ContratoRepository(BaseRepository[Contrato]):
             return (
                 self.session.query(Contrato)
                 .filter(
-                    Contrato.estado != EstadoContrato.TERMINADO.value,
+                    # Solo el contrato que sigue siendo el vigente puede estar
+                    # "por vencer": un RENOVADO ya fue sustituido y un VENCIDO
+                    # ya expiró; incluirlos duplicaba avisos y, peor, el
+                    # mantenimiento de estados podía volver a marcarlos.
+                    Contrato.estado == EstadoContrato.VIGENTE.value,
                     Contrato.fecha_fin.isnot(None),
                     Contrato.fecha_fin >= hoy,
                     Contrato.fecha_fin <= limite,
@@ -136,7 +143,7 @@ class ContratoRepository(BaseRepository[Contrato]):
             return (
                 self.session.query(Contrato)
                 .filter(
-                    Contrato.estado != EstadoContrato.TERMINADO.value,
+                    Contrato.estado == EstadoContrato.VIGENTE.value,
                     Contrato.fecha_fin.isnot(None),
                     Contrato.fecha_fin < referencia,
                 )
@@ -182,7 +189,7 @@ class ContratoRepository(BaseRepository[Contrato]):
             vigentes = int(
                 self.session.query(func.count(Contrato.id))
                 .filter(
-                    Contrato.estado != EstadoContrato.TERMINADO.value,
+                    Contrato.estado == EstadoContrato.VIGENTE.value,
                     or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
                 )
                 .scalar()

@@ -183,7 +183,10 @@ class ConfiguracionService:
 
         # Validaciones específicas
         if "tipo_dato" in datos:
-            tipos_validos = ["string", "int", "float", "bool"]
+            # "json" es un tipo soportado por el modelo (por ejemplo la tabla
+            # de tramos de ISR); omitirlo impedía crear o validar esas claves
+            # desde la pantalla de configuración.
+            tipos_validos = ["string", "int", "float", "bool", "json"]
             if datos["tipo_dato"] not in tipos_validos:
                 errores.append(f"El tipo de dato debe ser uno de: {', '.join(tipos_validos)}")
 

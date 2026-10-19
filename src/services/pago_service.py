@@ -21,6 +21,7 @@ from src.nomina import (
     ResultadoNomina,
     calcular_nomina,
     cargar_parametros_desde,
+    redondear,
     validar_parametros,
 )
 from src.nomina.tipos import a_decimal
@@ -32,6 +33,21 @@ from src.repositories import (
 from src.utils.helpers import parse_date
 
 logger = logging.getLogger(__name__)
+
+
+def _mismo_importe(actual, nuevo) -> bool:
+    """
+    Compara dos importes monetarios con la precisión de la nómina
+
+    La base de datos devuelve ``Decimal`` y los formularios envían ``float``;
+    comparar los tipos crudos hacía que un pago pareciera modificado al
+    abrirlo y guardarlo sin tocar los importes, recalculándolo con los
+    parámetros vigentes (y alterando un pago ya emitido).
+    """
+    try:
+        return redondear(a_decimal(actual)) == redondear(a_decimal(nuevo))
+    except (TypeError, ValueError, ArithmeticError):
+        return actual == nuevo
 
 
 class PagoService:
@@ -325,7 +341,21 @@ class PagoService:
             "aguinaldo",
             "bono_vacacional",
         }
-        recalcular = bool(campos_calculo.intersection(datos))
+        # Recalcular solo si cambió realmente algún concepto que participa en
+        # el cálculo. El formulario reenvía todos los importes al guardar
+        # (aunque solo se marque el pago como realizado); compararlos con los
+        # valores persistidos evita reescribir un pago histórico con los
+        # parámetros de nómina del día.
+        recalcular = any(
+            campo in datos
+            and (
+                not hasattr(pago, campo)
+                or not _mismo_importe(getattr(pago, campo), datos[campo])
+            )
+            for campo in campos_calculo - {"prorratear"}
+        )
+        if "prorratear" in datos and bool(datos["prorratear"]) != bool(pago.prorrateado):
+            recalcular = True
 
         if recalcular:
             campos_componentes = (
@@ -388,6 +418,20 @@ class PagoService:
                 dias_laborados = pago.dias_laborados
                 dias_periodo = pago.dias_periodo
                 prorrateado = pago.prorrateado
+                # Si el usuario cambia el salario de un pago prorrateado sin
+                # reenviar los días, el importe del formulario es el salario
+                # del período completo: hay que volver a prorratearlo con los
+                # días guardados. Sin esto el pago quedaba marcado como
+                # prorrateado pero pagaba el mes completo (y una segunda
+                # edición lo prorratearía otra vez).
+                if prorrateado and dias_periodo and "salario_base" in datos:
+                    datos_calculo.update(
+                        {
+                            "dias_trabajados": dias_laborados or 30,
+                            "dias_periodo": dias_periodo,
+                            "prorratear": True,
+                        }
+                    )
 
             resultado = self.calcular_con_motor(
                 salario_base=round(float(componentes["salario_base"] or 0), 2),
@@ -549,8 +593,14 @@ class PagoService:
             empleado_id, periodo_inicio, periodo_fin
         )
 
-        dias_periodo = (periodo_fin - periodo_inicio).days + 1
-        dias_trabajados = max(0, dias_periodo - dias_incidencias)
+        dias_calendario = (periodo_fin - periodo_inicio).days + 1
+        # Un período que cubre un mes completo se liquida sobre el mes
+        # comercial de 30 días, no sobre los días del calendario: febrero
+        # (28/29 días) pagaba un salario proporcionalmente menor sin que el
+        # empleado hubiera faltado. Los períodos parciales conservan sus días
+        # reales.
+        dias_base = 30 if dias_calendario >= 28 else dias_calendario
+        dias_trabajados = max(0, dias_base - dias_incidencias)
 
         # Días efectivos sobre el mes comercial de 30 días: el prorrateo lo
         # aplica el motor y el pago guarda con qué días se calculó, de modo

@@ -439,6 +439,26 @@ def nombre_archivo_seguro(nombre: str) -> str | None:
         return None
     if "/" in texto or "\\" in texto or "\x00" in texto:
         return None
+    # Windows no admite caracteres de control ni nombres que terminen en
+    # punto o espacio: el sistema los recorta y el archivo acaba con otro
+    # nombre (o falla la escritura). Se rechazan en todas las plataformas
+    # para que un dato creado en Linux no rompa la instalación Windows.
+    if any(ord(caracter) < 32 for caracter in texto):
+        return None
+    if texto.endswith((" ", ".")):
+        return None
+    # Nombres de dispositivo reservados de Windows (CON, NUL, COM1...).
+    # Se comparan sin extensión porque "CON.txt" también está reservado.
+    dispositivo = texto.split(".", 1)[0].strip().upper()
+    if dispositivo in {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{i}" for i in range(1, 10)),
+        *(f"LPT{i}" for i in range(1, 10)),
+    }:
+        return None
     if Path(texto).name != texto or Path(texto).is_absolute():
         return None
     return texto

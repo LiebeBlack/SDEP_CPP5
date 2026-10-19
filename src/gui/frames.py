@@ -6,6 +6,7 @@ Frames específicos para cada módulo de la aplicación
 import json
 import logging
 import os
+import queue
 import subprocess
 import sys
 import tempfile
@@ -3687,8 +3688,53 @@ class ConfiguracionFrame(ctk.CTkFrame):
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
+        # Los hilos de prueba/adopción de sincronización NUNCA deben tocar
+        # Tk (ni siquiera con self.after): Tkinter no es seguro entre hilos
+        # y en Windows eso congela o cierra la ventana. El hilo solo deposita
+        # el resultado en esta cola y el hilo principal la vacía.
+        self._sync_resultados: queue.Queue = queue.Queue()
+        self._sync_poll_id: str | None = None
+        self._sync_refresh_id: str | None = None
         self._create_widgets()
         self._load_configuracion()
+        self._iniciar_poll_sync()
+
+    # ------------------------------------------------------------------
+    # Resultados de los hilos de sincronización (hilo principal)
+    # ------------------------------------------------------------------
+    def _iniciar_poll_sync(self) -> None:
+        """Arranca la lectura periódica de resultados de los hilos"""
+        self._procesar_cola_sync()
+
+    def _procesar_cola_sync(self) -> None:
+        """Ejecuta en el hilo principal lo que dejaron los hilos de fondo"""
+        self._sync_poll_id = None
+        while True:
+            try:
+                callback, args, kwargs = self._sync_resultados.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                callback(*args, **kwargs)
+            except Exception:
+                logger.debug("Resultado de sincronización no aplicable", exc_info=True)
+        try:
+            if self.winfo_exists():
+                self._sync_poll_id = self.after(200, self._procesar_cola_sync)
+        except tk.TclError:
+            logger.debug("El frame de configuración se cerró durante la espera")
+
+    def destroy(self):
+        """Cancela los temporizadores del frame antes de destruirlo"""
+        for atributo in ("_sync_poll_id", "_sync_refresh_id"):
+            identificador = getattr(self, atributo, None)
+            if identificador:
+                try:
+                    self.after_cancel(identificador)
+                except Exception:
+                    logger.debug("No se pudo cancelar %s", atributo, exc_info=True)
+                setattr(self, atributo, None)
+        super().destroy()
 
     def _create_widgets(self):
         """Crea los widgets del frame de configuración"""
@@ -4434,7 +4480,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 )
             except Exception as error:
                 mensaje = f"No se pudo conectar con el servidor central:\n\n{error}"
-            self.after(0, lambda: self._mostrar_resultado_conexion(mensaje))
+            self._sync_resultados.put((self._mostrar_resultado_conexion, (mensaje,), {}))
 
         threading.Thread(target=_probar, name="sync-prueba", daemon=True).start()
 
@@ -4477,7 +4523,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     "Active y guarde primero la sincronización de este equipo.",
                 )
                 return
-            self.after(1500, self._load_sincronizacion)
+            self._sync_refresh_id = self.after(1500, self._load_sincronizacion)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo sincronizar: {e}")
 
@@ -4514,7 +4560,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     db_config.close_session(sesion)
             except Exception as fallo:
                 error = fallo
-            self.after(0, lambda: self._mostrar_resultado_adopcion(resultado, error))
+            self._sync_resultados.put(
+                (self._mostrar_resultado_adopcion, (resultado, error), {})
+            )
 
         threading.Thread(target=_adoptar, name="sync-adopcion", daemon=True).start()
 

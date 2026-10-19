@@ -7,7 +7,7 @@ acumuladas por antigüedad. Todos se calculan de forma proporcional al
 tiempo de servicio transcurrido.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from .tipos import CERO, Dinero, redondear
@@ -31,14 +31,17 @@ def meses_y_dias_entre(inicio: date, fin: date) -> tuple[int, int]:
         meses -= 1
     if meses < 0:
         meses = 0
-    # Fecha del último aniversario mensual cumplido
+    # Fecha del último aniversario mensual cumplido. Si el día de inicio
+    # no existe en el mes del aniversario (31 de enero -> febrero, 31 de
+    # marzo -> abril) se usa el último día de ese mes, que es el criterio
+    # legal habitual; fijarlo en 28 acortaba el mes y contaba días de más.
     anio = inicio.year + (inicio.month - 1 + meses) // 12
     mes = (inicio.month - 1 + meses) % 12 + 1
-    dia = min(inicio.day, 28) if mes == 2 else inicio.day
     try:
-        aniversario = date(anio, mes, dia)
+        aniversario = date(anio, mes, inicio.day)
     except ValueError:
-        aniversario = date(anio, mes, 28)
+        siguiente = date(anio + (mes == 12), mes % 12 + 1, 1)
+        aniversario = siguiente - timedelta(days=1)
     dias = max(0, (fin - aniversario).days)
     return meses, dias
 

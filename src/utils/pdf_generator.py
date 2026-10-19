@@ -17,6 +17,14 @@ from src.models import Empleado
 from src.utils.helpers import format_currency, format_date
 
 
+def _dato(fila: dict, *claves: str, defecto: object = "") -> object:
+    """Devuelve el primer valor presente de una fila (admite varios nombres)."""
+    for clave in claves:
+        if clave in fila and fila[clave] is not None:
+            return fila[clave]
+    return defecto
+
+
 class PDFGenerator:
     """Generador de documentos PDF"""
 
@@ -1514,21 +1522,28 @@ class PDFGenerator:
         tabla_datos = [encabezados]
         total_salarios = 0.0
         for indice, fila in enumerate(filas, start=1):
-            salario = float(fila.get("salario_pactado") or 0)
+            # Las filas llegan del listado de la interfaz (claves con
+            # mayúscula: "Empleado", "Salario_pactado"...) o de un diccionario
+            # normalizado. Se aceptan ambas formas para que el reporte no
+            # salga con columnas vacías.
+            salario = float(_dato(fila, "salario_pactado", "Salario_pactado", defecto=0) or 0)
             total_salarios += salario
-            dias = fila.get("dias_para_vencer")
+            dias = _dato(fila, "dias_para_vencer", defecto=None)
+            if dias in (None, ""):
+                dias = _dato(fila, "Dias_vigencia", defecto=None)
+            fin = _dato(fila, "fecha_fin", "Fin", defecto=None)
             tabla_datos.append(
                 [
                     str(indice),
-                    str(fila.get("numero", "")),
-                    str(fila.get("empleado", ""))[:28],
-                    str(fila.get("tipo", "")).capitalize(),
-                    str(fila.get("cargo", ""))[:22],
-                    format_date(fila.get("fecha_inicio")),
-                    format_date(fila.get("fecha_fin")) if fila.get("fecha_fin") else "Indefinido",
+                    str(_dato(fila, "numero", "Numero")),
+                    str(_dato(fila, "empleado", "Empleado"))[:28],
+                    str(_dato(fila, "tipo", "Tipo")).capitalize(),
+                    str(_dato(fila, "cargo", "Cargo"))[:22],
+                    format_date(_dato(fila, "fecha_inicio", "Inicio", defecto=None)),
+                    format_date(fin) if fin not in (None, "") else "Indefinido",
                     "-" if dias in (None, "") else str(dias),
                     format_currency(salario),
-                    str(fila.get("estado", "")).capitalize(),
+                    str(_dato(fila, "estado", "Estado")).capitalize(),
                 ]
             )
 

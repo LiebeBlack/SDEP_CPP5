@@ -143,6 +143,8 @@ class Contrato(Base, BaseModel):
         Args:
             dias: Días de anticipación con los que se avisa
         """
+        if self.estado_valor != EstadoContrato.VIGENTE.value:
+            return False
         restantes = self.dias_para_vencer
         if restantes is None:
             return False
@@ -151,7 +153,10 @@ class Contrato(Base, BaseModel):
     @property
     def esta_vigente(self) -> bool:
         """Indica si el contrato sigue vigente a la fecha de hoy"""
-        if self.estado_valor == EstadoContrato.TERMINADO.value:
+        # RENOVADO, VENCIDO y TERMINADO son estados cerrados: el contrato ya
+        # fue sustituido o dejó de estar activo, aunque su fecha de fin sea
+        # futura (el caso del contrato anterior tras una renovación).
+        if self.estado_valor != EstadoContrato.VIGENTE.value:
             return False
         if self.fecha_fin is None:
             return True

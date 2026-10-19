@@ -123,7 +123,15 @@ class ContratoService:
         if isinstance(fecha_fin, str):
             fecha_fin = parse_date(fecha_fin)
 
-        estado = str(datos.get("estado") or EstadoContrato.VIGENTE.value)
+        # Normalizar a valor de texto: si la interfaz entrega el miembro del
+        # enum, ``str(miembro)`` produce "EstadoContrato.VIGENTE" y la
+        # inserción falla al no ser un valor válido de la columna.
+        try:
+            estado = EstadoContrato.coerce(
+                datos.get("estado") or EstadoContrato.VIGENTE.value
+            ).value
+        except ValueError as error:
+            raise ValueError(f"Estado de contrato inválido: {error}") from None
         if estado == EstadoContrato.VIGENTE.value:
             vigente = self.repository.get_vigente(empleado_id)
             if vigente is not None:
@@ -238,6 +246,7 @@ class ContratoService:
             raise ValueError("Empleado no encontrado")
 
         inicio = (anterior.fecha_fin or date.today()) + timedelta(days=1)
+        estado_anterior = anterior.estado
         anterior.estado = EstadoContrato.RENOVADO
         self.repository.update(anterior)
 
@@ -258,7 +267,22 @@ class ContratoService:
             "aprobado_por": aprobado_por,
             "estado": EstadoContrato.VIGENTE.value,
         }
-        nuevo = self.crear_contrato(datos)
+        try:
+            nuevo = self.crear_contrato(datos)
+        except Exception:
+            # Si el alta del contrato nuevo falla, el anterior debe seguir
+            # siendo el vigente: dejarlo como RENOVADO sin sucesor dejaría
+            # al empleado sin contrato activo y sin forma de reintentar.
+            anterior.estado = estado_anterior
+            try:
+                self.repository.update(anterior)
+            except SQLAlchemyError:
+                logger.error(
+                    "No se pudo restaurar el estado del contrato %s tras fallar la renovación",
+                    anterior.numero,
+                    exc_info=True,
+                )
+            raise
         logger.info(
             "Contrato %s renovado como %s (empleado %s)",
             anterior.numero,

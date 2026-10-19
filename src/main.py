@@ -87,6 +87,43 @@ def manejar_excepcion_no_capturada(exc_type, exc_value, exc_traceback):
     )
 
 
+def manejar_excepcion_en_hilo(args):
+    """
+    Fallback para excepciones no capturadas en hilos secundarios.
+
+    ``threading.excepthook`` recibe UN objeto ``ExceptHookArgs`` (con
+    ``exc_type``, ``exc_value``, ``exc_traceback`` y ``thread``), no la
+    terna que usa ``sys.excepthook``. Asignarle directamente la función
+    del hilo principal hacía que el propio hook fallara con ``TypeError``
+    y ocultara la excepción original.
+
+    Además, un hilo de fondo no debe abrir un cuadro de diálogo de Tk:
+    Tk no es seguro entre hilos y hacerlo puede congelar o cerrar la
+    aplicación. Aquí solo se registra y se audita el fallo; la interfaz
+    sigue siendo responsabilidad del hilo principal.
+    """
+    exc_type = getattr(args, "exc_type", None)
+    exc_value = getattr(args, "exc_value", None)
+    exc_traceback = getattr(args, "exc_traceback", None)
+    if exc_type is None:
+        return
+    if issubclass(exc_type, KeyboardInterrupt):
+        return
+    logger.error(
+        "Excepción no capturada en el hilo %r",
+        getattr(args, "thread", None),
+        exc_info=(exc_type, exc_value, exc_traceback),
+    )
+    try:
+        from src.utils.audit_logger import get_audit_logger
+
+        audit = get_audit_logger()
+        if audit:
+            audit.log_error(exc_value, context={"operation": "excepcion_hilo"})
+    except Exception:
+        logger.debug("paso de arranque ignorado", exc_info=True)
+
+
 def instalar_manejador_excepciones():
     """
     Instala los manejadores globales de excepciones (fallback ante fallos).
@@ -100,7 +137,7 @@ def instalar_manejador_excepciones():
     try:
         import threading
 
-        threading.excepthook = manejar_excepcion_no_capturada
+        threading.excepthook = manejar_excepcion_en_hilo
     except Exception:
         logger.debug("paso de arranque ignorado", exc_info=True)
     sys._sgp_excepthook_instalado = True

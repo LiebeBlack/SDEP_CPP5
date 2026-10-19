@@ -4,7 +4,7 @@ Modelo de datos para usuarios del sistema (autenticación y roles)
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime
 from sqlalchemy import Enum as SQLEnum
@@ -91,7 +91,11 @@ class Usuario(Base, BaseModel):
         desde = self.fecha_cambio_password or self.created_at
         if desde is None:
             return True
-        momento = referencia or datetime.now()
+        # ``created_at`` y ``fecha_cambio_password`` se guardan en UTC
+        # naive (ver ``src.models.base._utcnow``). Comparar contra la hora
+        # local adelantaba o retrasaba la caducidad según la zona horaria
+        # del equipo; la referencia debe estar en la misma escala.
+        momento = referencia or datetime.now(timezone.utc).replace(tzinfo=None)
         return (momento - desde).days <= dias_caducidad
 
     @property

@@ -325,9 +325,7 @@ class DashboardFrame(ctk.CTkFrame):
             ("por_vencer", "Contratos por vencer", "📜", "contratos"),
             ("dotacion", "Dotación activa", "👥", "empleados"),
         ]
-        definiciones = [
-            item for item in definiciones if self.main_window.puede_ver_modulo(item[3])
-        ]
+        definiciones = [item for item in definiciones if self.main_window.puede_ver_modulo(item[3])]
         for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
             tarjeta = TarjetaIndicador(
                 marco,
@@ -651,9 +649,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         btn_frame.pack(side="right", padx=5)
 
         if self.main_window.tiene_permiso("create"):
-            new_btn = ctk.CTkButton(
-                btn_frame, text="Nuevo Empleado", command=self._on_new_empleado
-            )
+            new_btn = ctk.CTkButton(btn_frame, text="Nuevo Empleado", command=self._on_new_empleado)
             new_btn.pack(side="left", padx=5)
 
         if self.main_window.tiene_permiso("report"):
@@ -1114,9 +1110,7 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         )
 
         self.salario_base_label = self._create_detail_field(form_frame, "Salario Base:", 2, 0)
-        self.nivel_educativo_label = self._create_detail_field(
-            form_frame, "Nivel Educativo:", 2, 2
-        )
+        self.nivel_educativo_label = self._create_detail_field(form_frame, "Nivel Educativo:", 2, 2)
         self.especialidad_label = self._create_detail_field(form_frame, "Especialidad:", 3, 0)
         self.titulo_obtenido_label = self._create_detail_field(
             form_frame, "Título Universitario:", 3, 2
@@ -1216,17 +1210,13 @@ class EmpleadoDetailsDialog(ctk.CTkToplevel):
         self.apellidos_label.configure(text=self.empleado.apellidos)
         self.cedula_label.configure(text=self.empleado.cedula)
         if self.empleado.fecha_nacimiento:
-            self.fecha_nacimiento_label.configure(
-                text=format_date(self.empleado.fecha_nacimiento)
-            )
+            self.fecha_nacimiento_label.configure(text=format_date(self.empleado.fecha_nacimiento))
 
         self.genero_label.configure(text=self.empleado.genero or "-")
         self.estado_civil_label.configure(text=self.empleado.estado_civil or "-")
 
         self.peso_label.configure(text=str(self.empleado.peso) if self.empleado.peso else "-")
-        self.altura_label.configure(
-            text=str(self.empleado.altura) if self.empleado.altura else "-"
-        )
+        self.altura_label.configure(text=str(self.empleado.altura) if self.empleado.altura else "-")
         self.tipo_sangre_label.configure(text=self.empleado.tipo_sangre or "-")
         self.nacionalidad_label.configure(text=self.empleado.nacionalidad or "-")
 
@@ -1372,9 +1362,7 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.nombres_entry = self._create_form_field(form_frame, "Nombres:", 0, 0)
         self.apellidos_entry = self._create_form_field(form_frame, "Apellidos:", 0, 2)
         self.cedula_entry = self._create_form_field(form_frame, "Cédula:", 1, 0)
-        self.fecha_nacimiento_entry = self._create_form_field(
-            form_frame, "Fecha Nacimiento:", 1, 2
-        )
+        self.fecha_nacimiento_entry = self._create_form_field(form_frame, "Fecha Nacimiento:", 1, 2)
 
         self.genero_combo = self._create_combo_field(
             form_frame, "Género:", 2, 0, ["masculino", "femenino", "otro"]
@@ -3349,9 +3337,7 @@ class NominaFrame(ctk.CTkFrame):
             pagos = self._obtener_pagos_filtrados()
 
             if not pagos:
-                self.tree.insert(
-                    "", "end", values=("", "No hay pagos registrados", "", "", "", "")
-                )
+                self.tree.insert("", "end", values=("", "No hay pagos registrados", "", "", "", ""))
                 return
 
             for pago in pagos:
@@ -4172,9 +4158,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
             text_color=COLORES["texto_suave"],
             anchor="w",
         )
-        self.sync_estado_label.grid(
-            row=1, column=0, columnspan=3, padx=10, pady=(0, 8), sticky="w"
-        )
+        self.sync_estado_label.grid(row=1, column=0, columnspan=3, padx=10, pady=(0, 8), sticky="w")
 
         # Parámetros del equipo
         parametros = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
@@ -4552,9 +4536,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_sincronizar_ahora(self):
         """Solicita un ciclo inmediato y refresca los contadores"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "solicitar la sincronización"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "solicitar la sincronización"):
             return
         try:
             from sync_agent import sincronizar_ahora
@@ -4602,9 +4584,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     db_config.close_session(sesion)
             except Exception as fallo:
                 error = fallo
-            self._sync_resultados.put(
-                (self._mostrar_resultado_adopcion, (resultado, error), {})
-            )
+            self._sync_resultados.put((self._mostrar_resultado_adopcion, (resultado, error), {}))
 
         threading.Thread(target=_adoptar, name="sync-adopcion", daemon=True).start()
 

@@ -897,9 +897,7 @@ class MainWindow(ctk.CTk):
             )
             self.ayuda_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
             self.about_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.logout_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"]
-            )
+            self.logout_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
             self.exit_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
@@ -1048,9 +1046,7 @@ class MainWindow(ctk.CTk):
                 # cambios pendientes de la sesión de la ventana.
                 sesion_tokens = db_config.new_session()
                 try:
-                    TokenSesionService(sesion_tokens).revocar_usuario(
-                        int(self.current_user.id)
-                    )
+                    TokenSesionService(sesion_tokens).revocar_usuario(int(self.current_user.id))
                 finally:
                     db_config.close_session(sesion_tokens)
         except Exception:

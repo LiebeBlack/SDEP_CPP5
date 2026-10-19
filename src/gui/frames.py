@@ -3098,7 +3098,10 @@ class ApprovalDialog(ctk.CTkToplevel):
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Información de la incidencia
-        info_text = f"Incidencia: {incidencia.tipo_incidencia}\nDías solicitados: {incidencia.dias_solicitados}"
+        info_text = (
+            f"Incidencia: {incidencia.tipo_incidencia}\n"
+            f"Días solicitados: {incidencia.dias_solicitados}"
+        )
         ctk.CTkLabel(form_frame, text=info_text, font=ctk.CTkFont(weight="bold")).pack(pady=10)
 
         # Aprobado por
@@ -3403,7 +3406,8 @@ class NominaFrame(ctk.CTkFrame):
 
             if messagebox.askyesno(
                 "Confirmar",
-                f"¿Desea generar nómina para el periodo {format_date(fecha_inicio)} - {format_date(fecha_fin)}?",
+                f"¿Desea generar nómina para el periodo {format_date(fecha_inicio)} - "
+                f"{format_date(fecha_fin)}?",
             ):
                 pagos = self.main_window.pago_service.generar_nominas_periodo(
                     fecha_inicio, fecha_fin
@@ -4166,7 +4170,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
             text_color=COLORES["texto_suave"],
             anchor="w",
         )
-        self.sync_estado_label.grid(row=1, column=0, columnspan=3, padx=10, pady=(0, 8), sticky="w")
+        self.sync_estado_label.grid(
+            row=1, column=0, columnspan=3, padx=10, pady=(0, 8), sticky="w"
+        )
 
         # Parámetros del equipo
         parametros = ctk.CTkFrame(parent, fg_color=COLORES["panel"])

@@ -618,7 +618,10 @@ class PagoService:
             "dias_trabajados": dias_efectivos,
             "dias_periodo": 30,
             "prorratear": True,
-            "descripcion": f"Nómina {periodo_inicio.strftime('%Y-%m-%d')} a {periodo_fin.strftime('%Y-%m-%d')}",
+            "descripcion": (
+                f"Nómina {periodo_inicio.strftime('%Y-%m-%d')} a "
+                f"{periodo_fin.strftime('%Y-%m-%d')}"
+            ),
         }
 
         return self.crear_pago(datos_pago)
@@ -737,6 +740,8 @@ class PagoService:
                 if dias_periodo <= 0:
                     errores.append("Los días del período deben ser mayores que cero")
                 elif dias_trabajados < 0 or dias_trabajados > dias_periodo:
-                    errores.append("Los días trabajados deben estar entre 0 y los días del período")
+                    errores.append(
+                        "Los días trabajados deben estar entre 0 y los días del período"
+                    )
 
         return errores

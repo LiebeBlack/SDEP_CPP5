@@ -155,7 +155,10 @@ def test_los_contratos_vencidos_se_sincronizan(servicio, empleado):
     )
     actualizados = servicio.sincronizar_estados()
     assert actualizados >= 0
-    assert len(servicio.listar_vencidos()) == 1
+    # Después de sincronizar, el contrato está marcado como VENCIDO
+    # listar_vencidos() busca contratos VIGENTE con fecha fin pasada,
+    # así que usamos listar_por_estado para verificar el estado final
+    assert len(servicio.listar_por_estado(EstadoContrato.VENCIDO.value)) == 1
 
 
 def test_contratos_por_vencer_segun_el_umbral(servicio, empleado):

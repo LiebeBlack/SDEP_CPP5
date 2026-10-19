@@ -4,6 +4,7 @@ Módulo de generación de documentos PDF
 """
 
 from datetime import date
+from typing import Any
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
@@ -17,7 +18,7 @@ from src.models import Empleado
 from src.utils.helpers import format_currency, format_date
 
 
-def _dato(fila: dict, *claves: str, defecto: object = "") -> object:
+def _dato(fila: dict, *claves: str, defecto: Any = "") -> Any:
     """Devuelve el primer valor presente de una fila (admite varios nombres)."""
     for clave in claves:
         if clave in fila and fila[clave] is not None:
@@ -1526,9 +1527,7 @@ class PDFGenerator:
             # mayúscula: "Empleado", "Salario_pactado"...) o de un diccionario
             # normalizado. Se aceptan ambas formas para que el reporte no
             # salga con columnas vacías.
-            salario = float(
-                _dato(fila, "salario_pactado", "Salario_pactado", defecto=0) or 0  # type: ignore[arg-type]
-            )
+            salario = float(str(_dato(fila, "salario_pactado", "Salario_pactado", defecto=0) or 0))
             total_salarios += salario
             dias = _dato(fila, "dias_para_vencer", defecto=None)
             if dias in (None, ""):
@@ -1541,10 +1540,8 @@ class PDFGenerator:
                     str(_dato(fila, "empleado", "Empleado"))[:28],
                     str(_dato(fila, "tipo", "Tipo")).capitalize(),
                     str(_dato(fila, "cargo", "Cargo"))[:22],
-                    format_date(
-                        _dato(fila, "fecha_inicio", "Inicio", defecto=None)  # type: ignore[arg-type]
-                    ),
-                    format_date(fin) if fin not in (None, "") else "Indefinido",  # type: ignore[arg-type]
+                    format_date(str(_dato(fila, "fecha_inicio", "Inicio", defecto=None))),
+                    format_date(str(fin)) if fin not in (None, "") else "Indefinido",
                     "-" if dias in (None, "") else str(dias),
                     format_currency(salario),
                     str(_dato(fila, "estado", "Estado")).capitalize(),

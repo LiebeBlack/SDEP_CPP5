@@ -9,6 +9,7 @@ import threading
 import tkinter as tk
 from datetime import datetime, timedelta
 from tkinter import messagebox, ttk
+from typing import Any
 
 import customtkinter as ctk
 

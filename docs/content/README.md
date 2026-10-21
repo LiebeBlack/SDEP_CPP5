@@ -120,6 +120,117 @@ El sistema sigue una arquitectura en capas separando la lógica de negocio, acce
 - **Capa de GUI**: Interfaz gráfica con CustomTkinter
 - **Capa de Utilidades**: Funciones auxiliares y helpers
 
+## 📱 Aplicación móvil Android
+
+El repositorio incluye **SDEP Móvil**, una aplicación nativa en Kotlin
+(Jetpack Compose, Room, Hilt) que se conecta al nodo central de sincronización
+como un puesto más de la intranet. Permite levantar registros de campo desde el
+teléfono, editarlos y consultarlos sin conexión; al recuperar la red, las
+operaciones viajan al servidor con el mismo protocolo que usan los puestos de
+escritorio y aterrizan en la tabla `registros_moviles`, visible desde la base
+institucional.
+
+- Ingreso con contraseña (PBKDF2) y desbloqueo con huella o rostro.
+- Roles de administrador, editor y consulta.
+- CRUD completo con búsqueda, categorías y valor numérico.
+- Cola de salida transaccional, cursor de sincronización y bandeja de conflictos.
+- Sin dependencia de servicios en la nube: habla solo con el nodo del colegio.
+
+Instrucciones de compilación, emparejamiento y contrato del protocolo en
+[`android/README.md`](android/README.md).
+
+## 🔄 Servidor de Sincronización
+
+El sistema incluye un **servidor de sincronización** que permite que múltiples
+instalaciones del sistema (en diferentes computadoras) se mantengan sincronizadas
+automáticamente. El servidor puede ejecutarse en cualquier computadora sin
+necesidad de un servidor dedicado y está configurado para comunicarse con:
+
+- ✅ **Otras computadoras** con el mismo programa en la red local
+- ✅ **Aplicación Android** (SDEP Móvil) en la misma red WiFi
+- ✅ **Cualquier dispositivo** conectado a la misma red
+
+### Inicio Rápido del Servidor Local
+
+```bash
+# Opción 1: Script de inicialización automática (recomendado)
+python iniciar_servidor.py
+
+# El servidor mostrará automáticamente las URLs de conexión:
+# - Desde esta PC: http://127.0.0.1:8765
+# - Desde Android/otros PCs: http://192.168.1.XXX:8765
+```
+
+Esto:
+- Crea la base de datos central (`sync_central.db`)
+- Inicializa el esquema necesario
+- Crea usuarios por defecto (admin, manager, user, viewer)
+- Crea un dispositivo para conexión
+- Inicia el servidor HTTP en el puerto 8765
+- **Muestra la IP local para conectar desde Android y otros equipos**
+
+### Usuarios Por Defecto
+
+| Usuario | Contraseña | Rol |
+|---------|------------|-----|
+| admin | Admin1234 | Administrador total |
+| manager | Gestor1234 | Gestor con permisos de edición |
+| user | Usuario1234 | Usuario estándar |
+| viewer | Lector1234 | Solo lectura |
+
+**IMPORTANTE:** Cambie estas contraseñas después del primer inicio.
+
+### Conectar Clientes al Servidor
+
+#### Desde la Aplicación de Escritorio (Otro PC en la Red)
+
+1. Vaya a Configuración → Sincronización
+2. Configure la URL del servidor (use la IP local que muestra el servidor)
+   - Ejemplo: `http://192.168.1.100:8765`
+3. Ingrese el token del dispositivo
+4. Active la sincronización
+
+#### Desde la Aplicación Móvil Android
+
+1. Configure la URL del servidor en la app Android
+   - Use la IP local que muestra el servidor al iniciar
+   - Ejemplo: `http://192.168.1.100:8765`
+   - **NO use 127.0.0.1 desde Android**
+2. Use las credenciales de usuario (admin, manager, user, viewer)
+3. La app se conectará por WiFi a la computadora donde corre el servidor
+
+### Configuración de Firewall (Importante)
+
+Para que Android y otros PCs puedan conectarse, el firewall debe permitir conexiones en el puerto 8765:
+
+**Windows:**
+```powershell
+New-NetFirewallRule -DisplayName "SDEP Servidor" -Direction Inbound -LocalPort 8765 -Protocol TCP -Action Allow
+```
+
+**Linux (UFW):**
+```bash
+sudo ufw allow 8765/tcp
+```
+
+### Gestión del Servidor
+
+```bash
+# Ver dispositivos registrados
+py -3 -m sync_agent dispositivos --db sqlite:///sync_central.db --listar
+
+# Crear un nuevo dispositivo
+py -3 -m sync_agent servidor --db sqlite:///sync_central.db --crear-dispositivo "Puesto 2"
+
+# Ver sesiones activas
+py -3 -m sync_agent sesiones --db sqlite:///sync_central.db --listar
+```
+
+### Documentación Completa
+
+Para instrucciones detalladas sobre configuración, seguridad, firewall y solución de
+problemas, consulte [`GUIA_SERVIDOR_LOCAL.md`](GUIA_SERVIDOR_LOCAL.md).
+
 ## 🔄 CI/CD Pipeline (GitHub Actions)
 
 La integración continua se reparte entre dos workflows complementarios.

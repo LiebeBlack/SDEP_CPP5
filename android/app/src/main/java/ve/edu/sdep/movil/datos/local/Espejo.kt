@@ -881,6 +881,14 @@ private fun MutableMap<String, JsonElement>.poner(
 
 private fun MutableMap<String, JsonElement>.poner(
     campo: String,
+    valor: String,
+    forzar: Boolean,
+) {
+    this[campo] = JsonPrimitive(valor)
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
     valor: Int?,
     forzar: Boolean,
 ) {
@@ -893,6 +901,14 @@ private fun MutableMap<String, JsonElement>.poner(
 
 private fun MutableMap<String, JsonElement>.poner(
     campo: String,
+    valor: Int,
+    forzar: Boolean,
+) {
+    this[campo] = JsonPrimitive(valor)
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
     valor: Double?,
     forzar: Boolean,
 ) {
@@ -901,6 +917,34 @@ private fun MutableMap<String, JsonElement>.poner(
     } else {
         this[campo] = JsonPrimitive(valor)
     }
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
+    valor: Double,
+    forzar: Boolean,
+) {
+    this[campo] = JsonPrimitive(valor)
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
+    valor: Boolean?,
+    forzar: Boolean,
+) {
+    if (valor == null) {
+        if (forzar) this[campo] = JsonNull
+    } else {
+        this[campo] = JsonPrimitive(valor)
+    }
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
+    valor: Boolean,
+    forzar: Boolean,
+) {
+    this[campo] = JsonPrimitive(valor)
 }
 
 /** Lectura cómoda de un payload decodificado; tolera claves desconocidas */

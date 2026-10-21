@@ -52,7 +52,7 @@ interface OperacionEntradaDao {
 
     @Query(
         "DELETE FROM operaciones_entrada " +
-            "WHERE intentos > 10 AND opId IN (:ids)",
+            "WHERE intentos > 10 AND opId IN (:viejas)",
     )
     suspend fun purgar(viejas: List<String>)
 }
@@ -127,7 +127,7 @@ interface DocumentoDao {
     @Query("SELECT * FROM documentos WHERE activo = 1 ORDER BY fecha_vencimiento, titulo")
     fun observarTodos(): Flow<List<DocumentoEntity>>
 
-    @Query("SELECT * FROM documentos WHERE empleadoId = :empleadoId AND activo = 1 ORDER BY titulo")
+    @Query("SELECT * FROM documentos WHERE empleado_id = :empleadoId AND activo = 1 ORDER BY titulo")
     fun observarPorEmpleado(empleadoId: Long): Flow<List<DocumentoEntity>>
 
     @Query("SELECT * FROM documentos WHERE id = :id LIMIT 1")
@@ -154,7 +154,7 @@ interface DocumentoDao {
     @Query("DELETE FROM documentos WHERE id = :id")
     suspend fun borrar(id: Long)
 
-    @Query("UPDATE documentos SET contenidoBinario = :bytes WHERE id = :id")
+    @Query("UPDATE documentos SET contenido_binario = :bytes WHERE id = :id")
     suspend fun guardarContenido(id: Long, bytes: ByteArray)
 }
 
@@ -167,7 +167,7 @@ interface IncidenciaDao {
     @Query("SELECT * FROM incidencias WHERE estado = :estado ORDER BY fecha_inicio DESC")
     fun observarPorEstado(estado: String): Flow<List<IncidenciaEntity>>
 
-    @Query("SELECT * FROM incidencias WHERE empleadoId = :empleadoId ORDER BY fecha_inicio DESC")
+    @Query("SELECT * FROM incidencias WHERE empleado_id = :empleadoId ORDER BY fecha_inicio DESC")
     fun observarPorEmpleado(empleadoId: Long): Flow<List<IncidenciaEntity>>
 
     @Query("SELECT * FROM incidencias WHERE id = :id LIMIT 1")
@@ -198,7 +198,7 @@ interface ContratoDao {
     @Query("SELECT * FROM contratos WHERE estado = :estado ORDER BY fecha_fin")
     fun observarPorEstado(estado: String): Flow<List<ContratoEntity>>
 
-    @Query("SELECT * FROM contratos WHERE empleadoId = :empleadoId ORDER BY fecha_inicio DESC")
+    @Query("SELECT * FROM contratos WHERE empleado_id = :empleadoId ORDER BY fecha_inicio DESC")
     fun observarPorEmpleado(empleadoId: Long): Flow<List<ContratoEntity>>
 
     @Query(
@@ -244,7 +244,7 @@ interface PagoDao {
     @Query("SELECT * FROM pagos ORDER BY periodo_inicio DESC, id DESC")
     fun observarTodos(): Flow<List<PagoEntity>>
 
-    @Query("SELECT * FROM pagos WHERE empleadoId = :empleadoId ORDER BY periodo_inicio DESC")
+    @Query("SELECT * FROM pagos WHERE empleado_id = :empleadoId ORDER BY periodo_inicio DESC")
     fun observarPorEmpleado(empleadoId: Long): Flow<List<PagoEntity>>
 
     @Query("SELECT * FROM pagos WHERE id = :id LIMIT 1")
@@ -341,7 +341,7 @@ interface GradoDao {
     @Query("SELECT * FROM grados ORDER BY nivel, nombre, seccion")
     fun observarTodos(): Flow<List<GradoEntity>>
 
-    @Query("SELECT * FROM grados WHERE periodoId = :periodoId ORDER BY nivel, nombre, seccion")
+    @Query("SELECT * FROM grados WHERE periodo_id = :periodoId ORDER BY nivel, nombre, seccion")
     fun observarPorPeriodo(periodoId: Long): Flow<List<GradoEntity>>
 
     @Query("SELECT * FROM grados WHERE id = :id LIMIT 1")
@@ -351,7 +351,7 @@ interface GradoDao {
     fun observarPorId(id: Long): Flow<GradoEntity?>
 
     @Query(
-        "SELECT * FROM grados WHERE periodoId = :periodoId AND nombre = :nombre " +
+        "SELECT * FROM grados WHERE periodo_id = :periodoId AND nombre = :nombre " +
             "AND seccion = :seccion LIMIT 1",
     )
     suspend fun buscarPorClave(periodoId: Long, nombre: String, seccion: String): GradoEntity?
@@ -369,17 +369,17 @@ interface GradoDao {
 @Dao
 interface MatriculaDao {
 
-    @Query("SELECT * FROM matriculas WHERE gradoId = :gradoId AND activa = 1 ORDER BY id")
+    @Query("SELECT * FROM matriculas WHERE grado_id = :gradoId AND activa = 1 ORDER BY id")
     fun observarPorGrado(gradoId: Long): Flow<List<MatriculaEntity>>
 
-    @Query("SELECT * FROM matriculas WHERE estudianteId = :estudianteId ORDER BY fecha_matricula DESC")
+    @Query("SELECT * FROM matriculas WHERE estudiante_id = :estudianteId ORDER BY fecha_matricula DESC")
     fun observarPorEstudiante(estudianteId: Long): Flow<List<MatriculaEntity>>
 
     @Query("SELECT * FROM matriculas WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): MatriculaEntity?
 
     @Query(
-        "SELECT * FROM matriculas WHERE estudianteId = :estudianteId AND gradoId = :gradoId " +
+        "SELECT * FROM matriculas WHERE estudiante_id = :estudianteId AND grado_id = :gradoId " +
             "AND activa = 1 LIMIT 1",
     )
     suspend fun buscarActiva(estudianteId: Long, gradoId: Long): MatriculaEntity?
@@ -391,8 +391,8 @@ interface MatriculaDao {
      * matrícula creada en dos equipos, en vez de duplicarla.
      */
     @Query(
-        "SELECT * FROM matriculas WHERE estudianteId = :estudianteId " +
-            "AND gradoId = :gradoId ORDER BY activa DESC, id LIMIT 1",
+        "SELECT * FROM matriculas WHERE estudiante_id = :estudianteId " +
+            "AND grado_id = :gradoId ORDER BY activa DESC, id LIMIT 1",
     )
     suspend fun buscarPorPar(estudianteId: Long, gradoId: Long): MatriculaEntity?
 
@@ -409,17 +409,17 @@ interface MatriculaDao {
 @Dao
 interface NotaFinalDao {
 
-    @Query("SELECT * FROM notas_finales WHERE gradoId = :gradoId ORDER BY materia")
+    @Query("SELECT * FROM notas_finales WHERE grado_id = :gradoId ORDER BY materia")
     fun observarPorGrado(gradoId: Long): Flow<List<NotaFinalEntity>>
 
-    @Query("SELECT * FROM notas_finales WHERE estudianteId = :estudianteId ORDER BY materia")
+    @Query("SELECT * FROM notas_finales WHERE estudiante_id = :estudianteId ORDER BY materia")
     fun observarPorEstudiante(estudianteId: Long): Flow<List<NotaFinalEntity>>
 
     @Query("SELECT * FROM notas_finales WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): NotaFinalEntity?
 
     @Query(
-        "SELECT * FROM notas_finales WHERE estudianteId = :estudianteId AND gradoId = :gradoId " +
+        "SELECT * FROM notas_finales WHERE estudiante_id = :estudianteId AND grado_id = :gradoId " +
             "AND materia = :materia LIMIT 1",
     )
     suspend fun buscarPorClave(estudianteId: Long, gradoId: Long, materia: String): NotaFinalEntity?
@@ -444,7 +444,7 @@ interface NotaFinalDao {
 interface CampoRemotoDao {
 
     @Query(
-        "SELECT * FROM campos_remotos WHERE tabla = :tabla AND filaUuid = :filaUuid " +
+        "SELECT * FROM campos_remotos WHERE tabla = :tabla AND fila_uuid = :filaUuid " +
             "ORDER BY campo",
     )
     suspend fun deFila(tabla: String, filaUuid: String): List<CampoRemotoEntity>
@@ -452,7 +452,7 @@ interface CampoRemotoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun guardar(campo: CampoRemotoEntity)
 
-    @Query("DELETE FROM campos_remotos WHERE tabla = :tabla AND filaUuid = :filaUuid")
+    @Query("DELETE FROM campos_remotos WHERE tabla = :tabla AND fila_uuid = :filaUuid")
     suspend fun borrarFila(tabla: String, filaUuid: String)
 }
 
@@ -460,7 +460,7 @@ interface CampoRemotoDao {
 interface VersionFilaDao {
 
     @Query(
-        "SELECT * FROM versiones_filas WHERE tabla = :tabla AND filaUuid = :filaUuid " +
+        "SELECT * FROM versiones_filas WHERE tabla = :tabla AND fila_uuid = :filaUuid " +
             "LIMIT 1",
     )
     suspend fun deFila(tabla: String, filaUuid: String): VersionFilaEntity?

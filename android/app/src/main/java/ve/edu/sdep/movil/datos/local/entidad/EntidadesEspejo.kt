@@ -144,7 +144,7 @@ data class EmpleadoEntity(
 
 @Entity(
     tableName = "documentos",
-    indices = [Index("empleadoId"), Index("tipoDocumento"), Index("activo")],
+    indices = [Index("empleado_id"), Index("tipo_documento"), Index("activo")],
 )
 data class DocumentoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -170,7 +170,7 @@ data class DocumentoEntity(
 
 @Entity(
     tableName = "incidencias",
-    indices = [Index("empleadoId"), Index("tipoIncidencia"), Index("estado")],
+    indices = [Index("empleado_id"), Index("tipo_incidencia"), Index("estado")],
 )
 data class IncidenciaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -200,7 +200,7 @@ data class IncidenciaEntity(
 
 @Entity(
     tableName = "contratos",
-    indices = [Index(value = ["numero"], unique = true), Index("empleadoId"), Index("estado")],
+    indices = [Index(value = ["numero"], unique = true), Index("empleado_id"), Index("estado")],
 )
 data class ContratoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -232,7 +232,7 @@ data class ContratoEntity(
 // Nómina
 // ----------------------------------------------------------------------
 
-@Entity(tableName = "pagos", indices = [Index("empleadoId"), Index("periodoInicio"), Index("pagado")])
+@Entity(tableName = "pagos", indices = [Index("empleado_id"), Index("periodo_inicio"), Index("pagado")])
 data class PagoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "empleado_id") val empleadoId: Long,
@@ -321,7 +321,7 @@ data class PeriodoAcademicoEntity(
 
 @Entity(
     tableName = "grados",
-    indices = [Index("periodoId"), Index("nivel")],
+    indices = [Index("periodo_id"), Index("nivel")],
 )
 data class GradoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -348,7 +348,7 @@ data class GradoEntity(
     // El escritorio garantiza una sola matrícula ACTIVA por (estudiante,
     // grado) con un índice parcial; Room no admite índices parciales, así que
     // aquí el índice es simple y la unicidad la aporta la clave natural al    // aplicar la operación remota (mismo comportamiento, distinta vía).
-    indices = [Index("estudianteId"), Index("gradoId"), Index("activa")],
+    indices = [Index("estudiante_id"), Index("grado_id"), Index("activa")],
 )
 data class MatriculaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -364,8 +364,8 @@ data class MatriculaEntity(
 @Entity(
     tableName = "notas_finales",
     indices = [
-        Index(value = ["estudianteId", "gradoId", "materia"], unique = true),
-        Index("gradoId"),
+        Index(value = ["estudiante_id", "grado_id", "materia"], unique = true),
+        Index("grado_id"),
     ],
 )
 data class NotaFinalEntity(
@@ -400,8 +400,8 @@ data class NotaFinalEntity(
 @Entity(
     tableName = "campos_remotos",
     indices = [
-        Index(value = ["tabla", "filaUuid", "campo"], unique = true),
-        Index("filaUuid"),
+        Index(value = ["tabla", "fila_uuid", "campo"], unique = true),
+        Index("fila_uuid"),
     ],
 )
 data class CampoRemotoEntity(
@@ -420,7 +420,7 @@ data class CampoRemotoEntity(
 /** Estado de una fila replicada: última operación y borrado vigente */
 @Entity(
     tableName = "versiones_filas",
-    indices = [Index(value = ["tabla", "filaUuid"], unique = true)],
+    indices = [Index(value = ["tabla", "fila_uuid"], unique = true)],
 )
 data class VersionFilaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

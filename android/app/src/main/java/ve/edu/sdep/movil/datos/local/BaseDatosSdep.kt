@@ -173,12 +173,12 @@ abstract class BaseDatosSdep : RoomDatabase() {
                         "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_documentos_empleadoId " +
-                        "ON documentos (empleadoId)",
+                    "CREATE INDEX IF NOT EXISTS index_documentos_empleado_id " +
+                        "ON documentos (empleado_id)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_documentos_tipoDocumento " +
-                        "ON documentos (tipoDocumento)",
+                    "CREATE INDEX IF NOT EXISTS index_documentos_tipo_documento " +
+                        "ON documentos (tipo_documento)",
                 )
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_documentos_activo ON documentos (activo)",
@@ -199,12 +199,12 @@ abstract class BaseDatosSdep : RoomDatabase() {
                         "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_incidencias_empleadoId " +
-                        "ON incidencias (empleadoId)",
+                    "CREATE INDEX IF NOT EXISTS index_incidencias_empleado_id " +
+                        "ON incidencias (empleado_id)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_incidencias_tipoIncidencia " +
-                        "ON incidencias (tipoIncidencia)",
+                    "CREATE INDEX IF NOT EXISTS index_incidencias_tipo_incidencia " +
+                        "ON incidencias (tipo_incidencia)",
                 )
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_incidencias_estado ON incidencias (estado)",
@@ -227,7 +227,7 @@ abstract class BaseDatosSdep : RoomDatabase() {
                     "CREATE UNIQUE INDEX IF NOT EXISTS index_contratos_numero ON contratos (numero)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_contratos_empleadoId ON contratos (empleadoId)",
+                    "CREATE INDEX IF NOT EXISTS index_contratos_empleado_id ON contratos (empleado_id)",
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_contratos_estado ON contratos (estado)")
 
@@ -253,10 +253,10 @@ abstract class BaseDatosSdep : RoomDatabase() {
                         "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_pagos_empleadoId ON pagos (empleadoId)",
+                    "CREATE INDEX IF NOT EXISTS index_pagos_empleado_id ON pagos (empleado_id)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_pagos_periodoInicio ON pagos (periodo_inicio)",
+                    "CREATE INDEX IF NOT EXISTS index_pagos_periodo_inicio ON pagos (periodo_inicio)",
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_pagos_pagado ON pagos (pagado)")
 
@@ -302,7 +302,7 @@ abstract class BaseDatosSdep : RoomDatabase() {
                         "profesor_uuid TEXT, observaciones TEXT, " +
                         "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 )
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_grados_periodoId ON grados (periodoId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_grados_periodo_id ON grados (periodo_id)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_grados_nivel ON grados (nivel)")
 
                 db.execSQL(
@@ -313,11 +313,11 @@ abstract class BaseDatosSdep : RoomDatabase() {
                         "observaciones TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_matriculas_estudianteId " +
-                        "ON matriculas (estudianteId)",
+                    "CREATE INDEX IF NOT EXISTS index_matriculas_estudiante_id " +
+                        "ON matriculas (estudiante_id)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_matriculas_gradoId ON matriculas (gradoId)",
+                    "CREATE INDEX IF NOT EXISTS index_matriculas_grado_id ON matriculas (grado_id)",
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_matriculas_activa ON matriculas (activa)")
 
@@ -331,12 +331,12 @@ abstract class BaseDatosSdep : RoomDatabase() {
                 )
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS " +
-                        "index_notas_finales_estudianteId_gradoId_materia " +
-                        "ON notas_finales (estudianteId, gradoId, materia)",
+                        "index_notas_finales_estudiante_id_grado_id_materia " +
+                        "ON notas_finales (estudiante_id, grado_id, materia)",
                 )
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_notas_finales_gradoId " +
-                        "ON notas_finales (gradoId)",
+                    "CREATE INDEX IF NOT EXISTS index_notas_finales_grado_id " +
+                        "ON notas_finales (grado_id)",
                 )
 
                 db.execSQL(

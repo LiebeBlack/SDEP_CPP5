@@ -38,6 +38,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from sync_agent import registro
+from sync_agent.api_acciones import ApiAcciones, ErrorApi
 from sync_agent.aplicador import AplicadorRemoto, momento_de_operacion
 from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads
 from sync_agent.esquema import (
@@ -47,10 +48,11 @@ from sync_agent.esquema import (
     DispositivoSync,
     OpServidor,
 )
+from sync_agent.sesiones import ErrorSesion
 
 logger = logging.getLogger(__name__)
 
-VERSION_PROTOCOLO = "1"
+VERSION_PROTOCOLO = "2"
 MAX_OPS_POR_LOTE = 500
 MAX_BYTES_PETICION = 3 * 1024 * 1024
 MAX_BYTES_BLOB = 64 * 1024 * 1024
@@ -107,6 +109,9 @@ class NucleoCentral:
         self.config.dir_blobs.mkdir(parents=True, exist_ok=True)
         self._candado = threading.Lock()
         self._peticiones: dict[str, list] = {}
+        # Capa del protocolo 2: autenticación de usuario, acciones de negocio
+        # y generación de documentos. Comparte el motor y el almacén de blobs.
+        self.api = ApiAcciones(self)
         logger.info("Nodo central listo en %s", self.config.url_db)
 
     # ------------------------------------------------------------------
@@ -224,6 +229,10 @@ class NucleoCentral:
             "version_protocolo": VERSION_PROTOCOLO,
             "hora": ahora_utc().isoformat(),
             "tablas": registro.tablas_sincronizadas(),
+            # Capacidades del protocolo 2: el móvil decide qué pantallas
+            # ofrecer según lo que el nodo central anuncia.
+            "acciones": ["auth", "consultas", "admin", "nomina", "incidencias",
+                         "contratos", "academicos", "archivos"],
         }
 
     def push(self, dispositivo: DispositivoSync, cuerpo: dict) -> dict:
@@ -252,11 +261,24 @@ class NucleoCentral:
                 dispositivo_local=dispositivo.dispositivo_id,
                 max_bytes_binario=self.config.max_bytes_blob,
             )
+            roles_cache: dict[str, str | None] = {}
             for operacion in operaciones:
                 if not isinstance(operacion, dict):
                     continue
                 op_id = str(operacion.get("op_id") or "")
                 if not op_id:
+                    continue
+                # Autoridad final de permisos: una cuenta central sin permiso
+                # de escritura no puede meter filas por la puerta de
+                # sincronización, aunque el teléfono se la salte en la UI.
+                motivo_permiso = self._autorizar_escritura(sesion, operacion, roles_cache)
+                if motivo_permiso:
+                    rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
+                    logger.info(
+                        "Operación %s rechazada por permisos (%s)",
+                        op_id[:8],
+                        motivo_permiso,
+                    )
                     continue
                 resultado = aplicador.aplicar(operacion)
                 if resultado.diferida:
@@ -302,6 +324,51 @@ class NucleoCentral:
             "conflictos": conflictos,
             "cursor": self.cursor_actual(),
         }
+
+    def _autorizar_escritura(
+        self, sesion, operacion: dict, roles_cache: dict[str, str | None]
+    ) -> str | None:
+        """
+        Comprueba los permisos del rol de la cuenta que envía una operación
+
+        Returns:
+            Motivo de rechazo, o None si la operación está autorizada
+        """
+        tabla = str(operacion.get("tabla") or "")
+        regla = TABLAS_PROTEGIDAS.get(tabla)
+        if regla is None:
+            return None
+        username = str(operacion.get("usuario") or "").strip()
+        if not username:
+            # Puestos antiguos no envían usuario: la confianza sigue en el
+            # token del dispositivo (y en la revocación administrativa).
+            return None
+        if username not in roles_cache:
+            roles_cache[username] = self._rol_central(sesion, username)
+        rol = roles_cache[username]
+        if rol is None:
+            # La cuenta no existe en la base central: pertenece a un puesto
+            # que administra sus propias cuentas (usuarios no se replica).
+            return None
+
+        from src.utils.security import PermissionChecker
+
+        modulo, permiso_escritura = regla
+        tipo = str(operacion.get("operacion") or "upsert")
+        permiso = "delete" if tipo == "delete" else permiso_escritura
+        if not PermissionChecker.has_permission(rol, permiso):
+            return f"permiso_insuficiente:{permiso}"
+        if not PermissionChecker.can_access_module(rol, modulo):
+            return f"modulo_no_autorizado:{modulo}"
+        return None
+
+    @staticmethod
+    def _rol_central(sesion, username: str) -> str | None:
+        """Rol de una cuenta en la base central (None si no existe)"""
+        from src.models import Usuario
+
+        usuario = sesion.query(Usuario).filter(Usuario.username == username).first()
+        return usuario.rol_valor if usuario is not None else None
 
     def pull(self, dispositivo: DispositivoSync, cursor: int, limite: int) -> dict:
         """Devuelve las operaciones posteriores al cursor, sin las propias"""
@@ -354,6 +421,152 @@ class NucleoCentral:
             return int(sesion.query(func.max(OpServidor.seq)).scalar() or 0)
         finally:
             sesion.close()
+
+    # ------------------------------------------------------------------
+    # Protocolo 2: consultas, administración, acciones y archivos
+    # ------------------------------------------------------------------
+    def api_acciones(
+        self, sesion_usuario, dispositivo: DispositivoSync, ruta: str, cuerpo: dict, parametros: dict
+    ) -> dict:
+        """
+        Despacha una petición del protocolo 2 a su acción
+        Args:
+            sesion_usuario: Sesión de usuario ya validada por el gestor
+            dispositivo: Equipo autenticado (para el almacén de binarios)
+            ruta: Ruta absoluta de la petición
+            cuerpo: Cuerpo JSON ya decodificado ({} en GET)
+            parametros: Parámetros de la cadena de consulta
+        Returns:
+            dict JSON listo para responder
+        """
+        from sync_agent.api_acciones import ErrorApi
+
+        api = self.api
+        partes = [p for p in ruta.split("/") if p]
+        # ['api', 'v1', seccion, ...]
+        if len(partes) < 4 or partes[0] != "api" or partes[1] != "v1":
+            raise ErrorApi("recurso no encontrado", 404)
+        seccion, resto = partes[2], partes[3:]
+
+        def entero(indice: int, nombre: str) -> int:
+            try:
+                return int(resto[indice])
+            except (IndexError, ValueError):
+                raise ErrorApi(f"Falta el identificador de {nombre}", 400) from None
+
+        if seccion == "consultas":
+            if resto == ["dashboard"]:
+                return api.dashboard(sesion_usuario)
+            if resto == ["auditoria"]:
+                limite = int((parametros.get("limite") or ["100"])[0] or 100)
+                return api.auditoria(sesion_usuario, limite)
+            raise ErrorApi("recurso no encontrado", 404)
+
+        if seccion == "admin":
+            if resto == ["usuarios"]:
+                if not cuerpo:
+                    return api.listar_usuarios(sesion_usuario)
+                return api.crear_usuario(sesion_usuario, cuerpo)
+            if len(resto) == 2 and resto[0] == "usuarios":
+                usuario_id = entero(1, "usuario")
+                return api.actualizar_usuario(sesion_usuario, usuario_id, cuerpo)
+            if len(resto) == 3 and resto[0] == "usuarios" and resto[2] == "desbloquear":
+                usuario_id = entero(1, "usuario")
+                return api.desbloquear_usuario(sesion_usuario, usuario_id)
+            raise ErrorApi("recurso no encontrado", 404)
+
+        if seccion == "acciones":
+            return self._despachar_accion(api, sesion_usuario, resto, cuerpo)
+
+        if seccion == "archivos":
+            # /archivos/pdf/{tipo} · /archivos/excel/{tipo} · /archivos/subir
+            if len(resto) == 2 and resto[0] in ("pdf", "excel"):
+                return api.generar_archivo(sesion_usuario, resto[1], cuerpo, dispositivo)
+            if resto == ["subir"]:
+                nombre = (parametros.get("nombre") or ["archivo.bin"])[0]
+                # El contenido viaja como cuerpo binario (no JSON)
+                contenido = self._cuerpo_archivo()
+                return api.subir_archivo(sesion_usuario, nombre, contenido, dispositivo)
+            raise ErrorApi("recurso no encontrado", 404)
+
+        raise ErrorApi("recurso no encontrado", 404)
+
+    @staticmethod
+    def _despachar_accion(api, sesion_usuario, resto: list[str], cuerpo: dict) -> dict:
+        """Despacha /api/v1/acciones/... según su segmento"""
+        from sync_agent.api_acciones import ErrorApi
+
+        def entero(indice: int, nombre: str) -> int:
+            try:
+                return int(resto[indice])
+            except (IndexError, ValueError):
+                raise ErrorApi(f"Falta el identificador de {nombre}", 400) from None
+
+        if not resto:
+            raise ErrorApi("recurso no encontrado", 404)
+
+        grupo = resto[0]
+        if grupo == "nomina":
+            if resto[1:] == ["generar"]:
+                return api.generar_nomina_periodo(sesion_usuario, cuerpo)
+            if resto[1:] == ["resumen"]:
+                return api.resumen_nomina(sesion_usuario, cuerpo)
+            if len(resto) == 3 and resto[2] == "pagado":
+                return api.marcar_pagado(sesion_usuario, entero(1, "pago"))
+
+        elif grupo == "incidencias":
+            if len(resto) == 3 and resto[2] == "aprobar":
+                return api.aprobar_incidencia(sesion_usuario, entero(1, "incidencia"), cuerpo)
+            if len(resto) == 3 and resto[2] == "rechazar":
+                return api.rechazar_incidencia(sesion_usuario, entero(1, "incidencia"), cuerpo)
+
+        elif grupo == "contratos":
+            if len(resto) == 3 and resto[2] == "renovar":
+                return api.renovar_contrato(sesion_usuario, entero(1, "contrato"), cuerpo)
+            if len(resto) == 3 and resto[2] == "terminar":
+                return api.terminar_contrato(sesion_usuario, entero(1, "contrato"), cuerpo)
+
+        elif grupo == "academicos":
+            return NucleoCentral._despachar_academico(api, sesion_usuario, resto[1:], cuerpo)
+
+        raise ErrorApi("recurso no encontrado", 404)
+
+    @staticmethod
+    def _despachar_academico(api, sesion_usuario, resto: list[str], cuerpo: dict) -> dict:
+        """Despacha las rutas académicas: periodos, notas y tokens"""
+        from sync_agent.api_acciones import ErrorApi
+
+        def entero(indice: int, nombre: str) -> int:
+            try:
+                return int(resto[indice])
+            except (IndexError, ValueError):
+                raise ErrorApi(f"Falta el identificador de {nombre}", 400) from None
+
+        if not resto:
+            raise ErrorApi("recurso no encontrado", 404)
+
+        if resto[0] == "periodo":
+            if len(resto) == 3 and resto[2] == "cerrar":
+                return api.cerrar_periodo(sesion_usuario, entero(1, "periodo"), cuerpo)
+            if len(resto) == 3 and resto[2] == "reabrir":
+                return api.reabrir_periodo(sesion_usuario, entero(1, "periodo"), cuerpo)
+
+        if resto == ["notas", "lote"]:
+            return api.cargar_notas_lote(sesion_usuario, cuerpo)
+        if len(resto) == 3 and resto[0] == "notas" and resto[1] == "grado":
+            return api.notas_de_grado(sesion_usuario, entero(2, "grado"))
+        if resto == ["notas", "boletin"]:
+            return api.boletin_estudiante(sesion_usuario, cuerpo)
+        if resto == ["notas", "acta"]:
+            return api.acta_grado(sesion_usuario, cuerpo)
+        if resto == ["notas", "consolidado"]:
+            return api.consolidado_periodo(sesion_usuario, cuerpo)
+        if resto == ["token", "emitir"]:
+            return api.emitir_token_academico(sesion_usuario)
+        if resto == ["token", "revocar"]:
+            return api.revocar_token_academico(sesion_usuario, cuerpo)
+
+        raise ErrorApi("recurso no encontrado", 404)
 
     # ------------------------------------------------------------------
     # Binarios
@@ -562,6 +775,34 @@ RUTA_PUSH = "/api/v1/push"
 RUTA_PULL = "/api/v1/pull"
 RUTA_BLOB = "/api/v1/blob"
 
+# Rutas del protocolo 2 (acciones y consultas de la aplicación móvil)
+RUTA_AUTH = "/api/v1/auth"
+RUTA_CONSULTAS = "/api/v1/consultas"
+RUTA_ADMIN = "/api/v1/admin"
+RUTA_ACCIONES = "/api/v1/acciones"
+RUTA_ARCHIVOS = "/api/v1/archivos"
+
+# Escritura protegida por permisos: tabla -> (módulo, permiso de escritura)
+# Un ``push`` de una cuenta que exista en la base central se autoriza aquí con
+# la misma matriz que usa la interfaz de escritorio. Las operaciones sin
+# usuario declarado (puestos antiguos) o de cuentas locales de otro puesto no
+# se tocan: ``usuarios`` no se replica, así que solo se exige permiso cuando la
+# cuenta es conocida en el nodo central. ``registros_moviles`` y
+# ``notas_finales`` quedan fuera: la primera es captura de campo autenticada y
+# las segundas las autoriza el token académico, no el mapa de módulos.
+TABLAS_PROTEGIDAS: dict[str, tuple[str, str]] = {
+    "empleados": ("empleados", "update"),
+    "documentos": ("documentos", "update"),
+    "incidencias": ("incidencias", "update"),
+    "contratos": ("contratos", "update"),
+    "pagos": ("nomina", "update"),
+    "configuraciones": ("configuracion", "config"),
+    "estudiantes": ("estudiantes", "update"),
+    "periodos_academicos": ("notas", "update"),
+    "grados": ("estudiantes", "update"),
+    "matriculas": ("estudiantes", "update"),
+}
+
 
 class ManejadorSync(BaseHTTPRequestHandler):
     """Traduce cada petición HTTP en una llamada al núcleo central"""
@@ -600,6 +841,31 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 self._responder_json(200, self.nucleo.ping())
                 return
 
+            # --- Protocolo 2: autenticación de usuario (sin token de equipo
+            # todavía: el login es el único punto abierto y por eso lleva su
+            # propio límite de peticiones) ---
+            if ruta.path == f"{RUTA_AUTH}/login" and metodo == "POST":
+                self.nucleo.limitar_tasa("login:" + (self.client_address[0] or "?"))
+                datos = self.nucleo.api.login(
+                    self._leer_json(), self.headers.get("X-Dispositivo")
+                )
+                self._responder_json(200, datos)
+                return
+
+            if ruta.path.startswith(f"{RUTA_AUTH}/"):
+                accion = ruta.path[len(RUTA_AUTH) + 1 :]
+                token = self._token_sesion()
+                if accion == "sesion" and metodo == "GET":
+                    self._responder_json(200, self.nucleo.api.info_sesion(token))
+                elif accion == "logout" and metodo == "POST":
+                    self._responder_json(200, self.nucleo.api.cerrar_sesion(token))
+                elif accion == "cambiar-password" and metodo == "POST":
+                    datos = self.nucleo.api.cambiar_password(token, self._leer_json())
+                    self._responder_json(200, datos)
+                else:
+                    self._responder_json(404, {"error": "recurso no encontrado"})
+                return
+
             dispositivo = self._autenticar()
             self.nucleo.limitar_tasa(dispositivo.dispositivo_id)
 
@@ -618,7 +884,31 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 self._atender_blob(metodo, dispositivo, ruta.path[len(RUTA_BLOB) + 1 :])
                 return
 
+            # --- Protocolo 2: consultas, administración, acciones y archivos ---
+            if ruta.path.startswith(
+                (RUTA_CONSULTAS + "/", RUTA_ADMIN + "/", RUTA_ACCIONES + "/",
+                 RUTA_ARCHIVOS + "/")
+            ):
+                sesion_usuario = self.nucleo.api.validar(self._token_sesion())
+                # /archivos/subir trae bytes crudos, no JSON: su cuerpo se lee
+                # como binario dentro de la acción.
+                es_subida = ruta.path.startswith(RUTA_ARCHIVOS + "/subir")
+                cuerpo = {} if es_subida else (self._leer_json() if metodo == "POST" else {})
+                datos = self.nucleo.api_acciones(
+                    sesion_usuario,
+                    dispositivo,
+                    ruta.path,
+                    cuerpo,
+                    parse_qs(ruta.query),
+                )
+                self._responder_json(200, datos)
+                return
+
             self._responder_json(404, {"error": "recurso no encontrado"})
+        except ErrorApi as error:
+            self._responder_json(error.codigo, {"error": str(error)})
+        except ErrorSesion as error:
+            self._responder_json(error.codigo, {"error": str(error)})
         except ErrorPeticion as error:
             self._responder_json(error.codigo, {"error": str(error)})
         except (ValueError, TypeError) as error:
@@ -645,6 +935,14 @@ class ManejadorSync(BaseHTTPRequestHandler):
         cabecera = self.headers.get("Authorization", "")
         token = cabecera[7:].strip() if cabecera.lower().startswith("bearer ") else ""
         return self.nucleo.autenticar(self.headers.get("X-Dispositivo"), token)
+
+    def _token_sesion(self) -> str:
+        """Token de sesión de usuario (cabecera ``X-Sesion``)"""
+        return (self.headers.get("X-Sesion") or "").strip()
+
+    def _cuerpo_archivo(self) -> bytes:
+        """Cuerpo crudo de la petición (para subidas binarias)"""
+        return getattr(self, "_cuerpo", b"")
 
     # ------------------------------------------------------------------
     # Cuerpo y respuestas

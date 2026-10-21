@@ -228,6 +228,31 @@ class DispositivoSync(BaseSync):
     version_app: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
 
+class SesionApi(BaseSync):
+    """
+    Sesiones de usuario del protocolo 2
+
+    El cliente móvil entra con usuario y contraseña de la tabla ``usuarios``
+    y recibe un token aleatorio. Aquí solo queda su hash (SHA-256): nunca el
+    token en claro, y tampoco la contraseña, que sigue viviendo como derivación
+    PBKDF2 en la cuenta.
+    """
+
+    __tablename__ = "sync_sesiones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    nombre_completo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    rol: Mapped[str] = mapped_column(String(20), nullable=False)
+    dispositivo_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    creada_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
+    expira_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    expira_absoluta: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    debe_cambiar_password: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    revocada: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 class OpServidor(BaseSync):
     """Log autoritativo del nodo central: el ``seq`` es el orden global"""
 

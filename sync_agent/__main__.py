@@ -598,11 +598,6 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Crea usuarios por defecto (admin, manager, user, viewer)",
     )
-    p_auto.add_argument(
-        "--crear-dispositivo",
-        metavar="NOMBRE",
-        help="Crea un dispositivo por defecto con el nombre indicado",
-    )
     p_auto.set_defaults(func=cmd_autoconfig)
 
     return parser

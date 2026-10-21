@@ -198,49 +198,49 @@ object Espejo {
                 campos["nombres"] = JsonPrimitive(e.nombres)
                 campos["apellidos"] = JsonPrimitive(e.apellidos)
                 campos["cedula"] = JsonPrimitive(e.cedula)
-                poner("fecha_nacimiento", e.fechaNacimiento, completa || a?.fechaNacimiento != e.fechaNacimiento)
-                poner("genero", e.genero, completa || a?.genero != e.genero)
-                poner("estado_civil", e.estadoCivil, completa || a?.estadoCivil != e.estadoCivil)
-                poner("nacionalidad", e.nacionalidad, completa || a?.nacionalidad != e.nacionalidad)
-                poner("peso", e.peso, completa || a?.peso != e.peso)
-                poner("altura", e.altura, completa || a?.altura != e.altura)
-                poner("tipo_sangre", e.tipoSangre, completa || a?.tipoSangre != e.tipoSangre)
-                poner("telefono", e.telefono, completa || a?.telefono != e.telefono)
-                poner("celular", e.celular, completa || a?.celular != e.celular)
-                poner("email", e.email, completa || a?.email != e.email)
-                poner("direccion", e.direccion, completa || a?.direccion != e.direccion)
-                poner("ciudad", e.ciudad, completa || a?.ciudad != e.ciudad)
-                poner("estado", e.estado, completa || a?.estado != e.estado)
-                poner("codigo_postal", e.codigoPostal, completa || a?.codigoPostal != e.codigoPostal)
+                poner(campos,"fecha_nacimiento", e.fechaNacimiento, completa || a?.fechaNacimiento != e.fechaNacimiento)
+                poner(campos,"genero", e.genero, completa || a?.genero != e.genero)
+                poner(campos,"estado_civil", e.estadoCivil, completa || a?.estadoCivil != e.estadoCivil)
+                poner(campos,"nacionalidad", e.nacionalidad, completa || a?.nacionalidad != e.nacionalidad)
+                poner(campos,"peso", e.peso, completa || a?.peso != e.peso)
+                poner(campos,"altura", e.altura, completa || a?.altura != e.altura)
+                poner(campos,"tipo_sangre", e.tipoSangre, completa || a?.tipoSangre != e.tipoSangre)
+                poner(campos,"telefono", e.telefono, completa || a?.telefono != e.telefono)
+                poner(campos,"celular", e.celular, completa || a?.celular != e.celular)
+                poner(campos,"email", e.email, completa || a?.email != e.email)
+                poner(campos,"direccion", e.direccion, completa || a?.direccion != e.direccion)
+                poner(campos,"ciudad", e.ciudad, completa || a?.ciudad != e.ciudad)
+                poner(campos,"estado", e.estado, completa || a?.estado != e.estado)
+                poner(campos,"codigo_postal", e.codigoPostal, completa || a?.codigoPostal != e.codigoPostal)
                 campos["tipo_empleado"] = JsonPrimitive(e.tipoEmpleado)
                 campos["cargo"] = JsonPrimitive(e.cargo)
                 campos["departamento"] = JsonPrimitive(e.departamento)
                 campos["fecha_contratacion"] = JsonPrimitive(e.fechaContratacion)
-                poner("fecha_terminacion", e.fechaTerminacion, completa || a?.fechaTerminacion != e.fechaTerminacion)
+                poner(campos,"fecha_terminacion", e.fechaTerminacion, completa || a?.fechaTerminacion != e.fechaTerminacion)
                 campos["salario_base"] = JsonPrimitive(e.salarioBase)
-                poner("activo", e.activo, completa || a?.activo != e.activo)
-                poner("nivel_educativo", e.nivelEducativo, completa || a?.nivelEducativo != e.nivelEducativo)
-                poner("especialidad", e.especialidad, completa || a?.especialidad != e.especialidad)
-                poner("titulo_obtenido", e.tituloObtenido, completa || a?.tituloObtenido != e.tituloObtenido)
-                poner("titulo_secundaria", e.tituloSecundaria, completa || a?.tituloSecundaria != e.tituloSecundaria)
-                poner("institucion_bancaria", e.institucionBancaria, completa || a?.institucionBancaria != e.institucionBancaria)
-                poner("numero_cuenta", e.numeroCuenta, completa || a?.numeroCuenta != e.numeroCuenta)
-                poner("tipo_cuenta", e.tipoCuenta, completa || a?.tipoCuenta != e.tipoCuenta)
-                poner("carnet_discapacidad", e.carnetDiscapacidad, completa || a?.carnetDiscapacidad != e.carnetDiscapacidad)
-                poner("enfermedades_preexistentes", e.enfermedadesPreexistentes, completa || a?.enfermedadesPreexistentes != e.enfermedadesPreexistentes)
-                poner("alergias_medicamentosas", e.alergiasMedicamentosas, completa || a?.alergiasMedicamentosas != e.alergiasMedicamentosas)
-                poner("alergias_alimentarias", e.alergiasAlimentarias, completa || a?.alergiasAlimentarias != e.alergiasAlimentarias)
-                poner("tipo_contratacion", e.tipoContratacion, completa || a?.tipoContratacion != e.tipoContratacion)
-                poner("hijos", e.hijos, completa || a?.hijos != e.hijos)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
-                poner("contacto_emergencia_nombre", e.contactoEmergenciaNombre, completa || a?.contactoEmergenciaNombre != e.contactoEmergenciaNombre)
-                poner("contacto_emergencia_telefono", e.contactoEmergenciaTelefono, completa || a?.contactoEmergenciaTelefono != e.contactoEmergenciaTelefono)
-                poner("contacto_emergencia_relacion", e.contactoEmergenciaRelacion, completa || a?.contactoEmergenciaRelacion != e.contactoEmergenciaRelacion)
+                poner(campos,"activo", e.activo, completa || a?.activo != e.activo)
+                poner(campos,"nivel_educativo", e.nivelEducativo, completa || a?.nivelEducativo != e.nivelEducativo)
+                poner(campos,"especialidad", e.especialidad, completa || a?.especialidad != e.especialidad)
+                poner(campos,"titulo_obtenido", e.tituloObtenido, completa || a?.tituloObtenido != e.tituloObtenido)
+                poner(campos,"titulo_secundaria", e.tituloSecundaria, completa || a?.tituloSecundaria != e.tituloSecundaria)
+                poner(campos,"institucion_bancaria", e.institucionBancaria, completa || a?.institucionBancaria != e.institucionBancaria)
+                poner(campos,"numero_cuenta", e.numeroCuenta, completa || a?.numeroCuenta != e.numeroCuenta)
+                poner(campos,"tipo_cuenta", e.tipoCuenta, completa || a?.tipoCuenta != e.tipoCuenta)
+                poner(campos,"carnet_discapacidad", e.carnetDiscapacidad, completa || a?.carnetDiscapacidad != e.carnetDiscapacidad)
+                poner(campos,"enfermedades_preexistentes", e.enfermedadesPreexistentes, completa || a?.enfermedadesPreexistentes != e.enfermedadesPreexistentes)
+                poner(campos,"alergias_medicamentosas", e.alergiasMedicamentosas, completa || a?.alergiasMedicamentosas != e.alergiasMedicamentosas)
+                poner(campos,"alergias_alimentarias", e.alergiasAlimentarias, completa || a?.alergiasAlimentarias != e.alergiasAlimentarias)
+                poner(campos,"tipo_contratacion", e.tipoContratacion, completa || a?.tipoContratacion != e.tipoContratacion)
+                poner(campos,"hijos", e.hijos, completa || a?.hijos != e.hijos)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"contacto_emergencia_nombre", e.contactoEmergenciaNombre, completa || a?.contactoEmergenciaNombre != e.contactoEmergenciaNombre)
+                poner(campos,"contacto_emergencia_telefono", e.contactoEmergenciaTelefono, completa || a?.contactoEmergenciaTelefono != e.contactoEmergenciaTelefono)
+                poner(campos,"contacto_emergencia_relacion", e.contactoEmergenciaRelacion, completa || a?.contactoEmergenciaRelacion != e.contactoEmergenciaRelacion)
                 if (completa) {
-                    poner("created_at", e.creadoEn.ifBlank { null }, true)
-                    poner("updated_at", e.actualizadoEn.ifBlank { null }, true)
+                    poner(campos,"created_at", e.creadoEn.ifBlank { null }, true)
+                    poner(campos,"updated_at", e.actualizadoEn.ifBlank { null }, true)
                 } else if (a?.actualizadoEn != e.actualizadoEn) {
-                    poner("updated_at", e.actualizadoEn.ifBlank { null }, true)
+                    poner(campos,"updated_at", e.actualizadoEn.ifBlank { null }, true)
                 }
             }
 
@@ -250,13 +250,13 @@ object Espejo {
                 campos["empleado_id"] = JsonPrimitive(e.empleadoId.toString())
                 campos["tipo_documento"] = JsonPrimitive(e.tipoDocumento)
                 campos["titulo"] = JsonPrimitive(e.titulo)
-                poner("descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
-                poner("numero_documento", e.numeroDocumento, completa || a?.numeroDocumento != e.numeroDocumento)
-                poner("fecha_emision", e.fechaEmision, completa || a?.fechaEmision != e.fechaEmision)
-                poner("fecha_vencimiento", e.fechaVencimiento, completa || a?.fechaVencimiento != e.fechaVencimiento)
+                poner(campos,"descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
+                poner(campos,"numero_documento", e.numeroDocumento, completa || a?.numeroDocumento != e.numeroDocumento)
+                poner(campos,"fecha_emision", e.fechaEmision, completa || a?.fechaEmision != e.fechaEmision)
+                poner(campos,"fecha_vencimiento", e.fechaVencimiento, completa || a?.fechaVencimiento != e.fechaVencimiento)
                 campos["nombre_archivo"] = JsonPrimitive(e.nombreArchivo)
-                poner("tamano_bytes", e.tamanoBytes, completa || a?.tamanoBytes != e.tamanoBytes)
-                poner("tipo_mime", e.tipoMime, completa || a?.tipoMime != e.tipoMime)
+                poner(campos,"tamano_bytes", e.tamanoBytes, completa || a?.tamanoBytes != e.tamanoBytes)
+                poner(campos,"tipo_mime", e.tipoMime, completa || a?.tipoMime != e.tipoMime)
                 // El contenido viaja como hash (canal de binarios), no como bytes
                 if (e.contenidoHash != null && (completa || a?.contenidoHash != e.contenidoHash)) {
                     campos["contenido_binario"] = marcaBlob(
@@ -264,8 +264,8 @@ object Espejo {
                         e.tamanoBytes ?: 0,
                     )
                 }
-                poner("activo", e.activo, completa || a?.activo != e.activo)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"activo", e.activo, completa || a?.activo != e.activo)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "incidencias" -> {
@@ -277,23 +277,23 @@ object Espejo {
                 campos["fecha_inicio"] = JsonPrimitive(e.fechaInicio)
                 campos["fecha_fin"] = JsonPrimitive(e.fechaFin)
                 campos["fecha_solicitud"] = JsonPrimitive(e.fechaSolicitud)
-                poner("fecha_aprobacion", e.fechaAprobacion, completa || a?.fechaAprobacion != e.fechaAprobacion)
+                poner(campos,"fecha_aprobacion", e.fechaAprobacion, completa || a?.fechaAprobacion != e.fechaAprobacion)
                 campos["motivo"] = JsonPrimitive(e.motivo)
-                poner("descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
+                poner(campos,"descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
                 campos["dias_solicitados"] = JsonPrimitive(e.diasSolicitados)
-                poner("dias_aprobados", e.diasAprobados, completa || a?.diasAprobados != e.diasAprobados)
-                poner("documento_soporte_nombre", e.documentoSoporteNombre, completa || a?.documentoSoporteNombre != e.documentoSoporteNombre)
+                poner(campos,"dias_aprobados", e.diasAprobados, completa || a?.diasAprobados != e.diasAprobados)
+                poner(campos,"documento_soporte_nombre", e.documentoSoporteNombre, completa || a?.documentoSoporteNombre != e.documentoSoporteNombre)
                 if (e.documentoSoporteHash != null && (completa || a?.documentoSoporteHash != e.documentoSoporteHash)) {
                     campos["documento_soporte_binario"] = marcaBlob(
                         e.documentoSoporteHash,
                         e.documentoSoporteBinario?.size ?: 0,
                     )
                 }
-                poner("aprobado_por", e.aprobadoPor, completa || a?.aprobadoPor != e.aprobadoPor)
-                poner("comentarios_aprobacion", e.comentariosAprobacion, completa || a?.comentariosAprobacion != e.comentariosAprobacion)
-                poner("afecta_nominas", e.afectaNominas, completa || a?.afectaNominas != e.afectaNominas)
-                poner("descuento_dias", e.descuentoDias, completa || a?.descuentoDias != e.descuentoDias)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"aprobado_por", e.aprobadoPor, completa || a?.aprobadoPor != e.aprobadoPor)
+                poner(campos,"comentarios_aprobacion", e.comentariosAprobacion, completa || a?.comentariosAprobacion != e.comentariosAprobacion)
+                poner(campos,"afecta_nominas", e.afectaNominas, completa || a?.afectaNominas != e.afectaNominas)
+                poner(campos,"descuento_dias", e.descuentoDias, completa || a?.descuentoDias != e.descuentoDias)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "contratos" -> {
@@ -304,19 +304,19 @@ object Espejo {
                 campos["tipo"] = JsonPrimitive(e.tipo)
                 campos["estado"] = JsonPrimitive(e.estado)
                 campos["cargo"] = JsonPrimitive(e.cargo)
-                poner("departamento", e.departamento, completa || a?.departamento != e.departamento)
+                poner(campos,"departamento", e.departamento, completa || a?.departamento != e.departamento)
                 campos["salario_pactado"] = JsonPrimitive(e.salarioPactado)
                 campos["horas_semanales"] = JsonPrimitive(e.horasSemanales)
                 campos["fecha_inicio"] = JsonPrimitive(e.fechaInicio)
-                poner("fecha_fin", e.fechaFin, completa || a?.fechaFin != e.fechaFin)
-                poner("renovacion_automatica", e.renovacionAutomatica, completa || a?.renovacionAutomatica != e.renovacionAutomatica)
-                poner("contrato_anterior_id", e.contratoAnteriorId?.toString(), completa || a?.contratoAnteriorId != e.contratoAnteriorId)
-                poner("clausulas", e.clausulas, completa || a?.clausulas != e.clausulas)
-                poner("motivo_terminacion", e.motivoTerminacion, completa || a?.motivoTerminacion != e.motivoTerminacion)
-                poner("fecha_terminacion", e.fechaTerminacion, completa || a?.fechaTerminacion != e.fechaTerminacion)
-                poner("liquidacion_monto", e.liquidacionMonto, completa || a?.liquidacionMonto != e.liquidacionMonto)
-                poner("aprobado_por", e.aprobadoPor, completa || a?.aprobadoPor != e.aprobadoPor)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"fecha_fin", e.fechaFin, completa || a?.fechaFin != e.fechaFin)
+                poner(campos,"renovacion_automatica", e.renovacionAutomatica, completa || a?.renovacionAutomatica != e.renovacionAutomatica)
+                poner(campos,"contrato_anterior_id", e.contratoAnteriorId?.toString(), completa || a?.contratoAnteriorId != e.contratoAnteriorId)
+                poner(campos,"clausulas", e.clausulas, completa || a?.clausulas != e.clausulas)
+                poner(campos,"motivo_terminacion", e.motivoTerminacion, completa || a?.motivoTerminacion != e.motivoTerminacion)
+                poner(campos,"fecha_terminacion", e.fechaTerminacion, completa || a?.fechaTerminacion != e.fechaTerminacion)
+                poner(campos,"liquidacion_monto", e.liquidacionMonto, completa || a?.liquidacionMonto != e.liquidacionMonto)
+                poner(campos,"aprobado_por", e.aprobadoPor, completa || a?.aprobadoPor != e.aprobadoPor)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "pagos" -> {
@@ -331,31 +331,31 @@ object Espejo {
                 campos["monto_bruto"] = JsonPrimitive(e.montoBruto)
                 campos["monto_neto"] = JsonPrimitive(e.montoNeto)
                 campos["salario_base"] = JsonPrimitive(e.salarioBase)
-                poner("descuentos", e.descuentos, completa || a?.descuentos != e.descuentos)
-                poner("bonificaciones", e.bonificaciones, completa || a?.bonificaciones != e.bonificaciones)
-                poner("horas_extra", e.horasExtra, completa || a?.horasExtra != e.horasExtra)
-                poner("deduccion_seguro", e.deduccionSeguro, completa || a?.deduccionSeguro != e.deduccionSeguro)
-                poner("deduccion_pension", e.deduccionPension, completa || a?.deduccionPension != e.deduccionPension)
-                poner("deduccion_impuesto", e.deduccionImpuesto, completa || a?.deduccionImpuesto != e.deduccionImpuesto)
-                poner("otras_deducciones", e.otrasDeducciones, completa || a?.otrasDeducciones != e.otrasDeducciones)
-                poner("modalidad_calculo", e.modalidadCalculo, completa || a?.modalidadCalculo != e.modalidadCalculo)
-                poner("base_gravable", e.baseGravable, completa || a?.baseGravable != e.baseGravable)
-                poner("horas_extra_diurnas", e.horasExtraDiurnas, completa || a?.horasExtraDiurnas != e.horasExtraDiurnas)
-                poner("horas_extra_nocturnas", e.horasExtraNocturnas, completa || a?.horasExtraNocturnas != e.horasExtraNocturnas)
-                poner("horas_extra_feriadas", e.horasExtraFeriadas, completa || a?.horasExtraFeriadas != e.horasExtraFeriadas)
-                poner("aguinaldo", e.aguinaldo, completa || a?.aguinaldo != e.aguinaldo)
-                poner("bono_vacacional", e.bonoVacacional, completa || a?.bonoVacacional != e.bonoVacacional)
-                poner("aporte_seguro_patronal", e.aporteSeguroPatronal, completa || a?.aporteSeguroPatronal != e.aporteSeguroPatronal)
-                poner("aporte_pension_patronal", e.aportePensionPatronal, completa || a?.aportePensionPatronal != e.aportePensionPatronal)
-                poner("isr_tramo", e.isrTramo, completa || a?.isrTramo != e.isrTramo)
-                poner("dias_laborados", e.diasLaborados, completa || a?.diasLaborados != e.diasLaborados)
-                poner("dias_periodo", e.diasPeriodo, completa || a?.diasPeriodo != e.diasPeriodo)
-                poner("prorrateado", e.prorrateado, completa || a?.prorrateado != e.prorrateado)
-                poner("descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
-                poner("referencia_pago", e.referenciaPago, completa || a?.referenciaPago != e.referenciaPago)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
-                poner("pagado", e.pagado, completa || a?.pagado != e.pagado)
-                poner("fecha_registro_pago", e.fechaRegistroPago, completa || a?.fechaRegistroPago != e.fechaRegistroPago)
+                poner(campos,"descuentos", e.descuentos, completa || a?.descuentos != e.descuentos)
+                poner(campos,"bonificaciones", e.bonificaciones, completa || a?.bonificaciones != e.bonificaciones)
+                poner(campos,"horas_extra", e.horasExtra, completa || a?.horasExtra != e.horasExtra)
+                poner(campos,"deduccion_seguro", e.deduccionSeguro, completa || a?.deduccionSeguro != e.deduccionSeguro)
+                poner(campos,"deduccion_pension", e.deduccionPension, completa || a?.deduccionPension != e.deduccionPension)
+                poner(campos,"deduccion_impuesto", e.deduccionImpuesto, completa || a?.deduccionImpuesto != e.deduccionImpuesto)
+                poner(campos,"otras_deducciones", e.otrasDeducciones, completa || a?.otrasDeducciones != e.otrasDeducciones)
+                poner(campos,"modalidad_calculo", e.modalidadCalculo, completa || a?.modalidadCalculo != e.modalidadCalculo)
+                poner(campos,"base_gravable", e.baseGravable, completa || a?.baseGravable != e.baseGravable)
+                poner(campos,"horas_extra_diurnas", e.horasExtraDiurnas, completa || a?.horasExtraDiurnas != e.horasExtraDiurnas)
+                poner(campos,"horas_extra_nocturnas", e.horasExtraNocturnas, completa || a?.horasExtraNocturnas != e.horasExtraNocturnas)
+                poner(campos,"horas_extra_feriadas", e.horasExtraFeriadas, completa || a?.horasExtraFeriadas != e.horasExtraFeriadas)
+                poner(campos,"aguinaldo", e.aguinaldo, completa || a?.aguinaldo != e.aguinaldo)
+                poner(campos,"bono_vacacional", e.bonoVacacional, completa || a?.bonoVacacional != e.bonoVacacional)
+                poner(campos,"aporte_seguro_patronal", e.aporteSeguroPatronal, completa || a?.aporteSeguroPatronal != e.aporteSeguroPatronal)
+                poner(campos,"aporte_pension_patronal", e.aportePensionPatronal, completa || a?.aportePensionPatronal != e.aportePensionPatronal)
+                poner(campos,"isr_tramo", e.isrTramo, completa || a?.isrTramo != e.isrTramo)
+                poner(campos,"dias_laborados", e.diasLaborados, completa || a?.diasLaborados != e.diasLaborados)
+                poner(campos,"dias_periodo", e.diasPeriodo, completa || a?.diasPeriodo != e.diasPeriodo)
+                poner(campos,"prorrateado", e.prorrateado, completa || a?.prorrateado != e.prorrateado)
+                poner(campos,"descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
+                poner(campos,"referencia_pago", e.referenciaPago, completa || a?.referenciaPago != e.referenciaPago)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"pagado", e.pagado, completa || a?.pagado != e.pagado)
+                poner(campos,"fecha_registro_pago", e.fechaRegistroPago, completa || a?.fechaRegistroPago != e.fechaRegistroPago)
             }
 
             "estudiantes" -> {
@@ -363,29 +363,29 @@ object Espejo {
                 val a = anterior as? EstudianteEntity
                 campos["nombres"] = JsonPrimitive(e.nombres)
                 campos["apellidos"] = JsonPrimitive(e.apellidos)
-                poner("cedula", e.cedula, completa || a?.cedula != e.cedula)
-                poner("fecha_nacimiento", e.fechaNacimiento, completa || a?.fechaNacimiento != e.fechaNacimiento)
-                poner("genero", e.genero, completa || a?.genero != e.genero)
+                poner(campos,"cedula", e.cedula, completa || a?.cedula != e.cedula)
+                poner(campos,"fecha_nacimiento", e.fechaNacimiento, completa || a?.fechaNacimiento != e.fechaNacimiento)
+                poner(campos,"genero", e.genero, completa || a?.genero != e.genero)
                 campos["nivel"] = JsonPrimitive(e.nivel)
-                poner("representante", e.representante, completa || a?.representante != e.representante)
-                poner("telefono", e.telefono, completa || a?.telefono != e.telefono)
-                poner("telefono_representante", e.telefonoRepresentante, completa || a?.telefonoRepresentante != e.telefonoRepresentante)
-                poner("email", e.email, completa || a?.email != e.email)
-                poner("direccion", e.direccion, completa || a?.direccion != e.direccion)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
-                poner("activo", e.activo, completa || a?.activo != e.activo)
+                poner(campos,"representante", e.representante, completa || a?.representante != e.representante)
+                poner(campos,"telefono", e.telefono, completa || a?.telefono != e.telefono)
+                poner(campos,"telefono_representante", e.telefonoRepresentante, completa || a?.telefonoRepresentante != e.telefonoRepresentante)
+                poner(campos,"email", e.email, completa || a?.email != e.email)
+                poner(campos,"direccion", e.direccion, completa || a?.direccion != e.direccion)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"activo", e.activo, completa || a?.activo != e.activo)
             }
 
             "periodos_academicos" -> {
                 val e = entidad as PeriodoAcademicoEntity
                 val a = anterior as? PeriodoAcademicoEntity
                 campos["nombre"] = JsonPrimitive(e.nombre)
-                poner("fecha_inicio", e.fechaInicio, completa || a?.fechaInicio != e.fechaInicio)
-                poner("fecha_fin", e.fechaFin, completa || a?.fechaFin != e.fechaFin)
+                poner(campos,"fecha_inicio", e.fechaInicio, completa || a?.fechaInicio != e.fechaInicio)
+                poner(campos,"fecha_fin", e.fechaFin, completa || a?.fechaFin != e.fechaFin)
                 campos["estado"] = JsonPrimitive(e.estado)
-                poner("cerrado_en", e.cerradoEn, completa || a?.cerradoEn != e.cerradoEn)
-                poner("cerrado_por", e.cerradoPor, completa || a?.cerradoPor != e.cerradoPor)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"cerrado_en", e.cerradoEn, completa || a?.cerradoEn != e.cerradoEn)
+                poner(campos,"cerrado_por", e.cerradoPor, completa || a?.cerradoPor != e.cerradoPor)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "grados" -> {
@@ -395,7 +395,7 @@ object Espejo {
                 campos["nivel"] = JsonPrimitive(e.nivel)
                 campos["nombre"] = JsonPrimitive(e.nombre)
                 campos["seccion"] = JsonPrimitive(e.seccion)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "matriculas" -> {
@@ -404,8 +404,8 @@ object Espejo {
                 campos["estudiante_id"] = JsonPrimitive(e.estudianteId.toString())
                 campos["grado_id"] = JsonPrimitive(e.gradoId.toString())
                 campos["fecha_matricula"] = JsonPrimitive(e.fechaMatricula)
-                poner("activa", e.activa, completa || a?.activa != e.activa)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"activa", e.activa, completa || a?.activa != e.activa)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "notas_finales" -> {
@@ -415,19 +415,19 @@ object Espejo {
                 campos["grado_id"] = JsonPrimitive(e.gradoId.toString())
                 campos["materia"] = JsonPrimitive(e.materia)
                 campos["calificacion"] = JsonPrimitive(e.calificacion)
-                poner("registrado_por", e.registradoPor, completa || a?.registradoPor != e.registradoPor)
-                poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
+                poner(campos,"registrado_por", e.registradoPor, completa || a?.registradoPor != e.registradoPor)
+                poner(campos,"observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
             "configuraciones" -> {
                 val e = entidad as ConfiguracionEntity
                 val a = anterior as? ConfiguracionEntity
                 campos["clave"] = JsonPrimitive(e.clave)
-                poner("valor", e.valor, completa || a?.valor != e.valor)
-                poner("descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
+                poner(campos,"valor", e.valor, completa || a?.valor != e.valor)
+                poner(campos,"descripcion", e.descripcion, completa || a?.descripcion != e.descripcion)
                 campos["tipo_dato"] = JsonPrimitive(e.tipoDato)
-                poner("categoria", e.categoria, completa || a?.categoria != e.categoria)
-                poner("editable", e.editable, completa || a?.editable != e.editable)
+                poner(campos,"categoria", e.categoria, completa || a?.categoria != e.categoria)
+                poner(campos,"editable", e.editable, completa || a?.editable != e.editable)
             }
 
             else -> return null
@@ -867,84 +867,92 @@ object Espejo {
 // ==================================================================
 
 /** Añade el campo solo si cumple la regla de «solo lo tocado» */
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: String?,
     forzar: Boolean,
 ) {
     if (valor == null) {
-        if (forzar) this[campo] = JsonNull
+        if (forzar) campos[campo] = JsonNull
     } else {
-        this[campo] = JsonPrimitive(valor)
+        campos[campo] = JsonPrimitive(valor)
     }
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: String,
     forzar: Boolean,
 ) {
-    this[campo] = JsonPrimitive(valor)
+    campos[campo] = JsonPrimitive(valor)
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: Int?,
     forzar: Boolean,
 ) {
     if (valor == null) {
-        if (forzar) this[campo] = JsonNull
+        if (forzar) campos[campo] = JsonNull
     } else {
-        this[campo] = JsonPrimitive(valor)
+        campos[campo] = JsonPrimitive(valor)
     }
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: Int,
     forzar: Boolean,
 ) {
-    this[campo] = JsonPrimitive(valor)
+    campos[campo] = JsonPrimitive(valor)
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: Double?,
     forzar: Boolean,
 ) {
     if (valor == null) {
-        if (forzar) this[campo] = JsonNull
+        if (forzar) campos[campo] = JsonNull
     } else {
-        this[campo] = JsonPrimitive(valor)
+        campos[campo] = JsonPrimitive(valor)
     }
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: Double,
     forzar: Boolean,
 ) {
-    this[campo] = JsonPrimitive(valor)
+    campos[campo] = JsonPrimitive(valor)
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: Boolean?,
     forzar: Boolean,
 ) {
     if (valor == null) {
-        if (forzar) this[campo] = JsonNull
+        if (forzar) campos[campo] = JsonNull
     } else {
-        this[campo] = JsonPrimitive(valor)
+        campos[campo] = JsonPrimitive(valor)
     }
 }
 
-private fun MutableMap<String, JsonElement>.poner(
+private fun poner(
+    campos: MutableMap<String, JsonElement>,
     campo: String,
     valor: Boolean,
     forzar: Boolean,
 ) {
-    this[campo] = JsonPrimitive(valor)
+    campos[campo] = JsonPrimitive(valor)
 }
 
 /** Lectura cómoda de un payload decodificado; tolera claves desconocidas */

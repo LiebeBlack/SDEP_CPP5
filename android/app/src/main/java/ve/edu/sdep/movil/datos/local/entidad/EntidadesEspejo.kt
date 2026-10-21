@@ -339,11 +339,10 @@ data class GradoEntity(
 
 @Entity(
     tableName = "matriculas",
-    indices = [
-        Index(value = ["estudianteId", "gradoId"], unique = true),
-        Index("gradoId"),
-        Index("activa"),
-    ],
+    // El escritorio garantiza una sola matrícula ACTIVA por (estudiante,
+    // grado) con un índice parcial; Room no admite índices parciales, así que
+    // aquí el índice es simple y la unicidad la aporta la clave natural al    // aplicar la operación remota (mismo comportamiento, distinta vía).
+    indices = [Index("estudianteId"), Index("gradoId"), Index("activa")],
 )
 data class MatriculaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

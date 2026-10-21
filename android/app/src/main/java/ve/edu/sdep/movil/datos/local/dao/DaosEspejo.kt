@@ -105,8 +105,11 @@ interface EmpleadoDao {
     @Query("SELECT COUNT(*) FROM empleados WHERE activo = 1")
     fun observarCantidad(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(empleado: EmpleadoEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(empleado: EmpleadoEntity): Long
+
+    @Update
+    suspend fun actualizar(empleado: EmpleadoEntity)
 
     @Query("DELETE FROM empleados WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -142,8 +145,11 @@ interface DocumentoDao {
     @Query("SELECT COUNT(*) FROM documentos WHERE activo = 1")
     fun observarCantidad(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(documento: DocumentoEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(documento: DocumentoEntity): Long
+
+    @Update
+    suspend fun actualizar(documento: DocumentoEntity)
 
     @Query("DELETE FROM documentos WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -173,8 +179,11 @@ interface IncidenciaDao {
     @Query("SELECT COUNT(*) FROM incidencias WHERE estado = 'pendiente'")
     fun observarPendientes(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(incidencia: IncidenciaEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(incidencia: IncidenciaEntity): Long
+
+    @Update
+    suspend fun actualizar(incidencia: IncidenciaEntity)
 
     @Query("DELETE FROM incidencias WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -213,8 +222,11 @@ interface ContratoDao {
     @Query("SELECT COUNT(*) FROM contratos")
     fun observarCantidad(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(contrato: ContratoEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(contrato: ContratoEntity): Long
+
+    @Update
+    suspend fun actualizar(contrato: ContratoEntity)
 
     @Query("DELETE FROM contratos WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -244,8 +256,11 @@ interface PagoDao {
     @Query("SELECT COUNT(*) FROM pagos WHERE pagado = 0")
     fun observarPendientes(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(pago: PagoEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(pago: PagoEntity): Long
+
+    @Update
+    suspend fun actualizar(pago: PagoEntity)
 
     @Query("DELETE FROM pagos WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -282,8 +297,11 @@ interface EstudianteDao {
     @Query("SELECT COUNT(*) FROM estudiantes WHERE activo = 1")
     fun observarCantidad(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(estudiante: EstudianteEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(estudiante: EstudianteEntity): Long
+
+    @Update
+    suspend fun actualizar(estudiante: EstudianteEntity)
 
     @Query("DELETE FROM estudiantes WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -307,8 +325,11 @@ interface PeriodoAcademicoDao {
     @Query("SELECT * FROM periodos_academicos WHERE estado = 'abierto' ORDER BY nombre DESC LIMIT 1")
     suspend fun enCurso(): PeriodoAcademicoEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(periodo: PeriodoAcademicoEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(periodo: PeriodoAcademicoEntity): Long
+
+    @Update
+    suspend fun actualizar(periodo: PeriodoAcademicoEntity)
 
     @Query("DELETE FROM periodos_academicos WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -335,8 +356,11 @@ interface GradoDao {
     )
     suspend fun buscarPorClave(periodoId: Long, nombre: String, seccion: String): GradoEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(grado: GradoEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(grado: GradoEntity): Long
+
+    @Update
+    suspend fun actualizar(grado: GradoEntity)
 
     @Query("DELETE FROM grados WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -360,8 +384,11 @@ interface MatriculaDao {
     )
     suspend fun buscarActiva(estudianteId: Long, gradoId: Long): MatriculaEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(matricula: MatriculaEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(matricula: MatriculaEntity): Long
+
+    @Update
+    suspend fun actualizar(matricula: MatriculaEntity)
 
     @Query("DELETE FROM matriculas WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -388,8 +415,11 @@ interface NotaFinalDao {
     @Query("SELECT COUNT(*) FROM notas_finales")
     fun observarCantidad(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(nota: NotaFinalEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(nota: NotaFinalEntity): Long
+
+    @Update
+    suspend fun actualizar(nota: NotaFinalEntity)
 
     @Query("DELETE FROM notas_finales WHERE id = :id")
     suspend fun borrar(id: Long)
@@ -416,8 +446,11 @@ interface ConfiguracionDao {
     @Query("SELECT COUNT(*) FROM configuraciones")
     fun observarCantidad(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(configuracion: ConfiguracionEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertar(configuracion: ConfiguracionEntity): Long
+
+    @Update
+    suspend fun actualizar(configuracion: ConfiguracionEntity)
 
     @Query("DELETE FROM configuraciones WHERE id = :id")
     suspend fun borrar(id: Long)

@@ -19,7 +19,7 @@
 | Facultad y sede | [Facultad], [Sede] |
 | Línea de investigación | Sistemas de información e ingeniería de software |
 | Tipo de investigación | Aplicada y tecnológica |
-| Enfoque | Mixto, con predominio cuantitativo en la medición del efecto |
+| Enfoque | Cuantitativo |
 | Ámbito de aplicación | Instituciones educativas de nivel medio y superior |
 | Versión del sistema | 3.0.1 |
 | Fecha de presentación | [Fecha] |
@@ -52,11 +52,11 @@ Las hipótesis se resolverán con la evidencia recopilada durante la implementac
 
 ## 5. METODOLOGÍA
 
-La investigación se clasifica como aplicada y tecnológica, con un diseño que combina investigación-acción y prototipado evolutivo, y con un enfoque mixto que integra la medición cuantitativa del efecto con la comprensión cualitativa del proceso.
+La investigación se clasifica como aplicada y tecnológica, con modalidad de proyecto factible y enfoque cuantitativo. El diseño combina un componente descriptivo para el diagnóstico, un componente preexperimental con mediciones antes y después para los tiempos administrativos, y un diseño factorial para las pruebas de rendimiento del subsistema de sincronización.
 
-La muestra prevista comprende entre tres y cinco instituciones educativas seleccionadas por muestreo intencional, con diversidad de tamaño, nivel educativo y ámbito, y entre diez y quince usuarios por institución, distribuidos entre perfiles directivos, de recursos humanos, administrativos y docentes.
+La institución participante es una, seleccionada por muestreo intencional. Para las tareas administrativas se trabaja con la población disponible o con la muestra calculada por fórmula para población finita, según el tamaño de la plantilla. Para la evaluación de usabilidad se seleccionan entre veinte y treinta usuarios de los perfiles de secretaría, dirección, coordinación académica y docencia. Las pruebas de rendimiento no emplean muestra de personas: ejecutan una matriz factorial completa con treinta repeticiones por celda.
 
-Los instrumentos de recolección se definieron y se reproducen en los anexos: guía de entrevista para el análisis de requerimientos, cuestionario de satisfacción de usuarios, protocolo de pruebas de usabilidad y formatos de documentación de pruebas. El análisis cuantitativo comprende estadística descriptiva y pruebas de contraste —t para muestras relacionadas, rangos con signo de Wilcoxon, chi-cuadrado y análisis de varianza— con un nivel de significancia de 0,05. El análisis cualitativo comprende codificación temática de las entrevistas, estudio de caso por institución y clasificación de la retroalimentación recogida.
+Los instrumentos se definieron y se reproducen en los anexos: ficha de observación técnica, ficha de registro de métricas, lista de cotejo de requerimientos, guion de pruebas de tareas y cuestionario SUS. El análisis comprende estadística descriptiva con medidas de tendencia central, dispersión e intervalos de confianza; verificación de normalidad con Shapiro-Wilk; contrastes con t de muestras relacionadas o Wilcoxon, chi-cuadrado, ANOVA o Kruskal-Wallis según corresponda; y reporte del tamaño del efecto. El nivel de significancia es de 0,05, con corrección de Holm cuando se realizan comparaciones múltiples.
 
 El procedimiento se organizó en cuatro fases: análisis de requerimientos, diseño y desarrollo, pruebas y validación, e implementación y documentación. Las tres primeras se encuentran ejecutadas en su componente técnico y la cuarta en su componente documental; las pruebas con usuarios y la aplicación piloto mantienen su programación, cuyo detalle consta en el Capítulo III y en el cronograma del Anexo 9.
 

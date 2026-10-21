@@ -24,7 +24,7 @@ El informe se apoya en nueve documentos que desarrollan cada componente del marc
 | Línea de investigación | Sistemas de información e ingeniería de software |
 | Tipo de investigación | Aplicada y tecnológica |
 | Diseño | Investigación-acción combinada con prototipado evolutivo |
-| Enfoque | Mixto, con predominio cuantitativo en la medición del efecto |
+| Enfoque | Cuantitativo |
 | Ámbito de aplicación | Instituciones educativas de nivel medio y superior |
 | Jurisdicción de referencia | República Bolivariana de Venezuela |
 | Autor | [Nombre del Estudiante] |

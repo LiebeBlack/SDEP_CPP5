@@ -1,5 +1,7 @@
 # CAPÍTULO I: PLANTEAMIENTO DEL PROBLEMA
 
+> **Documento sustituido.** Esta versión se conserva como antecedente de trabajo. El contenido vigente se desarrolla en [`01-introduccion-y-planteamiento.md`](01-introduccion-y-planteamiento.md), que reemplaza este capítulo y actualiza el enfoque metodológico. No debe citarse en la entrega definitiva.
+
 ## 1.1 INTRODUCCIÓN
 
 La gestión de recursos humanos constituye una función administrativa crítica en cualquier organización y, de manera particular, en las instituciones educativas, donde la continuidad del servicio depende de que el personal perciba su remuneración con oportunidad y exactitud. En el contexto contemporáneo, marcado por la digitalización de los procesos administrativos, las instituciones educativas enfrentan el desafío de modernizar esa función sin comprometer la calidad del servicio educativo ni la estabilidad de sus finanzas.

@@ -8,7 +8,7 @@
 
 | Campo | Dato |
 |-------|------|
-| Título | Desarrollo e implementación de un sistema de gestión de personal y nómina para instituciones educativas utilizando tecnologías de información |
+| Título | Desarrollo e implementación de un sistema de base de datos local multiusuario con sincronización híbrida y gestión documental para la administración de personal y calificaciones en instituciones educativas |
 | Autor | [Nombre del Estudiante] |
 | Cédula de identidad | [Número de Cédula] |
 | Carrera | [Nombre de la Carrera] |
@@ -27,7 +27,7 @@ La presente investigación tuvo como propósito diseñar, desarrollar e implemen
 
 El sistema se construyó sobre una arquitectura de capas —presentación, servicios, repositorios, modelos, dominio de nómina y servicios transversales— con Python, SQLAlchemy y CustomTkinter, y se distribuye bajo licencia de código abierto. Comprende nueve módulos funcionales que abarcan la gestión de empleados, el control documental con vencimientos, las incidencias y permisos, los contratos laborales, el cálculo de nómina con deducciones y horas extra, y la configuración institucional. A ello se suman la autenticación con control de acceso por rol, el registro de auditoría, los respaldos, la exportación de datos y la generación de doce tipos de documentos oficiales en formato PDF. El sistema documentado corresponde a la versión 3.0.1 y alberga 29 475 líneas de código fuente, más 5 433 del paquete independiente de sincronización entre puestos; su calidad técnica se respalda en una suite de 551 funciones de prueba distribuidas en treinta y dos archivos.
 
-La metodología combinó la investigación aplicada con el desarrollo iterativo y la investigación-acción, apoyándose en instrumentos definidos y validados: entrevistas semiestructuradas, observación directa, cuestionarios de satisfacción y protocolos de usabilidad. La evidencia técnica se verificó de manera directa sobre el repositorio del proyecto, mientras que la medición del impacto en la eficiencia administrativa se obtendrá mediante la implementación piloto en un conjunto de instituciones educativas y se incorporará al capítulo de resultados conforme al diseño metodológico establecido.
+La metodología adoptó un enfoque cuantitativo, con investigación aplicada, modalidad de proyecto factible y un diseño que combina el diagnóstico descriptivo, la comparación pretest-postest y un diseño factorial para las pruebas de rendimiento. Los instrumentos son fichas de observación técnica, fichas de registro de métricas, listas de cotejo y el cuestionario SUS. La evidencia técnica se verificó de forma directa sobre el repositorio del proyecto; las mediciones de latencia, tasa de éxito de sincronización y usabilidad se ejecutarán en la Fase IV y se incorporarán al capítulo de resultados conforme al diseño establecido.
 
 **Palabras clave:** gestión de personal, nómina, instituciones educativas, ingeniería de software, arquitectura modular, tecnologías de código abierto, eficiencia administrativa.
 
@@ -53,16 +53,19 @@ The methodology combined applied research with iterative development and action 
 |-------|-----------|---------|-----------|
 | 1 | Proyecto sociotecnológico | `PROYECTO_SOCIAL_TECNOLOGICO.md` | Identificación, diagnóstico social, justificación, objetivos, metodología de trabajo, cronograma, recursos, impacto esperado, riesgos, sostenibilidad y evaluación |
 | 2 | Anteproyecto de tesis | `ANTEPROYECTO_TESIS.md` | Datos generales, planteamiento del problema, objetivos, hipótesis y variables, marco teórico preliminar, metodología, cronograma, presupuesto, resultados esperados y aprobación |
-| 3 | Capítulo I: Planteamiento del problema | `CAPITULO_I_PLANTEAMIENTO_PROBLEMA.md` | Realidad problemática, formulación del problema, objetivos, justificación, viabilidad, alcances y limitaciones |
-| 4 | Capítulo II: Marco teórico | `CAPITULO_II_MARCO_TEORICO.md` | Antecedentes internacionales, nacionales y locales, bases teóricas, bases legales, definición de términos y marco conceptual |
-| 5 | Capítulo III: Metodología | `CAPITULO_III_METODOLOGIA.md` | Tipo y diseño de investigación, población y muestra, técnicas e instrumentos, procedimientos, análisis de datos, aspectos éticos, criterios de calidad y plan de contingencia |
-| 6 | Capítulo IV: Resultados | `CAPITULO_IV_RESULTADOS.md` | Descripción del sistema, resultados de pruebas técnicas, usabilidad, implementación piloto, análisis comparativo, validación de hipótesis, factores de éxito y limitaciones |
-| 7 | Capítulo V: Conclusiones y recomendaciones | `CAPITULO_V_CONCLUSIONES.md` | Conclusiones generales y por objetivo, recomendaciones, reflexiones, contribuciones, limitaciones y conclusiones finales |
-| 8 | Bibliografía y anexos | `BIBLIOGRAFIA_ANEXOS.md` | Fuentes bibliográficas y diez anexos con instrumentos, diagramas, guía de usuario, código, resultados de pruebas y presupuesto |
-| 9 | Resumen de la investigación | `RESUMEN_INVESTIGACION.md` | Documento autónomo de resumen estructurado para efectos de presentación institucional |
-| 10 | Oficio de presentación del compendio y los anexos | `OFICIO_1_PRESENTACION_ANEXOS.md` | Comunicación formal que presenta el compendio del proyecto sociotecnológico y los anexos de la tesis |
-| 11 | Oficio de presentación del resumen de la investigación | `OFICIO_2_PRESENTACION_RESUMEN.md` | Comunicación formal que presenta el resumen de la investigación y los archivos definitivos |
-| 12 | Índice general | `INDICE_GENERAL.md` | Este documento |
+| 3 | Documento 01: Introducción y planteamiento del problema | `01-introduccion-y-planteamiento.md` | Diagnóstico sociotecnológico con IAP, formulación del problema, objetivos bajo taxonomía de Bloom y criterios SMART, justificación, alcance, hipótesis y variables |
+| 4 | Documento 02: Marco teórico y metodológico | `02-marco-teorico-y-metodologico.md` | Antecedentes 2016-2026, bases teóricas, marco legal venezolano, metodología cuantitativa, fases, instrumentos y plan de análisis |
+| 5 | Documento 03: Diseño, ingeniería y arquitectura | `03-diseno-ingenieria-y-arquitectura.md` | Requerimientos, casos de uso, arquitectura de red, modelo de datos, subsistema de sincronización, módulo PDF y diseño de métricas |
+| 6 | Documento 04: Implementación y despliegue | `04-implementacion-y-despliegue.md` | Fases de construcción, decisiones de codificación, estrategia de pruebas, protocolo de evaluación, despliegue y operación |
+| 7 | Capítulo IV: Resultados | `CAPITULO_IV_RESULTADOS.md` | Descripción del sistema, resultados de pruebas técnicas, usabilidad, implementación piloto, análisis comparativo, validación de hipótesis, factores de éxito y limitaciones |
+| 8 | Capítulo V: Conclusiones y recomendaciones | `CAPITULO_V_CONCLUSIONES.md` | Conclusiones generales y por objetivo, recomendaciones, reflexiones, contribuciones, limitaciones y conclusiones finales |
+| 9 | Bibliografía y anexos | `BIBLIOGRAFIA_ANEXOS.md` | Fuentes bibliográficas y diez anexos con instrumentos, diagramas, guía de usuario, código, resultados de pruebas y presupuesto |
+| 10 | Resumen de la investigación | `RESUMEN_INVESTIGACION.md` | Documento autónomo de resumen estructurado para efectos de presentación institucional |
+| 11 | Oficio de presentación del compendio y los anexos | `OFICIO_1_PRESENTACION_ANEXOS.md` | Comunicación formal que presenta el compendio del proyecto sociotecnológico y los anexos de la tesis |
+| 12 | Oficio de presentación del resumen de la investigación | `OFICIO_2_PRESENTACION_RESUMEN.md` | Comunicación formal que presenta el resumen de la investigación y los archivos definitivos |
+| 13 | Índice general | `INDICE_GENERAL.md` | Este documento |
+
+Los capítulos I, II y III que aún figuran en el repositorio se conservan como versiones anteriores y llevan una nota de sustitución en su encabezado. El contenido vigente de esas materias se desarrolla en los documentos 01 y 02. El capítulo IV y el capítulo V se mantienen como resultados y conclusiones del estudio, y remiten a los documentos 03 y 04 para el detalle técnico.
 
 ### 4.2 Documentos de control del proyecto
 
@@ -144,7 +147,7 @@ Los campos señalados con corchetes en los documentos del informe corresponden a
 ### 8.2 Fuentes locales
 
 - Antecedentes locales del Capítulo II, con casos documentados de la región.
-- Normativas legales vigentes en la jurisdicción de aplicación (protección de datos, código del trabajo, ley orgánica de educación y reglamento de seguridad de la información).
+- Confirmación en Gaceta Oficial de las normas venezolanas citadas en el documento 02 (LOTTT, LOE, LOCTI, Infogobierno, LOPNNA y leyes conexas), cuya identificación ya se consignó con su número de Gaceta y fecha.
 - Tesis y trabajos de grado del repositorio institucional relacionados con sistemas de información, gestión de personal o nómina.
 
 ### 8.3 Evidencia técnica por actualizar

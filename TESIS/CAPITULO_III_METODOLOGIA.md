@@ -1,5 +1,7 @@
 # CAPÍTULO III: METODOLOGÍA
 
+> **Documento sustituido.** Esta versión se conserva como antecedente de trabajo. El contenido vigente, con enfoque cuantitativo estricto y las cuatro fases metodológicas, se desarrolla en [`02-marco-teorico-y-metodologico.md`](02-marco-teorico-y-metodologico.md). No debe citarse en la entrega definitiva.
+
 ## 3.1 INTRODUCCIÓN
 
 El presente capítulo expone la metodología que rigió la investigación: el tipo y el diseño adoptados, la población y la muestra, las técnicas e instrumentos de recolección, los procedimientos ejecutados por fase, las técnicas de procesamiento y análisis de la información, los aspectos éticos, los criterios de calidad aplicados al producto y al propio estudio, y el plan de contingencia previsto. Se declara, además, con precisión el estado de avance de cada fase, dado que el desarrollo del sistema se encuentra concluido mientras la validación con usuarios y la aplicación piloto permanecen programadas.

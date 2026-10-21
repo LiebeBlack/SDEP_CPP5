@@ -28,7 +28,7 @@ La regla que gobierna el expediente es una sola y se repite en cada documento: s
 | Facultad y sede | [Facultad], [Sede] |
 | Línea de investigación | Sistemas de información e ingeniería de software |
 | Tipo de investigación | Aplicada y tecnológica |
-| Enfoque | Mixto, con predominio cuantitativo en la medición del efecto |
+| Enfoque | Cuantitativo |
 | Ámbito de aplicación | Instituciones educativas de nivel medio y superior |
 | Jurisdicción de referencia | República Bolivariana de Venezuela |
 | Versión del sistema documentado | 3.0.1, tanto en el corpus académico como en el repositorio |

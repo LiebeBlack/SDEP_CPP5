@@ -1,9 +1,13 @@
 package ve.edu.sdep.movil.datos.remoto
 
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 /**
  * Servicio HTTP del nodo central de sincronización.
@@ -29,4 +33,21 @@ interface ProtocoloApi {
         @Query("cursor") cursor: Int,
         @Query("limite") limite: Int,
     ): PullRespuestaDto
+
+    /**
+     * Descarga un binario por su hash (documentos del legajo).
+     *
+     * El contenido nunca viaja en el payload: se anuncia por hash y se baja
+     * después por este canal. La verificación SHA-256 ocurre antes de guardar.
+     */
+    @Streaming
+    @GET("api/v1/blob/{hash}")
+    suspend fun descargarBlob(@Path("hash") hash: String): ResponseBody
+
+    /** Sube un binario al almacén central (deduplicado por hash) */
+    @POST("api/v1/blob/{hash}")
+    suspend fun subirBlob(
+        @Path("hash") hash: String,
+        @Body contenido: RequestBody,
+    ): kotlinx.serialization.json.JsonObject
 }

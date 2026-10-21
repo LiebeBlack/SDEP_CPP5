@@ -1,5 +1,6 @@
 package ve.edu.sdep.movil.datos.local
 
+import androidx.room.withTransaction
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -209,7 +210,7 @@ class AplicadorEspejo @Inject constructor(
 
             else -> {
                 if (idLocal != null && borradoLogico != null) {
-                    desactivar(op.tabla, idLocal, borradoLogico)
+                    desactivar(op.tabla, idLocal)
                 } else if (idLocal != null) {
                     borrarFila(op.tabla, idLocal)
                 }
@@ -532,31 +533,27 @@ class AplicadorEspejo @Inject constructor(
         else -> null
     }
 
-    private suspend fun desactivar(tabla: String, id: Long, columnaActivo: String) {
-        // La única columna de activo con nombres distintos es `activa`
+    /** Aplica la semántica de borrado lógico de cada tabla (`activo`/`activa`) */
+    private suspend fun desactivar(tabla: String, id: Long) {
         when (tabla) {
+            "empleados" -> empleadoDao.buscarPorId(id)?.let {
+                empleadoDao.actualizar(it.copy(activo = 0))
+            }
+
+            "documentos" -> documentoDao.buscarPorId(id)?.let {
+                documentoDao.actualizar(it.copy(activo = 0))
+            }
+
+            "estudiantes" -> estudianteDao.buscarPorId(id)?.let {
+                estudianteDao.actualizar(it.copy(activo = 0))
+            }
+
             "matriculas" -> matriculaDao.buscarPorId(id)?.let {
                 matriculaDao.actualizar(it.copy(activa = 0))
             }
 
-            else -> when (tabla) {
-                "empleados" -> empleadoDao.buscarPorId(id)?.let {
-                    empleadoDao.actualizar(it.copy(activo = 0))
-                }
-
-                "documentos" -> documentoDao.buscarPorId(id)?.let {
-                    documentoDao.actualizar(it.copy(activo = 0))
-                }
-
-                "estudiantes" -> estudianteDao.buscarPorId(id)?.let {
-                    estudianteDao.actualizar(it.copy(activo = 0))
-                }
-
-                else -> borrarFila(tabla, id)
-            }
+            else -> borrarFila(tabla, id)
         }
-        // `columnaActivo` documenta la semántica; la implementación anterior
-        // refleja los nombres de columna reales de cada tabla.
     }
 
     private suspend fun borrarFila(tabla: String, id: Long) {

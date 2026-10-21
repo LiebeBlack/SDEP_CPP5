@@ -384,6 +384,18 @@ interface MatriculaDao {
     )
     suspend fun buscarActiva(estudianteId: Long, gradoId: Long): MatriculaEntity?
 
+    /**
+     * Cualquier matrícula de la pareja (incluida la retirada).
+     *
+     * La usa el Aplicador como clave natural compuesta para UNIFICAR la misma
+     * matrícula creada en dos equipos, en vez de duplicarla.
+     */
+    @Query(
+        "SELECT * FROM matriculas WHERE estudianteId = :estudianteId " +
+            "AND gradoId = :gradoId ORDER BY activa DESC, id LIMIT 1",
+    )
+    suspend fun buscarPorPar(estudianteId: Long, gradoId: Long): MatriculaEntity?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertar(matricula: MatriculaEntity): Long
 
@@ -504,6 +516,9 @@ interface ConfiguracionDao {
 
     @Query("SELECT * FROM configuraciones WHERE clave = :clave LIMIT 1")
     suspend fun buscarPorClave(clave: String): ConfiguracionEntity?
+
+    @Query("SELECT * FROM configuraciones WHERE id = :id LIMIT 1")
+    suspend fun buscarPorId(id: Long): ConfiguracionEntity?
 
     @Query("SELECT valor FROM configuraciones WHERE clave = :clave LIMIT 1")
     suspend fun valor(clave: String): String?

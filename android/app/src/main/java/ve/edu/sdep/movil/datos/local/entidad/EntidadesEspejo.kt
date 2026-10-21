@@ -57,6 +57,12 @@ data class OperacionEntradaEntity(
     val operacion: String,
     val payload: String,
     val creadoEn: Long,
+    /**
+     * Sello original del protocolo. Se conserva tal cual llegó: al reintentar,
+     * la mezcla debe comparar el MISMO instante que declaró el emisor, no uno
+     * redondeado a milisegundos.
+     */
+    @ColumnInfo(name = "creado_en_iso") val creadoEnIso: String = "",
     val motivo: String?,
     val intentos: Int = 0,
 )

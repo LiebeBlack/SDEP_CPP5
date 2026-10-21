@@ -113,7 +113,8 @@ abstract class BaseDatosSdep : RoomDatabase() {
                     "CREATE TABLE IF NOT EXISTS operaciones_entrada (" +
                         "opId TEXT NOT NULL, tabla TEXT NOT NULL, filaUuid TEXT NOT NULL, " +
                         "operacion TEXT NOT NULL, payload TEXT NOT NULL, creadoEn INTEGER NOT NULL, " +
-                        "motivo TEXT, intentos INTEGER NOT NULL, PRIMARY KEY(opId))",
+                        "creado_en_iso TEXT NOT NULL DEFAULT '', motivo TEXT, " +
+                        "intentos INTEGER NOT NULL, PRIMARY KEY(opId))",
                 )
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_operaciones_entrada_filaUuid " +

@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import ve.edu.sdep.movil.datos.local.AplicadorEspejo
 import ve.edu.sdep.movil.datos.local.BaseDatosSdep
 import ve.edu.sdep.movil.datos.local.Fechas
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
@@ -39,6 +40,7 @@ class RegistroRepositorio @Inject constructor(
     private val baseDatos: BaseDatosSdep,
     private val registroDao: RegistroDao,
     private val operacionDao: OperacionDao,
+    private val aplicador: AplicadorEspejo,
     private val configuracionRepositorio: ConfiguracionRepositorio,
     private val sesionRepositorio: SesionRepositorio,
 ) {
@@ -127,6 +129,7 @@ class RegistroRepositorio @Inject constructor(
                 campos["dispositivo"] = JsonPrimitive(equipo)
                 campos["usuario"] = JsonPrimitive(sesion.usuario)
             }
+            val payload = JsonObject(campos)
 
             val entidad = RegistroEntity(
                 uuid = identidad,
@@ -146,17 +149,28 @@ class RegistroRepositorio @Inject constructor(
 
             operacionDao.encolar(
                 OperacionPendienteEntity(
-                    opId = UUID.randomUUID().toString(),
+                    opId = opId,
                     tabla = TABLA,
                     filaUuid = identidad,
                     operacion = "upsert",
-                    payload = JsonObject(campos).toString(),
+                    payload = payload.toString(),
                     creadoEn = momento,
                     dispositivo = equipo,
                     usuario = sesion.usuario,
                     estado = ESTADO_PENDIENTE,
                     motivo = null,
                 ),
+            )
+            // Deja constancia de QUÉ escribió este teléfono y CUÁNDO: sin esas
+            // marcas, una operación remota pisaría la edición local sin que el
+            // motor de mezcla pudiera defenderla.
+            aplicador.registrarLocal(
+                tabla = TABLA,
+                filaUuid = identidad,
+                opId = opId,
+                campos = payload,
+                momentoIso = Fechas.isoDesde(momento),
+                dispositivo = equipo,
             )
             Resultado.Exito(identidad)
         }
@@ -192,9 +206,10 @@ class RegistroRepositorio @Inject constructor(
                     estado = EstadoSincronizacion.PENDIENTE.name,
                 ),
             )
+            val opId = UUID.randomUUID().toString()
             operacionDao.encolar(
                 OperacionPendienteEntity(
-                    opId = UUID.randomUUID().toString(),
+                    opId = opId,
                     tabla = TABLA,
                     filaUuid = uuid,
                     operacion = "delete",
@@ -205,6 +220,17 @@ class RegistroRepositorio @Inject constructor(
                     estado = ESTADO_PENDIENTE,
                     motivo = null,
                 ),
+            )
+            // El borrado también deja su marca de versión: un编辑 posterior de
+            // otro equipo solo lo levanta si es más reciente.
+            aplicador.registrarLocal(
+                tabla = TABLA,
+                filaUuid = uuid,
+                opId = opId,
+                campos = jsonObjectVacio(),
+                momentoIso = Fechas.isoDesde(momento),
+                dispositivo = equipo,
+                borrado = true,
             )
             Resultado.Exito(Unit)
         }

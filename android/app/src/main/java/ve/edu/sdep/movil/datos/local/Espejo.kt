@@ -883,15 +883,6 @@ private fun poner(
 private fun poner(
     campos: MutableMap<String, JsonElement>,
     campo: String,
-    valor: String,
-    forzar: Boolean,
-) {
-    campos[campo] = JsonPrimitive(valor)
-}
-
-private fun poner(
-    campos: MutableMap<String, JsonElement>,
-    campo: String,
     valor: Int?,
     forzar: Boolean,
 ) {
@@ -900,15 +891,6 @@ private fun poner(
     } else {
         campos[campo] = JsonPrimitive(valor)
     }
-}
-
-private fun poner(
-    campos: MutableMap<String, JsonElement>,
-    campo: String,
-    valor: Int,
-    forzar: Boolean,
-) {
-    campos[campo] = JsonPrimitive(valor)
 }
 
 private fun poner(
@@ -927,15 +909,6 @@ private fun poner(
 private fun poner(
     campos: MutableMap<String, JsonElement>,
     campo: String,
-    valor: Double,
-    forzar: Boolean,
-) {
-    campos[campo] = JsonPrimitive(valor)
-}
-
-private fun poner(
-    campos: MutableMap<String, JsonElement>,
-    campo: String,
     valor: Boolean?,
     forzar: Boolean,
 ) {
@@ -944,15 +917,6 @@ private fun poner(
     } else {
         campos[campo] = JsonPrimitive(valor)
     }
-}
-
-private fun poner(
-    campos: MutableMap<String, JsonElement>,
-    campo: String,
-    valor: Boolean,
-    forzar: Boolean,
-) {
-    campos[campo] = JsonPrimitive(valor)
 }
 
 /** Lectura cómoda de un payload decodificado; tolera claves desconocidas */

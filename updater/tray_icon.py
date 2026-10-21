@@ -1,15 +1,17 @@
-"""Ícono de bandeja del sistema (Windows) para el actualizador automático.
+"""Ícono de bandeja del sistema (Windows) reutilizable.
 
 Implementado únicamente con ctypes y la biblioteca estándar:
 
   * crea una ventana oculta (message-only) que recibe los mensajes del
     ícono del área de notificación (la bandeja, abajo a la derecha),
-  * muestra un menú contextual con clic derecho
-    (Buscar actualizaciones ahora / Mostrar ventana / Salir),
+  * muestra un menú contextual con clic derecho;
   * entrega los comandos del menú a la aplicación mediante una cola
-    thread-safe.
+    thread-safe;
+  * muestra avisos (globos) con ``notify``.
 
-En plataformas que no sean Windows la clase es un no-op: el resto de la
+El actualizador automático la usa con su menú histórico; la ventana principal
+la reutiliza para informar el estado del servidor de sincronización. En
+plataformas que no sean Windows la clase es un no-op: el resto de la
 aplicación puede llamarla sin preocuparse de la plataforma.
 """
 
@@ -38,6 +40,9 @@ NIM_DELETE = 2
 NIF_MESSAGE = 0x0001
 NIF_ICON = 0x0002
 NIF_TIP = 0x0004
+NIF_INFO = 0x0010
+
+NIIF_INFO = 0x00000001
 
 HWND_MESSAGE = -3
 
@@ -51,6 +56,14 @@ TPM_RETURNCMD = 0x0100
 TPM_RIGHTBUTTON = 0x0002
 
 CLASS_NAME = "SDEP_CPP5_AutoUpdater_Tray"
+
+# Menú histórico del actualizador: (texto, acción) o None para un separador.
+DEFAULT_MENU: list[tuple[str, str] | None] = [
+    ("Buscar actualizaciones ahora", "check_now"),
+    ("Mostrar ventana", "show"),
+    None,
+    ("Salir", "exit"),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -239,10 +252,19 @@ class TrayIcon:
     MENU_CHECK = 1001
     MENU_SHOW = 1002
     MENU_EXIT = 1003
+    _MENU_BASE = 1001
 
-    def __init__(self, commands: queue.Queue, tooltip: str = "Actualizador SDEP_CPP5"):
+    def __init__(
+        self,
+        commands: queue.Queue,
+        tooltip: str = "Actualizador SDEP_CPP5",
+        menu: list[tuple[str, str] | None] | None = None,
+        class_name: str = CLASS_NAME,
+    ):
         self._commands = commands
         self._tooltip = tooltip
+        self._menu = list(DEFAULT_MENU if menu is None else menu)
+        self._class_name = class_name
         self._hwnd: int | None = None
         self._hicon: int | None = None
         self._thread: threading.Thread | None = None
@@ -276,6 +298,21 @@ class TrayIcon:
         nid = self._make_nid(tip=text)
         _shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(nid))
 
+    def set_menu(self, menu: list[tuple[str, str] | None]) -> None:
+        """Reemplaza el menú contextual que se mostrará en el próximo clic"""
+        self._menu = list(menu)
+
+    def notify(self, titulo: str, mensaje: str) -> None:
+        """Muestra un aviso del sistema asociado al ícono (globo/toast)"""
+        if sys.platform != "win32" or _shell32 is None or self._hwnd is None:
+            return
+        nid = self._make_nid()
+        nid.uFlags |= NIF_INFO
+        nid.szInfoTitle = (titulo or "")[:63]
+        nid.szInfo = (mensaje or "")[:255]
+        nid.dwInfoFlags = NIIF_INFO
+        _shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(nid))
+
     # ------------------------------------------------------------- internals
     def _run(self) -> None:
         assert _user32 is not None and _shell32 is not None and _kernel32 is not None
@@ -283,12 +320,12 @@ class TrayIcon:
         wc = WNDCLASSW()
         wc.lpfnWndProc = _cast_pointer(self._wndproc_ref)
         wc.hInstance = _kernel32.GetModuleHandleW(None)
-        wc.lpszClassName = CLASS_NAME
+        wc.lpszClassName = self._class_name
         _user32.RegisterClassW(ctypes.byref(wc))
 
         hwnd = _user32.CreateWindowExW(
             0,
-            CLASS_NAME,
+            self._class_name,
             "SDEP_CPP5",
             0,
             0,
@@ -341,10 +378,12 @@ class TrayIcon:
         if not menu:
             return
         try:
-            _user32.AppendMenuW(menu, MF_STRING, self.MENU_CHECK, "Buscar actualizaciones ahora")
-            _user32.AppendMenuW(menu, MF_STRING, self.MENU_SHOW, "Mostrar ventana")
-            _user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
-            _user32.AppendMenuW(menu, MF_STRING, self.MENU_EXIT, "Salir")
+            for indice, elemento in enumerate(self._menu):
+                if elemento is None:
+                    _user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
+                else:
+                    texto, _accion = elemento
+                    _user32.AppendMenuW(menu, MF_STRING, self._MENU_BASE + indice, texto)
             pt = wt.POINT()
             _user32.GetCursorPos(ctypes.byref(pt))
             cmd = _user32.TrackPopupMenu(
@@ -358,12 +397,11 @@ class TrayIcon:
             )
         finally:
             _user32.DestroyMenu(menu)
-        if cmd == self.MENU_CHECK:
-            self._put("check_now")
-        elif cmd == self.MENU_SHOW:
-            self._put("show")
-        elif cmd == self.MENU_EXIT:
-            self._put("exit")
+        indice = int(cmd or 0) - self._MENU_BASE
+        if 0 <= indice < len(self._menu):
+            elemento = self._menu[indice]
+            if elemento is not None:
+                self._put(elemento[1])
 
     def _put(self, action: str) -> None:
         try:

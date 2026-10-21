@@ -169,6 +169,22 @@ Esto:
 - Inicia el servidor HTTP en el puerto 8765
 - **Muestra la IP local para conectar desde Android y otros equipos**
 
+#### Inicio automático desde la aplicación
+
+En la instalación de escritorio no hace falta ejecutar ningún script. La
+primera vez que se inicia sesión, el sistema pregunta si este equipo será el
+servidor central. Si se acepta, el servidor arranca solo con la aplicación y
+queda visible en el **área de notificación de Windows**, que muestra su estado
+y avisa cuando ya está disponible para el teléfono.
+
+La auto-configuración copia al nodo central las cuentas de este equipo con su
+misma contraseña (solo el hash) y crea las cuentas iniciales que falten, de
+modo que el teléfono entra con el mismo usuario y contraseña que la
+computadora. También deja este equipo como puesto cliente del nodo local.
+Desde el icono se puede copiar la URL de red para el teléfono, ver los datos
+de conexión, iniciar o detener el servidor y salir. El servidor se cierra al
+salir de la aplicación.
+
 ### Usuarios Por Defecto
 
 | Usuario | Contraseña | Rol |
@@ -179,6 +195,10 @@ Esto:
 | viewer | Lector1234 | Solo lectura |
 
 **IMPORTANTE:** Cambie estas contraseñas después del primer inicio.
+
+> En el arranque automático, las cuentas que ya existen en el equipo se copian
+> al nodo central con su contraseña actual; la tabla anterior solo se aplica a
+> las cuentas que falten o al script manual.
 
 ### Conectar Clientes al Servidor
 
@@ -207,6 +227,9 @@ Para que Android y otros PCs puedan conectarse, el firewall debe permitir conexi
 ```powershell
 New-NetFirewallRule -DisplayName "SDEP Servidor" -Direction Inbound -LocalPort 8765 -Protocol TCP -Action Allow
 ```
+
+El instalador crea esta regla automáticamente para las redes privada y de
+dominio; al ejecutar desde el código fuente hay que crearla a mano.
 
 **Linux (UFW):**
 ```bash

@@ -11,6 +11,19 @@ Esta guía explica cómo ejecutar el servidor de sincronización en cualquier co
 - Python 3.8 o superior
 - Las dependencias del proyecto ya instaladas (ver `requirements.txt` o usar el entorno virtual)
 
+## Inicio automático con la aplicación de escritorio
+
+En la instalación normal no hace falta ejecutar ningún script: la primera vez
+que se inicia sesión, el sistema pregunta si este equipo será el servidor
+central. Si se acepta, el nodo arranca con la aplicación, copia las cuentas de
+este equipo (con su misma contraseña) y este equipo queda configurado como
+puesto cliente. Las cuentas iniciales solo se crean si faltan.
+
+El icono de la bandeja de Windows muestra el estado del servidor, permite
+copiar la URL de red para el teléfono, ver los datos de conexión, iniciar o
+detener el servicio y salir. Las opciones manuales de esta guía siguen
+disponibles para instalaciones sin interfaz gráfica o para diagnóstico.
+
 ## Opción 1: Usar el Script de Inicialización Automática (Recomendado)
 
 El script `iniciar_servidor.py` configura todo automáticamente:

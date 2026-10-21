@@ -138,6 +138,9 @@ def entorno_sync(db_config, monkeypatch):
             config_sync.CLAVE_EQUIPO,
             config_sync.CLAVE_INTERVALO,
             config_sync.CLAVE_BINARIO_MAX,
+            # Preferencia del nodo central embebido: no debe filtrarse entre
+            # pruebas (una prueba la activa y otra esperaría no preguntar).
+            "sync_servidor_auto",
         ):
             try:
                 settings.delete_config_value(clave)

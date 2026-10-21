@@ -212,6 +212,41 @@ def setup_environment():
         return False
 
 
+def iniciar_servidor_sincronizacion() -> bool:
+    """
+    Levanta el nodo central si este equipo fue designado como servidor
+
+    El servidor y la auto-configuración del puesto (cuentas iniciales, alta del
+    dispositivo y destino de sincronización) se preparan antes de arrancar el
+    agente, para que este ya encuentre la configuración escrita. Un fallo aquí
+    nunca impide abrir la aplicación.
+    """
+    try:
+        from sync_agent.servidor_embebido import (
+            ESTADO_ACTIVO,
+            iniciar_servidor_embebido,
+            preferencia_servidor,
+        )
+
+        if preferencia_servidor() is not True:
+            return False
+        estado = iniciar_servidor_embebido(esperar=True)
+        if estado.get("estado") == ESTADO_ACTIVO:
+            logger.info(
+                "Servidor central iniciado con la aplicación: %s",
+                estado.get("url_red"),
+            )
+            return True
+        logger.warning(
+            "El servidor central no quedó disponible: %s",
+            estado.get("error") or estado.get("estado"),
+        )
+        return False
+    except Exception as e:
+        logger.warning(f"No se pudo iniciar el servidor central: {e}")
+        return False
+
+
 def iniciar_sincronizacion():
     """
     Arranca el agente de sincronización en segundo plano
@@ -330,7 +365,10 @@ def run_application():
             # deja la segunda ventana en negro sin responder.
             app = None
             try:
-                app = MainWindow(current_user=username)
+                # ``preparar_servidor`` pregunta (solo la primera vez) si este
+                # equipo será el nodo central y, si corresponde, lo arranca
+                # antes de vincular el agente de sincronización de la ventana.
+                app = MainWindow(current_user=username, preparar_servidor=True)
                 try:
                     app.update()
                 except Exception:
@@ -354,6 +392,10 @@ def run_application():
             except Exception:
                 logger.debug("paso de arranque ignorado", exc_info=True)
             application_instance = app
+            try:
+                app.iniciar_bandeja_servidor()
+            except Exception:
+                logger.debug("No se pudo mostrar la bandeja del servidor", exc_info=True)
             try:
                 status = app.run()
             finally:
@@ -458,6 +500,16 @@ def cleanup_application():
         except Exception as e:
             logger.warning(f"Error deteniendo el agente de sincronización: {e}")
 
+        # El nodo central se cierra DESPUÉS del agente: así ninguna
+        # sincronización en curso se queda con el puerto a medio cerrar.
+        try:
+            from sync_agent.servidor_embebido import detener_servidor_embebido
+
+            detener_servidor_embebido()
+            logger.info("Servidor central detenido")
+        except Exception as e:
+            logger.warning(f"Error deteniendo el servidor central: {e}")
+
         try:
             db_config.dispose()
             logger.info("Pool de conexiones de base de datos liberado")
@@ -504,6 +556,7 @@ def _selftest() -> bool:
         # su ausencia no debe hacer fallar la autoverificación del ejecutable.
         try:
             import sync_agent  # noqa: F401
+            import sync_agent.servidor_embebido  # noqa: F401
         except ImportError:
             logger.info("Selftest: agente de sincronización no incluido (opcional)")
 
@@ -551,7 +604,9 @@ def main():
         logger.error("No se pudo inicializar la base de datos. Saliendo...")
         sys.exit(1)
 
-    # Sincronización con la intranet (opcional; no bloquea el arranque)
+    # Servidor central (si este equipo quedó designado como tal) y
+    # sincronización con la intranet. Ninguno de los dos bloquea el arranque.
+    iniciar_servidor_sincronizacion()
     iniciar_sincronizacion()
 
     # Ejecutar aplicación

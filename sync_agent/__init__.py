@@ -50,6 +50,7 @@ __all__ = [
     "guardar",
     "iniciar_agente",
     "planificar_campos",
+    "reiniciar_agente",
     "sincronizar_ahora",
     "ESTADO_DETENIDO",
     "ESTADO_ERROR_TOKEN",
@@ -99,6 +100,24 @@ def detener_agente(timeout: float = 5.0) -> None:
     """Detiene el agente si estaba funcionando (se llama al cerrar la aplicación)"""
     if _agente is not None:
         _agente.detener(timeout=timeout)
+
+
+def reiniciar_agente(
+    config: ConfigSync | None = None,
+    notificador: Callable[[dict], None] | None = None,
+) -> AgenteSincronizacion:
+    """
+    Detiene el agente y lo crea de nuevo con la configuración vigente
+
+    Se usa cuando el servidor central se configura o se inicia después de que
+    la ventana ya hubiera creado el agente: el hilo guarda su configuración al
+    construirse, así que sin recrearlo seguiría inactivo.
+    """
+    global _agente
+    if _agente is not None:
+        _agente.detener(timeout=5.0)
+        _agente = None
+    return iniciar_agente(config, notificador=notificador)
 
 
 def estado_sincronizacion() -> dict[str, Any]:

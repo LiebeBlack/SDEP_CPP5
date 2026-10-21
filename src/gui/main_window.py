@@ -5,6 +5,7 @@ Ventana principal de la aplicación (requiere sesión iniciada)
 
 import logging
 import queue
+import sys
 import threading
 import tkinter as tk
 from datetime import datetime, timedelta
@@ -107,7 +108,11 @@ def configure_treeview_style():
 class MainWindow(ctk.CTk):
     """Ventana principal del sistema"""
 
-    def __init__(self, current_user: Usuario | str | None = None):
+    def __init__(
+        self,
+        current_user: Usuario | str | None = None,
+        preparar_servidor: bool = False,
+    ):
         enable_windows_dpi_awareness()
         # Tema claro por defecto (coherente con el login). La preferencia
         # guardada del usuario se aplica más abajo, antes de crear la
@@ -140,6 +145,15 @@ class MainWindow(ctk.CTk):
         # Tk: depositan el evento aquí y el hilo principal lo genera.
         self._eventos_hilo: queue.Queue[Any] = queue.Queue()
         self._eventos_poll_id: str | None = None
+
+        # Bandeja del servidor central: los comandos del icono se encolan
+        # desde su hilo y se ejecutan aquí, en el hilo de Tk.
+        self._bandeja: Any = None
+        self._bandeja_comandos: queue.Queue[tuple[str, ...]] = queue.Queue()
+        self._bandeja_poll_id: str | None = None
+        self._bandeja_estado_previo: str | None = None
+        self._bandeja_menu_previo: list[Any] | None = None
+        self._bandeja_reiniciar_sync = False
 
         # Resultados del respaldo automático: el hilo de respaldo encola el
         # evento y este hilo principal muestra el aviso al usuario.
@@ -198,6 +212,10 @@ class MainWindow(ctk.CTk):
         # Construir y medir la vista inicial antes del primer ciclo de eventos
         # evita pintar una ventana vacía y procesar callbacks durante el arranque.
         self.update_idletasks()
+        if preparar_servidor:
+            # Debe ejecutarse ANTES de vincular el agente: si el servidor queda
+            # activo, el agente lee la configuración del puesto ya escrita.
+            self._preparar_servidor_inicial()
         self._programar_respaldo_periodico()
         self._vincular_sincronizacion()
         self._procesar_eventos_hilo()
@@ -512,6 +530,14 @@ class MainWindow(ctk.CTk):
             return
 
         try:
+            # Si el servidor se configuró al abrir esta sesión (primer inicio),
+            # main.py todavía no activó la captura; se hace aquí antes de
+            # arrancar el agente. Ambas operaciones son idempotentes.
+            from sync_agent.config import cargar as cargar_sync
+
+            if cargar_sync().activo:
+                db_config.preparar_sincronizacion()
+                db_config.activar_captura_sincronizacion()
             agente = agente_actual()
             if agente is None:
                 agente = iniciar_agente(notificador=self._on_estado_sincronizacion)
@@ -623,6 +649,299 @@ class MainWindow(ctk.CTk):
             self._pintar_estado_sincronizacion(estado_sincronizacion())
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
+
+    # ------------------------------------------------------------------
+    # Servidor central y bandeja del sistema
+    # ------------------------------------------------------------------
+    def _preparar_servidor_inicial(self) -> None:
+        """
+        Pregunta una sola vez si este equipo será el nodo central y lo arranca
+
+        La respuesta se recuerda en config.json. Si el equipo ya fue designado
+        en un arranque anterior, el servidor se inicia sin volver a preguntar.
+        """
+        try:
+            from sync_agent.servidor_embebido import (
+                CLAVE_SERVIDOR_AUTO,
+                ESTADO_ACTIVO,
+                iniciar_servidor_embebido,
+                preferencia_servidor,
+            )
+        except Exception:
+            logger.warning("El servidor central embebido no está disponible", exc_info=True)
+            return
+
+        try:
+            preferencia = preferencia_servidor()
+            if preferencia is None:
+                preferencia = bool(
+                    messagebox.askyesno(
+                        "Servidor para el teléfono",
+                        "¿Este equipo será el servidor central de la red?\n\n"
+                        "Al abrir el sistema se iniciará el servidor y el teléfono "
+                        "podrá conectarse por WiFi con su usuario y contraseña.\n\n"
+                        "Después podrá iniciarlo o detenerlo desde el icono de la "
+                        "bandeja del sistema.",
+                    )
+                )
+                settings.set_config_value(CLAVE_SERVIDOR_AUTO, preferencia)
+
+            if preferencia:
+                estado = iniciar_servidor_embebido(esperar=True)
+                if estado.get("estado") == ESTADO_ACTIVO:
+                    self.status_label.configure(
+                        text=f"Servidor para el teléfono: {estado.get('url_red')}"
+                    )
+        except Exception:
+            logger.warning("No se pudo preparar el servidor central", exc_info=True)
+
+    def iniciar_bandeja_servidor(self) -> None:
+        """Muestra el estado del servidor en el área de notificación (Windows)"""
+        if sys.platform != "win32" or self._bandeja is not None:
+            return
+        try:
+            from sync_agent.servidor_embebido import estado_servidor_embebido
+            from updater.tray_icon import TrayIcon
+        except Exception:
+            logger.warning("No se pudo cargar la bandeja del servidor", exc_info=True)
+            return
+
+        try:
+            estado = estado_servidor_embebido()
+            self._bandeja = TrayIcon(
+                self._bandeja_comandos,
+                tooltip=self._texto_bandeja(estado),
+                menu=self._menu_bandeja(estado),
+                class_name="SDEP_CPP5_Servidor_Tray",
+            )
+            self._bandeja.start()
+            self._bandeja_menu_previo = self._menu_bandeja(estado)
+            # El icono tarda unos instantes en tener ventana propia: la primera
+            # notificación se deja para el primer sondeo, ya con el icono listo.
+            self._bandeja_poll_id = self.after(1500, self._procesar_bandeja)
+        except Exception:
+            logger.warning("No se pudo mostrar la bandeja del servidor", exc_info=True)
+            self._bandeja = None
+
+    def _menu_bandeja(self, estado: dict) -> list[Any]:
+        """Elementos del menú contextual según el estado del servidor"""
+        activo = estado.get("estado") == "activo"
+        elementos: list[Any] = [
+            ("Abrir el sistema", "show"),
+            ("Copiar URL para el teléfono", "copiar"),
+            ("Mostrar datos de conexión", "datos"),
+        ]
+        if activo:
+            elementos.append(("Detener servidor y desactivar autoarranque", "detener"))
+        else:
+            elementos.append(("Iniciar servidor en este equipo", "iniciar"))
+        elementos.append(None)
+        elementos.append(("Salir", "exit"))
+        return elementos
+
+    @staticmethod
+    def _texto_bandeja(estado: dict) -> str:
+        """Texto flotante del icono (el límite de Windows lo recorta el icono)"""
+        clave = str(estado.get("estado") or "detenido")
+        if clave == "activo":
+            return f"SDEP · Servidor activo · {estado.get('url_red') or ''}"
+        if clave == "iniciando":
+            return "SDEP · Iniciando servidor…"
+        if clave == "ocupado":
+            return "SDEP · Servidor ya abierto en este equipo"
+        if clave == "error":
+            return "SDEP · Servidor con error"
+        return "SDEP · Servidor detenido"
+
+    def _actualizar_bandeja(self) -> None:
+        """Refresca icono, menú y estado, y avisa de los cambios importantes"""
+        if self._bandeja is None:
+            return
+        try:
+            from sync_agent.servidor_embebido import estado_servidor_embebido
+
+            estado = estado_servidor_embebido()
+        except Exception:
+            logger.debug("No se pudo leer el estado del servidor", exc_info=True)
+            return
+
+        clave = str(estado.get("estado") or "detenido")
+        try:
+            menu = self._menu_bandeja(estado)
+            if menu != self._bandeja_menu_previo:
+                self._bandeja.set_menu(menu)
+                self._bandeja_menu_previo = menu
+            self._bandeja.update_tooltip(self._texto_bandeja(estado))
+        except Exception:
+            logger.debug("No se pudo actualizar el icono del servidor", exc_info=True)
+
+        if self._bandeja_reiniciar_sync and clave == "activo":
+            self._bandeja_reiniciar_sync = False
+            try:
+                # Un arranque posterior del nodo no pasó por main.py: hay que
+                # preparar el esquema y enganchar la captura antes de recrear
+                # el agente, igual que en el arranque normal.
+                from src.config import db_config
+                from sync_agent import estado_sincronizacion, reiniciar_agente
+
+                db_config.preparar_sincronizacion()
+                db_config.activar_captura_sincronizacion()
+                reiniciar_agente()
+                self._sync_estado_pendiente = dict(estado_sincronizacion())
+                self._pintar_estado_sincronizacion()
+            except Exception:
+                logger.warning("No se pudo reiniciar el agente", exc_info=True)
+
+        if clave == self._bandeja_estado_previo:
+            return
+        if clave == "activo":
+            self._notificar_bandeja(
+                "Servidor activo",
+                f"El teléfono puede conectarse en {estado.get('url_red')}",
+            )
+        elif clave in ("ocupado", "error"):
+            self._notificar_bandeja(
+                "Servidor no disponible",
+                str(estado.get("error") or "Revisa el estado del servidor"),
+            )
+        elif clave == "detenido" and self._bandeja_estado_previo is not None:
+            self._notificar_bandeja(
+                "Servidor detenido",
+                "El teléfono no podrá conectarse hasta que lo inicies de nuevo.",
+            )
+        self._bandeja_estado_previo = clave
+
+    def _notificar_bandeja(self, titulo: str, mensaje: str) -> None:
+        """Muestra un aviso del sistema desde el icono (si está disponible)"""
+        if self._bandeja is None:
+            return
+        try:
+            self._bandeja.notify(titulo, mensaje)
+        except Exception:
+            logger.debug("No se pudo mostrar el aviso del servidor", exc_info=True)
+
+    def _procesar_bandeja(self) -> None:
+        """Atiende los comandos del icono y refresca su estado (hilo de Tk)"""
+        self._bandeja_poll_id = None
+        if self._bandeja is None:
+            return
+        try:
+            while True:
+                comando = self._bandeja_comandos.get_nowait()
+                self._ejecutar_comando_bandeja(comando[0] if comando else "")
+        except queue.Empty:
+            pass
+        except Exception:
+            logger.debug("Comando de bandeja inválido", exc_info=True)
+
+        self._actualizar_bandeja()
+        try:
+            self._bandeja_poll_id = self.after(1000, self._procesar_bandeja)
+        except tk.TclError:
+            logger.debug("La ventana se cerró durante el sondeo de la bandeja")
+
+    def _ejecutar_comando_bandeja(self, accion: str) -> None:
+        """Despacha una acción elegida en el menú del icono"""
+        if accion == "show":
+            try:
+                self.deiconify()
+                self.state("normal")
+                self.lift()
+                self.focus_force()
+            except tk.TclError:
+                logger.debug("No se pudo traer la ventana al frente")
+        elif accion == "copiar":
+            self._copiar_url_servidor()
+        elif accion == "datos":
+            self._mostrar_datos_conexion()
+        elif accion == "iniciar":
+            self._iniciar_servidor_desde_bandeja()
+        elif accion == "detener":
+            self._detener_servidor_desde_bandeja()
+        elif accion == "exit":
+            self._on_exit()
+
+    def _copiar_url_servidor(self) -> None:
+        """Copia al portapapeles la dirección que debe escribir el teléfono"""
+        try:
+            from sync_agent.servidor_embebido import estado_servidor_embebido
+
+            estado = estado_servidor_embebido()
+            url = str(estado.get("url_red") or estado.get("url_local") or "")
+            if not url:
+                messagebox.showinfo(
+                    "Servidor",
+                    "El servidor no está activo en este equipo.\n"
+                    "Inícialo desde el menú del icono de la bandeja.",
+                )
+                return
+            self.clipboard_clear()
+            self.clipboard_append(url)
+            self.update_idletasks()
+            self.status_label.configure(text=f"URL copiada: {url}")
+        except Exception:
+            logger.debug("No se pudo copiar la URL del servidor", exc_info=True)
+
+    def _mostrar_datos_conexion(self) -> None:
+        """Explica cómo conectar el teléfono al nodo central"""
+        try:
+            from sync_agent.servidor_embebido import estado_servidor_embebido
+
+            estado = estado_servidor_embebido()
+        except Exception:
+            estado = {}
+        url = str(estado.get("url_red") or estado.get("url_local") or "")
+        if not url:
+            messagebox.showinfo(
+                "Datos de conexión",
+                "El servidor no está activo en este equipo.\n\n"
+                "Inícialo desde el menú del icono de la bandeja del sistema.",
+            )
+            return
+        messagebox.showinfo(
+            "Datos de conexión",
+            "En el teléfono (SDEP Móvil):\n"
+            f"1. Dirección del servidor: {url}\n"
+            "2. Ingrese con el mismo usuario y contraseña de esta computadora.\n\n"
+            "El nodo central copia las cuentas de este equipo; las que no existan "
+            "se crean con las claves iniciales documentadas.",
+        )
+
+    def _iniciar_servidor_desde_bandeja(self) -> None:
+        """Activa el arranque automático y levanta el nodo central ahora"""
+        try:
+            from sync_agent.servidor_embebido import (
+                CLAVE_SERVIDOR_AUTO,
+                iniciar_servidor_embebido,
+            )
+
+            settings.set_config_value(CLAVE_SERVIDOR_AUTO, True)
+            self._bandeja_reiniciar_sync = True
+            iniciar_servidor_embebido(esperar=False)
+            self.status_label.configure(text="Iniciando servidor para el teléfono…")
+        except Exception:
+            logger.warning("No se pudo iniciar el servidor desde la bandeja", exc_info=True)
+
+    def _detener_servidor_desde_bandeja(self) -> None:
+        """Desactiva el arranque automático y detiene el nodo central"""
+        try:
+            from sync_agent.servidor_embebido import (
+                CLAVE_SERVIDOR_AUTO,
+                detener_servidor_embebido,
+            )
+
+            settings.set_config_value(CLAVE_SERVIDOR_AUTO, False)
+            detener_servidor_embebido()
+            try:
+                from sync_agent import detener_agente
+
+                detener_agente(timeout=3.0)
+            except Exception:
+                logger.debug("No se pudo detener el agente al cerrar el servidor", exc_info=True)
+            self.status_label.configure(text="Servidor detenido")
+            self.after(50, self._actualizar_bandeja)
+        except Exception:
+            logger.warning("No se pudo detener el servidor desde la bandeja", exc_info=True)
 
     # ------------------------------------------------------------------
     # Atajos de teclado
@@ -994,7 +1313,11 @@ class MainWindow(ctk.CTk):
             self.destroy()
 
     def _on_exit(self):
-        if not messagebox.askyesno("Salir", "¿Desea salir de la aplicación?"):
+        if not messagebox.askyesno(
+            "Salir",
+            "¿Desea salir de la aplicación?\n\n"
+            "El servidor para el teléfono también se detendrá.",
+        ):
             return
         self._cancelar_respaldo_programado()
         if self._backup_en_curso.is_set():
@@ -1027,7 +1350,7 @@ class MainWindow(ctk.CTk):
         # programada viva fallaría contra la sesión de base de datos ya
         # cerrada).
         self._cancelar_respaldo_programado()
-        for atributo in ("_clock_timer", "_eventos_poll_id"):
+        for atributo in ("_clock_timer", "_eventos_poll_id", "_bandeja_poll_id"):
             identificador = getattr(self, atributo, None)
             if identificador is not None:
                 try:
@@ -1035,6 +1358,14 @@ class MainWindow(ctk.CTk):
                 except Exception:
                     logger.debug("operación de interfaz ignorada", exc_info=True)
                 setattr(self, atributo, None)
+        # El icono de la bandeja pertenece a esta ventana: se retira antes de
+        # destruirla para no dejar un icono huérfano en el área de notificación.
+        try:
+            if self._bandeja is not None:
+                self._bandeja.close()
+                self._bandeja = None
+        except Exception:
+            logger.debug("No se pudo cerrar la bandeja del servidor", exc_info=True)
         # Revocar los tokens académicos de esta sesión ANTES de cerrar la
         # sesión de base de datos. Sin esto, un token de notas seguía siendo
         # válido hasta ocho horas después de cerrar sesión (o de salir de la

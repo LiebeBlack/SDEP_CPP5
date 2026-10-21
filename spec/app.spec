@@ -90,8 +90,9 @@ else:
     version_resource = None
 
 # customtkinter incluye temas y recursos JSON que deben empaquetarse
-# junto al código; se recolectan explícitamente.
-datas = collect_data_files("customtkinter")
+# junto al código; se recolectan explícitamente. El icono viaja también para
+# que la bandeja del servidor lo encuentre dentro del ejecutable.
+datas = collect_data_files("customtkinter") + [(str(project_root / "assets" / "app.ico"), "assets")]
 
 # El binario de Linux se compila en Debian 13 (glibc 2.41) con Python 3.15
 # standalone (uv/python-build-standalone). Ese intérprete guarda Tcl/Tk

@@ -37,17 +37,21 @@ def _crear_usuarios(nucleo):
     try:
         servicio = AuthService(sesion)
         if servicio.usuario_por_username("admin") is None:
-            servicio.crear_usuario("admin", "Clave1234", "admin", "Administrador",
-                                   debe_cambiar_password=False)
+            servicio.crear_usuario(
+                "admin", "Clave1234", "admin", "Administrador", debe_cambiar_password=False
+            )
         if servicio.usuario_por_username("gestora") is None:
-            servicio.crear_usuario("gestora", "Clave1234", "manager", "Gestora",
-                                   debe_cambiar_password=False)
+            servicio.crear_usuario(
+                "gestora", "Clave1234", "manager", "Gestora", debe_cambiar_password=False
+            )
         if servicio.usuario_por_username("docente") is None:
-            servicio.crear_usuario("docente", "Clave1234", "user", "Docente",
-                                   debe_cambiar_password=False)
+            servicio.crear_usuario(
+                "docente", "Clave1234", "user", "Docente", debe_cambiar_password=False
+            )
         if servicio.usuario_por_username("lector") is None:
-            servicio.crear_usuario("lector", "Clave1234", "viewer", "Lector",
-                                   debe_cambiar_password=False)
+            servicio.crear_usuario(
+                "lector", "Clave1234", "viewer", "Lector", debe_cambiar_password=False
+            )
     finally:
         sesion.close()
 
@@ -95,8 +99,9 @@ def test_login_solo_muestra_cambio_obligatorio_si_esta_marcado(central):
 
     sesion = central.SessionFactory()
     try:
-        AuthService(sesion).crear_usuario("nuevo", "Clave1234", "user", "Nuevo",
-                                          debe_cambiar_password=True)
+        AuthService(sesion).crear_usuario(
+            "nuevo", "Clave1234", "user", "Nuevo", debe_cambiar_password=True
+        )
     finally:
         sesion.close()
 

@@ -231,8 +231,16 @@ class NucleoCentral:
             "tablas": registro.tablas_sincronizadas(),
             # Capacidades del protocolo 2: el móvil decide qué pantallas
             # ofrecer según lo que el nodo central anuncia.
-            "acciones": ["auth", "consultas", "admin", "nomina", "incidencias",
-                         "contratos", "academicos", "archivos"],
+            "acciones": [
+                "auth",
+                "consultas",
+                "admin",
+                "nomina",
+                "incidencias",
+                "contratos",
+                "academicos",
+                "archivos",
+            ],
         }
 
     def push(self, dispositivo: DispositivoSync, cuerpo: dict) -> dict:
@@ -426,7 +434,12 @@ class NucleoCentral:
     # Protocolo 2: consultas, administración, acciones y archivos
     # ------------------------------------------------------------------
     def api_acciones(
-        self, sesion_usuario, dispositivo: DispositivoSync, ruta: str, cuerpo: dict, parametros: dict
+        self,
+        sesion_usuario,
+        dispositivo: DispositivoSync,
+        ruta: str,
+        cuerpo: dict,
+        parametros: dict,
     ) -> dict:
         """
         Despacha una petición del protocolo 2 a su acción
@@ -846,9 +859,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
             # propio límite de peticiones) ---
             if ruta.path == f"{RUTA_AUTH}/login" and metodo == "POST":
                 self.nucleo.limitar_tasa("login:" + (self.client_address[0] or "?"))
-                datos = self.nucleo.api.login(
-                    self._leer_json(), self.headers.get("X-Dispositivo")
-                )
+                datos = self.nucleo.api.login(self._leer_json(), self.headers.get("X-Dispositivo"))
                 self._responder_json(200, datos)
                 return
 
@@ -886,8 +897,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
 
             # --- Protocolo 2: consultas, administración, acciones y archivos ---
             if ruta.path.startswith(
-                (RUTA_CONSULTAS + "/", RUTA_ADMIN + "/", RUTA_ACCIONES + "/",
-                 RUTA_ARCHIVOS + "/")
+                (RUTA_CONSULTAS + "/", RUTA_ADMIN + "/", RUTA_ACCIONES + "/", RUTA_ARCHIVOS + "/")
             ):
                 sesion_usuario = self.nucleo.api.validar(self._token_sesion())
                 # /archivos/subir trae bytes crudos, no JSON: su cuerpo se lee

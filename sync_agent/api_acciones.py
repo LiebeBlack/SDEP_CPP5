@@ -97,20 +97,35 @@ def exigir_permiso(sesion: SesionValida, permiso: str, modulo: str | None = None
     from src.utils.security import PermissionChecker
 
     if modulo is not None and not PermissionChecker.can_access_module(sesion.rol, modulo):
-        _auditar(sesion.username, _tipo_evento("SECURITY_PERMISSION_DENIED"), modulo or "sistema",
-                 detalles={"permiso": permiso}, exito=False)
+        _auditar(
+            sesion.username,
+            _tipo_evento("SECURITY_PERMISSION_DENIED"),
+            modulo or "sistema",
+            detalles={"permiso": permiso},
+            exito=False,
+        )
         raise ErrorApi(f"Su rol no tiene acceso al módulo «{modulo}»", 403)
     if not PermissionChecker.has_permission(sesion.rol, permiso):
-        _auditar(sesion.username, _tipo_evento("SECURITY_PERMISSION_DENIED"), modulo or "sistema",
-                 detalles={"permiso": permiso}, exito=False)
+        _auditar(
+            sesion.username,
+            _tipo_evento("SECURITY_PERMISSION_DENIED"),
+            modulo or "sistema",
+            detalles={"permiso": permiso},
+            exito=False,
+        )
         raise ErrorApi(f"Su rol no tiene permiso para «{permiso}»", 403)
 
 
 def exigir_admin(sesion: SesionValida) -> None:
     """Comprueba que la sesión corresponde a un administrador"""
     if sesion.rol != "admin":
-        _auditar(sesion.username, _tipo_evento("SECURITY_PERMISSION_DENIED"), "configuracion",
-                 detalles={"permiso": "admin"}, exito=False)
+        _auditar(
+            sesion.username,
+            _tipo_evento("SECURITY_PERMISSION_DENIED"),
+            "configuracion",
+            detalles={"permiso": "admin"},
+            exito=False,
+        )
         raise ErrorApi("Esta operación es exclusiva del administrador", 403)
 
 
@@ -221,8 +236,12 @@ class ApiAcciones:
         if not username or not password:
             raise ErrorApi("Debe escribir el usuario y la contraseña")
         resultado = self.gestor_sesiones.iniciar(username, password, dispositivo_id)
-        _auditar(username, _tipo_evento("USER_LOGIN"), "usuario",
-                 detalles={"dispositivo": dispositivo_id, "rol": resultado.get("rol")})
+        _auditar(
+            username,
+            _tipo_evento("USER_LOGIN"),
+            "usuario",
+            detalles={"dispositivo": dispositivo_id, "rol": resultado.get("rol")},
+        )
         return resultado
 
     def cerrar_sesion(self, token: str) -> dict:
@@ -287,7 +306,9 @@ class ApiAcciones:
         try:
             incluir("empleados", "empleados", lambda: EmpleadoService(db).obtener_estadisticas())
             incluir("documentos", "documentos", lambda: DocumentoService(db).obtener_estadisticas())
-            incluir("incidencias", "incidencias", lambda: IncidenciaService(db).obtener_estadisticas())
+            incluir(
+                "incidencias", "incidencias", lambda: IncidenciaService(db).obtener_estadisticas()
+            )
             incluir("contratos", "contratos", lambda: ContratoService(db).obtener_estadisticas())
             incluir("nomina", "nomina", lambda: PagoService(db).obtener_estadisticas())
             incluir("estudiantes", "academico", lambda: AcademicoService(db).estadisticas())
@@ -302,7 +323,11 @@ class ApiAcciones:
         from src.utils.audit_logger import get_audit_logger
 
         auditoria = get_audit_logger()
-        eventos = auditoria.get_recent_events(limit=max(1, min(int(limite or 100), 500))) if auditoria else []
+        eventos = (
+            auditoria.get_recent_events(limit=max(1, min(int(limite or 100), 500)))
+            if auditoria
+            else []
+        )
         return {"eventos": serializar(eventos)}
 
     # ==================================================================
@@ -340,8 +365,13 @@ class ApiAcciones:
                     debe_cambiar_password=bool(cuerpo.get("debe_cambiar_password", True)),
                 )
             )
-            _auditar(sesion.username, _tipo_evento("DATA_CREATE"), "usuario", creado.id,
-                     {"username": creado.username, "rol": cuerpo.get("rol")})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_CREATE"),
+                "usuario",
+                creado.id,
+                {"username": creado.username, "rol": cuerpo.get("rol")},
+            )
             datos = serializar(creado)
             datos.pop("password_hash", None)
             datos.pop("password_historial", None)
@@ -357,6 +387,7 @@ class ApiAcciones:
 
         db = self._sesion()
         try:
+
             def operar():
                 servicio = AuthService(db)
                 # ``usuario_actual`` es quien ejecuta la operación (para que no
@@ -365,8 +396,13 @@ class ApiAcciones:
                 return servicio.actualizar_usuario(usuario_id, cuerpo, usuario_actual=actor)
 
             actualizado = self._ejecutar(operar)
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "usuario", usuario_id,
-                     {"campos": sorted(str(c) for c in cuerpo.keys())})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "usuario",
+                usuario_id,
+                {"campos": sorted(str(c) for c in cuerpo.keys())},
+            )
             datos = serializar(actualizado)
             datos.pop("password_hash", None)
             datos.pop("password_historial", None)
@@ -382,8 +418,13 @@ class ApiAcciones:
         db = self._sesion()
         try:
             self._ejecutar(lambda: AuthService(db).desbloquear_usuario(usuario_id))
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "usuario", usuario_id,
-                     {"operacion": "desbloquear"})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "usuario",
+                usuario_id,
+                {"operacion": "desbloquear"},
+            )
             return {"correcto": True}
         finally:
             db.close()
@@ -401,8 +442,12 @@ class ApiAcciones:
         db = self._sesion()
         try:
             pagos = self._ejecutar(lambda: PagoService(db).generar_nominas_periodo(desde, hasta))
-            _auditar(sesion.username, _tipo_evento("DATA_CREATE"), "pago",
-                     detalles={"periodo": f"{desde}..{hasta}", "generados": len(pagos)})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_CREATE"),
+                "pago",
+                detalles={"periodo": f"{desde}..{hasta}", "generados": len(pagos)},
+            )
             return {"generados": len(pagos), "pagos": serializar(pagos)[:MAX_FILAS_LISTA]}
         finally:
             db.close()
@@ -417,8 +462,13 @@ class ApiAcciones:
             pagado = self._ejecutar(lambda: PagoService(db).marcar_pagado(pago_id))
             if not pagado:
                 raise ErrorApi("El pago no existe", 404)
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "pago", pago_id,
-                     {"operacion": "marcar_pagado"})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "pago",
+                pago_id,
+                {"operacion": "marcar_pagado"},
+            )
             return {"correcto": True}
         finally:
             db.close()
@@ -459,8 +509,13 @@ class ApiAcciones:
             )
             if not correcto:
                 raise ErrorApi("La incidencia no existe", 404)
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "incidencia", incidencia_id,
-                     {"operacion": "aprobar"})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "incidencia",
+                incidencia_id,
+                {"operacion": "aprobar"},
+            )
             return {"correcto": True}
         finally:
             db.close()
@@ -481,8 +536,13 @@ class ApiAcciones:
             )
             if not correcto:
                 raise ErrorApi("La incidencia no existe", 404)
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "incidencia", incidencia_id,
-                     {"operacion": "rechazar"})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "incidencia",
+                incidencia_id,
+                {"operacion": "rechazar"},
+            )
             return {"correcto": True}
         finally:
             db.close()
@@ -507,8 +567,13 @@ class ApiAcciones:
                     aprobado_por=sesion.username,
                 )
             )
-            _auditar(sesion.username, _tipo_evento("DATA_CREATE"), "contrato", getattr(nuevo, "id", None),
-                     {"operacion": "renovar", "anterior": contrato_id})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_CREATE"),
+                "contrato",
+                getattr(nuevo, "id", None),
+                {"operacion": "renovar", "anterior": contrato_id},
+            )
             return {"contrato": serializar(nuevo)}
         finally:
             db.close()
@@ -533,8 +598,13 @@ class ApiAcciones:
                     registrado_por=sesion.username,
                 )
             )
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "contrato", contrato_id,
-                     {"operacion": "terminar", "motivo": motivo})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "contrato",
+                contrato_id,
+                {"operacion": "terminar", "motivo": motivo},
+            )
             return {"resultado": serializar(resultado)}
         finally:
             db.close()
@@ -552,8 +622,13 @@ class ApiAcciones:
             periodo = self._ejecutar(
                 lambda: AcademicoService(db).cerrar_periodo(periodo_id, cuerpo.get("token"))
             )
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "periodo_academico", periodo_id,
-                     {"operacion": "cerrar"})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "periodo_academico",
+                periodo_id,
+                {"operacion": "cerrar"},
+            )
             return {"periodo": serializar(periodo)}
         finally:
             db.close()
@@ -568,8 +643,13 @@ class ApiAcciones:
             periodo = self._ejecutar(
                 lambda: AcademicoService(db).reabrir_periodo(periodo_id, cuerpo.get("token"))
             )
-            _auditar(sesion.username, _tipo_evento("DATA_UPDATE"), "periodo_academico", periodo_id,
-                     {"operacion": "reabrir"})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_UPDATE"),
+                "periodo_academico",
+                periodo_id,
+                {"operacion": "reabrir"},
+            )
             return {"periodo": serializar(periodo)}
         finally:
             db.close()
@@ -591,8 +671,12 @@ class ApiAcciones:
         db = self._sesion()
         try:
             guardadas = self._ejecutar(lambda: NotaService(db).guardar_lote(filas, token))
-            _auditar(sesion.username, _tipo_evento("DATA_CREATE"), "nota_final",
-                     detalles={"operacion": "carga_lote", "guardadas": guardadas})
+            _auditar(
+                sesion.username,
+                _tipo_evento("DATA_CREATE"),
+                "nota_final",
+                detalles={"operacion": "carga_lote", "guardadas": guardadas},
+            )
             return {"guardadas": guardadas}
         finally:
             db.close()
@@ -689,15 +773,21 @@ class ApiAcciones:
     # ==================================================================
     # Archivos (PDF y Excel por el canal de binarios)
     # ==================================================================
-    def subir_archivo(self, sesion: SesionValida, nombre: str, contenido: bytes, dispositivo) -> dict:
+    def subir_archivo(
+        self, sesion: SesionValida, nombre: str, contenido: bytes, dispositivo
+    ) -> dict:
         """Guarda un archivo en el almacén central (deduplicado por hash)"""
         exigir_permiso(sesion, "create", "documentos")
         if not contenido:
             raise ErrorApi("El archivo está vacío")
         hash_archivo = hash_bytes(contenido)
         self.nucleo.guardar_blob(dispositivo, hash_archivo, contenido)
-        _auditar(sesion.username, _tipo_evento("DATA_CREATE"), "archivo",
-                 detalles={"nombre": nombre, "hash": hash_archivo[:12], "tamano": len(contenido)})
+        _auditar(
+            sesion.username,
+            _tipo_evento("DATA_CREATE"),
+            "archivo",
+            detalles={"nombre": nombre, "hash": hash_archivo[:12], "tamano": len(contenido)},
+        )
         return {
             "hash": hash_archivo,
             "tamano": len(contenido),
@@ -757,22 +847,31 @@ class ApiAcciones:
                 exigir_permiso(sesion, "report", "empleados")
                 destino = str(Path(temporal) / "constancia_trabajo.pdf")
                 nombre = "constancia_trabajo.pdf"
-                self._ejecutar(lambda: generador.generate_constancia_trabajo(
-                    empleado_o_error(_entero(cuerpo, "empleado_id")), destino))
+                self._ejecutar(
+                    lambda: generador.generate_constancia_trabajo(
+                        empleado_o_error(_entero(cuerpo, "empleado_id")), destino
+                    )
+                )
 
             elif tipo == "ficha_empleado":
                 exigir_permiso(sesion, "report", "empleados")
                 destino = str(Path(temporal) / "ficha_empleado.pdf")
                 nombre = "ficha_empleado.pdf"
-                self._ejecutar(lambda: generador.generate_ficha_empleado(
-                    empleado_o_error(_entero(cuerpo, "empleado_id")), destino))
+                self._ejecutar(
+                    lambda: generador.generate_ficha_empleado(
+                        empleado_o_error(_entero(cuerpo, "empleado_id")), destino
+                    )
+                )
 
             elif tipo == "reporte_empleados":
                 exigir_permiso(sesion, "report", "empleados")
                 destino = str(Path(temporal) / "reporte_empleados.pdf")
                 nombre = "reporte_empleados.pdf"
-                self._ejecutar(lambda: generador.generate_reporte_empleados(
-                    servicio_empleados.listar_empleados_activos(), destino))
+                self._ejecutar(
+                    lambda: generador.generate_reporte_empleados(
+                        servicio_empleados.listar_empleados_activos(), destino
+                    )
+                )
 
             elif tipo == "recibo_pago":
                 exigir_permiso(sesion, "report", "nomina")
@@ -782,7 +881,9 @@ class ApiAcciones:
                     raise ErrorApi("El pago no existe", 404)
                 destino = str(Path(temporal) / f"recibo_{pago_id}.pdf")
                 nombre = f"recibo_{pago_id}.pdf"
-                self._ejecutar(lambda: generador.generate_recibo_pago(self._fila_recibo(pago), destino))
+                self._ejecutar(
+                    lambda: generador.generate_recibo_pago(self._fila_recibo(pago), destino)
+                )
 
             elif tipo == "planilla_nomina":
                 exigir_permiso(sesion, "report", "nomina")
@@ -792,7 +893,9 @@ class ApiAcciones:
                 filas = self._filas_planilla(pagos, servicio_empleados)
                 destino = str(Path(temporal) / "planilla_nomina.pdf")
                 nombre = "planilla_nomina.pdf"
-                titulo = f"Periodo: {desde.isoformat()} a {hasta.isoformat()} | Registros: {len(filas)}"
+                titulo = (
+                    f"Periodo: {desde.isoformat()} a {hasta.isoformat()} | Registros: {len(filas)}"
+                )
                 self._ejecutar(lambda: generador.generate_reporte_nomina(filas, destino, titulo))
 
             elif tipo == "reporte_incidencias":
@@ -801,8 +904,11 @@ class ApiAcciones:
                 filas = self._filas_incidencias(incidencias, servicio_empleados)
                 destino = str(Path(temporal) / "reporte_incidencias.pdf")
                 nombre = "reporte_incidencias.pdf"
-                self._ejecutar(lambda: generador.generate_reporte_incidencias(
-                    filas, destino, titulo="Todas las incidencias"))
+                self._ejecutar(
+                    lambda: generador.generate_reporte_incidencias(
+                        filas, destino, titulo="Todas las incidencias"
+                    )
+                )
 
             elif tipo == "reporte_contratos":
                 exigir_permiso(sesion, "report", "contratos")
@@ -816,14 +922,19 @@ class ApiAcciones:
                 exigir_permiso(sesion, "report", "documentos")
                 from src.services.documento_service import DocumentoService
 
-                documentos = DocumentoService(db).listar_vencidos() + DocumentoService(db).listar_por_vencer(30)
+                documentos = DocumentoService(db).listar_vencidos() + DocumentoService(
+                    db
+                ).listar_por_vencer(30)
                 filas = self._filas_vencimientos(documentos, servicio_empleados)
                 destino = str(Path(temporal) / "reporte_vencimientos.pdf")
                 nombre = "reporte_vencimientos.pdf"
                 if not filas:
                     raise ErrorApi("No hay documentos vencidos ni por vencer")
-                self._ejecutar(lambda: generador.generate_reporte_vencimientos(
-                    filas, destino, titulo=f"Generado el {date.today().isoformat()}"))
+                self._ejecutar(
+                    lambda: generador.generate_reporte_vencimientos(
+                        filas, destino, titulo=f"Generado el {date.today().isoformat()}"
+                    )
+                )
 
             elif tipo == "liquidacion":
                 exigir_permiso(sesion, "report", "contratos")
@@ -835,33 +946,41 @@ class ApiAcciones:
                 empleado = empleado_o_error(contrato.empleado_id)
                 motivo = str(cuerpo.get("motivo") or "terminacion")
                 finiquito = self._ejecutar(
-                    lambda: servicio_contratos.calcular_liquidacion(empleado.id, motivo))
+                    lambda: servicio_contratos.calcular_liquidacion(empleado.id, motivo)
+                )
                 destino = str(Path(temporal) / f"liquidacion_{contrato_id}.pdf")
                 nombre = f"liquidacion_{contrato_id}.pdf"
-                self._ejecutar(lambda: generador.generate_liquidacion(
-                    empleado, finiquito.to_dict(), destino, contrato=contrato.numero))
+                self._ejecutar(
+                    lambda: generador.generate_liquidacion(
+                        empleado, finiquito.to_dict(), destino, contrato=contrato.numero
+                    )
+                )
 
             elif tipo == "excel_empleados":
                 exigir_permiso(sesion, "report", "empleados")
-                destino, nombre = self._exportar(temporal, "empleados.xlsx",
-                                                 servicio_empleados.listar_empleados_activos())
+                destino, nombre = self._exportar(
+                    temporal, "empleados.xlsx", servicio_empleados.listar_empleados_activos()
+                )
 
             elif tipo == "excel_incidencias":
                 exigir_permiso(sesion, "report", "incidencias")
-                destino, nombre = self._exportar(temporal, "incidencias.xlsx",
-                                                 IncidenciaService(db).listar_todas())
+                destino, nombre = self._exportar(
+                    temporal, "incidencias.xlsx", IncidenciaService(db).listar_todas()
+                )
 
             elif tipo == "excel_nomina":
                 exigir_permiso(sesion, "report", "nomina")
                 desde = _fecha(cuerpo, "periodo_inicio")
                 hasta = _fecha(cuerpo, "periodo_fin")
                 destino, nombre = self._exportar(
-                    temporal, "nomina.xlsx", PagoService(db).listar_por_periodo(desde, hasta))
+                    temporal, "nomina.xlsx", PagoService(db).listar_por_periodo(desde, hasta)
+                )
 
             elif tipo == "excel_estudiantes":
                 exigir_permiso(sesion, "report", "estudiantes")
-                destino, nombre = self._exportar(temporal, "estudiantes.xlsx",
-                                                 AcademicoService(db).listar_estudiantes_activos())
+                destino, nombre = self._exportar(
+                    temporal, "estudiantes.xlsx", AcademicoService(db).listar_estudiantes_activos()
+                )
 
             elif tipo == "excel_contratos":
                 exigir_permiso(sesion, "report", "contratos")
@@ -870,8 +989,11 @@ class ApiAcciones:
                 nombre = "contratos.xlsx"
                 from src.utils.exporter import exportar_archivo
 
-                self._ejecutar(lambda: exportar_archivo(
-                    serializar(self._filas_contratos(contratos, servicio_empleados)), destino))
+                self._ejecutar(
+                    lambda: exportar_archivo(
+                        serializar(self._filas_contratos(contratos, servicio_empleados)), destino
+                    )
+                )
             else:
                 raise ErrorApi(f"Tipo de archivo desconocido: «{tipo}»", 404)
             return destino, nombre

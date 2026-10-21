@@ -62,8 +62,7 @@ def _crear_cuentas(nucleo):
             ("lector", "viewer"),
         ):
             if servicio.usuario_por_username(usuario) is None:
-                servicio.crear_usuario(usuario, "Clave1234", rol, rol,
-                                       debe_cambiar_password=False)
+                servicio.crear_usuario(usuario, "Clave1234", rol, rol, debe_cambiar_password=False)
     finally:
         sesion.close()
 
@@ -266,15 +265,21 @@ def test_push_rechaza_a_cuentas_centrales_sin_permiso(central):
 
 def test_push_rechaza_al_manager_en_nomina(central):
     dispositivo = _emparejar(central)
-    operacion = _operacion(tabla="pagos", payload=dumps({
-        "empleado_id": 1,
-        "tipo_pago": "salario_base",
-        "periodo_inicio": "2026-01-01",
-        "periodo_fin": "2026-01-31",
-        "monto_bruto": 100.0,
-        "monto_neto": 90.0,
-        "salario_base": 100.0,
-    }), usuario="gestora")
+    operacion = _operacion(
+        tabla="pagos",
+        payload=dumps(
+            {
+                "empleado_id": 1,
+                "tipo_pago": "salario_base",
+                "periodo_inicio": "2026-01-01",
+                "periodo_fin": "2026-01-31",
+                "monto_bruto": 100.0,
+                "monto_neto": 90.0,
+                "salario_base": 100.0,
+            }
+        ),
+        usuario="gestora",
+    )
 
     # manager sí tiene update en nómina: la operación pasa el control de permisos
     # (puede fallar después por otros motivos de datos, nunca por permisos)
@@ -283,15 +288,21 @@ def test_push_rechaza_al_manager_en_nomina(central):
     assert not any(m.startswith("permiso") or m.startswith("modulo") for m in motivos)
 
     # viewer no
-    negada = _operacion(tabla="pagos", payload=dumps({
-        "empleado_id": 2,
-        "tipo_pago": "salario_base",
-        "periodo_inicio": "2026-01-01",
-        "periodo_fin": "2026-01-31",
-        "monto_bruto": 100.0,
-        "monto_neto": 90.0,
-        "salario_base": 100.0,
-    }), usuario="lector")
+    negada = _operacion(
+        tabla="pagos",
+        payload=dumps(
+            {
+                "empleado_id": 2,
+                "tipo_pago": "salario_base",
+                "periodo_inicio": "2026-01-01",
+                "periodo_fin": "2026-01-31",
+                "monto_bruto": 100.0,
+                "monto_neto": 90.0,
+                "salario_base": 100.0,
+            }
+        ),
+        usuario="lector",
+    )
     respuesta = central.push(dispositivo, {"ops": [negada]})
     assert respuesta["rechazadas"][0]["motivo"].startswith("permiso")
 
@@ -328,14 +339,20 @@ def test_push_del_admin_siempre_pasa(central):
 def test_registros_moviles_no_exige_mapa_de_modulos(central):
     """La captura de campo del móvil autentica por dispositivo y sesión propia"""
     dispositivo = _emparejar(central)
-    operacion = _operacion(tabla="registros_moviles", payload=dumps({
-        "uuid_movil": nuevo_uuid(),
-        "titulo": "Visita 4to B",
-        "categoria": "general",
-        "creado_en": "2026-01-01T12:00:00",
-        "actualizado_en": "2026-01-01T12:00:00",
-        "activo": 1,
-    }), usuario="docente")
+    operacion = _operacion(
+        tabla="registros_moviles",
+        payload=dumps(
+            {
+                "uuid_movil": nuevo_uuid(),
+                "titulo": "Visita 4to B",
+                "categoria": "general",
+                "creado_en": "2026-01-01T12:00:00",
+                "actualizado_en": "2026-01-01T12:00:00",
+                "activo": 1,
+            }
+        ),
+        usuario="docente",
+    )
 
     respuesta = central.push(dispositivo, {"ops": [operacion]})
 
@@ -349,12 +366,14 @@ def test_serializar_no_escapa_modelos_ni_decimales():
     from datetime import date
     from decimal import Decimal
 
-    datos = serializar({
-        "monto": Decimal("12.50"),
-        "fecha": date(2026, 3, 1),
-        "binario": b"no viaja",
-        "lista": [Decimal("1.00"), None, "texto"],
-    })
+    datos = serializar(
+        {
+            "monto": Decimal("12.50"),
+            "fecha": date(2026, 3, 1),
+            "binario": b"no viaja",
+            "lista": [Decimal("1.00"), None, "texto"],
+        }
+    )
     assert datos == {
         "monto": 12.5,
         "fecha": "2026-03-01",
@@ -434,8 +453,13 @@ def test_login_por_http_devuelve_sesion(servicio):
     base = f"http://127.0.0.1:{servicio.puerto}"
     equipo_id, token_equipo = servicio.servidor.nucleo.crear_dispositivo("Teléfono")
 
-    codigo, datos = _pedir(base, "/api/v1/auth/login", "POST",
-                           {"username": "admin", "password": "Clave1234"}, equipo="tel")
+    codigo, datos = _pedir(
+        base,
+        "/api/v1/auth/login",
+        "POST",
+        {"username": "admin", "password": "Clave1234"},
+        equipo="tel",
+    )
     assert codigo == 200
     assert datos["rol"] == "admin"
     token = datos["sesion_token"]
@@ -445,31 +469,37 @@ def test_login_por_http_devuelve_sesion(servicio):
     assert info["username"] == "admin"
 
     # Las consultas exigen doble credencial: equipo emparejado + sesión
-    codigo, panel = _pedir(base, "/api/v1/consultas/dashboard", sesion=token,
-                           equipo=equipo_id, token=token_equipo)
+    codigo, panel = _pedir(
+        base, "/api/v1/consultas/dashboard", sesion=token, equipo=equipo_id, token=token_equipo
+    )
     assert codigo == 200
     assert panel["indicadores"]
 
     codigo, error = _pedir(base, "/api/v1/auth/logout", "POST", sesion=token)
     assert codigo == 200
 
-    codigo, _ = _pedir(base, "/api/v1/consultas/dashboard", sesion=token,
-                       equipo=equipo_id, token=token_equipo)
+    codigo, _ = _pedir(
+        base, "/api/v1/consultas/dashboard", sesion=token, equipo=equipo_id, token=token_equipo
+    )
     assert codigo == 401
 
 
 def test_login_por_http_contrasena_mala(servicio):
     base = f"http://127.0.0.1:{servicio.puerto}"
-    codigo, datos = _pedir(base, "/api/v1/auth/login", "POST",
-                           {"username": "admin", "password": "mala"}, equipo="tel")
+    codigo, datos = _pedir(
+        base, "/api/v1/auth/login", "POST", {"username": "admin", "password": "mala"}, equipo="tel"
+    )
     assert codigo == 401
     assert "error" in datos
 
 
 def test_endpoints_sin_sesion_responden_401(servicio):
     base = f"http://127.0.0.1:{servicio.puerto}"
-    for ruta in ("/api/v1/consultas/dashboard", "/api/v1/admin/usuarios",
-                 "/api/v1/acciones/nomina/generar"):
+    for ruta in (
+        "/api/v1/consultas/dashboard",
+        "/api/v1/admin/usuarios",
+        "/api/v1/acciones/nomina/generar",
+    ):
         codigo, _ = _pedir(base, ruta, "POST" if "acciones" in ruta else "GET", {})
         assert codigo == 401, ruta
 
@@ -487,9 +517,14 @@ def test_ping_anuncia_protocolo_2_y_v1_sigue_viva(servicio):
 
     # push v1 sin usuario y con token de equipo: se acepta igual que siempre
     equipo_id, token = servicio.servidor.nucleo.crear_dispositivo("Escritorio")
-    codigo, respuesta = _pedir(base, "/api/v1/push", "POST",
-                               {"dispositivo": equipo_id, "ops": [_operacion()]},
-                               equipo=equipo_id, token=token)
+    codigo, respuesta = _pedir(
+        base,
+        "/api/v1/push",
+        "POST",
+        {"dispositivo": equipo_id, "ops": [_operacion()]},
+        equipo=equipo_id,
+        token=token,
+    )
     assert codigo == 200
     assert respuesta["aplicadas"]
 
@@ -497,26 +532,39 @@ def test_ping_anuncia_protocolo_2_y_v1_sigue_viva(servicio):
 def test_admin_por_http_exige_rol(servicio):
     base = f"http://127.0.0.1:{servicio.puerto}"
     equipo_id, token_equipo = servicio.servidor.nucleo.crear_dispositivo("Teléfono")
-    _, admin = _pedir(base, "/api/v1/auth/login", "POST",
-                      {"username": "admin", "password": "Clave1234"})
-    _, lector = _pedir(base, "/api/v1/auth/login", "POST",
-                       {"username": "lector", "password": "Clave1234"})
+    _, admin = _pedir(
+        base, "/api/v1/auth/login", "POST", {"username": "admin", "password": "Clave1234"}
+    )
+    _, lector = _pedir(
+        base, "/api/v1/auth/login", "POST", {"username": "lector", "password": "Clave1234"}
+    )
 
-    codigo, listado = _pedir(base, "/api/v1/admin/usuarios", sesion=admin["sesion_token"],
-                             equipo=equipo_id, token=token_equipo)
+    codigo, listado = _pedir(
+        base,
+        "/api/v1/admin/usuarios",
+        sesion=admin["sesion_token"],
+        equipo=equipo_id,
+        token=token_equipo,
+    )
     assert codigo == 200
     assert listado["usuarios"]
 
-    codigo, _ = _pedir(base, "/api/v1/admin/usuarios", sesion=lector["sesion_token"],
-                       equipo=equipo_id, token=token_equipo)
+    codigo, _ = _pedir(
+        base,
+        "/api/v1/admin/usuarios",
+        sesion=lector["sesion_token"],
+        equipo=equipo_id,
+        token=token_equipo,
+    )
     assert codigo == 403
 
 
 def test_archivo_generado_se_entrega_por_blob(servicio):
     """El PDF del escritorio se genera en el servidor y baja por el canal v1"""
     base = f"http://127.0.0.1:{servicio.puerto}"
-    _, admin = _pedir(base, "/api/v1/auth/login", "POST",
-                      {"username": "admin", "password": "Clave1234"})
+    _, admin = _pedir(
+        base, "/api/v1/auth/login", "POST", {"username": "admin", "password": "Clave1234"}
+    )
     equipo_id, token = servicio.servidor.nucleo.crear_dispositivo("Teléfono")
 
     # Un empleado real para la constancia
@@ -525,33 +573,49 @@ def test_archivo_generado_se_entrega_por_blob(servicio):
     try:
         from src.services.empleado_service import EmpleadoService
 
-        empleado = EmpleadoService(sesion).crear_empleado({
-            "nombres": "Ana", "apellidos": "Gómez", "cedula": "87654321",
-            "tipo_empleado": "docente", "cargo": "Docente",
-            "departamento": "Docencia", "salario_base": 1200.0,
-        })
+        empleado = EmpleadoService(sesion).crear_empleado(
+            {
+                "nombres": "Ana",
+                "apellidos": "Gómez",
+                "cedula": "87654321",
+                "tipo_empleado": "docente",
+                "cargo": "Docente",
+                "departamento": "Docencia",
+                "salario_base": 1200.0,
+            }
+        )
         empleado_id = empleado.id
     finally:
         sesion.close()
 
     codigo, archivo = _pedir(
-        base, "/api/v1/archivos/pdf/constancia_trabajo", "POST",
-        {"empleado_id": empleado_id}, sesion=admin["sesion_token"],
-        equipo=equipo_id, token=token,
+        base,
+        "/api/v1/archivos/pdf/constancia_trabajo",
+        "POST",
+        {"empleado_id": empleado_id},
+        sesion=admin["sesion_token"],
+        equipo=equipo_id,
+        token=token,
     )
     assert codigo == 200, archivo
     assert len(archivo["hash"]) == 64
     assert archivo["descarga"].startswith("/api/v1/blob/")
 
-    codigo, contenido = _pedir(base, archivo["descarga"],
-                               equipo=equipo_id, token=token)
+    codigo, contenido = _pedir(base, archivo["descarga"], equipo=equipo_id, token=token)
     assert codigo == 200
     assert contenido.startswith(b"%PDF")
 
     # Un viewer no puede pedirlo
-    _, lector = _pedir(base, "/api/v1/auth/login", "POST",
-                       {"username": "lector", "password": "Clave1234"})
-    codigo, _ = _pedir(base, "/api/v1/archivos/pdf/constancia_trabajo", "POST",
-                       {"empleado_id": empleado_id}, sesion=lector["sesion_token"],
-                       equipo=equipo_id, token=token)
+    _, lector = _pedir(
+        base, "/api/v1/auth/login", "POST", {"username": "lector", "password": "Clave1234"}
+    )
+    codigo, _ = _pedir(
+        base,
+        "/api/v1/archivos/pdf/constancia_trabajo",
+        "POST",
+        {"empleado_id": empleado_id},
+        sesion=lector["sesion_token"],
+        equipo=equipo_id,
+        token=token,
+    )
     assert codigo == 403

@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SDEP Móvil</string>
-    <string name="app_descripcion">Registros de campo sincronizados con el sistema de gestión de personal</string>
 </resources>

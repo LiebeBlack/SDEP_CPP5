@@ -1,5 +1,6 @@
 package ve.edu.sdep.movil.datos.seguridad
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -98,6 +99,11 @@ class Boveda @Inject constructor(
             null
         }
 
+    // ``commit`` es intencional: la pantalla de ajustes solo puede decir
+    // «guardado» cuando el token ya está en disco. Con ``apply`` la escritura
+    // queda en segundo plano y un cierre inmediato de la app podría perder el
+    // emparejamiento que el usuario acaba de confirmar.
+    @SuppressLint("ApplySharedPref")
     private fun escribir(valores: Map<String, String>): Boolean {
         val destino = preferencias ?: return false
         return try {

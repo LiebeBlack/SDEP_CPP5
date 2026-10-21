@@ -9,8 +9,13 @@
     cleartextTrafficPermitted en "false": el token del equipo viaja en la
     cabecera Authorization y sin TLS podría leerse en la red local.
 -->
-<network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <!-- Las dos advertencias de lint son decisiones conscientes y están
+         explicadas arriba: sin HTTP no se puede hablar con una intranet que
+         no publica TLS, y la CA institucional la instala el administrador. -->
+    <base-config
+        cleartextTrafficPermitted="true"
+        tools:ignore="InsecureBaseConfiguration,AcceptsUserCertificates">
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />

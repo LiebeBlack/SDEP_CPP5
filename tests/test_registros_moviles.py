@@ -161,7 +161,10 @@ def test_mezcla_por_campo_conserva_las_dos_ediciones(sesion):
     )
     assert resultado.aplicada, resultado.motivo
     resultado = aplicador.aplicar(
-        {**_operacion(uuid, otro, creado_en=momento + timedelta(seconds=1)), "dispositivo": "movil-secretaria"}
+        {
+            **_operacion(uuid, otro, creado_en=momento + timedelta(seconds=1)),
+            "dispositivo": "movil-secretaria",
+        }
     )
     assert resultado.aplicada, resultado.motivo
     sesion.commit()
@@ -178,7 +181,9 @@ def test_borrado_desde_el_movil_es_logico(sesion):
     aplicador.aplicar(_operacion(uuid, payload))
     sesion.commit()
 
-    borrado = _operacion(uuid, payload, creado_en=_ahora() + timedelta(seconds=5), operacion="delete")
+    borrado = _operacion(
+        uuid, payload, creado_en=_ahora() + timedelta(seconds=5), operacion="delete"
+    )
     resultado = aplicador.aplicar(borrado)
     sesion.commit()
 

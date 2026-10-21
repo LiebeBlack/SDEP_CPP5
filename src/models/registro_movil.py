@@ -33,9 +33,7 @@ class RegistroMovil(Base, BaseModel):
 
     # Identidad global: el servidor la exige para poder unificar la fila si el
     # mismo registro llega desde dos dispositivos distintos.
-    uuid_movil: Mapped[str] = mapped_column(
-        String(36), unique=True, nullable=False, index=True
-    )
+    uuid_movil: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
 
     titulo: Mapped[str] = mapped_column(String(200), nullable=False)
     contenido: Mapped[str | None] = mapped_column(Text, nullable=True)

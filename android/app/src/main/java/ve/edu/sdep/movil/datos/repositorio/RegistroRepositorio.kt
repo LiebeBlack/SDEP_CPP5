@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import ve.edu.sdep.movil.datos.local.AplicadorEspejo
 import ve.edu.sdep.movil.datos.local.BaseDatosSdep
+import ve.edu.sdep.movil.datos.local.jsonObjectVacio
 import ve.edu.sdep.movil.datos.local.Fechas
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
 import ve.edu.sdep.movil.datos.local.dao.RegistroDao
@@ -221,8 +222,8 @@ class RegistroRepositorio @Inject constructor(
                     motivo = null,
                 ),
             )
-            // El borrado también deja su marca de versión: un编辑 posterior de
-            // otro equipo solo lo levanta si es más reciente.
+            // El borrado también deja su marca de versión: una edición posterior
+            // de otro equipo solo lo levanta si es más reciente.
             aplicador.registrarLocal(
                 tabla = TABLA,
                 filaUuid = uuid,

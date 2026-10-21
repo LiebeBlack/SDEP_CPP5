@@ -176,49 +176,12 @@ object Espejo {
         else -> desenvuelto()?.contentOrNull
     }
 
-    private fun JsonElement.desenvuelto(): JsonElement? =
-        (this as? JsonObject)?.get("v")
+    private fun JsonElement.desenvuelto(): JsonPrimitive? =
+        (this as? JsonObject)?.get("v") as? JsonPrimitive
 
-    // ==================================================================
-    // Escritura del payload (construcción)
-    // ==================================================================
-
-    /** Añade el campo solo si cumple la regla de «solo lo tocado» */
-    private fun MutableMap<String, JsonElement>.poner(
-        campo: String,
-        valor: String?,
-        forzar: Boolean,
-    ) {
-        if (valor == null) {
-            if (forzar) this[campo] = JsonNull
-        } else {
-            this[campo] = JsonPrimitive(valor)
-        }
-    }
-
-    private fun MutableMap<String, JsonElement>.poner(
-        campo: String,
-        valor: Int?,
-        forzar: Boolean,
-    ) {
-        if (valor == null) {
-            if (forzar) this[campo] = JsonNull
-        } else {
-            this[campo] = JsonPrimitive(valor)
-        }
-    }
-
-    private fun MutableMap<String, JsonElement>.poner(
-        campo: String,
-        valor: Double?,
-        forzar: Boolean,
-    ) {
-        if (valor == null) {
-            if (forzar) this[campo] = JsonNull
-        } else {
-            this[campo] = JsonPrimitive(valor)
-        }
-    }
+    // La escritura del payload usa los ayudantes «poner» (tres sobrecargas
+    // por tipo), que viven a nivel de archivo al final del mismo: llamados
+    // desde payload() con el mapa local como receptor implícito.
 
     /**
      * Payload de una fila.
@@ -625,11 +588,11 @@ object Espejo {
 
     private fun aplicarDocumento(base: DocumentoEntity?, campos: JsonObject): DocumentoEntity {
         val e = base ?: DocumentoEntity(
-            empleadoId = entero(campos, "empleado_id") ?: 0L,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
             tipoDocumento = "", titulo = "", nombreArchivo = "",
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
             tipoDocumento = texto(campos, "tipo_documento") ?: e.tipoDocumento,
             titulo = texto(campos, "titulo") ?: e.titulo,
             descripcion = textoO(campos, "descripcion", e.descripcion),
@@ -649,13 +612,13 @@ object Espejo {
 
     private fun aplicarIncidencia(base: IncidenciaEntity?, campos: JsonObject): IncidenciaEntity {
         val e = base ?: IncidenciaEntity(
-            empleadoId = entero(campos, "empleado_id") ?: 0L,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
             tipoIncidencia = "", estado = "pendiente",
             fechaInicio = "", fechaFin = "", fechaSolicitud = "",
             motivo = "", diasSolicitados = 0,
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
             tipoIncidencia = texto(campos, "tipo_incidencia") ?: e.tipoIncidencia,
             estado = texto(campos, "estado") ?: e.estado,
             fechaInicio = fecha(campos, "fecha_inicio") ?: e.fechaInicio,
@@ -681,12 +644,12 @@ object Espejo {
 
     private fun aplicarContrato(base: ContratoEntity?, campos: JsonObject): ContratoEntity {
         val e = base ?: ContratoEntity(
-            empleadoId = entero(campos, "empleado_id") ?: 0L,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
             numero = "", tipo = "indefinido", estado = "vigente",
             cargo = "", salarioPactado = 0.0, fechaInicio = "",
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
             numero = texto(campos, "numero") ?: e.numero,
             tipo = texto(campos, "tipo") ?: e.tipo,
             estado = texto(campos, "estado") ?: e.estado,
@@ -698,7 +661,7 @@ object Espejo {
             fechaFin = fechaO(campos, "fecha_fin", e.fechaFin),
             renovacionAutomatica = enteroO(campos, "renovacion_automatica", e.renovacionAutomatica) ?: e.renovacionAutomatica,
             contratoAnteriorId = if (campos.containsKey("contrato_anterior_id")) {
-                entero(campos, "contrato_anterior_id")
+                entero(campos, "contrato_anterior_id")?.toLong()
             } else {
                 e.contratoAnteriorId
             },
@@ -715,12 +678,12 @@ object Espejo {
 
     private fun aplicarPago(base: PagoEntity?, campos: JsonObject): PagoEntity {
         val e = base ?: PagoEntity(
-            empleadoId = entero(campos, "empleado_id") ?: 0L,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
             tipoPago = "", periodoInicio = "", periodoFin = "", fechaPago = "",
             montoBruto = 0.0, montoNeto = 0.0, salarioBase = 0.0,
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
             tipoPago = texto(campos, "tipo_pago") ?: e.tipoPago,
             metodoPago = texto(campos, "metodo_pago") ?: e.metodoPago,
             periodoInicio = fecha(campos, "periodo_inicio") ?: e.periodoInicio,
@@ -797,11 +760,11 @@ object Espejo {
 
     private fun aplicarGrado(base: GradoEntity?, campos: JsonObject): GradoEntity {
         val e = base ?: GradoEntity(
-            periodoId = entero(campos, "periodo_id") ?: 0L,
+            periodoId = entero(campos, "periodo_id")?.toLong() ?: 0L,
             nivel = "", nombre = "",
         )
         return e.copy(
-            periodoId = entero(campos, "periodo_id") ?: e.periodoId,
+            periodoId = entero(campos, "periodo_id")?.toLong() ?: e.periodoId,
             nivel = texto(campos, "nivel") ?: e.nivel,
             nombre = texto(campos, "nombre") ?: e.nombre,
             seccion = texto(campos, "seccion") ?: e.seccion,
@@ -813,13 +776,13 @@ object Espejo {
 
     private fun aplicarMatricula(base: MatriculaEntity?, campos: JsonObject): MatriculaEntity {
         val e = base ?: MatriculaEntity(
-            estudianteId = entero(campos, "estudiante_id") ?: 0L,
-            gradoId = entero(campos, "grado_id") ?: 0L,
+            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: 0L,
+            gradoId = entero(campos, "grado_id")?.toLong() ?: 0L,
             fechaMatricula = "",
         )
         return e.copy(
-            estudianteId = entero(campos, "estudiante_id") ?: e.estudianteId,
-            gradoId = entero(campos, "grado_id") ?: e.gradoId,
+            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: e.estudianteId,
+            gradoId = entero(campos, "grado_id")?.toLong() ?: e.gradoId,
             fechaMatricula = fecha(campos, "fecha_matricula") ?: e.fechaMatricula,
             activa = enteroO(campos, "activa", e.activa) ?: e.activa,
             observaciones = textoO(campos, "observaciones", e.observaciones),
@@ -830,13 +793,13 @@ object Espejo {
 
     private fun aplicarNota(base: NotaFinalEntity?, campos: JsonObject): NotaFinalEntity {
         val e = base ?: NotaFinalEntity(
-            estudianteId = entero(campos, "estudiante_id") ?: 0L,
-            gradoId = entero(campos, "grado_id") ?: 0L,
+            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: 0L,
+            gradoId = entero(campos, "grado_id")?.toLong() ?: 0L,
             materia = "", calificacion = 0.0,
         )
         return e.copy(
-            estudianteId = entero(campos, "estudiante_id") ?: e.estudianteId,
-            gradoId = entero(campos, "grado_id") ?: e.gradoId,
+            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: e.estudianteId,
+            gradoId = entero(campos, "grado_id")?.toLong() ?: e.gradoId,
             materia = texto(campos, "materia") ?: e.materia,
             calificacion = real(campos, "calificacion") ?: e.calificacion,
             registradoPor = textoO(campos, "registrado_por", e.registradoPor),
@@ -896,6 +859,47 @@ object Espejo {
             usuario = textoO(campos, "usuario", e.usuario) ?: e.usuario,
             eliminado = if (activo != null) activo == 0 else e.eliminado,
         )
+    }
+}
+
+// ==================================================================
+// Escritura del payload (construcción)
+// ==================================================================
+
+/** Añade el campo solo si cumple la regla de «solo lo tocado» */
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
+    valor: String?,
+    forzar: Boolean,
+) {
+    if (valor == null) {
+        if (forzar) this[campo] = JsonNull
+    } else {
+        this[campo] = JsonPrimitive(valor)
+    }
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
+    valor: Int?,
+    forzar: Boolean,
+) {
+    if (valor == null) {
+        if (forzar) this[campo] = JsonNull
+    } else {
+        this[campo] = JsonPrimitive(valor)
+    }
+}
+
+private fun MutableMap<String, JsonElement>.poner(
+    campo: String,
+    valor: Double?,
+    forzar: Boolean,
+) {
+    if (valor == null) {
+        if (forzar) this[campo] = JsonNull
+    } else {
+        this[campo] = JsonPrimitive(valor)
     }
 }
 

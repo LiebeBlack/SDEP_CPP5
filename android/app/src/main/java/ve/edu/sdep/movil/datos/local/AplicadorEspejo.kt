@@ -184,8 +184,8 @@ class AplicadorEspejo @Inject constructor(
         val version = versionFilaDao.deFila(op.tabla, op.filaUuid)?.aVersion()
         val (decision, conflicto) = decidirBorradoSobreActualizacion(version, marca)
         registrarConflicto(op.tabla, op.filaUuid, conflicto)
-        if (decision != Decision.BORRAR) {
-            return if (decision == Decision.IGNORAR_BORRADO) {
+        if (decision != DecisionBorrado.BORRAR) {
+            return if (decision == DecisionBorrado.IGNORAR_BORRADO) {
                 ResultadoAplicacion.Duplicada
             } else {
                 ResultadoAplicacion.Ignorada(MOTIVO_SUPERADA)
@@ -218,7 +218,7 @@ class AplicadorEspejo @Inject constructor(
         }
 
         guardarVersion(op.tabla, op.filaUuid, marca, borrado = true)
-        return ResultadoAplicacion.Aplicada
+        return ResultadoAplicacion.Aplicada()
     }
 
     // ==================================================================
@@ -260,8 +260,8 @@ class AplicadorEspejo @Inject constructor(
                 ?: Marca(null, op.opId, op.dispositivo, op.creadoEn))
             registrarConflicto(op.tabla, op.filaUuid, conflicto)
             when (decision) {
-                Decision.MANTENER_BORRADO -> return ResultadoAplicacion.Ignorada(MOTIVO_BORRADA)
-                Decision.REVIVIR -> revivir = true
+                DecisionBorrado.MANTENER_BORRADO -> return ResultadoAplicacion.Ignorada(MOTIVO_BORRADA)
+                DecisionBorrado.REVIVIR -> revivir = true
                 else -> Unit
             }
         }
@@ -315,7 +315,7 @@ class AplicadorEspejo @Inject constructor(
             Marca(null, op.opId, op.dispositivo, op.creadoEn),
             borrado = false,
         )
-        return ResultadoAplicacion.Aplicada
+        return ResultadoAplicacion.Aplicada()
     }
 
     // ==================================================================
@@ -874,7 +874,7 @@ class AplicadorEspejo @Inject constructor(
         )
     }
 
-    private fun guardarVersion(
+    private suspend fun guardarVersion(
         tabla: String,
         filaUuid: String,
         marca: Marca,

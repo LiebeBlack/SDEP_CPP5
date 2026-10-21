@@ -152,10 +152,12 @@ class AutenticacionRepositorio @Inject constructor(
                 error,
             )
         } catch (error: IOException) {
-            // Sin red: ventana de gracia con el caché local de la sesión
+            // Sin red: ventana de gracia con el caché local de la sesión.
+            // La comprobación completa vive en la condición del retorno
+            // temprano: así el compilador ve `caché` no nula en el resto de
+            // la rama (antes cada acceso requería «?.» y no compilaba).
             val caché = sesionUsuarioDao.obtener()
-            val coincide = caché != null && caché.usuario == par.usuario
-            if (!coincide || !vigente(caché.expiraEn)) {
+            if (caché == null || caché.usuario != par.usuario || !vigente(caché.expiraEn)) {
                 return@withContext Resultado.Fallo(
                     "Sin conexión y sin sesión vigente en este teléfono. " +
                         "Entre con su contraseña cuando haya red.",

@@ -21,12 +21,8 @@ import pytest
 
 from sync_agent.api_acciones import ErrorApi, exigir_permiso, serializar
 from sync_agent.comun import dumps, nuevo_uuid
+from sync_agent.servidor import NucleoCentral, ServidorConfig, ServidorSync
 from sync_agent.sesiones import ErrorSesion, SesionValida
-from sync_agent.servidor import (
-    NucleoCentral,
-    ServidorConfig,
-    ServidorSync,
-)
 
 ROLES = ("admin", "manager", "user", "viewer")
 

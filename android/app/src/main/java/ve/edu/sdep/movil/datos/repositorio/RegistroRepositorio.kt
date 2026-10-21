@@ -99,6 +99,10 @@ class RegistroRepositorio @Inject constructor(
             val identidad = existente?.uuid ?: UUID.randomUUID().toString()
             val esAlta = existente == null
             val momento = maxOf(ahora, (existente?.actualizadoEn ?: 0L) + 1L)
+            // Un solo id para la operación de esta escritura: es el que viaja
+            // en la cola de salida y el que queda registrado en las marcas de
+            // mezcla (mismo criterio que `eliminar()`).
+            val opId = UUID.randomUUID().toString()
 
             val campos = mutableMapOf<String, JsonElement>()
             // La clave natural siempre viaja: permite al servidor reconocer la

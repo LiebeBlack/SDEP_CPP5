@@ -216,7 +216,7 @@ interface ContratoDao {
     @Query("SELECT * FROM contratos WHERE numero = :numero LIMIT 1")
     suspend fun buscarPorNumero(numero: String): ContratoEntity?
 
-    @Query("SELECT * FROM contratos WHERE estado = 'vigente' AND empleadoId = :empleadoId LIMIT 1")
+    @Query("SELECT * FROM contratos WHERE estado = 'vigente' AND empleado_id = :empleadoId LIMIT 1")
     suspend fun vigenteDe(empleadoId: Long): ContratoEntity?
 
     @Query("SELECT COUNT(*) FROM contratos")

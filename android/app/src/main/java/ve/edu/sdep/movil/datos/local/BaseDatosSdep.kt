@@ -95,6 +95,12 @@ abstract class BaseDatosSdep : RoomDatabase() {
                 // Las cuentas locales se sustituyen por la base institucional
                 db.execSQL("DROP TABLE IF EXISTS usuarios")
 
+                // La bandeja de conflictos gana contexto de mezcla en v2:
+                // tabla, qué escritura ganó y con qué regla.
+                db.execSQL("ALTER TABLE conflictos ADD COLUMN tabla TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE conflictos ADD COLUMN ganador TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE conflictos ADD COLUMN regla TEXT NOT NULL DEFAULT ''")
+
                 db.execSQL(
                     "CREATE TABLE IF NOT EXISTS identidades (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +

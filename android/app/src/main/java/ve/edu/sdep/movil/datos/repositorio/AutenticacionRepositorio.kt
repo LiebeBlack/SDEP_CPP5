@@ -1,141 +1,109 @@
 package ve.edu.sdep.movil.datos.repositorio
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import ve.edu.sdep.movil.datos.local.dao.UsuarioDao
-import ve.edu.sdep.movil.datos.local.entidad.UsuarioEntity
+import retrofit2.HttpException
+import ve.edu.sdep.movil.datos.local.Fechas
+import ve.edu.sdep.movil.datos.local.dao.SesionUsuarioDao
+import ve.edu.sdep.movil.datos.local.entidad.SesionUsuarioEntity
+import ve.edu.sdep.movil.datos.remoto.ApiSyncFactory
+import ve.edu.sdep.movil.datos.remoto.CambioPasswordDto
+import ve.edu.sdep.movil.datos.remoto.LoginDto
 import ve.edu.sdep.movil.datos.seguridad.Boveda
-import ve.edu.sdep.movil.datos.seguridad.HashContrasena
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import ve.edu.sdep.movil.dominio.modelo.Rol
 import ve.edu.sdep.movil.dominio.modelo.Sesion
-import java.util.UUID
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Ingreso a la aplicación.
+ * Ingreso a la aplicación contra el nodo central.
  *
- * Hay dos caminos y ambos terminan en una ``Sesion`` en memoria:
+ * Las cuentas viven en la base institucional (las mismas del escritorio): el
+ * teléfono no guarda usuarios ni contraseñas. Hay dos caminos y ambos
+ * terminan en una [Sesion] en memoria:
  *
- * 1. Usuario y contraseña, comprobados contra la derivación PBKDF2 guardada.
- * 2. Huella (o rostro, o credencial del dispositivo), que solo desbloquea un
- *    token aleatorio guardado en la bóveda cifrada. Ese token no es la
- *    contraseña: si el teléfono se pierde y alguien copia la base, no puede
- *    entrar sin el Keystore del equipo y sin el sensor.
+ * 1. Usuario y contraseña, validados por `POST /auth/login` del nodo central,
+ *    que devuelve un token de sesión.
+ * 2. Huella (o credencial del dispositivo), que recupera ese token de la
+ *    bóveda cifrada. Si no hay red, la sesión se reabre DENTRO de la ventana
+ *    de gracia declarada por el servidor y se revalida en cuanto haya red.
  *
- * Las cuentas son locales del teléfono, como en cada puesto del sistema de
- * escritorio. El primer arranque crea el administrador.
+ * El token nunca se guarda en claro fuera de la bóveda (Keystore del equipo)
+ * ni se escribe en los registros de la app.
  */
 @Singleton
 class AutenticacionRepositorio @Inject constructor(
-    private val usuariosDao: UsuarioDao,
-    private val hashContrasena: HashContrasena,
+    private val configuracionRepositorio: ConfiguracionRepositorio,
+    private val apiFactory: ApiSyncFactory,
     private val boveda: Boveda,
     private val sesionRepositorio: SesionRepositorio,
+    private val sesionUsuarioDao: SesionUsuarioDao,
 ) {
 
-    suspend fun hayUsuarios(): Boolean = usuariosDao.contar() > 0
-
-    fun observarUsuarios(): Flow<List<UsuarioEntity>> = usuariosDao.observarTodas()
-
-    /**
-     * Crea la cuenta de administrador del primer arranque.
-     *
-     * No se puede llamar si ya existe alguna cuenta: evita que alguien con
-     * acceso físico al teléfono agregue un administrador paralelo.
-     */
-    suspend fun crearPrimerAdministrador(
-        nombre: String,
-        usuario: String,
-        contrasena: String,
-        confirmacion: String,
-    ): Resultado<Sesion> = withContext(Dispatchers.Default) {
-        if (usuariosDao.contar() > 0) {
-            return@withContext Resultado.Fallo(
-                "Ya existe una cuenta en este teléfono. Entre con ella para crear más usuarios.",
-            )
-        }
-        val error = validar(nombre, usuario, contrasena, confirmacion)
-        if (error != null) return@withContext Resultado.Fallo(error)
-
-        val entidad = UsuarioEntity(
-            nombre = nombre.trim(),
-            usuario = usuario.trim().lowercase(),
-            hashContrasena = hashContrasena.crear(contrasena.toCharArray()),
-            rol = Rol.ADMIN.name,
-            activo = true,
-            tokenBiometricoHash = null,
-            creadoEn = System.currentTimeMillis(),
-        )
-        val id = usuariosDao.insertar(entidad)
-        val sesion = Sesion(id, entidad.nombre, entidad.usuario, Rol.ADMIN)
-        sesionRepositorio.iniciar(sesion)
-        Resultado.Exito(sesion)
-    }
-
-    /**
-     * Agrega una cuenta. Solo un administrador puede hacerlo.
-     */
-    suspend fun crearUsuario(
-        autor: Sesion,
-        nombre: String,
-        usuario: String,
-        contrasena: String,
-        confirmacion: String,
-        rol: Rol,
-    ): Resultado<Unit> = withContext(Dispatchers.Default) {
-        if (!autor.puede(Permiso.ADMINISTRAR_USUARIOS)) {
-            return@withContext Resultado.Fallo("Solo un administrador puede crear cuentas.")
-        }
-        val error = validar(nombre, usuario, contrasena, confirmacion)
-        if (error != null) return@withContext Resultado.Fallo(error)
-
-        val nombreUsuario = usuario.trim().lowercase()
-        if (usuariosDao.buscarPorUsuario(nombreUsuario) != null) {
-            return@withContext Resultado.Fallo("Ya existe una cuenta con el usuario «$nombreUsuario».")
-        }
-
-        usuariosDao.insertar(
-            UsuarioEntity(
-                nombre = nombre.trim(),
-                usuario = nombreUsuario,
-                hashContrasena = hashContrasena.crear(contrasena.toCharArray()),
-                rol = rol.name,
-                activo = true,
-                tokenBiometricoHash = null,
-                creadoEn = System.currentTimeMillis(),
-            ),
-        )
-        Resultado.Exito(Unit)
-    }
-
-    /** Ingreso con usuario y contraseña */
+    /** Ingreso con usuario y contraseña, comprobados por el nodo central */
     suspend fun entrar(
         usuario: String,
         contrasena: String,
         activarBiometria: Boolean,
-    ): Resultado<Sesion> = withContext(Dispatchers.Default) {
-        val nombreUsuario = usuario.trim().lowercase()
+    ): Resultado<Sesion> = withContext(Dispatchers.IO) {
+        val nombreUsuario = usuario.trim()
         if (nombreUsuario.isEmpty() || contrasena.isEmpty()) {
             return@withContext Resultado.Fallo("Escriba su usuario y su contraseña.")
         }
 
-        val entidad = usuariosDao.buscarPorUsuario(nombreUsuario)
-        // El mismo mensaje para «no existe» y «contraseña incorrecta»: no se
-        // revela qué usuarios tiene el teléfono.
-        val mensajeGenerico = "Usuario o contraseña incorrectos."
-        if (entidad == null) return@withContext Resultado.Fallo(mensajeGenerico)
-        if (!entidad.activo) {
-            return@withContext Resultado.Fallo("La cuenta está desactivada. Consulte al administrador.")
-        }
-        if (!hashContrasena.verificar(contrasena.toCharArray(), entidad.hashContrasena)) {
-            return@withContext Resultado.Fallo(mensajeGenerico)
+        val config = configuracionRepositorio.cargar()
+        if (!config.completa) {
+            return@withContext Resultado.Fallo(
+                "Este teléfono todavía no está vinculado al nodo central. " +
+                    "Complete la dirección, el equipo y el token antes de entrar.",
+            )
         }
 
-        val sesion = Sesion(entidad.id, entidad.nombre, entidad.usuario, Rol.desde(entidad.rol))
+        val respuesta = try {
+            apiFactory.acciones(config, sesion = null).login(
+                LoginDto(username = nombreUsuario, password = contrasena),
+            )
+        } catch (error: HttpException) {
+            // El mismo mensaje para «no existe» y «contraseña incorrecta»: no se
+            // revela qué usuarios tiene la institución.
+            return@withContext when (error.code()) {
+                401, 403 -> Resultado.Fallo("Usuario o contraseña incorrectos.")
+                423 -> Resultado.Fallo(
+                    "La cuenta está bloqueada por intentos fallidos. Consulte al administrador.",
+                )
+
+                else -> Resultado.Fallo(
+                    "El nodo central respondió ${error.code()}. Revise la configuración.",
+                    error,
+                )
+            }
+        } catch (error: IOException) {
+            return@withContext Resultado.Fallo(
+                "Sin conexión con el nodo central. Reintente cuando el teléfono " +
+                    "tenga red.",
+                error,
+                reintentable = true,
+            )
+        } catch (error: Exception) {
+            return@withContext Resultado.Fallo(
+                "No se pudo iniciar sesión: ${error.message ?: "error inesperado"}.",
+                error,
+            )
+        }
+
+        val sesion = Sesion(
+            usuario = respuesta.username.ifBlank { nombreUsuario },
+            nombre = respuesta.nombreCompleto ?: respuesta.username.ifBlank { nombreUsuario },
+            rol = Rol.desde(respuesta.rol),
+            token = respuesta.sesionToken,
+            expiraEn = Fechas.desdeIso(respuesta.expiraEn)
+                ?: System.currentTimeMillis() + respuesta.vidaRelativaHoras * 3_600_000L,
+            debeCambiarPassword = respuesta.debeCambiarPassword,
+        )
+        guardarCaché(sesion)
         sesionRepositorio.iniciar(sesion)
         if (activarBiometria) activarBiometria(sesion)
         Resultado.Exito(sesion)
@@ -143,63 +111,187 @@ class AutenticacionRepositorio @Inject constructor(
 
     /**
      * Ingreso con el token que desbloquea la bóveda tras la autenticación
-     * biométrica. Si el token no corresponde a ninguna cuenta (por ejemplo,
-     * porque se desactivó la huella en otra sesión), se pide la contraseña.
+     * biométrica.
+     *
+     * Con red se revalida el token contra el nodo central. Sin red se acepta
+     * la sesión guardada mientras esté dentro de su ventana de gracia: los
+     * datos se leen y los cambios quedan en cola, y el servidor tendrá la
+     * última palabra en la próxima sincronización.
      */
-    suspend fun entrarConBiometria(): Resultado<Sesion> = withContext(Dispatchers.Default) {
+    suspend fun entrarConBiometria(): Resultado<Sesion> = withContext(Dispatchers.IO) {
         val par = boveda.leerCredencialBiometrica()
             ?: return@withContext Resultado.Fallo("No hay una huella habilitada. Entre con su contraseña.")
 
-        val entidad = usuariosDao.buscarPorTokenBiometrico(hashContrasena.hashRapido(par.token))
-            ?: return@withContext Resultado.Fallo(
-                "El desbloqueo con huella ya no es válido. Entre con su contraseña.",
+        val config = configuracionRepositorio.cargar()
+        if (!config.completa) {
+            return@withContext Resultado.Fallo(
+                "Este teléfono todavía no está vinculado al nodo central.",
             )
-        if (!entidad.activo) {
-            return@withContext Resultado.Fallo("La cuenta está desactivada. Consulte al administrador.")
         }
 
-        val sesion = Sesion(entidad.id, entidad.nombre, entidad.usuario, Rol.desde(entidad.rol))
-        sesionRepositorio.iniciar(sesion)
-        Resultado.Exito(sesion)
+        try {
+            val info = apiFactory.acciones(config, sesion = par.token).sesion()
+            val sesion = Sesion(
+                usuario = info.username.ifBlank { par.usuario },
+                nombre = info.nombreCompleto ?: info.username.ifBlank { par.usuario },
+                rol = Rol.desde(info.rol),
+                token = par.token,
+                expiraEn = Fechas.desdeIso(info.expiraEn) ?: 0L,
+                debeCambiarPassword = info.debeCambiarPassword,
+            )
+            boveda.guardarSesionToken(par.token)
+            guardarCaché(sesion)
+            sesionRepositorio.iniciar(sesion)
+            Resultado.Exito(sesion)
+        } catch (error: HttpException) {
+            boveda.olvidarCredencialBiometrica()
+            boveda.olvidarSesionToken()
+            sesionUsuarioDao.limpiar()
+            Resultado.Fallo(
+                "La sesión guardada ya no es válida. Entre con su contraseña.",
+                error,
+            )
+        } catch (error: IOException) {
+            // Sin red: ventana de gracia con el caché local de la sesión
+            val caché = sesionUsuarioDao.obtener()
+            val coincide = caché != null && caché.usuario == par.usuario
+            if (!coincide || !vigente(caché.expiraEn)) {
+                return@withContext Resultado.Fallo(
+                    "Sin conexión y sin sesión vigente en este teléfono. " +
+                        "Entre con su contraseña cuando haya red.",
+                    error,
+                    reintentable = true,
+                )
+            }
+            val sesion = Sesion(
+                usuario = caché.usuario,
+                nombre = caché.nombreCompleto ?: caché.usuario,
+                rol = Rol.desde(caché.rol),
+                token = par.token,
+                expiraEn = caché.expiraEn,
+                debeCambiarPassword = caché.debeCambiarPassword,
+                offline = true,
+            )
+            sesionRepositorio.iniciar(sesion)
+            Resultado.Exito(sesion)
+        } catch (error: Exception) {
+            Resultado.Fallo(
+                "No se pudo abrir la sesión: ${error.message ?: "error inesperado"}.",
+                error,
+            )
+        }
     }
 
-    /** Habilita el desbloqueo biométrico para la cuenta de la sesión */
+    /**
+     * Habilita el desbloqueo biométrico para la sesión vigente.
+     *
+     * La llave guardada es el propio token de sesión (cifrado con el Keystore
+     * del equipo): si se pierde el teléfono, sin el sensor y sin el PIN del
+     * dispositivo esa llave no sirve para nada.
+     */
     suspend fun activarBiometria(sesion: Sesion): Boolean = withContext(Dispatchers.Default) {
-        val token = UUID.randomUUID().toString() + UUID.randomUUID().toString()
-        usuariosDao.asignarTokenBiometrico(sesion.usuarioId, hashContrasena.hashRapido(token))
-        boveda.guardarCredencialBiometrica(sesion.usuario, token)
+        if (sesion.token.isBlank()) return@withContext false
+        boveda.guardarCredencialBiometrica(sesion.usuario, sesion.token)
     }
 
     /** Deja de ofrecer el desbloqueo biométrico */
-    suspend fun olvidarBiometria(usuarioId: Long) = withContext(Dispatchers.Default) {
-        usuariosDao.asignarTokenBiometrico(usuarioId, null)
+    suspend fun olvidarBiometria(): Unit = withContext(Dispatchers.Default) {
         boveda.olvidarCredencialBiometrica()
     }
 
     fun hayCredencialBiometrica(): Boolean = boveda.leerCredencialBiometrica() != null
 
-    fun cerrarSesion() {
+    /**
+     * Cambia la contraseña de la cuenta en la base institucional.
+     *
+     * La autoridad es el nodo central: aquí no se guarda ningún hash de
+     * contraseña, solo se pide el cambio con la sesión abierta.
+     */
+    suspend fun cambiarPassword(actual: String, nueva: String): Resultado<Unit> =
+        withContext(Dispatchers.IO) {
+            val sesion = sesionRepositorio.actual
+                ?: return@withContext Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
+            val errorValidacion = validarPassword(nueva)
+            if (errorValidacion != null) return@withContext Resultado.Fallo(errorValidacion)
+            if (actual.isEmpty()) return@withContext Resultado.Fallo("Escriba su contraseña actual.")
+
+            val config = configuracionRepositorio.cargar()
+            if (!config.completa) {
+                return@withContext Resultado.Fallo("No hay conexión configurada con el nodo central.")
+            }
+
+            try {
+                apiFactory.acciones(config, sesion.token)
+                    .cambiarPassword(CambioPasswordDto(actual = actual, nueva = nueva))
+                if (sesion.debeCambiarPassword) {
+                    val actualizada = sesion.copy(debeCambiarPassword = false)
+                    sesionRepositorio.iniciar(actualizada)
+                    guardarCaché(actualizada)
+                }
+                Resultado.Exito(Unit)
+            } catch (error: HttpException) {
+                Resultado.Fallo(
+                    when (error.code()) {
+                        401, 403 -> "La contraseña actual no coincide o la sesión caducó."
+                        else -> "El nodo central rechazó el cambio (${error.code()})."
+                    },
+                    error,
+                )
+            } catch (error: IOException) {
+                Resultado.Fallo(
+                    "Sin conexión con el nodo central. El cambio se aplicará cuando haya red.",
+                    error,
+                    reintentable = true,
+                )
+            } catch (error: Exception) {
+                Resultado.Fallo(
+                    "No se pudo cambiar la contraseña: ${error.message ?: "error inesperado"}.",
+                    error,
+                )
+            }
+        }
+
+    /** Cierra la sesión local y revoca el token en el nodo central */
+    suspend fun cerrarSesion() {
+        val sesion = sesionRepositorio.actual
+        val config = configuracionRepositorio.actual()
+        if (sesion != null && sesion.token.isNotBlank() && config.completa) {
+            // Mejor esfuerzo: si no hay red, el token caduca por su ventana
+            runCatching { apiFactory.acciones(config, sesion.token).logout() }
+        }
+        boveda.olvidarSesionToken()
+        boveda.olvidarCredencialBiometrica()
+        sesionUsuarioDao.limpiar()
         sesionRepositorio.cerrar()
     }
 
     // ------------------------------------------------------------------
-    // Validaciones compartidas
+    // Interno
     // ------------------------------------------------------------------
-    private fun validar(
-        nombre: String,
-        usuario: String,
-        contrasena: String,
-        confirmacion: String,
-    ): String? {
-        if (nombre.trim().length < 3) return "El nombre debe tener al menos 3 caracteres."
-        if (!usuario.trim().matches(Regex("[A-Za-z0-9._-]{3,30}"))) {
-            return "El usuario debe tener entre 3 y 30 caracteres: letras, números, punto, guion o guion bajo."
-        }
-        if (contrasena.length < 8) return "La contraseña debe tener al menos 8 caracteres."
-        if (contrasena.none { it.isDigit() } || contrasena.none { it.isLetter() }) {
+
+    /** Guarda el caché de sesión que permite el reabrir sin red */
+    private suspend fun guardarCaché(sesion: Sesion) {
+        sesionUsuarioDao.guardar(
+            SesionUsuarioEntity(
+                id = 1,
+                usuario = sesion.usuario,
+                nombreCompleto = sesion.nombre,
+                rol = sesion.rol.valor,
+                expiraEn = sesion.expiraEn,
+                debeCambiarPassword = sesion.debeCambiarPassword,
+                actualizadoEn = System.currentTimeMillis(),
+            ),
+        )
+        if (sesion.token.isNotBlank()) boveda.guardarSesionToken(sesion.token)
+    }
+
+    private fun vigente(expiraEn: Long): Boolean = expiraEn <= 0L || System.currentTimeMillis() <= expiraEn
+
+    private fun validarPassword(nueva: String): String? {
+        if (nueva.length < 8) return "La contraseña debe tener al menos 8 caracteres."
+        if (nueva.none { it.isDigit() } || nueva.none { it.isLetter() }) {
             return "La contraseña debe combinar letras y números."
         }
-        if (contrasena != confirmacion) return "Las contraseñas no coinciden."
         return null
     }
 }

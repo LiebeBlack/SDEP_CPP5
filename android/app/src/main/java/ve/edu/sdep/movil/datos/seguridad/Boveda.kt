@@ -54,6 +54,15 @@ class Boveda @Inject constructor(
     )
 
     // ------------------------------------------------------------------
+    // Sesión de usuario (token emitido por el nodo central)
+    // ------------------------------------------------------------------
+    fun guardarSesionToken(token: String): Boolean = escribir(mapOf(CLAVE_SESION_TOKEN to token))
+
+    fun leerSesionToken(): String? = leer(CLAVE_SESION_TOKEN)
+
+    fun olvidarSesionToken(): Boolean = escribir(mapOf(CLAVE_SESION_TOKEN to ""))
+
+    // ------------------------------------------------------------------
     // Desbloqueo biométrico
     // ------------------------------------------------------------------
     fun guardarCredencialBiometrica(usuario: String, token: String): Boolean = escribir(
@@ -136,5 +145,6 @@ class Boveda @Inject constructor(
         const val CLAVE_PERIODO = "periodo_minutos"
         const val CLAVE_BIO_USUARIO = "bio_usuario"
         const val CLAVE_BIO_TOKEN = "bio_token"
+        const val CLAVE_SESION_TOKEN = "sesion_token"
     }
 }

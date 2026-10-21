@@ -1,10 +1,12 @@
 package ve.edu.sdep.movil.datos.repositorio
 
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import ve.edu.sdep.movil.R
 import ve.edu.sdep.movil.datos.seguridad.Boveda
 import ve.edu.sdep.movil.dominio.modelo.ConfiguracionSync
 import java.util.concurrent.atomic.AtomicBoolean
@@ -22,6 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class ConfiguracionRepositorio @Inject constructor(
     private val boveda: Boveda,
+    private val contexto: Context,
 ) {
 
     private val _configuracion = MutableStateFlow(ConfiguracionSync())
@@ -38,10 +41,27 @@ class ConfiguracionRepositorio @Inject constructor(
         synchronized(candado) {
             if (forzar || !cargada.get()) {
                 val almacenada = boveda.leerConfiguracion()
+                // Si no hay configuración guardada, usar valores por defecto
+                val url = if (almacenada.url.isBlank()) {
+                    contexto.getString(R.string.default_server_url)
+                } else {
+                    almacenada.url
+                }
+                val equipo = if (almacenada.equipo.isBlank()) {
+                    contexto.getString(R.string.default_device_id)
+                } else {
+                    almacenada.equipo
+                }
+                val token = if (almacenada.token.isBlank()) {
+                    contexto.getString(R.string.default_device_token)
+                } else {
+                    almacenada.token
+                }
+
                 _configuracion.value = ConfiguracionSync(
-                    url = almacenada.url,
-                    equipo = almacenada.equipo,
-                    token = almacenada.token,
+                    url = url,
+                    equipo = equipo,
+                    token = token,
                     activa = almacenada.activa,
                 )
                 periodoMinutos = almacenada.periodoMinutos

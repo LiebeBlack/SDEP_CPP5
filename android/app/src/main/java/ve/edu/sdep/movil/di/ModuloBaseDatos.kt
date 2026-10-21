@@ -116,4 +116,8 @@ object ModuloBaseDatos {
 
     @Provides
     fun blobPendienteDao(baseDatos: BaseDatosSdep): BlobPendienteDao = baseDatos.blobPendienteDao()
+
+    @Provides
+    @Singleton
+    fun contexto(@ApplicationContext contexto: Context): Context = contexto
 }

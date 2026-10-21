@@ -144,6 +144,34 @@ jobs:
           Write-Host "Versión: $ver | Etiqueta: $tagFinal | Commit: $commit"
 
       # -------------------------------------------------------------------------
+      # 2.5 Compilar APK Android
+      # -------------------------------------------------------------------------
+      - name: Configurar JDK 17 para Android
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Compilar APK Android
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+        shell: bash
+
+      - name: Verificar y renombrar APK
+        run: |
+          $apk = "android\app\build\outputs\apk\debug\app-debug.apk"
+          if (-not (Test-Path $apk)) {
+            Write-Error "El APK no fue generado: $apk"
+            exit 1
+          }
+          $apkFinal = "SDEP-Movil-Android-$env:APP_VERSION-debug.apk"
+          Move-Item -Path $apk -Destination $apkFinal -Force
+          Write-Host "OK: APK generado y renombrado: $apkFinal"
+          ls -lh $apkFinal
+
+      # -------------------------------------------------------------------------
       # 3. Compilar ejecutable principal (PyInstaller onedir) y renombrarlo
       # -------------------------------------------------------------------------
       - name: Compilar ejecutable (PyInstaller onedir)
@@ -750,6 +778,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Descargar APK del job de Android
+        run: |
+          gh artifact download apk-android-debug --dir . --pattern "SDEP-Movil-Android-*.apk"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "No se pudo descargar el APK del job de Android"
+          } else {
+            Write-Host "APK descargado:"
+            Get-ChildItem -Filter "SDEP-Movil-Android-*.apk" | ForEach-Object { Write-Host "  $($_.Name)" }
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Adjuntar artefactos firmados a la Release
         uses: softprops/action-gh-release@v2
         with:
@@ -757,5 +797,6 @@ jobs:
           generate_release_notes: true
           files: |
             dist_installer/SistemaGestionPersonal-Setup-*.exe
+            SDEP-Movil-Android-*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

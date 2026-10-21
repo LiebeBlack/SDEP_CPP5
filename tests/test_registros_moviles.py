@@ -217,7 +217,9 @@ def test_recorrido_http_completo_del_movil(tmp_path):
         movil = ClienteSync(url, token, equipo)
 
         estado = movil.ping()
-        assert estado["version_protocolo"] == "1"
+        # El protocolo es retrocompatible: la versión 2 añade las rutas de
+        # acciones del móvil sin tocar ping/push/pull/blob de la versión 1.
+        assert estado["version_protocolo"] == "2"
         assert "registros_moviles" in estado["tablas"]
 
         uuid, payload = _payload()

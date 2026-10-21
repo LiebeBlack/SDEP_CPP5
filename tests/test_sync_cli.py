@@ -552,4 +552,5 @@ def test_solo_se_ofrecen_los_subcomandos_documentados():
         "estado",
         "init",
         "servidor",
+        "sesiones",
     ]

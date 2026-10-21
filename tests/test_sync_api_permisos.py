@@ -388,7 +388,10 @@ class ServicioEnMarcha:
 
 
 @pytest.fixture()
-def servicio(tmp_path):
+def servicio(tmp_path, db_config):
+    """Nodo central hablado por HTTP con la base del escritorio inicializada"""
+    # ``db_config`` (sesión) crea las tablas de la base de prueba: los
+    # generadores de PDF leen la configuración institucional de ahí.
     config = ServidorConfig(
         url_db=f"sqlite:///{(tmp_path / 'central.db').as_posix()}",
         dir_blobs=tmp_path / "blobs",
@@ -429,6 +432,7 @@ def _pedir(base, ruta, metodo="GET", cuerpo=None, sesion=None, equipo=None, toke
 
 def test_login_por_http_devuelve_sesion(servicio):
     base = f"http://127.0.0.1:{servicio.puerto}"
+    equipo_id, token_equipo = servicio.servidor.nucleo.crear_dispositivo("Teléfono")
 
     codigo, datos = _pedir(base, "/api/v1/auth/login", "POST",
                            {"username": "admin", "password": "Clave1234"}, equipo="tel")
@@ -440,14 +444,17 @@ def test_login_por_http_devuelve_sesion(servicio):
     assert codigo == 200
     assert info["username"] == "admin"
 
-    codigo, panel = _pedir(base, "/api/v1/consultas/dashboard", sesion=token)
+    # Las consultas exigen doble credencial: equipo emparejado + sesión
+    codigo, panel = _pedir(base, "/api/v1/consultas/dashboard", sesion=token,
+                           equipo=equipo_id, token=token_equipo)
     assert codigo == 200
     assert panel["indicadores"]
 
     codigo, error = _pedir(base, "/api/v1/auth/logout", "POST", sesion=token)
     assert codigo == 200
 
-    codigo, _ = _pedir(base, "/api/v1/consultas/dashboard", sesion=token)
+    codigo, _ = _pedir(base, "/api/v1/consultas/dashboard", sesion=token,
+                       equipo=equipo_id, token=token_equipo)
     assert codigo == 401
 
 
@@ -489,16 +496,19 @@ def test_ping_anuncia_protocolo_2_y_v1_sigue_viva(servicio):
 
 def test_admin_por_http_exige_rol(servicio):
     base = f"http://127.0.0.1:{servicio.puerto}"
+    equipo_id, token_equipo = servicio.servidor.nucleo.crear_dispositivo("Teléfono")
     _, admin = _pedir(base, "/api/v1/auth/login", "POST",
                       {"username": "admin", "password": "Clave1234"})
     _, lector = _pedir(base, "/api/v1/auth/login", "POST",
                        {"username": "lector", "password": "Clave1234"})
 
-    codigo, listado = _pedir(base, "/api/v1/admin/usuarios", sesion=admin["sesion_token"])
+    codigo, listado = _pedir(base, "/api/v1/admin/usuarios", sesion=admin["sesion_token"],
+                             equipo=equipo_id, token=token_equipo)
     assert codigo == 200
     assert listado["usuarios"]
 
-    codigo, _ = _pedir(base, "/api/v1/admin/usuarios", sesion=lector["sesion_token"])
+    codigo, _ = _pedir(base, "/api/v1/admin/usuarios", sesion=lector["sesion_token"],
+                       equipo=equipo_id, token=token_equipo)
     assert codigo == 403
 
 

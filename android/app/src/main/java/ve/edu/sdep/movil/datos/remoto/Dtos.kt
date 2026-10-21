@@ -71,4 +71,98 @@ data class PingDto(
     @SerialName("version_protocolo") val versionProtocolo: String = "",
     val hora: String = "",
     val tablas: List<String> = emptyList(),
+    @SerialName("acciones") val acciones: List<String> = emptyList(),
+)
+
+// ----------------------------------------------------------------------
+// Protocolo 2: autenticación de usuario y consultas
+// ----------------------------------------------------------------------
+
+/** Credenciales de la base institucional; jamás se guardan en el teléfono */
+@Serializable
+data class LoginDto(
+    val username: String,
+    val password: String,
+)
+
+@Serializable
+data class CambioPasswordDto(
+    val actual: String? = null,
+    val nueva: String,
+)
+
+/** Respuesta del login: el token de sesión y los datos de la cuenta */
+@Serializable
+data class SesionRespuestaDto(
+    @SerialName("sesion_token") val sesionToken: String,
+    val username: String = "",
+    @SerialName("nombre_completo") val nombreCompleto: String? = null,
+    val rol: String = "viewer",
+    @SerialName("debe_cambiar_password") val debeCambiarPassword: Boolean = false,
+    @SerialName("expira_en") val expiraEn: String? = null,
+    @SerialName("vida_relativa_horas") val vidaRelativaHoras: Int = 12,
+)
+
+/** Estado de la sesión vigente (validación en línea) */
+@Serializable
+data class SesionInfoDto(
+    val username: String = "",
+    @SerialName("nombre_completo") val nombreCompleto: String? = null,
+    val rol: String = "viewer",
+    @SerialName("debe_cambiar_password") val debeCambiarPassword: Boolean = false,
+    @SerialName("expira_en") val expiraEn: String? = null,
+)
+
+@Serializable
+data class CorrectoDto(val correcto: Boolean = true)
+
+/** Error del protocolo: el mismo cuerpo para todos los códigos HTTP */
+@Serializable
+data class ErrorDto(val error: String = "")
+
+/** Panel de control: indicadores por bloque, filtrados por el rol */
+@Serializable
+data class DashboardDto(
+    val rol: String = "",
+    val usuario: String = "",
+    val indicadores: Map<String, JsonElement> = emptyMap(),
+)
+
+@Serializable
+data class AuditoriaDto(val eventos: List<JsonElement> = emptyList())
+
+/** Cuenta de la institución (nunca viaja su hash) */
+@Serializable
+data class UsuarioRemotoDto(
+    val id: Long = 0,
+    val username: String = "",
+    @SerialName("nombre_completo") val nombreCompleto: String? = null,
+    val rol: String = "viewer",
+    val activo: Int = 1,
+    @SerialName("debe_cambiar_password") val debeCambiarPassword: Int = 0,
+    val bloqueado: Int = 0,
+    @SerialName("intentos_fallidos") val intentosFallidos: Int = 0,
+    @SerialName("ultimo_login") val ultimoLogin: String? = null,
+)
+
+@Serializable
+data class ListarUsuariosDto(val usuarios: List<UsuarioRemotoDto> = emptyList())
+
+@Serializable
+data class UsuarioRespuestaDto(val usuario: UsuarioRemotoDto? = null)
+
+/** Documento generado en el servidor; se baja por el canal de binarios */
+@Serializable
+data class ArchivoDto(
+    val hash: String = "",
+    val tamano: Int = 0,
+    val nombre: String? = null,
+    val descarga: String? = null,
+)
+
+/** Docentes referenciados por los grados (usuarios no se replican) */
+@Serializable
+data class DocenteDto(
+    val uuid: String = "",
+    val nombre: String = "",
 )

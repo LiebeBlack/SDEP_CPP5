@@ -82,9 +82,11 @@ def test_login_rechaza_usuario_inexistente(central):
 
 
 def test_login_rechaza_campos_vacios(central):
-    with pytest.raises(ErrorSesion) as error:
+    from sync_agent.api_acciones import ErrorApi
+
+    with pytest.raises(ErrorApi) as error:
         _login(central, username="", password="")
-    assert error.value.codigo in (400, 401)
+    assert error.value.codigo == 400
 
 
 def test_login_solo_muestra_cambio_obligatorio_si_esta_marcado(central):

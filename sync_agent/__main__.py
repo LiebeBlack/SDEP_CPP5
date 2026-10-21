@@ -11,6 +11,7 @@ Permite operar el paquete sin abrir la aplicación de escritorio::
     py -3 -m sync_agent servidor --db sqlite:///central.db --crear-dispositivo "Secretaría"
     py -3 -m sync_agent servidor --db sqlite:///central.db    # arranca el nodo central
     py -3 -m sync_agent dispositivos --db sqlite:///central.db --listar
+    py -3 -m sync_agent sesiones --db sqlite:///central.db    # sesiones de usuario abiertas
 
 El nodo central es un servicio HTTP propio (biblioteca estándar) que escribe el
 SQLite central en modo WAL: los puestos nunca escriben directamente en él.
@@ -393,6 +394,36 @@ def cmd_dispositivos(args: argparse.Namespace) -> int:
     return _administrar_dispositivos(args)
 
 
+def cmd_sesiones(args: argparse.Namespace) -> int:
+    """Administra las sesiones de usuario abiertas en el nodo central"""
+    nucleo, _config = _nucleo(args)
+    try:
+        gestor = nucleo.api.gestor_sesiones
+
+        if args.revocar_usuario:
+            cerradas = gestor.cerrar_todas_de(args.revocar_usuario)
+            if cerradas:
+                print(f"Se revocaron {cerradas} sesiones de «{args.revocar_usuario}».")
+                return SALIDA_CORRECTA
+            print(f"«{args.revocar_usuario}» no tiene sesiones vigentes.")
+            return SALIDA_ERROR
+
+        if args.purgar_expiradas is not None:
+            borradas = gestor.purgar_expiradas(args.purgar_expiradas)
+            print(f"Sesiones caducadas retiradas: {borradas}")
+            return SALIDA_CORRECTA
+
+        activas = gestor.listar_activas(limite=args.limite)
+        if args.json:
+            print(json.dumps(activas, ensure_ascii=False, indent=2, default=str))
+            return SALIDA_CORRECTA
+        print(f"Sesiones vigentes: {len(activas)}")
+        _tabla(activas, ["username", "rol", "dispositivo", "creada_en", "expira_en"])
+        return SALIDA_CORRECTA
+    finally:
+        nucleo.cerrar()
+
+
 # ----------------------------------------------------------------------
 # Argumentos
 # ----------------------------------------------------------------------
@@ -449,6 +480,23 @@ def _parser() -> argparse.ArgumentParser:
     p_disp.add_argument("--crear", metavar="NOMBRE", help="Da de alta un puesto")
     p_disp.add_argument("--revocar", metavar="ID", help="Revoca el acceso de un puesto")
     p_disp.set_defaults(func=cmd_dispositivos)
+
+    # --- sesiones ---
+    p_ses = subparsers.add_parser(
+        "sesiones", help="Sesiones de usuario abiertas en el nodo central"
+    )
+    _agregar_argumentos_central(p_ses)
+    p_ses.add_argument("--listar", action="store_true", help="Lista las sesiones vigentes")
+    p_ses.add_argument(
+        "--revocar-usuario", metavar="USUARIO", help="Cierra todas las sesiones de una cuenta"
+    )
+    p_ses.add_argument(
+        "--purgar-expiradas",
+        type=int,
+        metavar="DIAS",
+        help="Elimina sesiones cuya vida absoluta venció hace más de DIAS días",
+    )
+    p_ses.set_defaults(func=cmd_sesiones)
 
     return parser
 

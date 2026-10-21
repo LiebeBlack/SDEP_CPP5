@@ -1,13 +1,34 @@
 package ve.edu.sdep.movil.dominio.modelo
 
-/** Usuario que tiene la sesión abierta en este momento */
+/**
+ * Sesión de la aplicación.
+ *
+ * El usuario entra con las cuentas de la base institucional (las mismas del
+ * escritorio) y el nodo central emite un token: aquí solo viven sus datos de
+ * cara a la interfaz, nunca la contraseña.
+ *
+ * [offline] indica que la sesión se abrió sin red con el desbloqueo biométrico
+ * dentro de la ventana de gracia: la app funciona en lectura y con cola de
+ * salida, y el token se revalida contra el nodo central en cuanto haya red.
+ */
 data class Sesion(
-    val usuarioId: Long,
-    val nombre: String,
     val usuario: String,
+    val nombre: String,
     val rol: Rol,
+    val token: String = "",
+    val expiraEn: Long = 0L,
+    val debeCambiarPassword: Boolean = false,
+    val offline: Boolean = false,
 ) {
-    fun puede(permiso: Permiso): Boolean = PoliticaRoles.puede(rol, permiso)
+    fun puede(permiso: Permiso): Boolean = PoliticaRoles.tiene(rol, permiso)
+
+    fun puedeAbrir(modulo: Modulo): Boolean = PoliticaRoles.puedeAbrir(rol, modulo)
+
+    /** La sesión abierta sin red solo sirve dentro de su ventana de gracia */
+    fun vigente(ahora: Long = System.currentTimeMillis()): Boolean =
+        expiraEn <= 0L || ahora <= expiraEn
+
+    val etiquetaRol: String get() = rol.etiqueta
 }
 
 /**

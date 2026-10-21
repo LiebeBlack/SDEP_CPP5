@@ -1,62 +1,144 @@
 package ve.edu.sdep.movil.dominio.modelo
 
 /**
- * Rol de la cuenta dentro de la aplicación.
+ * Roles y permisos del sistema, espejo de `src/utils/security.py`.
  *
- * Los tres roles existen en la app y no dependen del usuario del escritorio:
- * el teléfono es un equipo más de la intranet y administra sus propias cuentas,
- * igual que cada puesto. El rol solo limita lo que la interfaz ofrece; la
- * validación definitiva de los datos la hace el nodo central al aplicar las
- * operaciones.
+ * Los mismos cuatro roles que el escritorio: administrador, gestor, usuario y
+ * solo lectura. La matriz tiene DOS capas, igual que allá:
+ *
+ * 1. [PoliticaRoles.MODULOS] — qué módulo abre cada rol. Es *fail-closed*: un
+ *    módulo que no figure declarado queda denegado para TODOS los roles.
+ * 2. [PoliticaRoles.permisos] — qué acción puede ejecutar cada rol
+ *    (create, read, update, delete, report, config…).
+ *
+ * La usan las pantallas (para ocultar lo que no corresponde), los ViewModel y
+ * repositorios (para rechazar la acción aunque la pantalla se equivoque) y,
+ * con exactamente la misma matriz, el nodo central (autoridad final). El test
+ * `PoliticaRolesTest` compara esta tabla con el fixture exportado del
+ * escritorio para que ninguna pueda divergir.
  */
-enum class Rol(val etiqueta: String, val descripcion: String) {
+
+/** Roles de la cuenta, tal como los guarda la tabla `usuarios` */
+enum class Rol(val valor: String, val etiqueta: String, val descripcion: String) {
     ADMIN(
+        valor = "admin",
         etiqueta = "Administrador",
-        descripcion = "Registra, edita, elimina, administra cuentas y configura la sincronización",
+        descripcion = "Todo el sistema: configura, administra cuentas y ve la auditoría",
     ),
-    EDITOR(
-        etiqueta = "Editor",
-        descripcion = "Registra y edita registros; no elimina ni administra cuentas",
+    MANAGER(
+        valor = "manager",
+        etiqueta = "Gestor",
+        descripcion = "Crea, edita, borra y genera reportes; sin configuración del sistema",
+    ),
+    USER(
+        valor = "user",
+        etiqueta = "Usuario",
+        descripcion = "Consulta, registra estudiantes y califica; sin nómina ni contratos",
     ),
     VIEWER(
-        etiqueta = "Consulta",
-        descripcion = "Solo lectura: consulta los registros sincronizados",
+        valor = "viewer",
+        etiqueta = "Solo lectura",
+        descripcion = "Consulta los datos; no crea, edita ni elimina",
     ),
     ;
 
     companion object {
-        /** Convierte el texto almacenado en la base a un rol válido */
+        /** Convierte el texto de la base en un rol; lo desconocido degrada a consulta */
         fun desde(valor: String?): Rol =
-            values().firstOrNull { it.name.equals(valor, ignoreCase = true) } ?: VIEWER
+            entries.firstOrNull { it.valor == valor || it.name.equals(valor, ignoreCase = true) }
+                ?: VIEWER
     }
 }
 
-/** Acciones que la interfaz debe permitir o bloquear */
-enum class Permiso {
-    CONSULTAR,
-    CREAR,
-    EDITAR,
-    ELIMINAR,
-    ADMINISTRAR_USUARIOS,
-    CONFIGURAR_SINCRONIZACION,
+/** Acciones operativas sobre un módulo */
+enum class Permiso(val etiqueta: String) {
+    CREAR("crear"),
+    CONSULTAR("leer"),
+    EDITAR("editar"),
+    ELIMINAR("eliminar"),
+    REPORTAR("reportes"),
+    CONFIGURAR("configurar"),
+    RESPALDAR("respaldos"),
 }
 
-/**
- * Política de permisos, en un solo lugar.
- *
- * La usan tanto los ViewModel (para rechazar una acción aunque la pantalla se
- * equivoque) como las pantallas (para ocultar lo que no corresponde).
- */
+/** Módulos del sistema con control de acceso (los mismos del escritorio) */
+enum class Modulo(val etiqueta: String, val ruta: String) {
+    DASHBOARD("Panel de control", "dashboard"),
+    EMPLEADOS("Empleados", "empleados"),
+    DOCUMENTOS("Documentos", "documentos"),
+    INCIDENCIAS("Incidencias", "incidencias"),
+    CONTRATOS("Contratos", "contratos"),
+    NOMINA("Nómina", "nomina"),
+    CONFIGURACION("Configuración", "configuracion"),
+    ESTUDIANTES("Estudiantes", "estudiantes"),
+    NOTAS("Calificaciones", "notas"),
+    REGISTROS("Registros de campo", "registros"),
+    ;
+
+    companion object {
+        fun desde(ruta: String?): Modulo? = entries.firstOrNull { it.ruta == ruta }
+    }
+}
+
 object PoliticaRoles {
 
-    fun puede(rol: Rol, permiso: Permiso): Boolean = when (rol) {
-        Rol.ADMIN -> true
-        Rol.EDITOR -> permiso == Permiso.CONSULTAR ||
-            permiso == Permiso.CREAR ||
-            permiso == Permiso.EDITAR
-        Rol.VIEWER -> permiso == Permiso.CONSULTAR
-    }
+    /**
+     * Acceso por módulo: idéntico a `PermissionChecker.MODULE_ACCESS`.
+     *
+     * `DASHBOARD` y `REGISTROS` no pasan por este mapa en el escritorio (el
+     * panel es el marco de bienvenida y la captura de campo es el uso propio
+     * del teléfono); se declaran aquí para que también sean *fail-closed*.
+     */
+    val MODULOS: Map<Modulo, Set<Rol>> = mapOf(
+        Modulo.DASHBOARD to Rol.entries.toSet(),
+        Modulo.EMPLEADOS to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER, Rol.VIEWER),
+        Modulo.DOCUMENTOS to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER, Rol.VIEWER),
+        Modulo.INCIDENCIAS to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER),
+        Modulo.CONTRATOS to setOf(Rol.ADMIN, Rol.MANAGER),
+        Modulo.NOMINA to setOf(Rol.ADMIN, Rol.MANAGER),
+        Modulo.CONFIGURACION to setOf(Rol.ADMIN),
+        Modulo.ESTUDIANTES to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER, Rol.VIEWER),
+        Modulo.NOTAS to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER),
+        // La captura de campo es el uso propio del teléfono: cualquier rol
+        // autenticado puede levantar registros; el editor de notas lo autoriza
+        // además el token académico en el servidor.
+        Modulo.REGISTROS to Rol.entries.toSet(),
+    )
 
-    /** Atajo usado por la pantalla de edición */
-    fun puedeEditar(rol: Rol): Boolean = puede(rol, Permiso.EDITAR)
+    /** Permisos de acción por rol, idéntico a `has_permission` */
+    private val PERMISOS: Map<Rol, Set<Permiso>> = mapOf(
+        Rol.ADMIN to Permiso.entries.toSet(),
+        Rol.MANAGER to setOf(
+            Permiso.CREAR, Permiso.CONSULTAR, Permiso.EDITAR, Permiso.ELIMINAR, Permiso.REPORTAR,
+        ),
+        // `user` conserva su capacidad reservada de «editar lo propio»; hoy
+        // ningún módulo la consume, igual que en el escritorio.
+        Rol.USER to setOf(Permiso.CONSULTAR),
+        Rol.VIEWER to setOf(Permiso.CONSULTAR),
+    )
+
+    /** Indica si el rol tiene el permiso de acción */
+    fun tiene(rol: Rol, permiso: Permiso): Boolean =
+        PERMISOS[rol]?.contains(permiso) ?: false
+
+    /**
+     * Indica si el rol puede abrir el módulo.
+     *
+     * *Fail-closed*: un módulo no declarado en [MODULOS] se deniega para
+     * todos los roles, también para el administrador.
+     */
+    fun puedeAbrir(rol: Rol, modulo: Modulo): Boolean =
+        MODULOS[modulo]?.contains(rol) ?: false
+
+    /** Atajo para las pantallas: permiso de escritura */
+    fun puedeEditar(rol: Rol): Boolean = tiene(rol, Permiso.EDITAR)
+
+    /** Atajo para las pantallas: alta de registros */
+    fun puedeCrear(rol: Rol): Boolean = tiene(rol, Permiso.CREAR)
+
+    /** Atajo para las pantallas: bajas */
+    fun puedeEliminar(rol: Rol): Boolean = tiene(rol, Permiso.ELIMINAR)
+
+    /** Atajo para las pantallas: reportes y exportaciones */
+    fun puedeReportar(rol: Rol): Boolean = tiene(rol, Permiso.REPORTAR)
 }

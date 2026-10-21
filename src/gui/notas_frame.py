@@ -786,14 +786,12 @@ class NotasFrame(ctk.CTkFrame):
                 academico.cerrar_periodo(int(periodo.id), self.token)
             else:
                 academico.reabrir_periodo(int(periodo.id), self.token)
-        except (
-            ValueError,
-            TypeError,
-            AttributeError,
-            ImportError,
-            SQLAlchemyError,
-            Exception,
-        ) as e:
+        # Captura amplia deliberada: cualquier fallo (token vencido, base
+        # cerrada, servicio no disponible) debe volver a la pantalla con un
+        # aviso, no dejar el diálogo colgado. Antes la tupla incluía
+        # ``Exception`` junto a tipos más específicos: código muerto que
+        # enmascaraba la intención.
+        except Exception as e:
             logger.error("No se pudo cambiar el estado del periodo: %s", e, exc_info=True)
             messagebox.showerror("Periodos", f"No se pudo completar la operación:\n{e}")
             return

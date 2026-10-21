@@ -1,14 +1,13 @@
 package ve.edu.sdep.movil.datos.local
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import ve.edu.sdep.movil.datos.local.entidad.*
 
 /**
@@ -20,25 +19,35 @@ import ve.edu.sdep.movil.datos.local.entidad.*
  *   no nulas; una edición lleva únicamente las que cambiaron. Mandar la fila
  *   completa pisaría los cambios que otro equipo hizo en columnas distintas.
  * * **Las claves foráneas viajan como UUID.** `empleado_id` no es un número
- *   local: es el UUID global del empleado, que este equipo traduce a su id.
+ *   local: es el UUID global del empleado, que cada equipo traduce a su id
+ *   ([conForaneasComoUuid] al salir, [AplicadorEspejo] al entrar).
  * * **Las rutas de archivo no viajan** (`foto_ruta`, `ruta_archivo`,
  *   `documento_soporte_ruta`, `archivo_ruta`): una ruta de otro equipo no
  *   significa nada aquí. El contenido sí, identificado por su hash.
  * * **`id` nunca viaja**: la identidad local no significa nada en otro equipo.
  *
- * Los valores del protocolo pueden llegar con etiqueta de tipo
- * (`{"__t__": "datetime", "v": "…"}` para fechas y decimales); [texto],
- * [entero] y [real] las normalizan antes de aplicarlas.
+ * Al aplicar un payload mandado por la red rige la regla de **presencia**:
+ * una columna que viene en el payload se escribe (aunque venga vacía) y una
+ * que no viene se conserva tal cual. Así una edición parcial de otro equipo
+ * solo pisa lo que ese equipo tocó de verdad.
  */
 object Espejo {
 
-    /** Clave natural de cada tabla (columna que unifica filas entre equipos) */
-    val CLAVE_NATURAL: Map<String, List<String>> = mapOf(
-        "empleados" to listOf("cedula"),
-        "contratos" to listOf("numero"),
-        "estudiantes" to listOf("cedula"),
-        "periodos_academicos" to listOf("nombre"),
-        "configuraciones" to listOf("clave"),
+    /** Clave natural de una columna que unifica filas entre equipos */
+    val CLAVE_NATURAL: Map<String, String> = mapOf(
+        "empleados" to "cedula",
+        "contratos" to "numero",
+        "estudiantes" to "cedula",
+        "periodos_academicos" to "nombre",
+        "configuraciones" to "clave",
+        "registros_moviles" to "uuid_movil",
+    )
+
+    /**
+     * Claves naturales de varias columnas, evaluables solo en el equipo
+     * receptor cuando sus claves foráneas ya se tradujeron a ids locales.
+     */
+    val CLAVE_NATURAL_COMPUESTA: Map<String, List<String>> = mapOf(
         "grados" to listOf("periodo_id", "nombre", "seccion"),
         "matriculas" to listOf("estudiante_id", "grado_id"),
         "notas_finales" to listOf("estudiante_id", "grado_id", "materia"),
@@ -51,6 +60,22 @@ object Espejo {
         "estudiantes" to "activo",
         "matriculas" to "activa",
         "registros_moviles" to "activo",
+    )
+
+    /** Todas las tablas del protocolo, en el mismo orden que el escritorio */
+    val TABLAS: Set<String> = setOf(
+        "empleados",
+        "documentos",
+        "incidencias",
+        "contratos",
+        "pagos",
+        "configuraciones",
+        "registros_moviles",
+        "estudiantes",
+        "periodos_academicos",
+        "grados",
+        "matriculas",
+        "notas_finales",
     )
 
     /**
@@ -102,22 +127,15 @@ object Espejo {
         return crudo.toDoubleOrNull()
     }
 
-    fun booleano(campos: JsonObject, campo: String): Boolean? {
-        val elemento = campos[campo] ?: return null
-        if (elemento is JsonNull) return null
-        (elemento as? JsonPrimitive)?.booleanOrNull?.let { return it }
-        return when (elemento.textoCrudo()?.lowercase()) {
-            "true", "1", "yes", "on", "si", "sí" -> true
-            "false", "0", "no", "off" -> false
-            else -> null
-        }
-    }
-
     /** Fecha u hora en ISO simple (sin etiqueta de tipo ni zona horaria) */
     fun fecha(campos: JsonObject, campo: String): String? {
         val texto = texto(campos, campo) ?: return null
         return normalizarIso(texto)
     }
+
+    /** Fecha u hora a milisegundos, para las columnas propias del dispositivo */
+    fun fechaMillis(campos: JsonObject, campo: String): Long? =
+        Fechas.desdeIso(texto(campos, campo))
 
     /**
      * Hash declarado por una marca de binario (`{"__blob__": "…", "tamano": n}`)
@@ -128,6 +146,13 @@ object Espejo {
     fun hashBlob(campos: JsonObject, campo: String): String? {
         val elemento = campos[campo] as? JsonObject ?: return null
         return (elemento["__blob__"] as? JsonPrimitive)?.contentOrNull
+    }
+
+    /** Tamaño declarado por una marca de binario (null si no lo es) */
+    fun tamanoBlob(campos: JsonObject, campo: String): Int? {
+        val elemento = campos[campo] as? JsonObject ?: return null
+        val crudo = (elemento["tamano"] as? JsonPrimitive)?.contentOrNull ?: return null
+        return crudo.toIntOrNull()
     }
 
     /** Construye la marca de binario para enviar el hash de un contenido */
@@ -207,7 +232,6 @@ object Espejo {
             "empleados" -> {
                 val e = entidad as EmpleadoEntity
                 val a = anterior as? EmpleadoEntity
-                fun tocado(campo: String, viejo: Any?, nuevo: Any?): Boolean = completa || viejo != nuevo
                 campos["nombres"] = JsonPrimitive(e.nombres)
                 campos["apellidos"] = JsonPrimitive(e.apellidos)
                 campos["cedula"] = JsonPrimitive(e.cedula)
@@ -269,7 +293,7 @@ object Espejo {
                 poner("fecha_vencimiento", e.fechaVencimiento, completa || a?.fechaVencimiento != e.fechaVencimiento)
                 campos["nombre_archivo"] = JsonPrimitive(e.nombreArchivo)
                 poner("tamano_bytes", e.tamanoBytes, completa || a?.tamanoBytes != e.tamanoBytes)
-                poner("tipo_mime", e.tamanoMime ?: e.tipoMime, completa || a?.tipoMime != e.tipoMime)
+                poner("tipo_mime", e.tipoMime, completa || a?.tipoMime != e.tipoMime)
                 // El contenido viaja como hash (canal de binarios), no como bytes
                 if (e.contenidoHash != null && (completa || a?.contenidoHash != e.contenidoHash)) {
                     campos["contenido_binario"] = marcaBlob(
@@ -299,7 +323,7 @@ object Espejo {
                 if (e.documentoSoporteHash != null && (completa || a?.documentoSoporteHash != e.documentoSoporteHash)) {
                     campos["documento_soporte_binario"] = marcaBlob(
                         e.documentoSoporteHash,
-                        0,
+                        e.documentoSoporteBinario?.size ?: 0,
                     )
                 }
                 poner("aprobado_por", e.aprobadoPor, completa || a?.aprobadoPor != e.aprobadoPor)
@@ -408,10 +432,6 @@ object Espejo {
                 campos["nivel"] = JsonPrimitive(e.nivel)
                 campos["nombre"] = JsonPrimitive(e.nombre)
                 campos["seccion"] = JsonPrimitive(e.seccion)
-                // La asignación de profesor es una decisión del escritorio: el
-                // UUID viaja tal cual (usuarios no se replican) y solo se
-                // envía en el alta o si cambió localmente por una acción.
-                poner("profesor_uuid", e.profesorUuid, completa || a?.profesorUuid != e.profesorUuid)
                 poner("observaciones", e.observaciones, completa || a?.observaciones != e.observaciones)
             }
 
@@ -450,20 +470,59 @@ object Espejo {
             else -> return null
         }
 
-        // Las claves foráneas viajan como identidad global, nunca como id local
-        val foraneas = CLAVES_FORANEAS[tabla].orEmpty().keys
-        for (columna in foraneas) {
-            val valor = campos[columna] as? JsonPrimitive
-            if (valor != null && valor.contentOrNull?.all { it in '0'..'9' } == true) {
-                // Un id local en el payload sería un dato incorrecto en otro
-                // equipo: se omite y el Aplicador lo resuelve por identidad.
-                campos.remove(columna)
-            }
-        }
-
         // Nada que enviar en una edición sin cambios
         if (!completa && campos.isEmpty()) return null
         return JsonObject(campos)
+    }
+
+    /**
+     * Expresa las claves foráneas del payload como UUID del padre.
+     *
+     * Un id local en el payload sería un dato incorrecto en el equipo receptor
+     * (allí ese número es otra fila), así que la columna se omite si el padre
+     * no tiene identidad global conocida: es preferible un dato incompleto a
+     * uno equivocado. Es el espejo exacto de `identidad.traducir_payload_a_uuid`
+     * del escritorio.
+     *
+     * @param uuidDe Resuelve (tabla padre, id local) → UUID; null si se desconoce
+     */
+    suspend fun conForaneasComoUuid(
+        tabla: String,
+        campos: JsonObject,
+        uuidDe: suspend (tabla: String, idLocal: Long) -> String?,
+    ): JsonObject {
+        val foraneas = CLAVES_FORANEAS[tabla] ?: return campos
+        val resultado = mutableMapOf<String, JsonElement>()
+        for ((clave, valor) in campos) {
+            val tablaPadre = foraneas[clave]
+            if (tablaPadre == null) {
+                resultado[clave] = valor
+                continue
+            }
+            val idLocal = (valor as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+            val uuid = idLocal?.let { uuidDe(tablaPadre, it) }
+            if (uuid == null) {
+                // Padre sin identidad global: la columna viaja incompleta y el
+                // nodo central resolverá con lo que conozca.
+                continue
+            }
+            resultado[clave] = JsonPrimitive(uuid)
+        }
+        return JsonObject(resultado)
+    }
+
+    /** Forma canónica (claves ordenadas, sin espacios) de un valor del protocolo */
+    fun canonica(elemento: JsonElement?): String = when (elemento) {
+        null, JsonNull -> "null"
+        is JsonObject -> elemento.entries
+            .sortedBy { it.key }
+            .joinToString(",", "{", "}") { "\"${it.key}\":${canonica(it.value)}" }
+        is JsonArray -> elemento.joinToString(",", "[", "]") { canonica(it) }
+        is JsonPrimitive -> when {
+            elemento.isString -> "\"${elemento.content.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+            else -> elemento.content
+        }
+        else -> elemento.toString()
     }
 
     // ==================================================================
@@ -473,8 +532,11 @@ object Espejo {
     /**
      * Aplica los campos del payload a una fila.
      *
+     * Regla de presencia: las columnas que **vienen** en [campos] se escriben
+     * (también si vienen vacías) y las que no vienen se conservan. Así una
+     * edición parcial remota no borra lo que este equipo no tocó.
+     *
      * @param base La fila existente (edición) o null (alta)
-     * @param campos Payload ya traducido (claves foráneas como id local)
      */
     fun aplicar(tabla: String, base: Any?, campos: JsonObject): Any? = when (tabla) {
         "empleados" -> aplicarEmpleado(base as? EmpleadoEntity, campos)
@@ -488,8 +550,25 @@ object Espejo {
         "matriculas" -> aplicarMatricula(base as? MatriculaEntity, campos)
         "notas_finales" -> aplicarNota(base as? NotaFinalEntity, campos)
         "configuraciones" -> aplicarConfiguracion(base as? ConfiguracionEntity, campos)
+        "registros_moviles" -> aplicarRegistroMovil(base as? RegistroEntity, campos)
         else -> null
     }
+
+    // Helpers de presencia: si el campo no viene, se conserva el valor actual
+    private fun textoO(campos: JsonObject, campo: String, actual: String?): String? =
+        if (campos.containsKey(campo)) texto(campos, campo) else actual
+
+    private fun enteroO(campos: JsonObject, campo: String, actual: Int?): Int? =
+        if (campos.containsKey(campo)) entero(campos, campo) else actual
+
+    private fun realO(campos: JsonObject, campo: String, actual: Double?): Double? =
+        if (campos.containsKey(campo)) real(campos, campo) else actual
+
+    private fun fechaO(campos: JsonObject, campo: String, actual: String?): String? =
+        if (campos.containsKey(campo)) fecha(campos, campo) else actual
+
+    private fun fechaMillisO(campos: JsonObject, campo: String, actual: Long): Long =
+        if (campos.containsKey(campo)) fechaMillis(campos, campo) ?: actual else actual
 
     private fun aplicarEmpleado(base: EmpleadoEntity?, campos: JsonObject): EmpleadoEntity {
         val e = base ?: EmpleadoEntity(
@@ -501,45 +580,44 @@ object Espejo {
             nombres = texto(campos, "nombres") ?: e.nombres,
             apellidos = texto(campos, "apellidos") ?: e.apellidos,
             cedula = texto(campos, "cedula") ?: e.cedula,
-            fechaNacimiento = fecha(campos, "fecha_nacimiento"),
-            genero = texto(campos, "genero"),
-            estadoCivil = texto(campos, "estado_civil"),
-            nacionalidad = texto(campos, "nacionalidad"),
-            peso = real(campos, "peso"),
-            altura = real(campos, "altura"),
-            tipoSangre = texto(campos, "tipo_sangre"),
-            fotoRuta = e.fotoRuta,
-            telefono = texto(campos, "telefono"),
-            celular = texto(campos, "celular"),
-            email = texto(campos, "email"),
-            direccion = texto(campos, "direccion"),
-            ciudad = texto(campos, "ciudad"),
-            estado = texto(campos, "estado"),
-            codigoPostal = texto(campos, "codigo_postal"),
+            fechaNacimiento = fechaO(campos, "fecha_nacimiento", e.fechaNacimiento),
+            genero = textoO(campos, "genero", e.genero),
+            estadoCivil = textoO(campos, "estado_civil", e.estadoCivil),
+            nacionalidad = textoO(campos, "nacionalidad", e.nacionalidad),
+            peso = realO(campos, "peso", e.peso),
+            altura = realO(campos, "altura", e.altura),
+            tipoSangre = textoO(campos, "tipo_sangre", e.tipoSangre),
+            telefono = textoO(campos, "telefono", e.telefono),
+            celular = textoO(campos, "celular", e.celular),
+            email = textoO(campos, "email", e.email),
+            direccion = textoO(campos, "direccion", e.direccion),
+            ciudad = textoO(campos, "ciudad", e.ciudad),
+            estado = textoO(campos, "estado", e.estado),
+            codigoPostal = textoO(campos, "codigo_postal", e.codigoPostal),
             tipoEmpleado = texto(campos, "tipo_empleado") ?: e.tipoEmpleado,
             cargo = texto(campos, "cargo") ?: e.cargo,
             departamento = texto(campos, "departamento") ?: e.departamento,
             fechaContratacion = fecha(campos, "fecha_contratacion") ?: e.fechaContratacion,
-            fechaTerminacion = fecha(campos, "fecha_terminacion"),
+            fechaTerminacion = fechaO(campos, "fecha_terminacion", e.fechaTerminacion),
             salarioBase = real(campos, "salario_base") ?: e.salarioBase,
-            activo = entero(campos, "activo") ?: e.activo,
-            nivelEducativo = texto(campos, "nivel_educativo"),
-            especialidad = texto(campos, "especialidad"),
-            tituloObtenido = texto(campos, "titulo_obtenido"),
-            tituloSecundaria = texto(campos, "titulo_secundaria"),
-            institucionBancaria = texto(campos, "institucion_bancaria"),
-            numeroCuenta = texto(campos, "numero_cuenta"),
-            tipoCuenta = texto(campos, "tipo_cuenta"),
-            carnetDiscapacidad = texto(campos, "carnet_discapacidad"),
-            enfermedadesPreexistentes = texto(campos, "enfermedades_preexistentes"),
-            alergiasMedicamentosas = texto(campos, "alergias_medicamentosas"),
-            alergiasAlimentarias = texto(campos, "alergias_alimentarias"),
-            tipoContratacion = texto(campos, "tipo_contratacion"),
-            hijos = texto(campos, "hijos"),
-            observaciones = texto(campos, "observaciones"),
-            contactoEmergenciaNombre = texto(campos, "contacto_emergencia_nombre"),
-            contactoEmergenciaTelefono = texto(campos, "contacto_emergencia_telefono"),
-            contactoEmergenciaRelacion = texto(campos, "contacto_emergencia_relacion"),
+            activo = enteroO(campos, "activo", e.activo) ?: e.activo,
+            nivelEducativo = textoO(campos, "nivel_educativo", e.nivelEducativo),
+            especialidad = textoO(campos, "especialidad", e.especialidad),
+            tituloObtenido = textoO(campos, "titulo_obtenido", e.tituloObtenido),
+            tituloSecundaria = textoO(campos, "titulo_secundaria", e.tituloSecundaria),
+            institucionBancaria = textoO(campos, "institucion_bancaria", e.institucionBancaria),
+            numeroCuenta = textoO(campos, "numero_cuenta", e.numeroCuenta),
+            tipoCuenta = textoO(campos, "tipo_cuenta", e.tipoCuenta),
+            carnetDiscapacidad = textoO(campos, "carnet_discapacidad", e.carnetDiscapacidad),
+            enfermedadesPreexistentes = textoO(campos, "enfermedades_preexistentes", e.enfermedadesPreexistentes),
+            alergiasMedicamentosas = textoO(campos, "alergias_medicamentosas", e.alergiasMedicamentosas),
+            alergiasAlimentarias = textoO(campos, "alergias_alimentarias", e.alergiasAlimentarias),
+            tipoContratacion = textoO(campos, "tipo_contratacion", e.tipoContratacion),
+            hijos = textoO(campos, "hijos", e.hijos),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
+            contactoEmergenciaNombre = textoO(campos, "contacto_emergencia_nombre", e.contactoEmergenciaNombre),
+            contactoEmergenciaTelefono = textoO(campos, "contacto_emergencia_telefono", e.contactoEmergenciaTelefono),
+            contactoEmergenciaRelacion = textoO(campos, "contacto_emergencia_relacion", e.contactoEmergenciaRelacion),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -547,24 +625,23 @@ object Espejo {
 
     private fun aplicarDocumento(base: DocumentoEntity?, campos: JsonObject): DocumentoEntity {
         val e = base ?: DocumentoEntity(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
+            empleadoId = entero(campos, "empleado_id") ?: 0L,
             tipoDocumento = "", titulo = "", nombreArchivo = "",
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
             tipoDocumento = texto(campos, "tipo_documento") ?: e.tipoDocumento,
             titulo = texto(campos, "titulo") ?: e.titulo,
-            descripcion = texto(campos, "descripcion"),
-            numeroDocumento = texto(campos, "numero_documento"),
-            fechaEmision = fecha(campos, "fecha_emision"),
-            fechaVencimiento = fecha(campos, "fecha_vencimiento"),
+            descripcion = textoO(campos, "descripcion", e.descripcion),
+            numeroDocumento = textoO(campos, "numero_documento", e.numeroDocumento),
+            fechaEmision = fechaO(campos, "fecha_emision", e.fechaEmision),
+            fechaVencimiento = fechaO(campos, "fecha_vencimiento", e.fechaVencimiento),
             nombreArchivo = texto(campos, "nombre_archivo") ?: e.nombreArchivo,
-            rutaArchivo = e.rutaArchivo,
-            tamanoBytes = entero(campos, "tamano_bytes"),
-            tipoMime = texto(campos, "tipo_mime"),
+            tamanoBytes = enteroO(campos, "tamano_bytes", e.tamanoBytes),
+            tipoMime = textoO(campos, "tipo_mime", e.tipoMime),
             contenidoHash = hashBlob(campos, "contenido_binario") ?: e.contenidoHash,
-            activo = entero(campos, "activo") ?: e.activo,
-            observaciones = texto(campos, "observaciones"),
+            activo = enteroO(campos, "activo", e.activo) ?: e.activo,
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -572,31 +649,31 @@ object Espejo {
 
     private fun aplicarIncidencia(base: IncidenciaEntity?, campos: JsonObject): IncidenciaEntity {
         val e = base ?: IncidenciaEntity(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
+            empleadoId = entero(campos, "empleado_id") ?: 0L,
             tipoIncidencia = "", estado = "pendiente",
             fechaInicio = "", fechaFin = "", fechaSolicitud = "",
             motivo = "", diasSolicitados = 0,
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
             tipoIncidencia = texto(campos, "tipo_incidencia") ?: e.tipoIncidencia,
             estado = texto(campos, "estado") ?: e.estado,
             fechaInicio = fecha(campos, "fecha_inicio") ?: e.fechaInicio,
             fechaFin = fecha(campos, "fecha_fin") ?: e.fechaFin,
             fechaSolicitud = fecha(campos, "fecha_solicitud") ?: e.fechaSolicitud,
-            fechaAprobacion = fecha(campos, "fecha_aprobacion"),
+            fechaAprobacion = fechaO(campos, "fecha_aprobacion", e.fechaAprobacion),
             motivo = texto(campos, "motivo") ?: e.motivo,
-            descripcion = texto(campos, "descripcion"),
+            descripcion = textoO(campos, "descripcion", e.descripcion),
             diasSolicitados = entero(campos, "dias_solicitados") ?: e.diasSolicitados,
-            diasAprobados = entero(campos, "dias_aprobados"),
-            documentoSoporteNombre = texto(campos, "documento_soporte_nombre"),
+            diasAprobados = enteroO(campos, "dias_aprobados", e.diasAprobados),
+            documentoSoporteNombre = textoO(campos, "documento_soporte_nombre", e.documentoSoporteNombre),
             documentoSoporteHash = hashBlob(campos, "documento_soporte_binario")
                 ?: e.documentoSoporteHash,
-            aprobadoPor = texto(campos, "aprobado_por"),
-            comentariosAprobacion = texto(campos, "comentarios_aprobacion"),
-            afectaNominas = entero(campos, "afecta_nominas") ?: e.afectaNominas,
-            descuentoDias = real(campos, "descuento_dias"),
-            observaciones = texto(campos, "observaciones"),
+            aprobadoPor = textoO(campos, "aprobado_por", e.aprobadoPor),
+            comentariosAprobacion = textoO(campos, "comentarios_aprobacion", e.comentariosAprobacion),
+            afectaNominas = enteroO(campos, "afecta_nominas", e.afectaNominas) ?: e.afectaNominas,
+            descuentoDias = realO(campos, "descuento_dias", e.descuentoDias),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -604,30 +681,33 @@ object Espejo {
 
     private fun aplicarContrato(base: ContratoEntity?, campos: JsonObject): ContratoEntity {
         val e = base ?: ContratoEntity(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
+            empleadoId = entero(campos, "empleado_id") ?: 0L,
             numero = "", tipo = "indefinido", estado = "vigente",
             cargo = "", salarioPactado = 0.0, fechaInicio = "",
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
             numero = texto(campos, "numero") ?: e.numero,
             tipo = texto(campos, "tipo") ?: e.tipo,
             estado = texto(campos, "estado") ?: e.estado,
             cargo = texto(campos, "cargo") ?: e.cargo,
-            departamento = texto(campos, "departamento"),
+            departamento = textoO(campos, "departamento", e.departamento),
             salarioPactado = real(campos, "salario_pactado") ?: e.salarioPactado,
             horasSemanales = entero(campos, "horas_semanales") ?: e.horasSemanales,
             fechaInicio = fecha(campos, "fecha_inicio") ?: e.fechaInicio,
-            fechaFin = fecha(campos, "fecha_fin"),
-            renovacionAutomatica = entero(campos, "renovacion_automatica") ?: e.renovacionAutomatica,
-            contratoAnteriorId = entero(campos, "contrato_anterior_id")?.toLong(),
-            archivoRuta = e.archivoRuta,
-            clausulas = texto(campos, "clausulas"),
-            motivoTerminacion = texto(campos, "motivo_terminacion"),
-            fechaTerminacion = fecha(campos, "fecha_terminacion"),
-            liquidacionMonto = real(campos, "liquidacion_monto") ?: e.liquidacionMonto,
-            aprobadoPor = texto(campos, "aprobado_por"),
-            observaciones = texto(campos, "observaciones"),
+            fechaFin = fechaO(campos, "fecha_fin", e.fechaFin),
+            renovacionAutomatica = enteroO(campos, "renovacion_automatica", e.renovacionAutomatica) ?: e.renovacionAutomatica,
+            contratoAnteriorId = if (campos.containsKey("contrato_anterior_id")) {
+                entero(campos, "contrato_anterior_id")
+            } else {
+                e.contratoAnteriorId
+            },
+            clausulas = textoO(campos, "clausulas", e.clausulas),
+            motivoTerminacion = textoO(campos, "motivo_terminacion", e.motivoTerminacion),
+            fechaTerminacion = fechaO(campos, "fecha_terminacion", e.fechaTerminacion),
+            liquidacionMonto = realO(campos, "liquidacion_monto", e.liquidacionMonto) ?: e.liquidacionMonto,
+            aprobadoPor = textoO(campos, "aprobado_por", e.aprobadoPor),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -635,12 +715,12 @@ object Espejo {
 
     private fun aplicarPago(base: PagoEntity?, campos: JsonObject): PagoEntity {
         val e = base ?: PagoEntity(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: 0L,
+            empleadoId = entero(campos, "empleado_id") ?: 0L,
             tipoPago = "", periodoInicio = "", periodoFin = "", fechaPago = "",
             montoBruto = 0.0, montoNeto = 0.0, salarioBase = 0.0,
         )
         return e.copy(
-            empleadoId = entero(campos, "empleado_id")?.toLong() ?: e.empleadoId,
+            empleadoId = entero(campos, "empleado_id") ?: e.empleadoId,
             tipoPago = texto(campos, "tipo_pago") ?: e.tipoPago,
             metodoPago = texto(campos, "metodo_pago") ?: e.metodoPago,
             periodoInicio = fecha(campos, "periodo_inicio") ?: e.periodoInicio,
@@ -648,32 +728,32 @@ object Espejo {
             fechaPago = fecha(campos, "fecha_pago") ?: e.fechaPago,
             montoBruto = real(campos, "monto_bruto") ?: e.montoBruto,
             montoNeto = real(campos, "monto_neto") ?: e.montoNeto,
-            descuentos = real(campos, "descuentos") ?: e.descuentos,
-            bonificaciones = real(campos, "bonificaciones") ?: e.bonificaciones,
-            horasExtra = real(campos, "horas_extra") ?: e.horasExtra,
+            descuentos = realO(campos, "descuentos", e.descuentos) ?: e.descuentos,
+            bonificaciones = realO(campos, "bonificaciones", e.bonificaciones) ?: e.bonificaciones,
+            horasExtra = realO(campos, "horas_extra", e.horasExtra) ?: e.horasExtra,
             salarioBase = real(campos, "salario_base") ?: e.salarioBase,
-            deduccionSeguro = real(campos, "deduccion_seguro") ?: e.deduccionSeguro,
-            deduccionPension = real(campos, "deduccion_pension") ?: e.deduccionPension,
-            deduccionImpuesto = real(campos, "deduccion_impuesto") ?: e.deduccionImpuesto,
-            otrasDeducciones = real(campos, "otras_deducciones") ?: e.otrasDeducciones,
-            modalidadCalculo = texto(campos, "modalidad_calculo") ?: e.modalidadCalculo,
-            baseGravable = real(campos, "base_gravable") ?: e.baseGravable,
-            horasExtraDiurnas = real(campos, "horas_extra_diurnas") ?: e.horasExtraDiurnas,
-            horasExtraNocturnas = real(campos, "horas_extra_nocturnas") ?: e.horasExtraNocturnas,
-            horasExtraFeriadas = real(campos, "horas_extra_feriadas") ?: e.horasExtraFeriadas,
-            aguinaldo = real(campos, "aguinaldo") ?: e.aguinaldo,
-            bonoVacacional = real(campos, "bono_vacacional") ?: e.bonoVacacional,
-            aporteSeguroPatronal = real(campos, "aporte_seguro_patronal") ?: e.aporteSeguroPatronal,
-            aportePensionPatronal = real(campos, "aporte_pension_patronal") ?: e.aportePensionPatronal,
-            isrTramo = texto(campos, "isr_tramo"),
-            diasLaborados = entero(campos, "dias_laborados"),
-            diasPeriodo = entero(campos, "dias_periodo"),
-            prorrateado = entero(campos, "prorrateado"),
-            descripcion = texto(campos, "descripcion"),
-            referenciaPago = texto(campos, "referencia_pago"),
-            observaciones = texto(campos, "observaciones"),
-            pagado = entero(campos, "pagado") ?: e.pagado,
-            fechaRegistroPago = fecha(campos, "fecha_registro_pago"),
+            deduccionSeguro = realO(campos, "deduccion_seguro", e.deduccionSeguro) ?: e.deduccionSeguro,
+            deduccionPension = realO(campos, "deduccion_pension", e.deduccionPension) ?: e.deduccionPension,
+            deduccionImpuesto = realO(campos, "deduccion_impuesto", e.deduccionImpuesto) ?: e.deduccionImpuesto,
+            otrasDeducciones = realO(campos, "otras_deducciones", e.otrasDeducciones) ?: e.otrasDeducciones,
+            modalidadCalculo = textoO(campos, "modalidad_calculo", e.modalidadCalculo) ?: e.modalidadCalculo,
+            baseGravable = realO(campos, "base_gravable", e.baseGravable) ?: e.baseGravable,
+            horasExtraDiurnas = realO(campos, "horas_extra_diurnas", e.horasExtraDiurnas) ?: e.horasExtraDiurnas,
+            horasExtraNocturnas = realO(campos, "horas_extra_nocturnas", e.horasExtraNocturnas) ?: e.horasExtraNocturnas,
+            horasExtraFeriadas = realO(campos, "horas_extra_feriadas", e.horasExtraFeriadas) ?: e.horasExtraFeriadas,
+            aguinaldo = realO(campos, "aguinaldo", e.aguinaldo) ?: e.aguinaldo,
+            bonoVacacional = realO(campos, "bono_vacacional", e.bonoVacacional) ?: e.bonoVacacional,
+            aporteSeguroPatronal = realO(campos, "aporte_seguro_patronal", e.aporteSeguroPatronal) ?: e.aporteSeguroPatronal,
+            aportePensionPatronal = realO(campos, "aporte_pension_patronal", e.aportePensionPatronal) ?: e.aportePensionPatronal,
+            isrTramo = textoO(campos, "isr_tramo", e.isrTramo),
+            diasLaborados = enteroO(campos, "dias_laborados", e.diasLaborados),
+            diasPeriodo = enteroO(campos, "dias_periodo", e.diasPeriodo),
+            prorrateado = enteroO(campos, "prorrateado", e.prorrateado),
+            descripcion = textoO(campos, "descripcion", e.descripcion),
+            referenciaPago = textoO(campos, "referencia_pago", e.referenciaPago),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
+            pagado = enteroO(campos, "pagado", e.pagado) ?: e.pagado,
+            fechaRegistroPago = fechaO(campos, "fecha_registro_pago", e.fechaRegistroPago),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -684,17 +764,17 @@ object Espejo {
         return e.copy(
             nombres = texto(campos, "nombres") ?: e.nombres,
             apellidos = texto(campos, "apellidos") ?: e.apellidos,
-            cedula = texto(campos, "cedula"),
-            fechaNacimiento = fecha(campos, "fecha_nacimiento"),
-            genero = texto(campos, "genero"),
+            cedula = textoO(campos, "cedula", e.cedula),
+            fechaNacimiento = fechaO(campos, "fecha_nacimiento", e.fechaNacimiento),
+            genero = textoO(campos, "genero", e.genero),
             nivel = texto(campos, "nivel") ?: e.nivel,
-            representante = texto(campos, "representante"),
-            telefono = texto(campos, "telefono"),
-            telefonoRepresentante = texto(campos, "telefono_representante"),
-            email = texto(campos, "email"),
-            direccion = texto(campos, "direccion"),
-            observaciones = texto(campos, "observaciones"),
-            activo = entero(campos, "activo") ?: e.activo,
+            representante = textoO(campos, "representante", e.representante),
+            telefono = textoO(campos, "telefono", e.telefono),
+            telefonoRepresentante = textoO(campos, "telefono_representante", e.telefonoRepresentante),
+            email = textoO(campos, "email", e.email),
+            direccion = textoO(campos, "direccion", e.direccion),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
+            activo = enteroO(campos, "activo", e.activo) ?: e.activo,
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -704,12 +784,12 @@ object Espejo {
         val e = base ?: PeriodoAcademicoEntity(nombre = "")
         return e.copy(
             nombre = texto(campos, "nombre") ?: e.nombre,
-            fechaInicio = fecha(campos, "fecha_inicio"),
-            fechaFin = fecha(campos, "fecha_fin"),
+            fechaInicio = fechaO(campos, "fecha_inicio", e.fechaInicio),
+            fechaFin = fechaO(campos, "fecha_fin", e.fechaFin),
             estado = texto(campos, "estado") ?: e.estado,
-            cerradoEn = texto(campos, "cerrado_en"),
-            cerradoPor = texto(campos, "cerrado_por"),
-            observaciones = texto(campos, "observaciones"),
+            cerradoEn = fechaO(campos, "cerrado_en", e.cerradoEn),
+            cerradoPor = textoO(campos, "cerrado_por", e.cerradoPor),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -717,16 +797,15 @@ object Espejo {
 
     private fun aplicarGrado(base: GradoEntity?, campos: JsonObject): GradoEntity {
         val e = base ?: GradoEntity(
-            periodoId = entero(campos, "periodo_id")?.toLong() ?: 0L,
+            periodoId = entero(campos, "periodo_id") ?: 0L,
             nivel = "", nombre = "",
         )
         return e.copy(
-            periodoId = entero(campos, "periodo_id")?.toLong() ?: e.periodoId,
+            periodoId = entero(campos, "periodo_id") ?: e.periodoId,
             nivel = texto(campos, "nivel") ?: e.nivel,
             nombre = texto(campos, "nombre") ?: e.nombre,
             seccion = texto(campos, "seccion") ?: e.seccion,
-            profesorUuid = texto(campos, "profesor_uuid") ?: e.profesorUuid,
-            observaciones = texto(campos, "observaciones"),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -734,16 +813,16 @@ object Espejo {
 
     private fun aplicarMatricula(base: MatriculaEntity?, campos: JsonObject): MatriculaEntity {
         val e = base ?: MatriculaEntity(
-            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: 0L,
-            gradoId = entero(campos, "grado_id")?.toLong() ?: 0L,
+            estudianteId = entero(campos, "estudiante_id") ?: 0L,
+            gradoId = entero(campos, "grado_id") ?: 0L,
             fechaMatricula = "",
         )
         return e.copy(
-            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: e.estudianteId,
-            gradoId = entero(campos, "grado_id")?.toLong() ?: e.gradoId,
+            estudianteId = entero(campos, "estudiante_id") ?: e.estudianteId,
+            gradoId = entero(campos, "grado_id") ?: e.gradoId,
             fechaMatricula = fecha(campos, "fecha_matricula") ?: e.fechaMatricula,
-            activa = entero(campos, "activa") ?: e.activa,
-            observaciones = texto(campos, "observaciones"),
+            activa = enteroO(campos, "activa", e.activa) ?: e.activa,
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -751,17 +830,17 @@ object Espejo {
 
     private fun aplicarNota(base: NotaFinalEntity?, campos: JsonObject): NotaFinalEntity {
         val e = base ?: NotaFinalEntity(
-            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: 0L,
-            gradoId = entero(campos, "grado_id")?.toLong() ?: 0L,
+            estudianteId = entero(campos, "estudiante_id") ?: 0L,
+            gradoId = entero(campos, "grado_id") ?: 0L,
             materia = "", calificacion = 0.0,
         )
         return e.copy(
-            estudianteId = entero(campos, "estudiante_id")?.toLong() ?: e.estudianteId,
-            gradoId = entero(campos, "grado_id")?.toLong() ?: e.gradoId,
+            estudianteId = entero(campos, "estudiante_id") ?: e.estudianteId,
+            gradoId = entero(campos, "grado_id") ?: e.gradoId,
             materia = texto(campos, "materia") ?: e.materia,
             calificacion = real(campos, "calificacion") ?: e.calificacion,
-            registradoPor = texto(campos, "registrado_por"),
-            observaciones = texto(campos, "observaciones"),
+            registradoPor = textoO(campos, "registrado_por", e.registradoPor),
+            observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
         )
@@ -771,13 +850,51 @@ object Espejo {
         val e = base ?: ConfiguracionEntity(clave = "", tipoDato = "string")
         return e.copy(
             clave = texto(campos, "clave") ?: e.clave,
-            valor = texto(campos, "valor"),
-            descripcion = texto(campos, "descripcion"),
+            valor = textoO(campos, "valor", e.valor),
+            descripcion = textoO(campos, "descripcion", e.descripcion),
             tipoDato = texto(campos, "tipo_dato") ?: e.tipoDato,
-            categoria = texto(campos, "categoria"),
-            editable = entero(campos, "editable") ?: e.editable,
+            categoria = textoO(campos, "categoria", e.categoria),
+            editable = enteroO(campos, "editable", e.editable) ?: e.editable,
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,
+        )
+    }
+
+    /**
+     * Registro de campo recibido de la red.
+     *
+     * `registros_moviles` vive en la tabla local `registros`: el id local es el
+     * propio UUID y el borrado lógico (`activo`) se traduce a `eliminado`.
+     */
+    private fun aplicarRegistroMovil(base: RegistroEntity?, campos: JsonObject): RegistroEntity {
+        val ahora = System.currentTimeMillis()
+        val uuid = texto(campos, "uuid_movil") ?: base?.uuid ?: ""
+        val e = base ?: RegistroEntity(
+            uuid = uuid,
+            titulo = "",
+            contenido = "",
+            categoria = "general",
+            valor = null,
+            creadoEn = ahora,
+            actualizadoEn = ahora,
+            estado = "SINCRONIZADO",
+            eliminado = false,
+            dispositivo = "remoto",
+            usuario = "remoto",
+            ultimaSync = null,
+        )
+        val activo = entero(campos, "activo")
+        return e.copy(
+            uuid = uuid,
+            titulo = texto(campos, "titulo") ?: e.titulo,
+            contenido = textoO(campos, "contenido", e.contenido) ?: e.contenido,
+            categoria = texto(campos, "categoria") ?: e.categoria,
+            valor = if (campos.containsKey("valor")) real(campos, "valor") else e.valor,
+            creadoEn = fechaMillisO(campos, "creado_en", e.creadoEn),
+            actualizadoEn = fechaMillisO(campos, "actualizado_en", e.actualizadoEn),
+            dispositivo = textoO(campos, "dispositivo", e.dispositivo) ?: e.dispositivo,
+            usuario = textoO(campos, "usuario", e.usuario) ?: e.usuario,
+            eliminado = if (activo != null) activo == 0 else e.eliminado,
         )
     }
 }
@@ -793,11 +910,8 @@ fun JsonObject.deReal(campo: String): Double? = Espejo.real(this, campo)
 fun JsonElement.aTexto(): String? = when (this) {
     is JsonNull -> null
     is JsonPrimitive -> contentOrNull
-    else -> EspechoFallback(this)
+    else -> (this as? JsonObject)?.get("v")?.let { (it as? JsonPrimitive)?.contentOrNull }
 }
-
-private fun EspechoFallback(elemento: JsonElement): String? =
-    (elemento as? JsonObject)?.get("v")?.let { (it as? JsonPrimitive)?.contentOrNull }
 
 /** Objeto JSON vacío reutilizable */
 fun jsonObjectVacio(): JsonObject = JsonObject(emptyMap())

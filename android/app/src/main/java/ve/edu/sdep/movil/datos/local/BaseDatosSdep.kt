@@ -45,6 +45,11 @@ import ve.edu.sdep.movil.datos.local.entidad.*
         MatriculaEntity::class,
         NotaFinalEntity::class,
         ConfiguracionEntity::class,
+        // v2: metadata de mezcla (espejo de las tablas sync_* del escritorio)
+        CampoRemotoEntity::class,
+        VersionFilaEntity::class,
+        OpAplicadaEntity::class,
+        BlobPendienteEntity::class,
     ],
     version = 2,
     exportSchema = false,
@@ -70,6 +75,10 @@ abstract class BaseDatosSdep : RoomDatabase() {
     abstract fun matriculaDao(): MatriculaDao
     abstract fun notaFinalDao(): NotaFinalDao
     abstract fun configuracionDao(): ConfiguracionDao
+    abstract fun campoRemotoDao(): CampoRemotoDao
+    abstract fun versionFilaDao(): VersionFilaDao
+    abstract fun opAplicadaDao(): OpAplicadaDao
+    abstract fun blobPendienteDao(): BlobPendienteDao
 
     companion object {
 
@@ -343,6 +352,52 @@ abstract class BaseDatosSdep : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_configuraciones_categoria " +
                         "ON configuraciones (categoria)",
+                )
+
+                // Metadata de mezcla: mismas columnas que las tablas sync_* del
+                // agente de escritorio, para reproducir su motor campo a campo.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS campos_remotos (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "tabla TEXT NOT NULL, fila_uuid TEXT NOT NULL, campo TEXT NOT NULL, " +
+                        "valor TEXT, op_id TEXT NOT NULL, dispositivo TEXT NOT NULL, " +
+                        "actualizado_en TEXT NOT NULL)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_campos_remotos_tabla_fila_uuid_campo " +
+                        "ON campos_remotos (tabla, fila_uuid, campo)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_campos_remotos_fila_uuid " +
+                        "ON campos_remotos (fila_uuid)",
+                )
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS versiones_filas (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "tabla TEXT NOT NULL, fila_uuid TEXT NOT NULL, " +
+                        "ultimo_op_id TEXT, actualizado_en TEXT, dispositivo TEXT, " +
+                        "borrado INTEGER NOT NULL, borrado_en TEXT, borrado_op_id TEXT, " +
+                        "borrado_dispositivo TEXT)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_versiones_filas_tabla_fila_uuid " +
+                        "ON versiones_filas (tabla, fila_uuid)",
+                )
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ops_aplicadas (" +
+                        "opId TEXT NOT NULL, tabla TEXT NOT NULL, " +
+                        "aplicado_en INTEGER NOT NULL, PRIMARY KEY(opId))",
+                )
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS blobs_pendientes (" +
+                        "hash TEXT NOT NULL, tamano INTEGER NOT NULL, tabla TEXT NOT NULL, " +
+                        "fila_uuid TEXT NOT NULL, columna TEXT NOT NULL, " +
+                        "direccion TEXT NOT NULL, estado TEXT NOT NULL, intentos INTEGER NOT NULL, " +
+                        "creado_en INTEGER NOT NULL, actualizado_en INTEGER NOT NULL, " +
+                        "PRIMARY KEY(hash))",
                 )
             }
         }

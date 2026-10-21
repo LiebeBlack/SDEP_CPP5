@@ -426,6 +426,71 @@ interface NotaFinalDao {
 }
 
 // ----------------------------------------------------------------------
+// Metadata de mezcla
+// ----------------------------------------------------------------------
+@Dao
+interface CampoRemotoDao {
+
+    @Query(
+        "SELECT * FROM campos_remotos WHERE tabla = :tabla AND filaUuid = :filaUuid " +
+            "ORDER BY campo",
+    )
+    suspend fun deFila(tabla: String, filaUuid: String): List<CampoRemotoEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun guardar(campo: CampoRemotoEntity)
+
+    @Query("DELETE FROM campos_remotos WHERE tabla = :tabla AND filaUuid = :filaUuid")
+    suspend fun borrarFila(tabla: String, filaUuid: String)
+}
+
+@Dao
+interface VersionFilaDao {
+
+    @Query(
+        "SELECT * FROM versiones_filas WHERE tabla = :tabla AND filaUuid = :filaUuid " +
+            "LIMIT 1",
+    )
+    suspend fun deFila(tabla: String, filaUuid: String): VersionFilaEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun guardar(version: VersionFilaEntity)
+}
+
+@Dao
+interface OpAplicadaDao {
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun marcar(op: OpAplicadaEntity)
+
+    @Query("SELECT COUNT(*) FROM ops_aplicadas WHERE opId = :opId")
+    suspend fun contiene(opId: String): Int
+}
+
+@Dao
+interface BlobPendienteDao {
+
+    /** Binarios de entrada aún no descargados, los más pequeños primero */
+    @Query(
+        "SELECT * FROM blobs_pendientes WHERE direccion = 'entrada' " +
+            "AND estado IN ('por_bajar', 'omitido') ORDER BY tamano LIMIT :limite",
+    )
+    suspend fun pendientesDeEntrada(limite: Int): List<BlobPendienteEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun guardar(blob: BlobPendienteEntity)
+
+    @Query("DELETE FROM blobs_pendientes WHERE hash = :hash")
+    suspend fun eliminar(hash: String)
+
+    @Query(
+        "UPDATE blobs_pendientes SET intentos = intentos + 1, estado = :estado " +
+            "WHERE hash = :hash",
+    )
+    suspend fun marcarIntento(hash: String, estado: String)
+}
+
+// ----------------------------------------------------------------------
 // Configuración
 // ----------------------------------------------------------------------
 @Dao

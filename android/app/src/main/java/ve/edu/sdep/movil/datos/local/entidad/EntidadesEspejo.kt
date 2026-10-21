@@ -378,6 +378,86 @@ data class NotaFinalEntity(
 // Configuración institucional
 // ----------------------------------------------------------------------
 
+// ----------------------------------------------------------------------
+// Metadata de mezcla (espejo de sync_campos / sync_versiones /
+// sync_ops_aplicadas / sync_blobs del agente de escritorio)
+// ----------------------------------------------------------------------
+
+/**
+ * Última escritura conocida de un campo de una fila replicada.
+ *
+ * Es la base del motor de mezcla: cada operación que se aplica o se envía
+ * deja aquí su marca (valor, operación, dispositivo y sello de tiempo), y la
+ * siguiente comparación campo a campo decide quién gana con la misma regla
+ * determinista que usa el nodo central.
+ */
+@Entity(
+    tableName = "campos_remotos",
+    indices = [
+        Index(value = ["tabla", "filaUuid", "campo"], unique = true),
+        Index("filaUuid"),
+    ],
+)
+data class CampoRemotoEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val tabla: String,
+    @ColumnInfo(name = "fila_uuid") val filaUuid: String,
+    val campo: String,
+    /** Valor canónico del protocolo (JSON compacto con claves ordenadas) */
+    val valor: String?,
+    @ColumnInfo(name = "op_id") val opId: String,
+    val dispositivo: String,
+    /** ISO 8601 en UTC sin zona, comparable lexicográficamente */
+    @ColumnInfo(name = "actualizado_en") val actualizadoEn: String,
+)
+
+/** Estado de una fila replicada: última operación y borrado vigente */
+@Entity(
+    tableName = "versiones_filas",
+    indices = [Index(value = ["tabla", "filaUuid"], unique = true)],
+)
+data class VersionFilaEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val tabla: String,
+    @ColumnInfo(name = "fila_uuid") val filaUuid: String,
+    @ColumnInfo(name = "ultimo_op_id") val ultimoOpId: String? = null,
+    @ColumnInfo(name = "actualizado_en") val actualizadoEn: String? = null,
+    val dispositivo: String? = null,
+    val borrado: Int = 0,
+    @ColumnInfo(name = "borrado_en") val borradoEn: String? = null,
+    @ColumnInfo(name = "borrado_op_id") val borradoOpId: String? = null,
+    @ColumnInfo(name = "borrado_dispositivo") val borradoDispositivo: String? = null,
+)
+
+/** Operaciones ya aplicadas desde la red: aplicación exactamente una vez */
+@Entity(tableName = "ops_aplicadas")
+data class OpAplicadaEntity(
+    @PrimaryKey val opId: String,
+    val tabla: String,
+    @ColumnInfo(name = "aplicado_en") val aplicadoEn: Long,
+)
+
+/**
+ * Binario pendiente de transferir por el canal de archivos del nodo central.
+ *
+ * El contenido nunca viaja en el payload: aquí solo queda qué hash hay que
+ * bajar y para qué fila y columna sirve.
+ */
+@Entity(tableName = "blobs_pendientes")
+data class BlobPendienteEntity(
+    @PrimaryKey val hash: String,
+    val tamano: Int = 0,
+    val tabla: String,
+    @ColumnInfo(name = "fila_uuid") val filaUuid: String,
+    val columna: String,
+    /** «entrada» = falta bajarlo; «salida» = falta subirlo */
+    val direccion: String,
+    val estado: String,
+    val intentos: Int = 0,
+    @ColumnInfo(name = "creado_en") val creadoEn: Long,
+    @ColumnInfo(name = "actualizado_en") val actualizadoEn: Long,
+)
+
 @Entity(
     tableName = "configuraciones",
     indices = [Index(value = ["clave"], unique = true), Index("categoria")],

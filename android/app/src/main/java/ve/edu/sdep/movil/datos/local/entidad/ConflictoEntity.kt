@@ -18,11 +18,17 @@ import androidx.room.PrimaryKey
 )
 data class ConflictoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Tabla del espejo donde ocurrió (vacío en los choques heredados) */
+    val tabla: String = "",
     val filaUuid: String,
     val titulo: String,
     val campo: String,
     val valorLocal: String,
     val valorRemoto: String,
+    /** «local» o «remoto»: qué escritura quedó vigente */
+    val ganador: String = "",
+    /** Regla del motor que decidió, para poder auditar la decisión */
+    val regla: String = "",
     val momento: Long,
     val revisado: Boolean,
 )

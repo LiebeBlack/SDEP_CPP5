@@ -48,7 +48,7 @@ from sync_agent.esquema import (
     DispositivoSync,
     OpServidor,
 )
-from sync_agent.sesiones import ErrorSesion
+from sync_agent.sesiones import ErrorSesion, SesionValida
 
 logger = logging.getLogger(__name__)
 
@@ -440,15 +440,21 @@ class NucleoCentral:
         ruta: str,
         cuerpo: dict,
         parametros: dict,
+        contenido: bytes | None = None,
     ) -> dict:
         """
         Despacha una petición del protocolo 2 a su acción
+
         Args:
             sesion_usuario: Sesión de usuario ya validada por el gestor
             dispositivo: Equipo autenticado (para el almacén de binarios)
             ruta: Ruta absoluta de la petición
             cuerpo: Cuerpo JSON ya decodificado ({} en GET)
             parametros: Parámetros de la cadena de consulta
+            contenido: Cuerpo binario de ``/archivos/subir`` (crudo, sin
+                JSON); lo entrega el manejador de la petición, que es quien
+                tiene acceso al flujo de entrada
+
         Returns:
             dict JSON listo para responder
         """
@@ -497,15 +503,18 @@ class NucleoCentral:
                 return api.generar_archivo(sesion_usuario, resto[1], cuerpo, dispositivo)
             if resto == ["subir"]:
                 nombre = (parametros.get("nombre") or ["archivo.bin"])[0]
-                # El contenido viaja como cuerpo binario (no JSON)
-                contenido = self._cuerpo_archivo()
-                return api.subir_archivo(sesion_usuario, nombre, contenido, dispositivo)
+                # El contenido viaja como cuerpo binario (no JSON) y llega
+                # como parámetro: este núcleo no tiene acceso al flujo de
+                # entrada de la petición (lo lee el manejador).
+                return api.subir_archivo(sesion_usuario, nombre, contenido or b"", dispositivo)
             raise ErrorApi("recurso no encontrado", 404)
 
         raise ErrorApi("recurso no encontrado", 404)
 
     @staticmethod
-    def _despachar_accion(api, sesion_usuario, resto: list[str], cuerpo: dict) -> dict:
+    def _despachar_accion(
+        api: ApiAcciones, sesion_usuario: SesionValida, resto: list[str], cuerpo: dict
+    ) -> dict:
         """Despacha /api/v1/acciones/... según su segmento"""
         from sync_agent.api_acciones import ErrorApi
 
@@ -545,7 +554,9 @@ class NucleoCentral:
         raise ErrorApi("recurso no encontrado", 404)
 
     @staticmethod
-    def _despachar_academico(api, sesion_usuario, resto: list[str], cuerpo: dict) -> dict:
+    def _despachar_academico(
+        api: ApiAcciones, sesion_usuario: SesionValida, resto: list[str], cuerpo: dict
+    ) -> dict:
         """Despacha las rutas académicas: periodos, notas y tokens"""
         from sync_agent.api_acciones import ErrorApi
 
@@ -910,6 +921,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
                     ruta.path,
                     cuerpo,
                     parse_qs(ruta.query),
+                    contenido=self._cuerpo_archivo() if es_subida else None,
                 )
                 self._responder_json(200, datos)
                 return

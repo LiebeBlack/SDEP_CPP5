@@ -237,3 +237,24 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 
 - `hang_stack.txt`, `backups/*.db.gz` y `backups/backup_metadata.json` **siguen rastreados en Git** (el `.gitignore` ya los excluye). Retirarlos del índice (`git rm --cached`) es una operación de Git que decide el responsable.
 - Las cifras medidas de pruebas y cobertura, y cualquier confirmación de comportamiento, exigen ejecutar la suite; nada de esta tanda se ejecutó.
+
+---
+
+# Tanda 6 — Correcciones del pipeline (2026-10-21)
+
+**Origen:** el CI ejecutó por primera vez las cinco herramientas de calidad que declara el proyecto (hallazgo G.1) y la compilación de Android. Cada paso destapó defectos reales. **Verificación local** con las versiones que instala `requirements-dev.txt`, sobre el mismo alcance que el workflow: `isort --check-only`, `black --check` (137 archivos), `flake8` y `mypy` (101 archivos) **los cuatro en verde**. No se ejecutó `pytest` ni Gradle: ambos los corre el CI.
+
+| Paso de CI | Hallazgo | Corrección |
+|---|---|---|
+| `isort` | `tests/test_sync_api_permisos.py`: el import de `sync_agent.servidor` quedaba después de `sesiones` (el orden correcto es «serv» < «sesi») y partido en varias líneas pese a caber en 100 columnas | Orden correcto en una sola línea |
+| `mypy` (36 errores en 2 archivos) | `ApiAcciones.__init__` no estaba anotado: mypy no analiza el cuerpo de funciones sin anotar, así que `self.gestor_sesiones` era `Any` y dos retornos caían en `no-any-return` | `__init__(self, nucleo: NucleoCentral) -> None` con import en `TYPE_CHECKING` (sin ciclo en ejecución: `servidor` ya importa a `api_acciones`) |
+| `mypy` | `_fecha` y `_entero` declaraban `date \| None` / `int \| None` aunque el argumento por defecto (`requerida=True`) garantiza el valor: 17 llamadas entraban como `arg-type` y una lectura de `.isoformat()` como `union-attr` | Sobrecargas con `Literal[True]` / `Literal[False]`; la implementación no cambia |
+| `mypy` | Los dos despachadores (`_despachar_accion`, `_despachar_academico`) recibían `api` y `sesion_usuario` sin anotar: 16 retornos `Any` | Firmas con `api: ApiAcciones` y `sesion_usuario: SesionValida`; las 16 llamadas resultaron compatibles con las firmas reales |
+| `mypy` + **defecto real de ejecución** | `NucleoCentral.api_acciones` llamaba `self._cuerpo_archivo()`, método que solo existe en `ManejadorSync`: la subida por `/archivos/subir` terminaría en `AttributeError` → 500 | El manejador pasa el cuerpo crudo como parámetro `contenido: bytes \| None` (argumento con defecto: retrocompatible) |
+| `compileDebugKotlin` (~200 errores) | `AplicadorEspejo`: las constantes `BORRAR`, `IGNORAR_BORRADO`, `MANTENER_BORRADO` y `REVIVIR` se referenciaban sobre `Decision` cuando viven en `DecisionBorrado`; `ResultadoAplicacion.Aplicada` (clase de datos, no objeto) se devolvía sin instanciar (×2); `guardarVersion` llamaba DAOs `suspend` sin serlo | Los cuatro usos sobre `DecisionBorrado`, `Aplicada()`, `guardarVersion` `suspend` |
+| | `Espejo`: `desenvuelto()` devolvía `JsonElement` y en dos sitios se leía `.contentOrNull` (propiedad de `JsonPrimitive`); las tres sobrecargas `poner` eran extensiones de miembro invocadas con receptor implícito y el compilador no las resolvía (cascada de ~150 errores); 19 mezclas `entero(...) ?: <valor Long>` (`Int \| Long` no es `Long`) | `desenvuelto(): JsonPrimitive?`; `poner` a nivel de archivo con las mismas firmas y sin tocar llamadas; `?.toLong()` solo en las columnas foráneas/enteras largas (los `Int` quedan intactos) |
+| | `AutenticacionRepositorio`: siete accesos a `caché` nullable sin `?.` (el smart cast no llegaba porque la nulidad se comprobaba en una variable aparte) | Condición de retorno temprano que conserva el orden de cortocircuito original y habilita el smart cast |
+| | `RegistroRepositorio.guardar`: `opId` se usaba en dos sitios sin declararse en ningún ámbito | `val opId = UUID.randomUUID().toString()` junto a `identidad`, con el mismo criterio que `eliminar()` |
+| | `PantallaAjustes`: faltaba `import androidx.compose.material3.Surface`; el error de `@Composable` de la línea siguiente era cascada | Import añadido |
+
+**Qué no se verificó aquí:** la compilación Android (sin SDK/Gradle en esta máquina; lo ejecuta el CI) y `pytest` (por decisión del encargo). Los errores de Kotlin se corrigieron leyendo la lista del compilador uno a uno contra el código fuente; si el paso de Android volviera a fallar, el siguiente paso es leer ese nuevo listado, no reescribir los módulos.

@@ -27,12 +27,15 @@ import tempfile
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Literal, overload
 
 from sqlalchemy.exc import SQLAlchemyError
 
 from sync_agent.comun import hash_bytes
 from sync_agent.sesiones import ErrorSesion, GestorSesiones, SesionValida
+
+if TYPE_CHECKING:
+    from sync_agent.servidor import NucleoCentral
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +158,14 @@ def serializar(valor: Any) -> Any:
     return str(valor)
 
 
+@overload
+def _fecha(cuerpo: dict, clave: str, requerida: Literal[True] = True) -> date: ...
+
+
+@overload
+def _fecha(cuerpo: dict, clave: str, requerida: Literal[False]) -> date | None: ...
+
+
 def _fecha(cuerpo: dict, clave: str, requerida: bool = True) -> date | None:
     """Extrae una fecha ISO (AAAA-MM-DD) del cuerpo de la petición"""
     crudo = cuerpo.get(clave)
@@ -166,6 +177,14 @@ def _fecha(cuerpo: dict, clave: str, requerida: bool = True) -> date | None:
         return date.fromisoformat(str(crudo)[:10])
     except ValueError:
         raise ErrorApi(f"La fecha «{clave}» no es válida (use AAAA-MM-DD)") from None
+
+
+@overload
+def _entero(cuerpo: dict, clave: str, requerido: Literal[True] = True) -> int: ...
+
+
+@overload
+def _entero(cuerpo: dict, clave: str, requerido: Literal[False]) -> int | None: ...
 
 
 def _entero(cuerpo: dict, clave: str, requerido: bool = True) -> int | None:
@@ -194,7 +213,7 @@ class ApiAcciones:
     reciba JSON plano.
     """
 
-    def __init__(self, nucleo):
+    def __init__(self, nucleo: NucleoCentral) -> None:
         """
         Args:
             nucleo: NucleoCentral del nodo central (motor, blobs, configuración)

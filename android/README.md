@@ -96,8 +96,14 @@ el token. Anótelos: en la base solo queda el hash PBKDF2 del token.
 2. **Ajustes → Nodo central**: escriba la dirección (`http://192.168.1.10:8765`),
    el identificador del equipo y el token; active «Sincronizar este equipo» y
    guarde.
+
+   **Nota**: La app tiene una URL por defecto preconfigurada. Puede usarla
+   como punto de partida y solo cambiar la IP si es necesario. El identificador
+   del equipo y el token deben ser proporcionados por el administrador del
+   servidor.
+
 3. Pulse **Probar conexión**: debe responder con
-   `nodo-central-sincronizacion · protocolo 1`.
+   `nodo-central-sincronizacion · protocolo 2`.
 4. Pulse **Sincronizar ahora**. Los registros creados en el teléfono aparecen en
    la base central y, desde allí, en todos los puestos de escritorio.
 

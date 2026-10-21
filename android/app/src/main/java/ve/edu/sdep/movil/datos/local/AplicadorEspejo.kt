@@ -273,7 +273,7 @@ class AplicadorEspejo @Inject constructor(
         // Los binarios no viajan en el payload: se programa su descarga
         programarBlobs(op, traducido, filaBase)
 
-        val plan = planificarCampos(op.tabla, op.filaUuid, entrantes, actuales)
+        val plan = planificarCampos(op.tabla, entrantes, actuales)
         registrarConflictos(op.tabla, op.filaUuid, plan.conflictos)
         if (plan.aplicar.isEmpty() && !revivir && plan.marcas.isEmpty()) {
             return if (plan.conflictos.isNotEmpty()) {
@@ -730,7 +730,6 @@ class AplicadorEspejo @Inject constructor(
 
     private fun planificarCampos(
         tabla: String,
-        filaUuid: String,
         entrantes: Map<String, Marca>,
         actuales: Map<String, Marca>,
     ): Plan {

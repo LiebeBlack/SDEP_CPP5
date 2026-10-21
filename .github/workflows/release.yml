@@ -169,7 +169,7 @@ jobs:
           $apkFinal = "SDEP-Movil-Android-$env:APP_VERSION-debug.apk"
           Move-Item -Path $apk -Destination $apkFinal -Force
           Write-Host "OK: APK generado y renombrado: $apkFinal"
-          ls -lh $apkFinal
+          Get-ChildItem $apkFinal | Select-Object Name, Length
 
       # -------------------------------------------------------------------------
       # 3. Compilar ejecutable principal (PyInstaller onedir) y renombrarlo

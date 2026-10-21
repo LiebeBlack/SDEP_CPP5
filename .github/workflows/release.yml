@@ -778,18 +778,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Descargar APK del job de Android
-        run: |
-          gh artifact download apk-android-debug --dir . --pattern "SDEP-Movil-Android-*.apk"
-          if ($LASTEXITCODE -ne 0) {
-            Write-Warning "No se pudo descargar el APK del job de Android"
-          } else {
-            Write-Host "APK descargado:"
-            Get-ChildItem -Filter "SDEP-Movil-Android-*.apk" | ForEach-Object { Write-Host "  $($_.Name)" }
-          }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Adjuntar artefactos firmados a la Release
         uses: softprops/action-gh-release@v2
         with:

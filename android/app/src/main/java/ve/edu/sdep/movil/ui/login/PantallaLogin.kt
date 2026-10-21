@@ -56,10 +56,11 @@ import ve.edu.sdep.movil.datos.seguridad.AutenticadorBiometrico
 /**
  * Puerta de entrada.
  *
- * En el primer arranque pide crear la cuenta administradora; después, usuario y
- * contraseña, con la opción de desbloquear con huella una vez que se habilitó.
- * La pantalla no navega: cuando la sesión se abre, la raíz de la aplicación
- * cambia sola.
+ * Si el teléfono todavía no está vinculado al nodo central, la pantalla pide
+ * primero los datos que entrega el administrador (dirección, equipo y token).
+ * Con la vinculación lista, el ingreso es con usuario y contraseña de la base
+ * institucional, con la opción de desbloquear con huella. La pantalla no
+ * navega: cuando la sesión se abre, la raíz de la aplicación cambia sola.
  */
 @Composable
 fun PantallaLogin(vistaModelo: LoginViewModel = hiltViewModel()) {
@@ -109,13 +110,12 @@ fun PantallaLogin(vistaModelo: LoginViewModel = hiltViewModel()) {
                     CircularProgressIndicator()
                 }
 
-                !estado.hayCuentas -> FormularioInicial(
+                !estado.configCompleta -> FormularioVinculacion(
                     estado = estado,
-                    alCambiarNombre = vistaModelo::cambiarNombre,
-                    alCambiarUsuario = vistaModelo::cambiarUsuario,
-                    alCambiarContrasena = vistaModelo::cambiarContrasena,
-                    alCambiarConfirmacion = vistaModelo::cambiarConfirmacion,
-                    alCrear = vistaModelo::crearAdministrador,
+                    alCambiarUrl = vistaModelo::cambiarUrl,
+                    alCambiarEquipo = vistaModelo::cambiarEquipo,
+                    alCambiarToken = vistaModelo::cambiarToken,
+                    alGuardar = vistaModelo::guardarConfiguracion,
                 )
 
                 else -> FormularioIngreso(
@@ -164,24 +164,33 @@ private fun Encabezado() {
     )
 }
 
+/**
+ * Vinculación con el nodo central.
+ *
+ * Se muestra UNA sola vez (hasta que los tres datos queden guardados): son los
+ * que el administrador entrega al dar de alta el teléfono como puesto más de
+ * la intranet.
+ */
 @Composable
-private fun FormularioInicial(
+private fun FormularioVinculacion(
     estado: EstadoLogin,
-    alCambiarNombre: (String) -> Unit,
-    alCambiarUsuario: (String) -> Unit,
-    alCambiarContrasena: (String) -> Unit,
-    alCambiarConfirmacion: (String) -> Unit,
-    alCrear: () -> Unit,
+    alCambiarUrl: (String) -> Unit,
+    alCambiarEquipo: (String) -> Unit,
+    alCambiarToken: (String) -> Unit,
+    alGuardar: () -> Unit,
 ) {
+    var tokenVisible by remember { mutableStateOf(false) }
+
     Text(
-        text = "Configuración inicial",
+        text = "Vincular con el nodo central",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
     Spacer(Modifier.height(4.dp))
     Text(
-        text = "Cree la cuenta administradora de este teléfono. Desde ella podrá " +
-            "agregar editores, lectores y configurar la conexión con la intranet.",
+        text = "Este teléfono todavía no se ha conectado al sistema de escritorio. " +
+            "Pida al administrador la dirección del servicio, el identificador de " +
+            "este equipo y su token.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -190,56 +199,64 @@ private fun FormularioInicial(
     Spacer(Modifier.height(20.dp))
 
     OutlinedTextField(
-        value = estado.nombre,
-        onValueChange = alCambiarNombre,
-        label = { Text("Nombre y apellido") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(12.dp))
-    OutlinedTextField(
-        value = estado.usuario,
-        onValueChange = alCambiarUsuario,
-        label = { Text("Usuario") },
-        supportingText = { Text("Letras, números, punto, guion o guion bajo") },
+        value = estado.url,
+        onValueChange = alCambiarUrl,
+        label = { Text("Dirección del servidor") },
+        placeholder = { Text("http://192.168.1.10:8765") },
+        supportingText = { Text("IP o nombre del equipo y puerto del servicio") },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Ascii,
+            keyboardType = KeyboardType.Uri,
             imeAction = ImeAction.Next,
         ),
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(12.dp))
-    CampoContrasena(
-        valor = estado.contrasena,
-        alCambiar = alCambiarContrasena,
-        etiqueta = "Contraseña",
-        ayuda = "Al menos 8 caracteres, con letras y números",
-        imeAction = ImeAction.Next,
+    OutlinedTextField(
+        value = estado.equipo,
+        onValueChange = alCambiarEquipo,
+        label = { Text("Identificador del equipo") },
+        supportingText = { Text("El mismo que devuelve el alta del puesto") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(12.dp))
-    CampoContrasena(
-        valor = estado.confirmacion,
-        alCambiar = alCambiarConfirmacion,
-        etiqueta = "Repita la contraseña",
-        imeAction = ImeAction.Done,
-        alEnviar = alCrear,
+    OutlinedTextField(
+        value = estado.token,
+        onValueChange = alCambiarToken,
+        label = { Text("Token del equipo") },
+        supportingText = { Text("Se guarda cifrado en este teléfono") },
+        singleLine = true,
+        visualTransformation = if (tokenVisible) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        },
+        trailingIcon = {
+            IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                Icon(
+                    imageVector = if (tokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                    contentDescription = if (tokenVisible) "Ocultar token" else "Mostrar token",
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
     )
 
     MensajeError(estado.error)
 
     Spacer(Modifier.height(20.dp))
     Button(
-        onClick = alCrear,
-        enabled = !estado.ocupado,
+        onClick = alGuardar,
+        enabled = !estado.guardandoConfig,
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp),
     ) {
-        if (estado.ocupado) {
+        if (estado.guardandoConfig) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
-            Text("Crear cuenta administradora")
+            Text("Guardar vinculación")
         }
     }
 }
@@ -266,6 +283,7 @@ private fun FormularioIngreso(
         value = estado.usuario,
         onValueChange = alCambiarUsuario,
         label = { Text("Usuario") },
+        supportingText = { Text("La misma cuenta que usa en el escritorio") },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Ascii,
@@ -293,7 +311,7 @@ private fun FormularioIngreso(
             Column {
                 Text("Entrar con huella la próxima vez", style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "Se guarda una llave cifrada, no su contraseña",
+                    text = "Se guarda una llave cifrada, no su contraseña",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -337,8 +355,8 @@ private fun FormularioIngreso(
 
     Spacer(Modifier.height(24.dp))
     Text(
-        text = "Las cuentas son de este teléfono. Si olvida la contraseña, un " +
-            "administrador debe crearle otra cuenta desde Ajustes.",
+        text = "Las cuentas son las de la institución, las mismas del escritorio. " +
+            "Si olvida su contraseña, pida al administrador que la restablezca.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,

@@ -243,6 +243,19 @@ def traducir_payload_a_local(
         valor = resultado[columna]
         if valor is None:
             continue
+        if not registro.es_sincronizable(tabla_padre):
+            # El padre no se replica (p. ej. `profesor_id` → `usuarios`): la
+            # columna nunca podrá traducirse aquí, así que se omite. Diferirla
+            # la dejaría en cola para siempre esperando un registro que jamás
+            # va a llegar.
+            logger.info(
+                "Se omite %s.%s: %s no se replica entre equipos",
+                tabla,
+                columna,
+                tabla_padre,
+            )
+            resultado.pop(columna, None)
+            continue
         id_local = id_local_de(session, tabla_padre, str(valor))
         if id_local is None:
             pendientes.append(columna)

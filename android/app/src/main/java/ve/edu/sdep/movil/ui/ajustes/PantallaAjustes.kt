@@ -16,8 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -34,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,16 +52,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.BuildConfig
-import ve.edu.sdep.movil.datos.local.entidad.UsuarioEntity
 import ve.edu.sdep.movil.datos.seguridad.AutenticadorBiometrico
-import ve.edu.sdep.movil.dominio.modelo.Permiso
-import ve.edu.sdep.movil.dominio.modelo.Rol
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
 import ve.edu.sdep.movil.ui.comun.DialogoConfirmar
@@ -73,9 +67,10 @@ import ve.edu.sdep.movil.ui.comun.fechaHora
  * Ajustes del puesto móvil.
  *
  * Aquí se empareja el teléfono con el nodo central (dirección, equipo y token),
- * se administran las cuentas locales y se revisa qué falta por sincronizar.
- * La configuración vive cifrada en el dispositivo; el token nunca se escribe
- * en un archivo legible ni se envía a nadie más que al propio nodo.
+ * se revisa qué falta por sincronizar y se gestionan la huella y la contraseña
+ * de la cuenta institucional. La configuración vive cifrada en el dispositivo;
+ * el token nunca se escribe en un archivo legible ni se envía a nadie más que
+ * al propio nodo.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +88,7 @@ fun PantallaAjustes(
     val biometriaDisponible = remember(contexto) { autenticador.disponible(contexto) }
     val barra = remember { SnackbarHostState() }
 
-    var dialogoCuenta by remember { mutableStateOf(false) }
+    var dialogoPassword by remember { mutableStateOf(false) }
     var confirmarSalida by remember { mutableStateOf(false) }
 
     LaunchedEffect(estado.mensaje) {
@@ -144,6 +139,7 @@ fun PantallaAjustes(
                 alAlternarBiometria = { activar ->
                     if (activar) pedirHuella() else vistaModelo.desactivarBiometria()
                 },
+                alCambiarContrasena = { dialogoPassword = true },
                 alSalir = { confirmarSalida = true },
             )
 
@@ -164,30 +160,23 @@ fun PantallaAjustes(
 
             TarjetaConflictos(cantidad = estado.conflictos, alVer = alVerConflictos)
 
-            if (sesion.puede(Permiso.ADMINISTRAR_USUARIOS)) {
-                TarjetaUsuarios(
-                    usuarios = estado.usuarios,
-                    alAgregar = { dialogoCuenta = true },
+            if (dialogoPassword) {
+                DialogoCambioPassword(
+                    ocupado = estado.ocupado,
+                    alCambiar = { actual, nueva, confirmacion ->
+                        vistaModelo.cambiarPassword(actual, nueva, confirmacion)
+                    },
+                    alCerrar = { dialogoPassword = false },
                 )
             }
 
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "SDEP Móvil ${BuildConfig.VERSION_NAME} · protocolo de sincronización 1",
+                text = "SDEP Móvil ${BuildConfig.VERSION_NAME} · protocolo de sincronización 2",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
             )
         }
-    }
-
-    if (dialogoCuenta) {
-        DialogoNuevaCuenta(
-            alCrear = { nombre, usuario, contrasena, confirmacion, rol ->
-                vistaModelo.crearUsuario(nombre, usuario, contrasena, confirmacion, rol)
-                dialogoCuenta = false
-            },
-            alCancelar = { dialogoCuenta = false },
-        )
     }
 
     if (confirmarSalida) {
@@ -216,6 +205,7 @@ private fun TarjetaCuenta(
     biometriaActiva: Boolean,
     biometriaDisponible: Boolean,
     alAlternarBiometria: (Boolean) -> Unit,
+    alCambiarContrasena: () -> Unit,
     alSalir: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -228,6 +218,34 @@ private fun TarjetaCuenta(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            if (sesion.debeCambiarPassword) {
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "El administrador pidió restablecer su contraseña. " +
+                                "Cámbiela antes de seguir trabajando.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
             HorizontalDivider()
@@ -259,6 +277,16 @@ private fun TarjetaCuenta(
             }
 
             Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = alCambiarContrasena,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Lock, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Cambiar contraseña")
+            }
+
+            Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = alSalir,
                 modifier = Modifier.fillMaxWidth(),
@@ -514,55 +542,74 @@ private fun TarjetaConflictos(cantidad: Int, alVer: () -> Unit) {
     }
 }
 
+/**
+ * Cambio de contraseña de la cuenta institucional.
+ *
+ * No se guarda nada local: la contraseña nueva viaja a la base institucional
+ * a través del nodo central, que es quien la deriva y almacena.
+ */
 @Composable
-private fun TarjetaUsuarios(usuarios: List<UsuarioEntity>, alAgregar: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Group, contentDescription = null)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = "Cuentas de este teléfono",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = alAgregar) {
-                    Icon(Icons.Filled.PersonAdd, contentDescription = "Agregar cuenta")
-                }
-            }
+private fun DialogoCambioPassword(
+    ocupado: Boolean,
+    alCambiar: (actual: String, nueva: String, confirmacion: String) -> Unit,
+    alCerrar: () -> Unit,
+) {
+    var actual by remember { mutableStateOf("") }
+    var nueva by remember { mutableStateOf("") }
+    var confirmacion by remember { mutableStateOf("") }
 
-            if (usuarios.isEmpty()) {
+    AlertDialog(
+        onDismissRequest = alCerrar,
+        title = { Text("Cambiar contraseña") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "Todavía no hay cuentas.",
+                    text = "La contraseña se actualiza en la base institucional: " +
+                        "la misma que usa en el escritorio.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            } else {
-                usuarios.forEach { usuario ->
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(usuario.nombre, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = "${usuario.usuario} · ${Rol.desde(usuario.rol).etiqueta}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        if (!usuario.activo) {
-                            Text(
-                                text = "Inactiva",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = actual,
+                    onValueChange = { actual = it },
+                    label = { Text("Contraseña actual") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = nueva,
+                    onValueChange = { nueva = it },
+                    label = { Text("Contraseña nueva") },
+                    supportingText = { Text("Al menos 8 caracteres, con letras y números") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = confirmacion,
+                    onValueChange = { confirmacion = it },
+                    label = { Text("Repita la contraseña nueva") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !ocupado,
+                onClick = { alCambiar(actual, nueva, confirmacion) },
+            ) {
+                Text("Cambiar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = alCerrar) { Text("Cancelar") }
+        },
+    )
 }
 
 @Composable
@@ -582,94 +629,4 @@ private fun FilaDato(etiqueta: String, valor: String) {
     }
 }
 
-@Composable
-private fun DialogoNuevaCuenta(
-    alCrear: (String, String, String, String, Rol) -> Unit,
-    alCancelar: () -> Unit,
-) {
-    var nombre by remember { mutableStateOf("") }
-    var usuario by remember { mutableStateOf("") }
-    var contrasena by remember { mutableStateOf("") }
-    var confirmacion by remember { mutableStateOf("") }
-    var rol by remember { mutableStateOf(Rol.EDITOR) }
 
-    AlertDialog(
-        onDismissRequest = alCancelar,
-        title = { Text("Nueva cuenta") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    text = "La cuenta vive solo en este teléfono, como en cualquier " +
-                        "puesto del sistema.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre y apellido") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = usuario,
-                    onValueChange = { usuario = it },
-                    label = { Text("Usuario") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = contrasena,
-                    onValueChange = { contrasena = it },
-                    label = { Text("Contraseña") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = confirmacion,
-                    onValueChange = { confirmacion = it },
-                    label = { Text("Repita la contraseña") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(Modifier.height(12.dp))
-                Text("Rol", style = MaterialTheme.typography.labelLarge)
-                Rol.values().forEach { opcion ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = rol == opcion,
-                            onClick = { rol = opcion },
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(opcion.etiqueta, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = opcion.descripcion,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { alCrear(nombre, usuario, contrasena, confirmacion, rol) },
-            ) {
-                Text("Crear cuenta")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = alCancelar) { Text("Cancelar") }
-        },
-    )
-}

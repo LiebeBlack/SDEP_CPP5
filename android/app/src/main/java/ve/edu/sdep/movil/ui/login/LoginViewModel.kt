@@ -11,23 +11,28 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ve.edu.sdep.movil.datos.repositorio.AutenticacionRepositorio
+import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import javax.inject.Inject
 
 /**
  * Estado del formulario de ingreso.
  *
- * ``hayCuentas`` distingue el primer arranque (crear administrador) del uso
- * normal. Mientras se comprueba, ``cargando`` evita que la pantalla parpadee
- * entre un formulario y otro.
+ * Mientras el teléfono no esté vinculado al nodo central no hay nada que
+ * autenticar: la pantalla pide primero la dirección, el equipo y el token que
+ * entrega el administrador. Una vez guardados, el ingreso es contra la base
+ * institucional (las mismas cuentas del escritorio).
  */
 data class EstadoLogin(
     val cargando: Boolean = true,
-    val hayCuentas: Boolean = true,
-    val nombre: String = "",
     val usuario: String = "",
     val contrasena: String = "",
-    val confirmacion: String = "",
+    /** Vinculación con el nodo central */
+    val configCompleta: Boolean = false,
+    val url: String = "",
+    val equipo: String = "",
+    val token: String = "",
+    val guardandoConfig: Boolean = false,
     val error: String? = null,
     val ocupado: Boolean = false,
     val biometriaGuardada: Boolean = false,
@@ -36,6 +41,7 @@ data class EstadoLogin(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val autenticacion: AutenticacionRepositorio,
+    private val configuracion: ConfiguracionRepositorio,
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(EstadoLogin())
@@ -43,21 +49,30 @@ class LoginViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val hayCuentas = autenticacion.hayUsuarios()
+            val config = withContext(Dispatchers.IO) { configuracion.cargar(forzar = true) }
             val biometria = withContext(Dispatchers.IO) { autenticacion.hayCredencialBiometrica() }
             _estado.update {
-                it.copy(cargando = false, hayCuentas = hayCuentas, biometriaGuardada = biometria)
+                it.copy(
+                    cargando = false,
+                    configCompleta = config.completa,
+                    url = config.url,
+                    equipo = config.equipo,
+                    token = config.token,
+                    biometriaGuardada = biometria,
+                )
             }
         }
     }
 
-    fun cambiarNombre(valor: String) = _estado.update { it.copy(nombre = valor, error = null) }
+    fun cambiarUrl(valor: String) = _estado.update { it.copy(url = valor, error = null) }
+
+    fun cambiarEquipo(valor: String) = _estado.update { it.copy(equipo = valor, error = null) }
+
+    fun cambiarToken(valor: String) = _estado.update { it.copy(token = valor, error = null) }
 
     fun cambiarUsuario(valor: String) = _estado.update { it.copy(usuario = valor, error = null) }
 
     fun cambiarContrasena(valor: String) = _estado.update { it.copy(contrasena = valor, error = null) }
-
-    fun cambiarConfirmacion(valor: String) = _estado.update { it.copy(confirmacion = valor, error = null) }
 
     fun registrarError(mensaje: String) = _estado.update { it.copy(error = mensaje, ocupado = false) }
 
@@ -76,39 +91,58 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    /** Alta de la cuenta administradora del primer arranque */
-    fun crearAdministrador() {
+    /** Guarda la vinculación con el nodo central (dirección, equipo y token) */
+    fun guardarConfiguracion() {
         val actual = _estado.value
-        if (actual.ocupado) return
+        if (actual.guardandoConfig) return
+        if (actual.url.isBlank()) {
+            _estado.update { it.copy(error = "Escriba la dirección del nodo central.") }
+            return
+        }
         viewModelScope.launch {
-            _estado.update { it.copy(ocupado = true, error = null) }
-            val resultado = autenticacion.crearPrimerAdministrador(
-                nombre = actual.nombre,
-                usuario = actual.usuario,
-                contrasena = actual.contrasena,
-                confirmacion = actual.confirmacion,
+            _estado.update { it.copy(guardandoConfig = true, error = null) }
+            val guardado = configuracion.guardar(
+                url = actual.url,
+                equipo = actual.equipo,
+                token = actual.token,
+                activa = true,
+                periodoMinutos = configuracion.periodoMinutos,
             )
-            when (resultado) {
-                is Resultado.Exito -> _estado.update {
-                    it.copy(ocupado = false, contrasena = "", confirmacion = "", hayCuentas = true)
+            if (guardado) {
+                val config = configuracion.actual()
+                _estado.update {
+                    it.copy(
+                        guardandoConfig = false,
+                        configCompleta = config.completa,
+                        url = config.url,
+                        equipo = config.equipo,
+                        token = config.token,
+                    )
                 }
-
-                is Resultado.Fallo -> _estado.update { it.copy(ocupado = false, error = resultado.mensaje) }
+            } else {
+                _estado.update {
+                    it.copy(
+                        guardandoConfig = false,
+                        error = "No se pudo guardar de forma segura. Revise el almacenamiento del teléfono.",
+                    )
+                }
             }
         }
     }
 
-    /** Ingreso con usuario y contraseña */
+    /** Ingreso con usuario y contraseña contra el nodo central */
     fun entrar(activarBiometria: Boolean) {
         val actual = _estado.value
         if (actual.ocupado) return
         viewModelScope.launch {
             _estado.update { it.copy(ocupado = true, error = null) }
-            when (val resultado = autenticacion.entrar(
-                usuario = actual.usuario,
-                contrasena = actual.contrasena,
-                activarBiometria = activarBiometria,
-            )) {
+            when (
+                val resultado = autenticacion.entrar(
+                    usuario = actual.usuario,
+                    contrasena = actual.contrasena,
+                    activarBiometria = activarBiometria,
+                )
+            ) {
                 is Resultado.Exito -> _estado.update {
                     it.copy(
                         ocupado = false,

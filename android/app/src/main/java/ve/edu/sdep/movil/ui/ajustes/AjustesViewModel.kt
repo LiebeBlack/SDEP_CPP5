@@ -12,7 +12,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ve.edu.sdep.movil.datos.local.dao.ConflictoDao
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
-import ve.edu.sdep.movil.datos.local.entidad.UsuarioEntity
 import ve.edu.sdep.movil.datos.repositorio.AutenticacionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
@@ -41,7 +40,6 @@ data class EstadoAjustes(
     val ultimaSync: Long? = null,
     val ultimoError: String? = null,
     val biometriaActiva: Boolean = false,
-    val usuarios: List<UsuarioEntity> = emptyList(),
 )
 
 /**
@@ -105,12 +103,6 @@ class AjustesViewModel @Inject constructor(
                         desfaseSegundos = estadoSync?.desfaseSegundos,
                     )
                 }
-            }
-        }
-
-        viewModelScope.launch {
-            autenticacion.observarUsuarios().collect { usuarios ->
-                _estado.update { it.copy(usuarios = usuarios) }
             }
         }
     }
@@ -246,46 +238,46 @@ class AjustesViewModel @Inject constructor(
     }
 
     fun desactivarBiometria() {
-        val sesion = sesionRepositorio.actual ?: return
         viewModelScope.launch {
-            autenticacion.olvidarBiometria(sesion.usuarioId)
+            autenticacion.olvidarBiometria()
             _estado.update {
                 it.copy(biometriaActiva = false, mensaje = "Desbloqueo con huella desactivado.", esError = false)
             }
         }
     }
 
-    fun crearUsuario(
-        nombre: String,
-        usuario: String,
-        contrasena: String,
-        confirmacion: String,
-        rol: Rol,
-    ) {
-        val sesion = sesionRepositorio.actual ?: return
+    /**
+     * Cambia la contraseña de la cuenta en la base institucional.
+     *
+     * La autoridad es el nodo central: aquí no se guarda ninguna contraseña.
+     */
+    fun cambiarPassword(actual: String, nueva: String, confirmacion: String) {
+        if (_estado.value.ocupado) return
+        if (nueva != confirmacion) {
+            _estado.update { it.copy(mensaje = "Las contraseñas no coinciden.", esError = true) }
+            return
+        }
         viewModelScope.launch {
-            when (
-                val resultado = autenticacion.crearUsuario(
-                    autor = sesion,
-                    nombre = nombre,
-                    usuario = usuario,
-                    contrasena = contrasena,
-                    confirmacion = confirmacion,
-                    rol = rol,
-                )
-            ) {
+            _estado.update { it.copy(ocupado = true) }
+            when (val resultado = autenticacion.cambiarPassword(actual, nueva)) {
                 is Resultado.Exito -> _estado.update {
-                    it.copy(mensaje = "Cuenta «${usuario.trim().lowercase()}» creada.", esError = false)
+                    it.copy(
+                        ocupado = false,
+                        mensaje = "Contraseña actualizada.",
+                        esError = false,
+                    )
                 }
 
                 is Resultado.Fallo -> _estado.update {
-                    it.copy(mensaje = resultado.mensaje, esError = true)
+                    it.copy(ocupado = false, mensaje = resultado.mensaje, esError = true)
                 }
             }
         }
     }
 
     fun cerrarSesion() {
-        autenticacion.cerrarSesion()
+        viewModelScope.launch {
+            autenticacion.cerrarSesion()
+        }
     }
 }

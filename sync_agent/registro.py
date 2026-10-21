@@ -168,6 +168,12 @@ ENTIDADES: dict[str, Entidad] = {
         clase=Matricula,
         borrado_logico=True,
         columna_activo="activa",
+        # La unicidad real es una sola matrícula ACTIVA por estudiante y grado;
+        # se resuelve en el receptor con la clave compuesta, traducidas ya las
+        # foráneas. Así dos equipos que matriculan al mismo estudiante en el
+        # mismo grado unifican la fila en vez de duplicarla (y violar el índice
+        # parcial al llegar la segunda).
+        clave_natural_compuesta=("estudiante_id", "grado_id"),
         descripcion="Matrículas por año escolar",
     ),
     "notas_finales": Entidad(

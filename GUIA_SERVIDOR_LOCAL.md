@@ -16,8 +16,9 @@ Esta guía explica cómo ejecutar el servidor de sincronización en cualquier co
 En la instalación normal no hace falta ejecutar ningún script: la primera vez
 que se inicia sesión, el sistema pregunta si este equipo será el servidor
 central. Si se acepta, el nodo arranca con la aplicación, copia las cuentas de
-este equipo (con su misma contraseña) y este equipo queda configurado como
-puesto cliente. Las cuentas iniciales solo se crean si faltan.
+este equipo que aún no existan en el nodo (con su misma contraseña) y este
+equipo queda configurado como puesto cliente. Las cuentas iniciales solo se
+crean si faltan.
 
 El icono de la bandeja de Windows muestra el estado del servidor, permite
 copiar la URL de red para el teléfono, ver los datos de conexión, iniciar o

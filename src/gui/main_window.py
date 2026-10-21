@@ -903,8 +903,8 @@ class MainWindow(ctk.CTk):
             "En el teléfono (SDEP Móvil):\n"
             f"1. Dirección del servidor: {url}\n"
             "2. Ingrese con el mismo usuario y contraseña de esta computadora.\n\n"
-            "El nodo central copia las cuentas de este equipo; las que no existan "
-            "se crean con las claves iniciales documentadas.",
+            "El nodo central copia las cuentas de este equipo que aún no existan "
+            "allí; las demás conservan su clave y las faltantes usan las iniciales.",
         )
 
     def _iniciar_servidor_desde_bandeja(self) -> None:

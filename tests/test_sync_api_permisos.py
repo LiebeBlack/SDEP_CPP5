@@ -170,10 +170,13 @@ def test_modulo_desconocido_queda_denegado_para_todos(rol="viewer"):
 # Endpoints de sesión y dashboard
 # ----------------------------------------------------------------------
 def test_dashboard_filtra_indicadores_por_rol(central):
+    # Cada bloque exige acceso al módulo según MODULE_ACCESS del escritorio:
+    # admin y manager ven todo; user no ve contratos ni nómina; viewer solo
+    # empleados, documentos y el subdominio académico.
     esperado_por_rol = {
         "admin": {"empleados", "documentos", "incidencias", "contratos", "nomina", "academico"},
         "manager": {"empleados", "documentos", "incidencias", "contratos", "nomina", "academico"},
-        "user": {"empleados", "documentos", "academico"},
+        "user": {"empleados", "documentos", "incidencias", "academico"},
         "viewer": {"empleados", "documentos", "academico"},
     }
     for rol, esperados in esperado_por_rol.items():

@@ -133,7 +133,7 @@ def serializar(valor: Any) -> Any:
     if isinstance(valor, dict):
         return {clave: serializar(item) for clave, item in valor.items()}
     if isinstance(valor, (list, tuple, set)):
-        return serializar(list(valor))
+        return [serializar(item) for item in valor]
     isoformat = getattr(valor, "isoformat", None)
     if callable(isoformat):
         return valor.isoformat()

@@ -99,7 +99,13 @@ class GestorSesiones:
 
         sesion = self._fabrica()
         try:
-            usuario = AuthService(sesion).autenticar(username or "", password or "")
+            try:
+                usuario = AuthService(sesion).autenticar(username or "", password or "")
+            except ValueError as error:
+                # El AuthService redacta los mensajes exactos que ya conoce
+                # el usuario del escritorio (cuenta bloqueada, inactiva,
+                # intentos restantes…): se conservan sin tocar.
+                raise ErrorSesion(str(error), 401) from None
             token = secrets.token_urlsafe(LONGITUD_TOKEN)
             ahora = ahora_utc()
             registro = SesionApi(

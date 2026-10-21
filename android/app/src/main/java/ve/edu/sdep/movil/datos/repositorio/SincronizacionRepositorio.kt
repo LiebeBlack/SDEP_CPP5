@@ -4,14 +4,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import retrofit2.HttpException
+import ve.edu.sdep.movil.datos.local.AplicadorEspejo
 import ve.edu.sdep.movil.datos.local.Fechas
+import ve.edu.sdep.movil.datos.local.dao.BlobPendienteDao
 import ve.edu.sdep.movil.datos.local.dao.ConflictoDao
 import ve.edu.sdep.movil.datos.local.dao.EstadoSyncDao
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
@@ -19,7 +14,6 @@ import ve.edu.sdep.movil.datos.local.dao.RegistroDao
 import ve.edu.sdep.movil.datos.local.entidad.ConflictoEntity
 import ve.edu.sdep.movil.datos.local.entidad.EstadoSyncEntity
 import ve.edu.sdep.movil.datos.local.entidad.OperacionPendienteEntity
-import ve.edu.sdep.movil.datos.local.entidad.RegistroEntity
 import ve.edu.sdep.movil.datos.remoto.ApiSyncFactory
 import ve.edu.sdep.movil.datos.remoto.ConflictoRemotoDto
 import ve.edu.sdep.movil.datos.remoto.OperacionDto
@@ -33,19 +27,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Ciclo de sincronización.
+ * Ciclo de sincronización con el nodo central.
  *
  * Se ejecuta con un solo candado: dos sincronizaciones simultáneas (la
  * periódica y el botón «Sincronizar ahora») no pueden pisarse.
  *
  * El orden es siempre el mismo y no es casual:
  *
- * 1. **Enviar** lo pendiente. El nodo central arbitra y le asigna ``seq``.
- * 2. **Recibir** las novedades posteriores al cursor.
+ * 1. **Reintentar** las operaciones diferidas de ciclos anteriores (llegaron
+ *    antes que su registro padre).
+ * 2. **Enviar** lo pendiente. El nodo central arbitra y le asigna ``seq``.
+ * 3. **Recibir** las novedades posteriores al cursor, aplicándolas con el
+ *    mismo motor de mezcla campo a campo que usa el escritorio.
+ * 4. **Bajar** los binarios anunciados por hash (documentos del legajo).
  *
  * Al enviar primero, el servidor conoce la versión de este teléfono antes de
  * devolverle nada; al recibir después, el cursor avanza solo sobre operaciones
- * ya aplicadas.
+ * ya procesadas.
  */
 @Singleton
 class SincronizacionRepositorio @Inject constructor(
@@ -53,6 +51,8 @@ class SincronizacionRepositorio @Inject constructor(
     private val operacionDao: OperacionDao,
     private val estadoDao: EstadoSyncDao,
     private val conflictoDao: ConflictoDao,
+    private val aplicador: AplicadorEspejo,
+    private val blobDao: BlobPendienteDao,
     private val configuracionRepositorio: ConfiguracionRepositorio,
     private val apiFactory: ApiSyncFactory,
 ) {
@@ -71,7 +71,7 @@ class SincronizacionRepositorio @Inject constructor(
         }
 
         val api = try {
-            apiFactory.crear(configuracion)
+            apiFactory.protocolo(configuracion)
         } catch (error: Exception) {
             return@withLock Resultado.Fallo(
                 "La dirección del servidor no es válida: «${configuracion.url}».",
@@ -80,8 +80,12 @@ class SincronizacionRepositorio @Inject constructor(
         }
 
         try {
-            val enviadas = enviarPendientes(api, configuracion)
+            // Las diferidas de otros ciclos pueden resolverse ahora que quizá
+            // haya llegado su registro padre por otra vía.
+            aplicador.reintentarDiferidas()
+            val enviadas = enviarPendientes(api)
             val recibidas = recibirNovedades(api)
+            val blobs = descargarBlobs(api)
             val ahora = System.currentTimeMillis()
             val previo = estadoDao.obtener() ?: EstadoSyncEntity()
             estadoDao.guardar(
@@ -91,8 +95,8 @@ class SincronizacionRepositorio @Inject constructor(
                     registrosRecibidos = previo.registrosRecibidos + recibidas,
                 ),
             )
-            Resultado.Exito(ResumenSync(enviadas, recibidas, ahora))
-        } catch (error: HttpException) {
+            Resultado.Exito(ResumenSync(enviadas, recibidas, ahora, blobs))
+        } catch (error: retrofit2.HttpException) {
             val mensaje = mensajeDeHttp(error)
             registrarError(mensaje)
             Resultado.Fallo(
@@ -130,7 +134,7 @@ class SincronizacionRepositorio @Inject constructor(
             return Resultado.Fallo("Complete la dirección, el equipo y el token antes de probar.")
         }
         return try {
-            val api = apiFactory.crear(configuracion)
+            val api = apiFactory.protocolo(configuracion)
             val ping = api.ping()
             val horaServidor = Fechas.desdeIso(ping.hora)
             val desfase = horaServidor?.let { (System.currentTimeMillis() - it) / 1000 }
@@ -151,7 +155,7 @@ class SincronizacionRepositorio @Inject constructor(
                     tablas = ping.tablas,
                 ),
             )
-        } catch (error: HttpException) {
+        } catch (error: retrofit2.HttpException) {
             Resultado.Fallo(mensajeDeHttp(error), error)
         } catch (error: IOException) {
             Resultado.Fallo(
@@ -168,10 +172,8 @@ class SincronizacionRepositorio @Inject constructor(
     // ------------------------------------------------------------------
     // Envío
     // ------------------------------------------------------------------
-    private suspend fun enviarPendientes(
-        api: ProtocoloApi,
-        configuracion: ConfiguracionSync,
-    ): Int {
+    private suspend fun enviarPendientes(api: ProtocoloApi): Int {
+        val configuracion = configuracionRepositorio.actual()
         var enviadas = 0
         var vueltas = 0
         while (vueltas < MAX_VUELTAS) {
@@ -181,6 +183,7 @@ class SincronizacionRepositorio @Inject constructor(
             val respuesta = api.enviar(PushDto(configuracion.equipo, lote.map { it.aDto() }))
             if (respuesta.aplicadas.isNotEmpty()) {
                 operacionDao.eliminar(respuesta.aplicadas)
+                marcarSincronizadas(lote.filter { it.opId in respuesta.aplicadas.toSet() })
             }
             respuesta.rechazadas.forEach { rechazo ->
                 operacionDao.marcarRechazada(
@@ -199,6 +202,20 @@ class SincronizacionRepositorio @Inject constructor(
             if (lote.size < TAMANO_LOTE) break
         }
         return enviadas
+    }
+
+    /** Los registros confirmados dejan de estar pendientes en la barra de estado */
+    private suspend fun marcarSincronizadas(confirmadas: List<OperacionPendienteEntity>) {
+        val ahora = System.currentTimeMillis()
+        for (operacion in confirmadas) {
+            if (operacion.tabla != TABLA_REGISTROS) continue
+            val registro = registroDao.buscarPorUuid(operacion.filaUuid) ?: continue
+            if (registro.estado == EstadoSincronizacion.PENDIENTE.name) {
+                registroDao.insertar(
+                    registro.copy(estado = EstadoSincronizacion.SINCRONIZADO.name, ultimaSync = ahora),
+                )
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -221,12 +238,21 @@ class SincronizacionRepositorio @Inject constructor(
             }
 
             for (operacion in respuesta.ops) {
-                try {
-                    aplicarOperacion(operacion)
-                } catch (error: Exception) {
-                    registrarConflictoDeAplicacion(operacion, error)
+                // Cada operación se aplica con el motor de mezcla completo.
+                // Un fallo puntual no detiene el lote: se anota en la bandeja
+                // y el cursor avanza para no volver a pedir esa operación.
+                when (
+                    val resultado = aplicador.aplicar(AplicadorEspejo.OperacionRemota.desde(operacion))
+                ) {
+                    is AplicadorEspejo.ResultadoAplicacion.Aplicada,
+                    is AplicadorEspejo.ResultadoAplicacion.Diferida,
+                    -> recibidas++
+
+                    is AplicadorEspejo.ResultadoAplicacion.Error ->
+                        registrarConflictoDeAplicacion(operacion, resultado.motivo)
+
+                    else -> Unit
                 }
-                recibidas++
                 if (operacion.seq > cursor) cursor = operacion.seq
             }
             if (respuesta.cursor > cursor) cursor = respuesta.cursor
@@ -238,127 +264,80 @@ class SincronizacionRepositorio @Inject constructor(
         return recibidas
     }
 
-    private suspend fun aplicarOperacion(operacion: OperacionDto) {
-        // La app solo mantiene su propia tabla; las demás operaciones del
-        // sistema se ignoran, pero el cursor sí avanza para no repedirlas.
-        if (operacion.tabla != RegistroRepositorio.TABLA) return
+    // ------------------------------------------------------------------
+    // Binarios
+    // ------------------------------------------------------------------
 
-        val local = registroDao.buscarPorUuid(operacion.filaUuid)
-        val ahora = System.currentTimeMillis()
-
-        // Hay cambios locales sin enviar: no se pisa lo que el usuario escribió.
-        // La operación propia sigue en cola y el nodo central decidirá.
-        if (operacionDao.pendientesDe(operacion.filaUuid) > 0) {
-            conflictoDao.insertar(
-                ConflictoEntity(
-                    filaUuid = operacion.filaUuid,
-                    titulo = local?.titulo ?: "(registro nuevo)",
-                    campo = "edicion_local_pendiente",
-                    valorLocal = "Cambios sin enviar",
-                    valorRemoto = if (operacion.operacion == "delete") {
-                        "Borrado en otro equipo"
-                    } else {
-                        "Edición en otro equipo"
-                    },
-                    momento = ahora,
-                    revisado = false,
-                ),
-            )
-            return
-        }
-
-        val momentoRemoto = Fechas.desdeIso(operacion.creadoEn) ?: ahora
-
-        if (operacion.operacion == "delete") {
-            if (local != null && !local.eliminado) {
-                registroDao.insertar(
-                    local.copy(
-                        eliminado = true,
-                        actualizadoEn = maxOf(local.actualizadoEn, momentoRemoto),
-                        estado = EstadoSincronizacion.SINCRONIZADO.name,
-                        ultimaSync = ahora,
-                    ),
-                )
+    /**
+     * Descarga los binarios anunciados en la última recepción.
+     *
+     * @return Cuántos archivos quedaron guardados con su hash verificado
+     */
+    private suspend fun descargarBlobs(api: ProtocoloApi): Int {
+        val pendientes = blobDao.pendientesDeEntrada(LIMITE_BLOBS_POR_CICLO)
+        var descargados = 0
+        for (blob in pendientes) {
+            try {
+                val contenido = api.descargarBlob(blob.hash).bytes()
+                if (aplicador.guardarContenidoDescargado(blob, contenido)) {
+                    descargados++
+                } else {
+                    // Contenido que no coincide con su hash: se marca como
+                    // sospechoso y no se vuelve a pedir sin revisión.
+                    marcarBlobFallido(blob.hash, blob.intentos)
+                }
+            } catch (error: retrofit2.HttpException) {
+                if (error.code() == 404) {
+                    // El nodo central no lo tiene (nadie lo subió): no se
+                    // insiste para siempre.
+                    marcarBlobFallido(blob.hash, blob.intentos)
+                }
+            } catch (_: IOException) {
+                // Sin red: se reintenta en el próximo ciclo
+            } catch (_: Exception) {
+                marcarBlobFallido(blob.hash, blob.intentos)
             }
-            return
         }
+        return descargados
+    }
 
-        val payload = runCatching { Json.parseToJsonElement(operacion.payload).jsonObject }
-            .getOrNull() ?: return
-        val texto: (String) -> String? = { campo ->
-            payload[campo]?.jsonPrimitive?.contentOrNull
-        }
-        val numero: (String) -> Double? = { campo ->
-            payload[campo]?.jsonPrimitive?.doubleOrNull
-        }
-
-        val actualizadoRemoto = Fechas.desdeIso(texto("actualizado_en")) ?: momentoRemoto
-        if (local != null && actualizadoRemoto < local.actualizadoEn) {
-            conflictoDao.insertar(
-                ConflictoEntity(
-                    filaUuid = operacion.filaUuid,
-                    titulo = local.titulo,
-                    campo = "escritura_antigua",
-                    valorLocal = local.titulo,
-                    valorRemoto = texto("titulo") ?: "(sin título)",
-                    momento = ahora,
-                    revisado = false,
-                ),
-            )
-            return
-        }
-
-        registroDao.insertar(
-            RegistroEntity(
-                uuid = operacion.filaUuid,
-                titulo = texto("titulo")?.takeIf { it.isNotBlank() }
-                    ?: local?.titulo
-                    ?: "(sin título)",
-                contenido = texto("contenido") ?: local?.contenido ?: "",
-                categoria = texto("categoria") ?: local?.categoria ?: "general",
-                valor = if (payload.containsKey("valor")) numero("valor") else local?.valor,
-                creadoEn = Fechas.desdeIso(texto("creado_en"))
-                    ?: local?.creadoEn
-                    ?: actualizadoRemoto,
-                actualizadoEn = actualizadoRemoto,
-                estado = EstadoSincronizacion.SINCRONIZADO.name,
-                eliminado = false,
-                dispositivo = texto("dispositivo") ?: local?.dispositivo ?: "remoto",
-                usuario = texto("usuario") ?: local?.usuario ?: "remoto",
-                ultimaSync = ahora,
-            ),
-        )
+    private suspend fun marcarBlobFallido(hash: String, intentosPrevios: Int) {
+        val intentos = intentosPrevios + 1
+        val estado = if (intentos >= MAX_INTENTOS_BLOB) "omitido" else "por_bajar"
+        blobDao.marcarIntento(hash, estado)
     }
 
     // ------------------------------------------------------------------
     // Conflictos y errores
     // ------------------------------------------------------------------
     private suspend fun registrarConflictoRemoto(conflicto: ConflictoRemotoDto) {
-        val local = registroDao.buscarPorUuid(conflicto.filaUuid)
         conflictoDao.insertar(
             ConflictoEntity(
+                tabla = conflicto.tabla,
                 filaUuid = conflicto.filaUuid,
-                titulo = local?.titulo ?: "(registro remoto)",
+                titulo = "${conflicto.tabla}/${conflicto.filaUuid.take(8)}",
                 campo = conflicto.campo.ifBlank { "registro" },
                 valorLocal = conflicto.valorLocal?.toString().orEmpty(),
                 valorRemoto = conflicto.valorRemoto?.toString().orEmpty(),
+                ganador = conflicto.ganador,
+                regla = conflicto.regla,
                 momento = System.currentTimeMillis(),
                 revisado = false,
             ),
         )
     }
 
-    private suspend fun registrarConflictoDeAplicacion(
-        operacion: OperacionDto,
-        error: Exception,
-    ) {
+    private suspend fun registrarConflictoDeAplicacion(operacion: OperacionDto, motivo: String) {
         conflictoDao.insertar(
             ConflictoEntity(
+                tabla = operacion.tabla,
                 filaUuid = operacion.filaUuid,
                 titulo = "(operación no aplicada)",
                 campo = "error_aplicacion",
                 valorLocal = operacion.opId,
-                valorRemoto = error.message ?: error.javaClass.simpleName,
+                valorRemoto = motivo,
+                ganador = "",
+                regla = "error_al_aplicar",
                 momento = System.currentTimeMillis(),
                 revisado = false,
             ),
@@ -381,7 +360,7 @@ class SincronizacionRepositorio @Inject constructor(
         estadoDao.guardar(previo.copy(cursor = cursor))
     }
 
-    private fun mensajeDeHttp(error: HttpException): String = when (error.code()) {
+    private fun mensajeDeHttp(error: retrofit2.HttpException): String = when (error.code()) {
         401, 403 -> "El token del equipo no es válido o fue revocado. " +
             "Pida al administrador que vuelva a dar de alta este teléfono."
 
@@ -405,6 +384,7 @@ class SincronizacionRepositorio @Inject constructor(
         val enviadas: Int,
         val recibidas: Int,
         val momento: Long,
+        val blobs: Int = 0,
     )
 
     data class DetalleConexion(
@@ -426,8 +406,11 @@ class SincronizacionRepositorio @Inject constructor(
     )
 
     private companion object {
+        const val TABLA_REGISTROS = "registros_moviles"
         const val TAMANO_LOTE = 200
         const val MAX_VUELTAS = 40
         const val MAX_PAGINAS = 50
+        const val LIMITE_BLOBS_POR_CICLO = 10
+        const val MAX_INTENTOS_BLOB = 5
     }
 }

@@ -424,6 +424,95 @@ def cmd_sesiones(args: argparse.Namespace) -> int:
         nucleo.cerrar()
 
 
+def cmd_autoconfig(args: argparse.Namespace) -> int:
+    """Inicia el servidor en modo autoconfigurado para uso en computadora local"""
+    import socket
+
+    from sync_agent.servidor import NucleoCentral, ServidorConfig, ejecutar_servidor
+
+    # Obtener IP local
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            ip_local = s.getsockname()[0]
+    except Exception:
+        ip_local = "127.0.0.1"
+
+    config = ServidorConfig(
+        url_db=args.db,
+        dir_blobs=Path(args.blobs) if args.blobs else _dir_blobs_por_defecto(args.db),
+        host=args.host,
+        puerto=args.puerto,
+        certificado=args.cert,
+        clave=args.key,
+    )
+
+    protocolo = "https" if config.certificado else "http"
+
+    print("=" * 60)
+    print("MODO AUTOCONFIGURADO - SERVIDOR LOCAL")
+    print("=" * 60)
+    print(f"Base de datos: {config.url_db}")
+    print(f"Directorio de blobs: {config.dir_blobs}")
+    print(f"Host de escucha: {config.host} (acepta conexiones de cualquier IP)")
+    print(f"Puerto: {config.puerto}")
+    print("=" * 60)
+    print("URLS PARA CONEXIÓN:")
+    print(f"  Desde esta computadora: {protocolo}://127.0.0.1:{config.puerto}")
+    print(f"  Desde Android y otros equipos: {protocolo}://{ip_local}:{config.puerto}")
+    print("=" * 60)
+    print("IMPORTANTE: Para conectar desde Android, use:")
+    print(f"  URL: {protocolo}://{ip_local}:{config.puerto}")
+    print("=" * 60)
+
+    if args.crear_usuarios:
+        print("\nCreando usuarios por defecto...")
+        nucleo = NucleoCentral(config)
+        try:
+            from src.services.auth_service import AuthService
+
+            sesion = nucleo.SessionFactory()
+            try:
+                servicio = AuthService(sesion)
+                usuarios = [
+                    ("admin", "Admin1234", "admin", "Administrador del Sistema"),
+                    ("manager", "Gestor1234", "manager", "Gestor Principal"),
+                    ("user", "Usuario1234", "user", "Usuario Estándar"),
+                    ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura"),
+                ]
+                for username, password, rol, nombre_completo in usuarios:
+                    if servicio.usuario_por_username(username) is None:
+                        servicio.crear_usuario(
+                            username, password, rol, nombre_completo, debe_cambiar_password=False
+                        )
+                        print(f"  ✓ Usuario '{username}' creado (contraseña: {password})")
+                    else:
+                        print(f"  - Usuario '{username}' ya existe")
+                sesion.commit()
+            finally:
+                sesion.close()
+        finally:
+            nucleo.cerrar()
+
+    if args.crear_dispositivo:
+        print("\nCreando dispositivo por defecto...")
+        nucleo = NucleoCentral(config)
+        try:
+            dispositivo_id, token = nucleo.crear_dispositivo(args.crear_dispositivo)
+            print(f"  ✓ Dispositivo '{args.crear_dispositivo}' creado")
+            print(f"  ID: {dispositivo_id}")
+            print(f"  Token: {token}")
+            print("\n  GUARDE ESTE TOKEN - no se puede recuperar después")
+        finally:
+            nucleo.cerrar()
+
+    print("\n" + "=" * 60)
+    print("INICIANDO SERVIDOR...")
+    print("=" * 60)
+
+    return ejecutar_servidor(config)
+
+
 # ----------------------------------------------------------------------
 # Argumentos
 # ----------------------------------------------------------------------
@@ -497,6 +586,24 @@ def _parser() -> argparse.ArgumentParser:
         help="Elimina sesiones cuya vida absoluta venció hace más de DIAS días",
     )
     p_ses.set_defaults(func=cmd_sesiones)
+
+    # --- autoconfig ---
+    p_auto = subparsers.add_parser(
+        "autoconfig",
+        help="Inicia el servidor en modo autoconfigurado (ideal para computadora local)",
+    )
+    _agregar_argumentos_central(p_auto)
+    p_auto.add_argument(
+        "--crear-usuarios",
+        action="store_true",
+        help="Crea usuarios por defecto (admin, manager, user, viewer)",
+    )
+    p_auto.add_argument(
+        "--crear-dispositivo",
+        metavar="NOMBRE",
+        help="Crea un dispositivo por defecto con el nombre indicado",
+    )
+    p_auto.set_defaults(func=cmd_autoconfig)
 
     return parser
 

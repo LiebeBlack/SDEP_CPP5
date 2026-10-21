@@ -1,0 +1,13 @@
+{
+  "db": "sqlite:///sync_central.db",
+  "blobs": "sync_blobs",
+  "host": "0.0.0.0",
+  "puerto": 8765,
+  "certificado": null,
+  "clave": null,
+  "max_ops_por_lote": 500,
+  "max_bytes_peticion": 3145728,
+  "max_bytes_blob": 67108864,
+  "peticiones_por_minuto": 120,
+  "nota": "host: 0.0.0.0 permite conexiones desde cualquier IP en la red local (Android, otros PCs)"
+}

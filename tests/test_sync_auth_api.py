@@ -10,8 +10,8 @@ no según su estado.
 
 import pytest
 
-from sync_agent.sesiones import ErrorSesion, GestorSesiones, hash_token
 from sync_agent.servidor import NucleoCentral, ServidorConfig
+from sync_agent.sesiones import ErrorSesion, GestorSesiones, hash_token
 
 
 @pytest.fixture()

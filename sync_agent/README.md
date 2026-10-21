@@ -121,7 +121,27 @@ py -3 -m sync_agent init
 py -3 -m sync_agent agente
 ```
 
-### 3.3 Adoptar los datos que ya existían
+### 3.3 Un teléfono como puesto (SDEP Móvil)
+
+La aplicación Android se presenta como un puesto más: el mismo servicio, el
+mismo token y el mismo protocolo. Se da de alta igual que un equipo de
+escritorio y se empareja desde **Ajustes → Nodo central** en el teléfono.
+
+```bash
+py -3 -m sync_agent dispositivos --db central.db --crear "Teléfono Secretaría"
+```
+
+El teléfono escribe en `registros_moviles` (título, contenido, categoría, valor,
+clave global `uuid_movil` y borrado lógico `activo`). Esa tabla ya está en el
+registro de entidades, así que el nodo central la crea al arrancar y la replica
+a los demás puestos sin ninguna configuración extra. Los registros pueden
+consultarse en la base central o exportarse como cualquier otra tabla.
+
+La app envía solo las columnas que tocó en cada edición, no la fila completa:
+esa es la condición para que la mezcla por campo conserve lo que otro equipo
+escribió en columnas distintas.
+
+### 3.4 Adoptar los datos que ya existían
 
 Un puesto que ya venía trabajando tiene empleados, documentos y pagos cargados
 **antes** de que existiera el agente. Nadie los ha modificado desde entonces, así

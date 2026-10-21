@@ -29,6 +29,7 @@ from src.models import (
     NotaFinal,
     Pago,
     PeriodoAcademico,
+    RegistroMovil,
 )
 
 # Columnas presentes en varias tablas que apuntan a archivos del equipo y no
@@ -124,6 +125,17 @@ ENTIDADES: dict[str, Entidad] = {
         clase=Configuracion,
         clave_natural=("clave",),
         descripcion="Parámetros compartidos por la institución",
+    ),
+    # Registros capturados en terreno desde la aplicación Android. La clave
+    # natural es el UUID que genera el teléfono: dos equipos que reciban el
+    # mismo registro lo reconocen por él y no lo duplican. El borrado es
+    # lógico (``activo = 0``), como en las fichas de personal.
+    "registros_moviles": Entidad(
+        tabla="registros_moviles",
+        clase=RegistroMovil,
+        clave_natural=("uuid_movil",),
+        borrado_logico=True,
+        descripcion="Registros levantados desde la aplicación móvil",
     ),
     # --- Subdominio académico ------------------------------------------
     # ``tokens_sesion`` queda FUERA a propósito: un token es una credencial

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Los registros, las cuentas y el token del equipo no salen del dispositivo:
+    no se respaldan en la nube ni se transfieren a otro teléfono. El respaldo
+    institucional se hace desde el nodo central, que es quien guarda la verdad.
+-->
+<full-backup-content>
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="." />
+</full-backup-content>

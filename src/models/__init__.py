@@ -32,6 +32,7 @@ from .matricula import Matricula
 from .nota_final import NotaFinal
 from .pago import Pago
 from .periodo_academico import PeriodoAcademico
+from .registro_movil import RegistroMovil
 from .token_sesion import TokenSesion
 from .usuario import Usuario
 
@@ -65,5 +66,6 @@ __all__ = [
     "Grado",
     "Matricula",
     "NotaFinal",
+    "RegistroMovil",
     "TokenSesion",
 ]

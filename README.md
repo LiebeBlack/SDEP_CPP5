@@ -120,6 +120,25 @@ El sistema sigue una arquitectura en capas separando la lógica de negocio, acce
 - **Capa de GUI**: Interfaz gráfica con CustomTkinter
 - **Capa de Utilidades**: Funciones auxiliares y helpers
 
+## 📱 Aplicación móvil Android
+
+El repositorio incluye **SDEP Móvil**, una aplicación nativa en Kotlin
+(Jetpack Compose, Room, Hilt) que se conecta al nodo central de sincronización
+como un puesto más de la intranet. Permite levantar registros de campo desde el
+teléfono, editarlos y consultarlos sin conexión; al recuperar la red, las
+operaciones viajan al servidor con el mismo protocolo que usan los puestos de
+escritorio y aterrizan en la tabla `registros_moviles`, visible desde la base
+institucional.
+
+- Ingreso con contraseña (PBKDF2) y desbloqueo con huella o rostro.
+- Roles de administrador, editor y consulta.
+- CRUD completo con búsqueda, categorías y valor numérico.
+- Cola de salida transaccional, cursor de sincronización y bandeja de conflictos.
+- Sin dependencia de servicios en la nube: habla solo con el nodo del colegio.
+
+Instrucciones de compilación, emparejamiento y contrato del protocolo en
+[`android/README.md`](android/README.md).
+
 ## 🔄 CI/CD Pipeline (GitHub Actions)
 
 La integración continua se reparte entre dos workflows complementarios.

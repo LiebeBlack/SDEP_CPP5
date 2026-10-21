@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    El nodo central del colegio suele estar en la intranet, con frecuencia sin
+    TLS o con un certificado propio. La app acepta tráfico claro porque de otro
+    modo no podría hablar con ese servidor, y confía en las anclas del sistema y
+    en las que el administrador instale en el dispositivo.
+
+    Si la institución publica el nodo con un certificado válido, conviene poner
+    cleartextTrafficPermitted en "false": el token del equipo viaja en la
+    cabecera Authorization y sin TLS podría leerse en la red local.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

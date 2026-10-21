@@ -200,3 +200,40 @@ Ninguno de estos se veía por lectura estática; todos están corregidos y con p
 
 - Los tres respaldos **siguen rastreados en Git** y contienen datos personales de nueve empleados. Lo recomendable es retirarlos del índice (`git rm --cached backups/*.db.gz backups/backup_metadata.json`) y dejar que la aplicación genere respaldos locales; no se ejecutó porque es una operación de índice Git.
 - Las rutas absolutas del desarrollador siguen en el historial de Git; eliminarlas de ahí exige reescribir el historial, decisión que no corresponde a esta tanda.
+
+---
+
+# Tanda 5 — Revisión estática de cierre (2026-10-21)
+
+**Método:** lectura estática y edición de archivos. **No se ejecutó nada** (ni compilación, ni suite, ni linters), por decisión del encargo. Nada de esta tanda procede de una ejecución.
+
+| # | Hallazgo | Archivo(s) | Cambio |
+|---|---|---|---|
+| 1 | El último `except (…, Exception)` redundante que la Tanda 3 dejó detectado «sin cambiar» | `src/gui/notas_frame.py` | El cierre y la reapertura de periodo capturan solo `Exception`, con comentario que documenta la intención. La tupla anterior (`ValueError, TypeError, AttributeError, ImportError, SQLAlchemyError, Exception`) era código muerto: `Exception` ya cubre todo lo demás. `SQLAlchemyError` sigue usándose en el otro punto del archivo, así que el import no cambia. |
+
+## Cierre de hallazgos que este documento daba por abiertos
+
+Verificados por lectura del código actual: ya estaban corregidos en commits posteriores a la Tanda 4; la tabla «Lo que sigue abierto» quedó desactualizada.
+
+| Asunto | Estado verificado |
+|---|---|
+| I.2 completo (persistir días y prorrateo en `pagos`) | **Cerrado.** `Pago` declara `dias_laborados`, `dias_periodo` y `prorrateado`; `database.py` los migra; `crear_pago` y `actualizar_pago` persisten y reutilizan los días; el espejo Android (`PagoEntity`, `Espejo.kt`, migración Room) replica las tres columnas. |
+| I.9 (auditar lecturas en `get_by_id`) | **Cerrado.** `get_by_id` y `get_all` ya no auditan lecturas; la política queda escrita en el propio método y un fallo real de lectura sigue auditado por `_log_audit_error`. |
+| H.2 (doble llamada idéntica en `dias_vacaciones_pendientes`) | **Cerrado.** Una sola traza de `meses_y_dias_entre()`. |
+| Patrón `except (…, Exception)` en 24 puntos de `src/gui` | **Cerrado con esta tanda.** El único punto restante era `notas_frame.py`; búsqueda en `src/`, `sync_agent/`, `updater/` y `tools/` sin más tuplas que incluyan `Exception` (las coincidencias restantes son anotaciones de tipo, no cláusulas). |
+
+## Auditoría del espejo Android (estática, sin compilación)
+
+Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `empleado_id` en un `@Query`): ese tipo de error solo estalla en ejecución, así que se recorrieron consultas y entidades una a una:
+
+- **Consultas vs entidades:** todas las sentencias `@Query` de `DaosEspejo.kt` y de los DAO de la v1 usan únicamente columnas que existen con ese nombre en sus entidades (los campos con `@ColumnInfo` en snake_case; los que no lo llevan conservan el nombre Kotlin). Sin coincidencias huérfanas.
+- **Migración vs entidades:** las tablas que crea `MIGRATION_1_2` coinciden columna por columna con las 22 entidades de `@Database` (afinidades, `NOT NULL`, claves primarias e índices con el nombre que Room espera), incluidas las tres columnas nuevas de `conflictos` (`tabla`, `ganador`, `regla`) que `ConflictoEntity` declara.
+- **Migración registrada:** `ModuloBaseDatos` llama `.addMigrations(BaseDatosSdep.MIGRATION_1_2)`, así que una actualización 1→2 conserva la cola de salida y lo capturado sin red.
+- **Protocolo:** las claves del payload de `Espejo.kt` (salida y entrada) coinciden con `sync_agent/registro.py` y con los modelos Python en las 12 tablas del protocolo, incluida `registros_moviles` (`uuid_movil`, `creado_en`, `actualizado_en`, `activo`).
+
+> **Caveat sin verificar (requiere un dispositivo):** varias columnas creadas con `DEFAULT` en la migración (p. ej. `creado_en_iso` y las de `conflictos`) no llevan `@ColumnInfo(defaultValue=…)` en la entidad. Room valida los valores por defecto en la comparación de esquemas solo en algunas versiones; si una actualización 1→2 abortara con «Migration didn't properly handle», la solución es añadir `defaultValue` a esas tres entidades, no tocar los datos. No se pudo comprobar sin compilar.
+
+## Lo que sigue sin hacer (requiere decisión o ejecución)
+
+- `hang_stack.txt`, `backups/*.db.gz` y `backups/backup_metadata.json` **siguen rastreados en Git** (el `.gitignore` ya los excluye). Retirarlos del índice (`git rm --cached`) es una operación de Git que decide el responsable.
+- Las cifras medidas de pruebas y cobertura, y cualquier confirmación de comportamiento, exigen ejecutar la suite; nada de esta tanda se ejecutó.

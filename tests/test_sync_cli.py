@@ -547,6 +547,7 @@ def test_solo_se_ofrecen_los_subcomandos_documentados():
     subcomandos = sorted(acciones[0].choices)
     assert subcomandos == [
         "agente",
+        "autoconfig",
         "conflictos",
         "dispositivos",
         "estado",

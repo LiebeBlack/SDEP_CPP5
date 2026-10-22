@@ -121,13 +121,19 @@ class LoginViewModel @Inject constructor(
      */
     private fun buscarNodoAutomaticamente() {
         viewModelScope.launch {
-            repeat(INTENTOS_AUTOMATICOS) {
+            repeat(INTENTOS_AUTOMATICOS) { intento ->
                 if (_estado.value.conectado) return@launch
-                withContext(Dispatchers.IO) { kotlinx.coroutines.delay(PAUSA_AUTOMATICA_MS) }
+                // Espera creciente (4 s, 8 s, 12 s): cada reintento recorre la
+                // red y enciende la radio, así que espaciarlos reduce el
+                // consumo de batería sin dejar de encontrar el escritorio que
+                // se abre unos segundos después.
+                withContext(Dispatchers.IO) {
+                    kotlinx.coroutines.delay(PAUSA_AUTOMATICA_MS * (intento + 1))
+                }
                 if (_estado.value.conectado) return@launch
                 _estado.update { it.copy(conectando = true) }
-                // Cada reintento busca de verdad: la espera de 4 s ya separa
-                // los intentos y el usuario ve que la app sigue trabajando.
+                // Cada reintento busca de verdad: la espera creciente ya
+                // separa los intentos y la franja muestra que sigue buscando.
                 when (val resultado = conector.asegurarConexion(forzar = true)) {
                     is Resultado.Exito -> {
                         _estado.update {

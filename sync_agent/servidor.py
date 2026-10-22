@@ -1537,6 +1537,11 @@ class ManejadorSync(BaseHTTPRequestHandler):
 
     server_version = "SDEP-SyncAgent/1.0"
     protocol_version = "HTTP/1.1"
+    # Un cliente que abre la conexión y deja de enviar datos no puede retener
+    # un hilo del servidor para siempre: el servicio es multihilo y cada
+    # conexión colgada consume uno. Pasado este tiempo, ``socketserver`` cierra
+    # la conexión y el teléfono reintenta.
+    timeout = 30
 
     @property
     def nucleo(self) -> NucleoCentral:
@@ -1553,6 +1558,13 @@ class ManejadorSync(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 - nombre exigido por la biblioteca
         self._atender("POST")
 
+    def do_PUT(self) -> None:  # noqa: N802 - nombre exigido por la biblioteca
+        # La actualización de una cuenta (``PUT /api/v1/admin/usuarios/{id}``)
+        # existe en el cliente móvil y en ``api_acciones``; sin este método, el
+        # servidor respondía 501 ("Unsupported method") y la administración de
+        # cuentas desde el teléfono nunca podía completarse.
+        self._atender("PUT")
+
     # ------------------------------------------------------------------
     # Enrutado
     # ------------------------------------------------------------------
@@ -1563,7 +1575,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
             # El cuerpo se lee siempre, incluso si la petición va a ser
             # rechazada: si no se consumiera, la conexión persistente quedaría
             # desincronizada.
-            self._cuerpo = self._leer_cuerpo() if metodo == "POST" else b""
+            self._cuerpo = self._leer_cuerpo() if metodo in ("POST", "PUT") else b""
 
             if ruta.path == RUTA_PING:
                 self._responder_json(200, self.nucleo.ping())
@@ -1642,7 +1654,11 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 # /archivos/subir trae bytes crudos, no JSON: su cuerpo se lee
                 # como binario dentro de la acción.
                 es_subida = ruta.path.startswith(RUTA_ARCHIVOS + "/subir")
-                cuerpo = {} if es_subida else (self._leer_json() if metodo == "POST" else {})
+                cuerpo = (
+                    {}
+                    if es_subida
+                    else (self._leer_json() if metodo in ("POST", "PUT") else {})
+                )
                 datos = self.nucleo.api_acciones(
                     sesion_usuario,
                     dispositivo,
@@ -1726,20 +1742,38 @@ class ManejadorSync(BaseHTTPRequestHandler):
 
     def _responder_json(self, codigo: int, datos: dict) -> None:
         """Responde en JSON con longitud explícita"""
-        cuerpo = dumps(datos).encode("utf-8")
-        self.send_response(codigo)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(cuerpo)))
-        self.end_headers()
-        self.wfile.write(cuerpo)
+        self._responder_bytes(
+            codigo, dumps(datos).encode("utf-8"), "application/json; charset=utf-8"
+        )
 
     def _responder_binario(self, codigo: int, contenido: bytes) -> None:
         """Responde con el contenido binario de un archivo"""
-        self.send_response(codigo)
-        self.send_header("Content-Type", "application/octet-stream")
-        self.send_header("Content-Length", str(len(contenido)))
-        self.end_headers()
-        self.wfile.write(contenido)
+        self._responder_bytes(codigo, contenido, "application/octet-stream")
+
+    def _responder_bytes(self, codigo: int, cuerpo: bytes, tipo: str) -> None:
+        """
+        Escribe una respuesta completa
+
+        Si el teléfono ya cerró la conexión (cambio de red, pantalla apagada),
+        ``write`` lanza una excepción de conexión. Antes escapaba al manejador
+        genérico y este intentaba responder **otra vez** sobre la misma
+        conexión rota, ensuciando el registro con un segundo error. Aquí el
+        corte se anota y se termina la petición.
+        """
+        try:
+            self.send_response(codigo)
+            self.send_header("Content-Type", tipo)
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
+        except (
+            BrokenPipeError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            TimeoutError,
+        ) as error:
+            logger.info("El cliente %s cerró la conexión: %s", self.client_address[0], error)
+            self.close_connection = True
 
 
 class ServidorSync(ThreadingHTTPServer):

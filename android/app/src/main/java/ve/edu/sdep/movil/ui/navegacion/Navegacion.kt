@@ -1,8 +1,10 @@
 package ve.edu.sdep.movil.ui.navegacion
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -48,6 +50,21 @@ fun NavegacionPrincipal(vistaModelo: SesionViewModel = hiltViewModel()) {
     if (actual == null) {
         PantallaLogin()
     } else {
+        // El token de usuario caduca aunque la app siga abierta (la sesión es
+        // deslizante, pero los datos se sincronizan con el token del equipo y
+        // no la renuevan). Sin este cierre, el usuario vería la aplicación
+        // «entrada» y cualquier acción de cuenta fallaría con un 401 hasta que
+        // la cerrara a mano. Al vencer, se vuelve al ingreso.
+        LaunchedEffect(actual.usuario, actual.expiraEn) {
+            if (actual.expiraEn > 0L) {
+                val espera = actual.expiraEn - System.currentTimeMillis()
+                // Un segundo de margen: al vencer exacto, el reloj puede caer
+                // un milisegundo antes del límite y la comprobación no
+                // expulsaría hasta la siguiente recomposición.
+                if (espera > 0L) delay(espera + 1_000L)
+                if (!actual.vigente()) vistaModelo.salir()
+            }
+        }
         NavegacionInterna(sesion = actual, alSalir = vistaModelo::salir)
     }
 }

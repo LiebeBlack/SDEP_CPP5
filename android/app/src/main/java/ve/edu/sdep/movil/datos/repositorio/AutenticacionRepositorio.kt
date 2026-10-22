@@ -2,6 +2,7 @@ package ve.edu.sdep.movil.datos.repositorio
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import ve.edu.sdep.movil.datos.local.Fechas
 import ve.edu.sdep.movil.datos.local.dao.SesionUsuarioDao
@@ -9,6 +10,7 @@ import ve.edu.sdep.movil.datos.local.entidad.SesionUsuarioEntity
 import ve.edu.sdep.movil.datos.remoto.ApiSyncFactory
 import ve.edu.sdep.movil.datos.remoto.CambioPasswordDto
 import ve.edu.sdep.movil.datos.remoto.LoginDto
+import ve.edu.sdep.movil.datos.remoto.mensajeDelServidor
 import ve.edu.sdep.movil.datos.seguridad.Boveda
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Resultado
@@ -41,6 +43,7 @@ class AutenticacionRepositorio @Inject constructor(
     private val boveda: Boveda,
     private val sesionRepositorio: SesionRepositorio,
     private val sesionUsuarioDao: SesionUsuarioDao,
+    private val json: Json,
 ) {
 
     /** Ingreso con usuario y contraseña, comprobados por el nodo central */
@@ -67,16 +70,30 @@ class AutenticacionRepositorio @Inject constructor(
                 LoginDto(username = nombreUsuario, password = contrasena),
             )
         } catch (error: HttpException) {
-            // El mismo mensaje para «no existe» y «contraseña incorrecta»: no se
-            // revela qué usuarios tiene la institución.
+            // Se muestra el texto que redactó el servidor: es el mismo que ve
+            // el usuario en el escritorio (bloqueo, intentos restantes, cuenta
+            // desactivada). Cuando no llega un mensaje, se conserva el genérico
+            // que no revela qué usuarios existen.
+            val mensaje = error.mensajeDelServidor(json)
             return@withContext when (error.code()) {
-                401, 403 -> Resultado.Fallo("Usuario o contraseña incorrectos.")
+                401 -> Resultado.Fallo(mensaje ?: "Usuario o contraseña incorrectos.")
+                403 -> Resultado.Fallo(
+                    mensaje ?: "Esta cuenta no tiene acceso. Consulte al administrador.",
+                )
+
                 423 -> Resultado.Fallo(
-                    "La cuenta está bloqueada por intentos fallidos. Consulte al administrador.",
+                    mensaje
+                        ?: "La cuenta está bloqueada por intentos fallidos. " +
+                        "Consulte al administrador.",
+                )
+
+                429 -> Resultado.Fallo(
+                    mensaje ?: "Demasiados intentos seguidos. Espere un minuto y reintente.",
+                    error,
                 )
 
                 else -> Resultado.Fallo(
-                    "El nodo central respondió ${error.code()}. Revise la configuración.",
+                    mensaje ?: "El nodo central respondió ${error.code()}. Revise la configuración.",
                     error,
                 )
             }
@@ -94,6 +111,15 @@ class AutenticacionRepositorio @Inject constructor(
             )
         }
 
+        if (respuesta.sesionToken.isBlank()) {
+            // Un 200 sin token dejaría una sesión «abierta» que no sirve para
+            // nada: mejor decirlo ahora que fallar en la primera petición.
+            return@withContext Resultado.Fallo(
+                "El nodo central aceptó el ingreso pero no entregó una sesión. " +
+                    "Actualice el servidor e intente de nuevo.",
+            )
+        }
+
         val sesion = Sesion(
             usuario = respuesta.username.ifBlank { nombreUsuario },
             nombre = respuesta.nombreCompleto ?: respuesta.username.ifBlank { nombreUsuario },
@@ -102,6 +128,7 @@ class AutenticacionRepositorio @Inject constructor(
             expiraEn = Fechas.desdeIso(respuesta.expiraEn)
                 ?: System.currentTimeMillis() + respuesta.vidaRelativaHoras * 3_600_000L,
             debeCambiarPassword = respuesta.debeCambiarPassword,
+            minLongitudPassword = respuesta.passwordMinLongitud.coerceAtLeast(1),
         )
         guardarCaché(sesion)
         sesionRepositorio.iniciar(sesion)
@@ -139,6 +166,7 @@ class AutenticacionRepositorio @Inject constructor(
                 token = par.token,
                 expiraEn = Fechas.desdeIso(info.expiraEn) ?: 0L,
                 debeCambiarPassword = info.debeCambiarPassword,
+                minLongitudPassword = info.passwordMinLongitud.coerceAtLeast(1),
             )
             boveda.guardarSesionToken(par.token)
             guardarCaché(sesion)
@@ -174,6 +202,9 @@ class AutenticacionRepositorio @Inject constructor(
                 expiraEn = caché.expiraEn,
                 debeCambiarPassword = caché.debeCambiarPassword,
                 offline = true,
+                // Sin red no se conoce el mínimo vigente; se usa el del
+                // escritorio por omisión y el servidor validará al guardar.
+                minLongitudPassword = 6,
             )
             sesionRepositorio.iniciar(sesion)
             Resultado.Exito(sesion)
@@ -214,7 +245,7 @@ class AutenticacionRepositorio @Inject constructor(
         withContext(Dispatchers.IO) {
             val sesion = sesionRepositorio.actual
                 ?: return@withContext Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
-            val errorValidacion = validarPassword(nueva)
+            val errorValidacion = validarPassword(nueva, sesion.minLongitudPassword)
             if (errorValidacion != null) return@withContext Resultado.Fallo(errorValidacion)
             if (actual.isEmpty()) return@withContext Resultado.Fallo("Escriba su contraseña actual.")
 
@@ -235,8 +266,10 @@ class AutenticacionRepositorio @Inject constructor(
                 }
                 Resultado.Exito(Unit)
             } catch (error: HttpException) {
+                val mensaje = error.mensajeDelServidor(json)
                 Resultado.Fallo(
-                    when (error.code()) {
+                    mensaje ?: when (error.code()) {
+                        400 -> "La nueva contraseña no cumple la política del sistema."
                         401, 403 -> "La contraseña actual no coincide o la sesión caducó."
                         else -> "El nodo central rechazó el cambio (${error.code()})."
                     },
@@ -292,10 +325,19 @@ class AutenticacionRepositorio @Inject constructor(
 
     private fun vigente(expiraEn: Long): Boolean = expiraEn <= 0L || System.currentTimeMillis() <= expiraEn
 
-    private fun validarPassword(nueva: String): String? {
-        if (nueva.length < 8) return "La contraseña debe tener al menos 8 caracteres."
-        if (nueva.none { it.isDigit() } || nueva.none { it.isLetter() }) {
-            return "La contraseña debe combinar letras y números."
+    /**
+     * Comprueba la contraseña con la política del servidor, no con una copia.
+     *
+     * Antes el teléfono exigía 8 caracteres y letras + números. La política del
+     * escritorio es configurable (6 por omisión) y no exige esa combinación, así
+     * que la app rechazaba contraseñas que el nodo central sí aceptaba. El
+     * mínimo llega en la respuesta del login; el servidor sigue siendo la
+     * autoridad final.
+     */
+    private fun validarPassword(nueva: String, minimo: Int): String? {
+        val requerido = minimo.coerceAtLeast(1)
+        if (nueva.length < requerido) {
+            return "La contraseña debe tener al menos $requerido caracteres."
         }
         return null
     }

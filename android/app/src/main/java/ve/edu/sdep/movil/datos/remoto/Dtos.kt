@@ -101,6 +101,8 @@ data class SesionRespuestaDto(
     @SerialName("debe_cambiar_password") val debeCambiarPassword: Boolean = false,
     @SerialName("expira_en") val expiraEn: String? = null,
     @SerialName("vida_relativa_horas") val vidaRelativaHoras: Int = 12,
+    /** Longitud mínima que exige el servidor para cambiar la contraseña */
+    @SerialName("password_min_longitud") val passwordMinLongitud: Int = 6,
 )
 
 /** Estado de la sesión vigente (validación en línea) */
@@ -111,6 +113,7 @@ data class SesionInfoDto(
     val rol: String = "viewer",
     @SerialName("debe_cambiar_password") val debeCambiarPassword: Boolean = false,
     @SerialName("expira_en") val expiraEn: String? = null,
+    @SerialName("password_min_longitud") val passwordMinLongitud: Int = 6,
 )
 
 @Serializable

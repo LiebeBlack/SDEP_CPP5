@@ -93,7 +93,7 @@ class ApiSyncFactory @Inject constructor(
                                 // auto-emparejamiento: el servidor lo usa para
                                 // etiquetar el dispositivo en su lista. Es
                                 // inofensivo en el resto de rutas.
-                                header("X-Nombre-Equipo", nombreEquipo())
+                                header("X-Nombre-Equipo", nombreEquipo)
                             }
                             .build()
                         cadena.proceed(peticion)
@@ -107,12 +107,16 @@ class ApiSyncFactory @Inject constructor(
      * Nombre visible del puesto, para el alta por auto-emparejamiento.
      *
      * Es el modelo del dispositivo, que el administrador reconoce al ver la
-     * lista de equipos en el escritorio. No lleva datos personales.
+     * lista de equipos en el escritorio. No lleva datos personales. Se calcula
+     * una sola vez: antes el interceptor leía las propiedades del sistema en
+     * cada petición, incluso en los ciclos de sincronización en segundo plano.
      */
-    private fun nombreEquipo(): String = try {
-        "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim()
-    } catch (_: Throwable) {
-        "Teléfono SDEP"
+    private val nombreEquipo: String by lazy {
+        try {
+            "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim()
+        } catch (_: Throwable) {
+            "Teléfono SDEP"
+        }
     }
 
     private data class ClaveAcciones(val url: String, val equipo: String, val token: String, val sesion: String?)

@@ -379,38 +379,54 @@ class ServidorEmbebido:
     @staticmethod
     def _copiar_usuarios_locales(sesion, servicio: Any) -> int:
         """
-        Copia al nodo central las cuentas locales que todavía no existan
+        Copia y actualiza en el nodo central las cuentas del escritorio
 
-        Se copia el hash PBKDF2, nunca la contraseña en claro. La política de
-        bloqueo y caducidad central empieza limpia; el rol, el estado y la
-        obligación de cambiar la clave se conservan.
+        Se copia el hash PBKDF2, nunca la contraseña en claro. Antes solo se
+        creaban las cuentas ausentes: si la contraseña se cambiaba en el
+        escritorio después de la primera configuración, el nodo central se
+        quedaba con la anterior y el teléfono respondía «usuario o contraseña
+        incorrectos» aunque el escritorio aceptara la nueva. En cada arranque
+        se refrescan las cuentas existentes, no solo las que faltan.
+
+        Returns:
+            Cantidad de cuentas nuevas creadas en el nodo central.
         """
         from src.config import db_config
         from src.models import Usuario
+        from sync_agent.cuentas import cuentas_difieren, copiar_cuenta
 
         copiadas = 0
+        actualizadas = 0
         local = db_config.get_session()
         try:
             for origen in local.query(Usuario).all():
-                if servicio.usuario_por_username(origen.username) is not None:
-                    continue
-                sesion.add(
-                    Usuario(
-                        username=origen.username,
-                        password_hash=origen.password_hash,
-                        nombre_completo=origen.nombre_completo,
-                        rol=origen.rol,
-                        activo=origen.activo,
-                        debe_cambiar_password=origen.debe_cambiar_password,
-                        fecha_cambio_password=origen.fecha_cambio_password,
-                        password_historial=origen.password_historial,
+                destino = servicio.usuario_por_username(origen.username)
+                if destino is None:
+                    sesion.add(
+                        Usuario(
+                            username=origen.username,
+                            password_hash=origen.password_hash,
+                            nombre_completo=origen.nombre_completo,
+                            rol=origen.rol,
+                            activo=origen.activo,
+                            debe_cambiar_password=origen.debe_cambiar_password,
+                            fecha_cambio_password=origen.fecha_cambio_password,
+                            password_historial=origen.password_historial,
+                        )
                     )
-                )
-                copiadas += 1
+                    copiadas += 1
+                elif cuentas_difieren(destino, origen):
+                    if copiar_cuenta(destino, origen, incluir_estado=True):
+                        actualizadas += 1
             # El SessionFactory del nodo central usa autoflush=False: sin este
             # flush, las cuentas recién añadidas no las vería la consulta que
             # decide si hay que crear las cuentas iniciales.
             sesion.flush()
+            if actualizadas:
+                logger.info(
+                    "Cuentas del escritorio actualizadas en el nodo central: %s",
+                    actualizadas,
+                )
         except Exception:
             logger.warning("No se pudieron copiar las cuentas del escritorio", exc_info=True)
         finally:

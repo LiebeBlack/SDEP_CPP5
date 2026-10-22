@@ -28,6 +28,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from sync_agent import cuentas
 from sync_agent.comun import ahora_utc
 from sync_agent.esquema import SesionApi
 
@@ -66,6 +67,22 @@ def hash_token(token: str) -> str:
     return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
 
 
+def codigo_de_credencial(mensaje: str) -> int:
+    """
+    Código HTTP que corresponde a un rechazo de ``AuthService``
+
+    El cliente móvil distingue la cuenta bloqueada (423) de la desactivada
+    (403) y del par usuario/contraseña incorrectos (401). Antes todo salía
+    como 401 y la app no podía explicar el motivo real al usuario.
+    """
+    texto = (mensaje or "").lower()
+    if "bloqueada" in texto or "intentos fallidos" in texto:
+        return 423
+    if "desactivada" in texto:
+        return 403
+    return 401
+
+
 class GestorSesiones:
     """
     Emisión, validación y cierre de sesiones de usuario
@@ -75,14 +92,22 @@ class GestorSesiones:
     se consulta a la única que existe.
     """
 
-    def __init__(self, session_factory, vida_relativa_horas: int = VIDA_RELATIVA_HORAS):
+    def __init__(
+        self,
+        session_factory,
+        vida_relativa_horas: int = VIDA_RELATIVA_HORAS,
+        url_central: str | None = None,
+    ):
         """
         Args:
             session_factory: Fábrica de sesiones SQLAlchemy de la base central
             vida_relativa_horas: Horas que vive (y se alarga) cada sesión
+            url_central: URL de la base central; permite mantener sus cuentas
+                alineadas con la base institucional del escritorio
         """
         self._fabrica = session_factory
         self.vida_relativa = max(1, int(vida_relativa_horas))
+        self.url_central = url_central or ""
 
     # ------------------------------------------------------------------
     # Login y cierre
@@ -99,13 +124,31 @@ class GestorSesiones:
 
         sesion = self._fabrica()
         try:
+            servicio = AuthService(sesion)
             try:
-                usuario = AuthService(sesion).autenticar(username or "", password or "")
+                usuario = servicio.autenticar(username or "", password or "")
             except ValueError as error:
-                # El AuthService redacta los mensajes exactos que ya conoce
-                # el usuario del escritorio (cuenta bloqueada, inactiva,
-                # intentos restantes…): se conservan sin tocar.
-                raise ErrorSesion(str(error), 401) from None
+                # La copia central puede haberse quedado atrás: el caso típico
+                # es la contraseña que el usuario cambió en el escritorio con
+                # el sistema ya abierto. Si la contraseña presentada sí es la
+                # de la base institucional, se refresca la copia y se
+                # reintenta una sola vez. Una clave incorrecta no refresca
+                # nada, así que el bloqueo por intentos sigue intacto.
+                if not cuentas.refrescar_desde_escritorio(
+                    self.url_central, username or "", password or ""
+                ):
+                    # El AuthService redacta los mensajes exactos que ya
+                    # conoce el usuario del escritorio (cuenta bloqueada,
+                    # inactiva, intentos restantes…): se conservan sin tocar.
+                    raise ErrorSesion(str(error), codigo_de_credencial(str(error))) from None
+                sesion.rollback()
+                try:
+                    usuario = AuthService(sesion).autenticar(username or "", password or "")
+                except ValueError as repetido:
+                    raise ErrorSesion(
+                        str(repetido), codigo_de_credencial(str(repetido))
+                    ) from None
+            minimo_password = servicio.longitud_minima_password()
             token = secrets.token_urlsafe(LONGITUD_TOKEN)
             ahora = ahora_utc()
             registro = SesionApi(
@@ -130,6 +173,9 @@ class GestorSesiones:
                 "debe_cambiar_password": bool(usuario.debe_cambiar_password),
                 "expira_en": registro.expira_en.isoformat(),
                 "vida_relativa_horas": self.vida_relativa,
+                # La app valida el cambio de contraseña con la misma regla
+                # del servidor, no con una copia inventada del cliente.
+                "password_min_longitud": minimo_password,
             }
         except SQLAlchemyError:
             sesion.rollback()
@@ -275,6 +321,9 @@ class GestorSesiones:
             if vigente is not None:
                 vigente.debe_cambiar_password = 0
             sesion.commit()
+            # El escritorio usa la misma cuenta: si el cambio se hizo desde el
+            # móvil, allí debe valer la contraseña nueva de inmediato.
+            cuentas.espejar_en_escritorio(self.url_central, usuario.username)
         except ValueError as error:
             sesion.rollback()
             raise ErrorSesion(str(error), 400) from None

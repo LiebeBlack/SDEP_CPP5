@@ -219,7 +219,12 @@ class ApiAcciones:
             nucleo: NucleoCentral del nodo central (motor, blobs, configuración)
         """
         self.nucleo = nucleo
-        self.gestor_sesiones = GestorSesiones(nucleo.SessionFactory)
+        # La URL central permite que el gestor de sesiones mantenga las cuentas
+        # sincronizadas con la base institucional del escritorio (ver
+        # ``sync_agent.cuentas``).
+        self.gestor_sesiones = GestorSesiones(
+            nucleo.SessionFactory, url_central=str(nucleo.engine.url)
+        )
 
     # ------------------------------------------------------------------
     # Interno
@@ -272,13 +277,31 @@ class ApiAcciones:
 
     def info_sesion(self, token: str) -> dict:
         """Valida el token y devuelve los datos de la sesión vigente"""
+        from src.services.auth_service import AuthService
+
         valido = self.gestor_sesiones.validar(token)
+        db = self._sesion()
+        try:
+            # La app necesita la misma longitud mínima que exige el servidor
+            # para no rechazar (ni aceptar) contraseñas con otra regla. Un
+            # fallo al leer la política no invalida una sesión ya verificada:
+            # se responde el valor por omisión y el servidor seguirá mandando.
+            try:
+                minimo = AuthService(db).longitud_minima_password()
+            except Exception:
+                logger.warning(
+                    "No se pudo leer la política de contraseñas para la sesión", exc_info=True
+                )
+                minimo = 6
+        finally:
+            db.close()
         return {
             "username": valido.username,
             "nombre_completo": valido.nombre_completo,
             "rol": valido.rol,
             "debe_cambiar_password": valido.debe_cambiar_password,
             "expira_en": valido.expira_en.isoformat() if valido.expira_en else None,
+            "password_min_longitud": minimo,
         }
 
     def cambiar_password(self, token: str, cuerpo: dict) -> dict:

@@ -19,6 +19,8 @@ data class Sesion(
     val expiraEn: Long = 0L,
     val debeCambiarPassword: Boolean = false,
     val offline: Boolean = false,
+    /** Longitud mínima que exige el nodo central al cambiar la contraseña */
+    val minLongitudPassword: Int = 6,
 ) {
     fun puede(permiso: Permiso): Boolean = PoliticaRoles.tiene(rol, permiso)
 

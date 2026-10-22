@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -269,8 +270,13 @@ private fun FormularioIngreso(
         supportingText = { Text("La misma cuenta que usa en el escritorio") },
         singleLine = true,
         enabled = !estado.ocupado,
+        // El teclado táctil capitaliza la primera letra por costumbre, pero las
+        // cuentas del escritorio distinguen mayúsculas: «Admin» no es «admin».
+        // Sin esto, el ingreso fallaba con «usuario o contraseña incorrectos»
+        // para quien escribía la cuenta desde el teléfono.
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Ascii,
+            capitalization = KeyboardCapitalization.None,
             imeAction = ImeAction.Next,
         ),
         modifier = Modifier.fillMaxWidth(),

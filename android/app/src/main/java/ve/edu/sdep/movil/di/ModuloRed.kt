@@ -28,11 +28,16 @@ object ModuloRed {
     @Singleton
     fun clienteHttp(): OkHttpClient {
         val constructor = OkHttpClient.Builder()
-            // La intranet de un colegio puede ser lenta al abrir conexión, pero
-            // una petición que tarda más de medio minuto está caída.
-            .connectTimeout(15, TimeUnit.SECONDS)
+            // Tiempos pensados para la Wi-Fi de un colegio: abrir conexión debe
+            // fallar rápido (el escritorio cambió de IP o está apagado) sin
+            // dejar el botón de ingreso girando 15 s. La lectura conserva 30 s
+            // para una intranet lenta y el tope global impide que una petición
+            // colgada (servidor que acepta y no responde) retenga la pantalla
+            // para siempre.
+            .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(90, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
 
         if (BuildConfig.DEBUG) {

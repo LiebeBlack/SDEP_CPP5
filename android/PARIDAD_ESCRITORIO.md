@@ -18,6 +18,7 @@ editar, borrar, acción de negocio, permisos y estado offline).
 | DAO por entidad (empleados, documentos, incidencias, contratos, pagos, estudiantes, periodos, grados, matrículas, notas, configuraciones) | **Hecho** | `datos/local/dao/DaosEspejo.kt` |
 | Cola de salida transaccional, cursor, diferidas, blobs | **Hecho** | `RegistroRepositorio`, `SincronizacionRepositorio` |
 | Autenticación contra el nodo central, roles y permisos | **Hecho** | `AutenticacionRepositorio`, `dominio/PoliticaRoles` |
+| Compatibilidad columna a columna con los modelos del escritorio | **Hecho** | [COMPATIBILIDAD.md](COMPATIBILIDAD.md) |
 | Pantallas | **Solo 4** | registros, login, ajustes, conflictos |
 | Resto de módulos (empleados, documentos, incidencias, contratos, nómina, académico, administración) | **Falta la interfaz** | — |
 
@@ -64,8 +65,8 @@ control con cifras y avisos, y para **cada** módulo del escritorio su lista
 | Módulo | Lista | Ficha | Escritura |
 |---|---|---|---|
 | Panel de control | cifras y avisos | — | no aplica |
-| Empleados | sí | datos personales, contacto, laboral, formación, banco, salud, emergencia | Fase 1 |
-| Documentos | sí, con vencimientos | metadatos, archivo y huella | Fase 1 |
+| Empleados | sí | datos personales, contacto, laboral, formación, banco, salud, emergencia | **Hecha** |
+| Documentos | sí, con vencimientos | metadatos, archivo y huella | Pendiente |
 | Incidencias | sí, por estado | solicitud, aprobación, efecto en nómina, soporte | Fase 2 |
 | Contratos | sí, con vencimientos | vigencia, terminación, cláusulas | Fase 2 |
 | Nómina | sí, con pagos pendientes | devengos, deducciones, neto, base de cálculo | Fase 3 |
@@ -92,9 +93,12 @@ resto con llamadas de solo lectura al servidor.
 - Formato único de fechas, moneda y cédula.
 
 ### Fase 1 — Personal
-Empleados (lista, búsqueda, ficha, alta, edición, baja lógica, exportar) y
-Documentos (vencimientos, archivo adjunto, descarga, alta/edición/baja).
-**Lista y ficha ya entregadas**; falta la escritura.
+**Empleados entregado**: lista, búsqueda, ficha, alta, edición y baja lógica en
+el teléfono, con la operación de salida escrita en la misma transacción que la
+ficha (cola `operaciones_pendientes` + payload del protocolo).
+
+Documentos tiene lista y ficha; faltan su alta/edición, el archivo adjunto y la
+descarga desde el nodo central.
 
 ### Fase 2 — Operación laboral
 Incidencias (alta con soporte, aprobar/rechazar con nota) y Contratos

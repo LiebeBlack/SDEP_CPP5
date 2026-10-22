@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.dominio.modelo.Modulo
+import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
 import ve.edu.sdep.movil.ui.comun.MensajeVacio
@@ -54,6 +57,7 @@ fun PantallaListaModulo(
     rutaModulo: String,
     alVolver: () -> Unit,
     alAbrir: (Modulo, Long) -> Unit,
+    alCrear: (() -> Unit)? = null,
     vistaModelo: ModulosViewModel = hiltViewModel(),
 ) {
     val modulo = Modulo.desde(rutaModulo)
@@ -75,6 +79,15 @@ fun PantallaListaModulo(
 
     Scaffold(
         topBar = { BarraSuperior(titulo = modulo.etiqueta, alVolver = alVolver) },
+        floatingActionButton = {
+            if (alCrear != null && sesion.puede(Permiso.CREAR)) {
+                ExtendedFloatingActionButton(
+                    onClick = alCrear,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Nuevo") },
+                )
+            }
+        },
     ) { relleno ->
         if (modulo == Modulo.DASHBOARD) {
             PanelContenido(
@@ -236,7 +249,7 @@ private fun ContenidoLista(
                     start = 16.dp,
                     end = 16.dp,
                     top = 4.dp,
-                    bottom = 24.dp,
+                    bottom = 96.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {

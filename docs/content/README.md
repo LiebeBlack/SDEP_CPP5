@@ -182,8 +182,8 @@ no existan allí, con su misma contraseña (solo el hash), y crea las cuentas
 iniciales que falten, de modo que el teléfono entra con el mismo usuario y
 contraseña que la computadora. También deja este equipo como puesto cliente del nodo local.
 Desde el icono se puede copiar la URL de red para el teléfono, ver los datos
-de conexión, iniciar o detener el servidor y salir. El servidor se cierra al
-salir de la aplicación.
+de conexión, iniciar o detener el servidor y salir. Si el servicio se cayera,
+la aplicación lo vuelve a levantar sola; al salir, se cierra de forma ordenada.
 
 ### Usuarios Por Defecto
 

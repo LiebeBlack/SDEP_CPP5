@@ -1,8 +1,13 @@
 package ve.edu.sdep.movil.datos.repositorio
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import ve.edu.sdep.movil.datos.local.AplicadorEspejo
 import ve.edu.sdep.movil.datos.local.Fechas
@@ -11,6 +16,7 @@ import ve.edu.sdep.movil.datos.local.dao.ConflictoDao
 import ve.edu.sdep.movil.datos.local.dao.EstadoSyncDao
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
 import ve.edu.sdep.movil.datos.local.dao.RegistroDao
+import ve.edu.sdep.movil.datos.local.entidad.BlobPendienteEntity
 import ve.edu.sdep.movil.datos.local.entidad.ConflictoEntity
 import ve.edu.sdep.movil.datos.local.entidad.EstadoSyncEntity
 import ve.edu.sdep.movil.datos.local.entidad.OperacionPendienteEntity
@@ -94,17 +100,21 @@ class SincronizacionRepositorio @Inject constructor(
     }
 
     /** Un ciclo completo con una configuración ya resuelta (puede lanzar) */
-    private suspend fun intentarCiclo(configuracion: ConfiguracionSync): Resultado<ResumenSync> {
+    private suspend fun intentarCiclo(configuracion: ConfiguracionSync): Resultado<ResumenSync> =
+        // Todo el ciclo es E/S: red, disco y JSON. Sacarlo del hilo principal
+        // evita que una sincronización larga congele la interfaz, y deja que el
+        // grupo de hilos de IO use varios núcleos en las descargas.
+        withContext(Dispatchers.IO) {
         val api = try {
             apiFactory.protocolo(configuracion)
         } catch (error: Exception) {
-            return Resultado.Fallo(
+            return@withContext Resultado.Fallo(
                 "La dirección del servidor no es válida: «${configuracion.url}».",
                 error,
             )
         }
 
-        return try {
+        try {
             // Las diferidas de otros ciclos pueden resolverse ahora que quizá
             // haya llegado su registro padre por otra vía.
             aplicador.reintentarDiferidas()
@@ -142,12 +152,17 @@ class SincronizacionRepositorio @Inject constructor(
                 "Compruebe que el nodo central esté actualizado."
             registrarError(mensaje)
             Resultado.Fallo(mensaje, error)
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            // Cancelar (por ejemplo, al detener el trabajador) no es un fallo:
+            // se propaga para que la corrutina termine de inmediato.
+            throw error
         } catch (error: Exception) {
-            val mensaje = "No se pudo completar la sincronización: ${error.message ?: "error inesperado"}."
+            val mensaje = "No se pudo completar la sincronización: " +
+                "${error.message ?: "error inesperado"}."
             registrarError(mensaje)
             Resultado.Fallo(mensaje, error, reintentable = true)
         }
-    }
+        }
 
     private fun Resultado.Fallo.esTokenRechazado(): Boolean {
         val codigo = (causa as? retrofit2.HttpException)?.code()
@@ -309,33 +324,44 @@ class SincronizacionRepositorio @Inject constructor(
      *
      * @return Cuántos archivos quedaron guardados con su hash verificado
      */
-    private suspend fun descargarBlobs(api: ProtocoloApi): Int {
+    private suspend fun descargarBlobs(api: ProtocoloApi): Int = coroutineScope {
         val pendientes = blobDao.pendientesDeEntrada(LIMITE_BLOBS_POR_CICLO)
-        var descargados = 0
-        for (blob in pendientes) {
-            try {
-                val contenido = api.descargarBlob(blob.hash).bytes()
-                if (aplicador.guardarContenidoDescargado(blob, contenido)) {
-                    descargados++
-                } else {
-                    // Contenido que no coincide con su hash: se marca como
-                    // sospechoso y no se vuelve a pedir sin revisión.
-                    marcarBlobFallido(blob.hash, blob.intentos)
-                }
-            } catch (error: retrofit2.HttpException) {
-                if (error.code() == 404) {
-                    // El nodo central no lo tiene (nadie lo subió): no se
-                    // insiste para siempre.
-                    marcarBlobFallido(blob.hash, blob.intentos)
-                }
-            } catch (_: IOException) {
-                // Sin red: se reintenta en el próximo ciclo
-            } catch (_: Exception) {
+        // Descargas en grupos pequeños: la red y el SHA-256 se reparten entre
+        // varios hilos, pero la base sigue recibiendo escrituras acotadas.
+        val descargas = pendientes.chunked(DESCARGAS_EN_PARALELO).flatMap { grupo ->
+            grupo.map { blob -> async { descargarBlob(api, blob) } }.awaitAll()
+        }
+        descargas.count { it }
+    }
+
+    /** Baja y verifica un binario; nunca lanza hacia el ciclo */
+    private suspend fun descargarBlob(api: ProtocoloApi, blob: BlobPendienteEntity): Boolean =
+        try {
+            // `use` cierra el cuerpo aunque falle la lectura: sin eso, cada
+            // archivo dejaría una conexión abierta hasta el recolector.
+            val contenido = api.descargarBlob(blob.hash).use { it.bytes() }
+            if (aplicador.guardarContenidoDescargado(blob, contenido)) {
+                true
+            } else {
+                // Contenido que no coincide con su hash: se marca como
+                // sospechoso y no se vuelve a pedir sin revisión.
+                marcarBlobFallido(blob.hash, blob.intentos)
+                false
+            }
+        } catch (error: retrofit2.HttpException) {
+            if (error.code() == 404) {
+                // El nodo central no lo tiene (nadie lo subió): no se insiste
+                // para siempre.
                 marcarBlobFallido(blob.hash, blob.intentos)
             }
+            false
+        } catch (_: IOException) {
+            // Sin red: se reintenta en el próximo ciclo
+            false
+        } catch (_: Exception) {
+            marcarBlobFallido(blob.hash, blob.intentos)
+            false
         }
-        return descargados
-    }
 
     private suspend fun marcarBlobFallido(hash: String, intentosPrevios: Int) {
         val intentos = intentosPrevios + 1
@@ -448,5 +474,6 @@ class SincronizacionRepositorio @Inject constructor(
         const val MAX_PAGINAS = 50
         const val LIMITE_BLOBS_POR_CICLO = 10
         const val MAX_INTENTOS_BLOB = 5
+        const val DESCARGAS_EN_PARALELO = 3
     }
 }

@@ -9,9 +9,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ve.edu.sdep.movil.dominio.modelo.Modulo
+import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.ajustes.PantallaAjustes
 import ve.edu.sdep.movil.ui.conflictos.PantallaConflictos
+import ve.edu.sdep.movil.ui.empleados.PantallaEmpleado
 import ve.edu.sdep.movil.ui.login.PantallaLogin
 import ve.edu.sdep.movil.ui.modulos.PantallaFichaModulo
 import ve.edu.sdep.movil.ui.modulos.PantallaListaModulo
@@ -67,12 +70,18 @@ private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
             route = "${Rutas.LISTA}/{modulo}",
             arguments = listOf(navArgument("modulo") { type = NavType.StringType }),
         ) { entrada ->
+            val ruta = entrada.arguments?.getString("modulo").orEmpty()
             PantallaListaModulo(
                 sesion = sesion,
-                rutaModulo = entrada.arguments?.getString("modulo").orEmpty(),
+                rutaModulo = ruta,
                 alVolver = { navegador.popBackStack() },
                 alAbrir = { modulo, id ->
                     navegador.navigate("${Rutas.FICHA}/${modulo.ruta}/$id")
+                },
+                alCrear = if (ruta == Modulo.EMPLEADOS.ruta) {
+                    { navegador.navigate("${Rutas.EMPLEADO}/0") }
+                } else {
+                    null
                 },
             )
         }
@@ -84,12 +93,31 @@ private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
                 navArgument("id") { type = NavType.LongType },
             ),
         ) { entrada ->
+            val ruta = entrada.arguments?.getString("modulo").orEmpty()
+            val idFila = entrada.arguments?.getLong("id") ?: 0L
             PantallaFichaModulo(
                 sesion = sesion,
-                rutaModulo = entrada.arguments?.getString("modulo").orEmpty(),
-                id = entrada.arguments?.getLong("id") ?: 0L,
+                rutaModulo = ruta,
+                id = idFila,
                 alVolver = { navegador.popBackStack() },
+                alEditar = if (ruta == Modulo.EMPLEADOS.ruta && sesion.puede(Permiso.EDITAR)) {
+                    { navegador.navigate("${Rutas.EMPLEADO}/$idFila") }
+                } else {
+                    null
+                },
             )
+        }
+
+        composable(
+            route = "${Rutas.EMPLEADO}/{id}",
+            arguments = listOf(
+                navArgument("id") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                },
+            ),
+        ) {
+            PantallaEmpleado(sesion = sesion, alVolver = { navegador.popBackStack() })
         }
 
         composable(
@@ -128,4 +156,5 @@ private object Rutas {
     const val MODULOS = "modulos"
     const val LISTA = "modulo"
     const val FICHA = "ficha"
+    const val EMPLEADO = "empleado"
 }

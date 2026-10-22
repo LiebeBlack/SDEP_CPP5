@@ -79,6 +79,26 @@ object Espejo {
     )
 
     /**
+     * Preferencias de este equipo que no se replican.
+     *
+     * Espejo de `CLAVES_CONFIGURACION_LOCALES` del escritorio: el modo visual,
+     * los respaldos automáticos y la auditoría describen **este** puesto, no a
+     * la institución. Si viajaran, el tema oscuro de un teléfono apagaría el de
+     * toda la intranet. Los parámetros con prefijo ``sync_`` son del propio
+     * agente y tampoco salen.
+     */
+    private val CLAVES_CONFIGURACION_LOCALES = setOf(
+        "apariencia_modo",
+        "backup_enabled",
+        "backup_interval_hours",
+        "audit_enabled",
+    )
+
+    /** Indica si una configuración es una preferencia del equipo */
+    fun esConfiguracionLocal(clave: String): Boolean =
+        clave in CLAVES_CONFIGURACION_LOCALES || clave.startsWith("sync_")
+
+    /**
      * Columnas que son clave foránea hacia otra tabla replicada: el valor del
      * payload es el UUID del padre y debe traducirse a id local.
      */
@@ -421,6 +441,9 @@ object Espejo {
 
             "configuraciones" -> {
                 val e = entidad as ConfiguracionEntity
+                // Una preferencia del puesto no se anuncia: no existe para el
+                // resto del sistema, igual que en el agente de escritorio.
+                if (esConfiguracionLocal(e.clave)) return null
                 val a = anterior as? ConfiguracionEntity
                 campos["clave"] = JsonPrimitive(e.clave)
                 poner(campos, "valor", e.valor, completa || a?.valor != e.valor)

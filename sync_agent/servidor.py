@@ -443,9 +443,7 @@ class NucleoCentral:
             motivo_permiso = self._autorizar_escritura(sesion, operacion, roles_cache)
             if motivo_permiso:
                 rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
-                logger.info(
-                    "Operación %s rechazada por permisos (%s)", op_id[:8], motivo_permiso
-                )
+                logger.info("Operación %s rechazada por permisos (%s)", op_id[:8], motivo_permiso)
                 continue
             eventos.append(
                 {
@@ -509,8 +507,7 @@ class NucleoCentral:
             afectadas = sorted({(fila.tabla, fila.fila_uuid) for fila in pendientes})
             for tabla, fila_uuid in afectadas:
                 historial = [
-                    self._evento_wire(fila)
-                    for fila in self._historial(sesion, tabla, fila_uuid)
+                    self._evento_wire(fila) for fila in self._historial(sesion, tabla, fila_uuid)
                 ]
                 publicada = consolidacion.fila_publicada(tabla, fila_uuid, historial)
                 if publicada is not None:
@@ -638,7 +635,7 @@ class NucleoCentral:
                 fila.op_id,
             )
         )
-        return filas
+        return cast(list[EventoSync], filas)
 
     @staticmethod
     def _evento_wire(fila: EventoSync) -> dict:
@@ -773,9 +770,7 @@ class NucleoCentral:
         """
         actual = int(sesion.query(func.max(EpochSync.epoch)).scalar() or 0)
         atrasados: list[dict] = []
-        for dispositivo in (
-            sesion.query(DispositivoSync).filter(DispositivoSync.activo == 1).all()
-        ):
+        for dispositivo in sesion.query(DispositivoSync).filter(DispositivoSync.activo == 1).all():
             ultimo = (
                 sesion.query(func.max(AckEpoch.epoch))
                 .filter(AckEpoch.dispositivo == dispositivo.dispositivo_id)
@@ -787,17 +782,17 @@ class NucleoCentral:
                         "dispositivo": dispositivo.dispositivo_id,
                         "nombre": dispositivo.nombre,
                         "epoch": int(ultimo or 0),
-                        "ultima_conexion": dispositivo.ultima_conexion.isoformat()
-                        if dispositivo.ultima_conexion
-                        else None,
+                        "ultima_conexion": (
+                            dispositivo.ultima_conexion.isoformat()
+                            if dispositivo.ultima_conexion
+                            else None
+                        ),
                     }
                 )
         return atrasados
 
     @staticmethod
-    def _registrar_reloj(
-        sesion, dispositivo_id: str, desfase_ms: int, rtt_ms: int = 0
-    ) -> None:
+    def _registrar_reloj(sesion, dispositivo_id: str, desfase_ms: int, rtt_ms: int = 0) -> None:
         """Guarda el desfase medido del reloj del puesto"""
         fila = sesion.get(RelojPuesto, dispositivo_id)
         if fila is None:

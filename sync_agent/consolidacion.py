@@ -218,9 +218,7 @@ def manifiesto_valido(paquete: dict) -> bool:
         esperado = str(paquete.get("manifiesto") or "")
         if not esperado:
             return False
-        calculado = manifiesto_epoch(
-            paquete.get("eventos") or [], paquete.get("filas") or []
-        )
+        calculado = manifiesto_epoch(paquete.get("eventos") or [], paquete.get("filas") or [])
         return calculado == esperado
     except (TypeError, ValueError):
         return False

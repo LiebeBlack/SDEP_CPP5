@@ -229,9 +229,7 @@ class EventoSync(BaseSync):
     )
     motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        Index("ix_sync_eventos_estado_momento", "estado", "ocurrido_corregido"),
-    )
+    __table_args__ = (Index("ix_sync_eventos_estado_momento", "estado", "ocurrido_corregido"),)
 
 
 class EpochSync(BaseSync):
@@ -243,9 +241,7 @@ class EpochSync(BaseSync):
     manifiesto: Mapped[str] = mapped_column(String(64), nullable=False)
     n_eventos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_filas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    publicado_en: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=ahora_utc
-    )
+    publicado_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
 
 
 class EpochFila(BaseSync):
@@ -273,13 +269,9 @@ class AckEpoch(BaseSync):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     dispositivo: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     epoch: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    confirmado_en: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=ahora_utc
-    )
+    confirmado_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
 
-    __table_args__ = (
-        UniqueConstraint("dispositivo", "epoch", name="uq_sync_acks_clave"),
-    )
+    __table_args__ = (UniqueConstraint("dispositivo", "epoch", name="uq_sync_acks_clave"),)
 
 
 class RelojPuesto(BaseSync):

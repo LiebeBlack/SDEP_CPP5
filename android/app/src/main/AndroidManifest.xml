@@ -10,6 +10,7 @@
     <application
         android:name=".SdepApplication"
         android:allowBackup="false"
+        android:hardwareAccelerated="true"
         android:dataExtractionRules="@xml/reglas_extraccion"
         android:fullBackupContent="@xml/reglas_respaldo"
         android:icon="@mipmap/ic_launcher"

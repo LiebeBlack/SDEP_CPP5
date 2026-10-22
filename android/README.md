@@ -32,10 +32,13 @@ equipo, y escribe en la tabla `registros_moviles` de la base institucional.
   borrado lógico con confirmación.
 - **Funciona sin red**: cada cambio se guarda en Room y deja su operación en una
   cola de salida, en la misma transacción.
-- **Consulta de todos los módulos del escritorio**: panel de control y listas y
-  fichas de empleados, documentos, incidencias, contratos, nómina, estudiantes,
+- **Todos los módulos del escritorio**: panel de control y listas y fichas de
+  empleados, documentos, incidencias, contratos, nómina, estudiantes,
   calificaciones y configuración, filtradas por la misma matriz de roles. Leen
-  la copia local, así que funcionan sin red; la escritura sigue en el escritorio.
+  la copia local, así que funcionan sin red.
+- **Alta, edición y baja de empleados** en el teléfono: la ficha y su operación
+  de salida se guardan en la misma transacción y viajan al escritorio en la
+  siguiente sincronización. El resto de módulos todavía es de consulta.
 - **Sincronización** con el nodo central: envío por lotes, recepción por cursor,
   reintentos con espera creciente (WorkManager) y bandeja de conflictos.
 - **Material 3** con modo claro y oscuro, vinculación automática al escritorio
@@ -182,8 +185,8 @@ app/src/main/java/ve/edu/sdep/movil/
 │   └── seguridad/              PBKDF2, bóveda cifrada, BiometricPrompt
 ├── di/                         módulos de Hilt (base de datos y red)
 ├── sincronizacion/             trabajador y programador de WorkManager
-└── ui/                         tema, navegación, login, registros, módulos (consulta),
-                                ajustes, conflictos
+└── ui/                         tema, navegación, login, registros, módulos,
+                                empleados (alta/edición), ajustes, conflictos
 ```
 
 - **Offline-first:** la escritura local manda; la red es un replicador.
@@ -192,6 +195,12 @@ app/src/main/java/ve/edu/sdep/movil/
 - **Un solo candado de sincronización:** la periódica y el botón manual no se
   pisan.
 - **Estado en `StateFlow`:** las pantallas no consultan la base a mano; observan.
+- **Hilos:** el ciclo de sincronización corre entero en `Dispatchers.IO`; las
+  descargas de binarios van en grupos de tres en paralelo y el cuerpo de cada
+  respuesta se cierra con `use`. La interfaz nunca espera red ni disco.
+- **GPU:** el dibujo lo hace Compose en el hilo de render (hardware acelerado
+  por defecto). La sincronización es E/S y base de datos, no cálculo gráfico:
+  moverla a la GPU no la aceleraría y complicaría el motor de mezcla.
 
 ## 7. Seguridad
 
@@ -226,6 +235,10 @@ El nodo central sigue siendo el árbitro: allí se mezcla campo por campo y se
 registran los conflictos del sistema completo. El teléfono no reimplementa ese
 árbitro; conserva su trabajo y señala las diferencias.
 
+La correspondencia columna a columna con los modelos del escritorio, las
+claves naturales y las columnas que no viajan están auditadas en
+[COMPATIBILIDAD.md](COMPATIBILIDAD.md).
+
 ## 9. Pruebas
 
 ```bash
@@ -239,6 +252,7 @@ registran los conflictos del sistema completo. El teléfono no reimplementa ese
 | `FechasTest` | Ida y vuelta sin zona horaria y tolerancia a formatos del servidor |
 | `ProtocoloTest` | Nombres `snake_case`, `payload` como texto, respuestas de push/pull |
 | `CatalogoTest` | Vencimientos y avisos del panel, búsqueda y ficha del empleado |
+| `EspejoTest` | Preferencias del equipo fuera del payload; parámetros institucionales dentro |
 
 Del lado Python, `tests/test_registros_moviles.py` comprueba el mismo contrato:
 columnas que envía el móvil, alta desde el teléfono, unificación por clave
@@ -246,11 +260,10 @@ natural, mezcla por campo, borrado lógico e idempotencia.
 
 ## 10. Limitaciones conocidas
 
-- **Los módulos son de solo consulta.** El teléfono ya replica las doce tablas
-  del escritorio y los muestra todos (panel, empleados, documentos,
-  incidencias, contratos, nómina, estudiantes, calificaciones y configuración),
-  pero todavía no permite crear, editar, aprobar ni marcar pagos: eso se hace en
-  el escritorio y llegará por fases (ver `PARIDAD_ESCRITORIO.md`).
+- **Solo empleados se edita en el teléfono.** El resto de los módulos
+  (documentos, incidencias, contratos, nómina, estudiantes, calificaciones y
+  configuración) se consultan; sus altas y acciones de negocio se hacen en el
+  escritorio y llegarán por fases (ver `PARIDAD_ESCRITORIO.md`).
 - **Cuentas y auditoría no se replican.** Viven solo en el nodo central; la
   pantalla de Configuración muestra los parámetros institucionales replicados.
 - **La pantalla de conflictos no edita.** Muestra qué se pisó y permite marcarlo

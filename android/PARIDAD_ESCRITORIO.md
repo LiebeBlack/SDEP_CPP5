@@ -55,6 +55,34 @@ escrituras se encolan en la misma transacción que el dato (offline-first).
 
 Cada fase termina con el módulo **completo** para los roles que lo usan.
 
+### Estado de esta entrega: lectura de todos los módulos
+
+Entregado en `ui/modulos/`: índice de módulos con la matriz de roles, panel de
+control con cifras y avisos, y para **cada** módulo del escritorio su lista
+(búsqueda y estados) y su ficha completa por secciones.
+
+| Módulo | Lista | Ficha | Escritura |
+|---|---|---|---|
+| Panel de control | cifras y avisos | — | no aplica |
+| Empleados | sí | datos personales, contacto, laboral, formación, banco, salud, emergencia | Fase 1 |
+| Documentos | sí, con vencimientos | metadatos, archivo y huella | Fase 1 |
+| Incidencias | sí, por estado | solicitud, aprobación, efecto en nómina, soporte | Fase 2 |
+| Contratos | sí, con vencimientos | vigencia, terminación, cláusulas | Fase 2 |
+| Nómina | sí, con pagos pendientes | devengos, deducciones, neto, base de cálculo | Fase 3 |
+| Estudiantes | sí | expediente, representantes, matrículas, notas | Fase 4 |
+| Calificaciones | sí, por grupo | período, grupo, promedio por materia, estudiantes | Fase 4 |
+| Configuración | sí | parámetro completo | Fase 5 |
+
+Las fichas leen el espejo local y no escriben: la autoridad sigue siendo el nodo
+central. Con esto la **cobertura de consulta de los datos replicados es total**;
+lo que resta es la escritura y las acciones de negocio, fase por fase.
+
+Dos cosas no están y no pueden estar en esta capa: **cuentas de usuario** y
+**auditoría** no se replican (solo existen en el nodo central) y la consulta de
+respaldos del PC no tiene equivalente móvil. La pantalla de Configuración
+muestra los parámetros institucionales replicados y las Fases 5 y 6 cubren el
+resto con llamadas de solo lectura al servidor.
+
 ### Fase 0 — Fundación (bloqueante de todo lo demás)
 - `ui/navegacion`: grafo con inicio de sesión ya existente + «cajón» de módulos.
 - `ui/comun`: lista con búsqueda, ficha en secciones, formulario con validación,
@@ -66,6 +94,7 @@ Cada fase termina con el módulo **completo** para los roles que lo usan.
 ### Fase 1 — Personal
 Empleados (lista, búsqueda, ficha, alta, edición, baja lógica, exportar) y
 Documentos (vencimientos, archivo adjunto, descarga, alta/edición/baja).
+**Lista y ficha ya entregadas**; falta la escritura.
 
 ### Fase 2 — Operación laboral
 Incidencias (alta con soporte, aprobar/rechazar con nota) y Contratos

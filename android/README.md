@@ -32,6 +32,10 @@ equipo, y escribe en la tabla `registros_moviles` de la base institucional.
   borrado lógico con confirmación.
 - **Funciona sin red**: cada cambio se guarda en Room y deja su operación en una
   cola de salida, en la misma transacción.
+- **Consulta de todos los módulos del escritorio**: panel de control y listas y
+  fichas de empleados, documentos, incidencias, contratos, nómina, estudiantes,
+  calificaciones y configuración, filtradas por la misma matriz de roles. Leen
+  la copia local, así que funcionan sin red; la escritura sigue en el escritorio.
 - **Sincronización** con el nodo central: envío por lotes, recepción por cursor,
   reintentos con espera creciente (WorkManager) y bandeja de conflictos.
 - **Material 3** con modo claro y oscuro, vinculación automática al escritorio
@@ -178,7 +182,8 @@ app/src/main/java/ve/edu/sdep/movil/
 │   └── seguridad/              PBKDF2, bóveda cifrada, BiometricPrompt
 ├── di/                         módulos de Hilt (base de datos y red)
 ├── sincronizacion/             trabajador y programador de WorkManager
-└── ui/                         tema, navegación, login, registros, ajustes, conflictos
+└── ui/                         tema, navegación, login, registros, módulos (consulta),
+                                ajustes, conflictos
 ```
 
 - **Offline-first:** la escritura local manda; la red es un replicador.
@@ -233,6 +238,7 @@ registran los conflictos del sistema completo. El teléfono no reimplementa ese
 | `PoliticaRolesTest` | Matriz completa de permisos y degradación de roles desconocidos |
 | `FechasTest` | Ida y vuelta sin zona horaria y tolerancia a formatos del servidor |
 | `ProtocoloTest` | Nombres `snake_case`, `payload` como texto, respuestas de push/pull |
+| `CatalogoTest` | Vencimientos y avisos del panel, búsqueda y ficha del empleado |
 
 Del lado Python, `tests/test_registros_moviles.py` comprueba el mismo contrato:
 columnas que envía el móvil, alta desde el teléfono, unificación por clave
@@ -240,9 +246,13 @@ natural, mezcla por campo, borrado lógico e idempotencia.
 
 ## 10. Limitaciones conocidas
 
-- **Una sola tabla de dominio en el teléfono.** La app no replica empleados,
-  documentos ni pagos: es un puesto de captura, no un espejo del sistema. Los
-  recibos y las nóminas se consultan en el escritorio.
+- **Los módulos son de solo consulta.** El teléfono ya replica las doce tablas
+  del escritorio y los muestra todos (panel, empleados, documentos,
+  incidencias, contratos, nómina, estudiantes, calificaciones y configuración),
+  pero todavía no permite crear, editar, aprobar ni marcar pagos: eso se hace en
+  el escritorio y llegará por fases (ver `PARIDAD_ESCRITORIO.md`).
+- **Cuentas y auditoría no se replican.** Viven solo en el nodo central; la
+  pantalla de Configuración muestra los parámetros institucionales replicados.
 - **La pantalla de conflictos no edita.** Muestra qué se pisó y permite marcarlo
   como revisado; la corrección se hace en el registro.
 - **Sin recuperación de contraseña.** Las cuentas son locales; un administrador

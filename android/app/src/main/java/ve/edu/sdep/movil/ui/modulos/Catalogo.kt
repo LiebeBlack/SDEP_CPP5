@@ -1,5 +1,6 @@
 package ve.edu.sdep.movil.ui.modulos
 
+import ve.edu.sdep.movil.datos.local.entidad.ConfiguracionEntity
 import ve.edu.sdep.movil.datos.local.entidad.ContratoEntity
 import ve.edu.sdep.movil.datos.local.entidad.DocumentoEntity
 import ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity
@@ -10,7 +11,6 @@ import ve.edu.sdep.movil.datos.local.entidad.MatriculaEntity
 import ve.edu.sdep.movil.datos.local.entidad.NotaFinalEntity
 import ve.edu.sdep.movil.datos.local.entidad.PagoEntity
 import ve.edu.sdep.movil.datos.local.entidad.PeriodoAcademicoEntity
-import ve.edu.sdep.movil.datos.local.entidad.ConfiguracionEntity
 import ve.edu.sdep.movil.dominio.modelo.Modulo
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -214,7 +214,8 @@ class Catalogo(val datos: Datos) {
             .sortedWith(compareBy({ nombrePeriodo(it.periodoId) }, { it.nivel }, { it.nombre }))
             .map { grado ->
                 val notas = datos.notas.filter { it.gradoId == grado.id }
-                val matriculados = datos.matriculas.count { it.gradoId == grado.id && it.activa != 0 }
+                val matriculados =
+                    datos.matriculas.count { it.gradoId == grado.id && it.activa != 0 }
                 FilaCatalogo(
                     id = grado.id,
                     titulo = grado.nombreCompleto,
@@ -339,7 +340,10 @@ class Catalogo(val datos: Datos) {
                 titulo = "Salud",
                 campos = listOf(
                     CampoFicha("Carnet de discapacidad", texto(empleado.carnetDiscapacidad)),
-                    CampoFicha("Enfermedades preexistentes", texto(empleado.enfermedadesPreexistentes)),
+                    CampoFicha(
+                        "Enfermedades preexistentes",
+                        texto(empleado.enfermedadesPreexistentes),
+                    ),
                     CampoFicha("Alergias medicamentosas", texto(empleado.alergiasMedicamentosas)),
                     CampoFicha("Alergias alimentarias", texto(empleado.alergiasAlimentarias)),
                 ),
@@ -349,7 +353,10 @@ class Catalogo(val datos: Datos) {
                 campos = listOf(
                     CampoFicha("Hijos", texto(empleado.hijos)),
                     CampoFicha("Contacto de emergencia", texto(empleado.contactoEmergenciaNombre)),
-                    CampoFicha("Teléfono de emergencia", texto(empleado.contactoEmergenciaTelefono)),
+                    CampoFicha(
+                        "Teléfono de emergencia",
+                        texto(empleado.contactoEmergenciaTelefono),
+                    ),
                     CampoFicha("Relación", texto(empleado.contactoEmergenciaRelacion)),
                 ),
             ),
@@ -564,8 +571,14 @@ class Catalogo(val datos: Datos) {
                         CampoFicha("Modalidad", etiquetaEstado(pago.modalidadCalculo)),
                         CampoFicha("Base gravable", bolivares(pago.baseGravable)),
                         CampoFicha("Tramo de ISR", texto(pago.isrTramo)),
-                        CampoFicha("Aporte patronal al seguro", bolivares(pago.aporteSeguroPatronal)),
-                        CampoFicha("Aporte patronal a pensión", bolivares(pago.aportePensionPatronal)),
+                        CampoFicha(
+                            "Aporte patronal al seguro",
+                            bolivares(pago.aporteSeguroPatronal),
+                        ),
+                        CampoFicha(
+                            "Aporte patronal a pensión",
+                            bolivares(pago.aportePensionPatronal),
+                        ),
                         CampoFicha("Registrado", fecha(pago.fechaRegistroPago)),
                     ),
                 ),
@@ -622,7 +635,10 @@ class Catalogo(val datos: Datos) {
                     campos = listOf(
                         CampoFicha("Representante", texto(estudiante.representante)),
                         CampoFicha("Teléfono", texto(estudiante.telefono)),
-                        CampoFicha("Teléfono del representante", texto(estudiante.telefonoRepresentante)),
+                        CampoFicha(
+                            "Teléfono del representante",
+                            texto(estudiante.telefonoRepresentante),
+                        ),
                         CampoFicha("Correo", texto(estudiante.email)),
                         CampoFicha("Dirección", texto(estudiante.direccion)),
                     ),

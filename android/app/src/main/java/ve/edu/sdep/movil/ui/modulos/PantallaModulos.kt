@@ -54,9 +54,10 @@ import ve.edu.sdep.movil.ui.comun.BarraSuperior
  * teniendo su propia pantalla de inicio, porque es el uso propio del puesto
  * móvil y ya está resuelta.
  *
- * Esta versión es de **consulta**: cada módulo abre su lista y su ficha tal
- * como están en el espejo local. La edición se hace en el escritorio, que es
- * la autoridad; las pantallas de escritura llegarán con las fases siguientes.
+ * El panel de control y la configuración institucional, que son pantallas del
+ * escritorio, no se ofrecen aquí. Cada módulo abre su lista y su ficha, y la
+ * escritura se hace con el formulario dinámico de la tabla, siempre que el rol
+ * tenga el permiso de la acción.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,15 +161,15 @@ private fun NotaAlcance() {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
-                text = "Consulta sin conexión",
+                text = "Trabajo sin conexión y permisos por rol",
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Estas pantallas leen la copia de trabajo del teléfono: " +
-                    "funcionan sin red y se actualizan solas con cada sincronización. " +
-                    "Las altas, ediciones y acciones de nómina se realizan en el " +
-                    "escritorio, que es la autoridad del sistema.",
+                text = "Estas pantallas leen la copia de trabajo del teléfono: funcionan " +
+                    "sin red y se actualizan solas con cada sincronización. Según su rol " +
+                    "verá solo los módulos y las acciones (crear, editar, eliminar) que le " +
+                    "corresponden; el nodo central sigue siendo la autoridad final.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -182,7 +183,6 @@ private fun NotaAlcance() {
  * captura de campo no aparece porque es la pantalla de inicio.
  */
 private val ORDEN_DE_MODULOS = listOf(
-    Modulo.DASHBOARD,
     Modulo.EMPLEADOS,
     Modulo.DOCUMENTOS,
     Modulo.INCIDENCIAS,
@@ -190,7 +190,6 @@ private val ORDEN_DE_MODULOS = listOf(
     Modulo.NOMINA,
     Modulo.ESTUDIANTES,
     Modulo.NOTAS,
-    Modulo.CONFIGURACION,
 )
 
 /** Cuántos registros tiene el módulo; null si el módulo no se cuenta */

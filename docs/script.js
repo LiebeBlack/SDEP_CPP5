@@ -152,14 +152,10 @@
             if (window.SDEP_SLUG_COUNTS === undefined) {
                 window.SDEP_SLUG_COUNTS = {};
             }
-            const baseSlug = normalized;
-            if (!window.SDEP_SLUG_COUNTS[baseSlug]) {
-                window.SDEP_SLUG_COUNTS[baseSlug] = 0;
-                slug = baseSlug;
-            } else {
-                window.SDEP_SLUG_COUNTS[baseSlug]++;
-                slug = `${baseSlug}-${window.SDEP_SLUG_COUNTS[baseSlug]}`;
-            }
+            const baseSlug = normalized || 'seccion';
+            const repeticiones = window.SDEP_SLUG_COUNTS[baseSlug] || 0;
+            window.SDEP_SLUG_COUNTS[baseSlug] = repeticiones + 1;
+            const slug = repeticiones === 0 ? baseSlug : `${baseSlug}-${repeticiones}`;
 
             const safeSlug = slug || 'seccion';
 
@@ -364,19 +360,6 @@
                 markdownRenderTarget.innerHTML = `<pre>${escapeHtml(doc.content)}</pre>`;
             }
 
-            // Generate normalized slug for this document's title
-            const titleSlug = doc.title.normalize('NFD').replace(/\u0300-\u036f/g, '').toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-
-            // Update URL hash to standardized format: #doc=<id>#<slug>
-            if (!isRefresh) {
-                const newHash = `#doc=${docId}#${titleSlug}`;
-                // Use replaceState to update URL without triggering full page reload
-                history.replaceState(null, document.title, window.location.pathname + window.location.search + newHash);
-            }
-
-            // Attach copy buttons inside rendered code blocks
-            markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
-
             // Apply syntax highlighting with Prism
             if (typeof Prism !== 'undefined') {
                 Prism.highlightAllUnder(markdownRenderTarget);
@@ -537,12 +520,8 @@
             }
         }
 
+        if (!rawUrl) return;
         showToast('Cargando archivo desde GitHub...');
-        // Sanitize Markdown content with DOMPurify if available
-        let sanitizedContent = marked.parse(markdown);
-        if (typeof DOMPurify !== 'undefined') {
-            sanitizedContent = DOMPurify.sanitize(markdown);
-        }
         fetch(rawUrl)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -565,14 +544,14 @@
                     githubUrl: rawOrBlobUrl,
                     wordCount: markdown.split(/\s+/).length,
                     readingTime: Math.max(1, Math.round(markdown.split(/\s+/).length / 200)),
-                    content: sanitizedContent
+                    content: markdown
                 };
 
                 // Render document in reader
                 currentDocId = customDoc.id;
                 if (typeof marked !== 'undefined') {
                     configureMarkedRenderer();
-                    markdownRenderTarget.innerHTML = marked.parse(sanitizedContent);
+                    markdownRenderTarget.innerHTML = marked.parse(customDoc.content);
                     if (typeof Prism !== 'undefined') {
                         Prism.highlightAllUnder(markdownRenderTarget);
                     }

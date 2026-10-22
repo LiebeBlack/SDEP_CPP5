@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.dominio.modelo.Modulo
+import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
 import ve.edu.sdep.movil.ui.comun.MensajeVacio
@@ -36,9 +37,11 @@ import ve.edu.sdep.movil.ui.comun.MensajeVacio
  * Ficha de detalle de una fila del espejo.
  *
  * Muestra todas las columnas que el escritorio enseña en su formulario, en el
- * mismo orden por bloques, pero sin campos editables: es una vista de consulta.
- * Si la fila desapareció (por ejemplo, se borró en otro puesto y la
- * sincronización la retiró), se avisa en lugar de mostrar una ficha a medias.
+ * mismo orden por bloques. La edición abre el formulario dinámico de la tabla
+ * (o el formulario dedicado de empleados); si el rol no puede editar, la ficha
+ * queda como vista de consulta. Si la fila desapareció (por ejemplo, se borró
+ * en otro puesto y la sincronización la retiró), se avisa en lugar de mostrar
+ * una ficha a medias.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +97,7 @@ fun PantallaFichaModulo(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                item { EncabezadoFicha(actual) }
+                item { EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR)) }
                 items(actual.secciones) { seccion -> TarjetaSeccion(seccion) }
             }
         }
@@ -102,7 +105,7 @@ fun PantallaFichaModulo(
 }
 
 @Composable
-private fun EncabezadoFicha(ficha: FichaCatalogo) {
+private fun EncabezadoFicha(ficha: FichaCatalogo, puedeEditar: Boolean) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -119,7 +122,11 @@ private fun EncabezadoFicha(ficha: FichaCatalogo) {
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Solo consulta · datos replicados del nodo central",
+                text = if (puedeEditar) {
+                    "Datos replicados · edición disponible desde el formulario"
+                } else {
+                    "Solo consulta · datos replicados del nodo central"
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
             )

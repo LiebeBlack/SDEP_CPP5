@@ -504,6 +504,8 @@ class NucleoCentral:
             )
             lotes_afectados = sorted({fila.lote_id for fila in pendientes})
             filas: list[dict] = []
+            conflictos: list[dict] = []
+            ids_pendientes = {fila.op_id for fila in pendientes}
             afectadas = sorted({(fila.tabla, fila.fila_uuid) for fila in pendientes})
             for tabla, fila_uuid in afectadas:
                 historial = [
@@ -512,6 +514,11 @@ class NucleoCentral:
                 publicada = consolidacion.fila_publicada(tabla, fila_uuid, historial)
                 if publicada is not None:
                     filas.append(publicada)
+                conflictos.extend(
+                    consolidacion.conflictos_del_ciclo(
+                        tabla, fila_uuid, historial, ids_pendientes
+                    )
+                )
 
             aplicador = AplicadorRemoto(
                 sesion,
@@ -575,6 +582,21 @@ class NucleoCentral:
                         borrado=1 if publicada.get("borrado") else 0,
                     )
                 )
+            for conflicto in conflictos:
+                sesion.add(
+                    ConflictoSync(
+                        tabla=conflicto["tabla"],
+                        fila_uuid=conflicto["fila_uuid"],
+                        campo=conflicto["campo"],
+                        valor_local=dumps(conflicto["valor_local"]),
+                        valor_remoto=dumps(conflicto["valor_remoto"]),
+                        ganador=conflicto["ganador"],
+                        regla=conflicto["regla"],
+                        op_local_id=conflicto["op_local_id"],
+                        op_remoto_id=conflicto["op_remoto_id"],
+                        resuelto=0,
+                    )
+                )
             sesion.commit()
             self._epoch_cache = epoch
             logger.info(
@@ -585,7 +607,7 @@ class NucleoCentral:
                 "epoch": epoch,
                 "aplicadas": [fila.op_id for fila in pendientes],
                 "rechazadas": [],
-                "conflictos": [],
+                "conflictos": conflictos,
                 "cursor": self.cursor_actual(),
             }
         except (SQLAlchemyError, FilaPendiente) as error:

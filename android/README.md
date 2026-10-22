@@ -24,23 +24,27 @@ equipo, y escribe en la tabla `registros_moviles` de la base institucional.
 
 - **Ingreso** con usuario y contraseña (PBKDF2-HMAC-SHA256, 120 000 iteraciones,
   sal aleatoria) o con huella/rostro/credencial del dispositivo.
-- **Tres roles**: administrador (todo), editor (crear y editar) y consulta (solo
-  lectura). La interfaz oculta lo que el rol no permite y el repositorio vuelve a
-  comprobarlo antes de escribir.
-- **CRUD completo de registros**: título, contenido, categoría, valor numérico,
-  marcas de tiempo y estado de sincronización; búsqueda, filtro por categoría y
-  borrado lógico con confirmación.
-- **Funciona sin red**: cada cambio se guarda en Room y deja su operación en una
-  cola de salida, en la misma transacción.
-- **Todos los módulos del escritorio**: panel de control y listas y fichas de
-  empleados, documentos, incidencias, contratos, nómina, estudiantes,
-  calificaciones y configuración, filtradas por la misma matriz de roles. Leen
-  la copia local, así que funcionan sin red.
-- **Alta, edición y baja de empleados** en el teléfono: la ficha y su operación
-  de salida se guardan en la misma transacción y viajan al escritorio en la
-  siguiente sincronización. El resto de módulos todavía es de consulta.
-- **Sincronización** con el nodo central: envío por lotes, recepción por cursor,
-  reintentos con espera creciente (WorkManager) y bandeja de conflictos.
+- **Cuatro roles**: administrador (todo), gestor (crear, editar, borrar y
+  reportes), usuario y solo lectura (consulta). La interfaz oculta lo que el rol
+  no permite y el repositorio vuelve a comprobarlo antes de escribir, con la
+  misma matriz del escritorio.
+- **Portada por soluciones**: la pantalla de inicio agrupa las tareas en
+  Personal, Académico, Administración y Trabajo de campo. Cada tarjeta abre la
+  lista, la tabla académica o la captura de campo que corresponda a ese rol.
+- **Gestión dinámica de las diez tablas operativas**: empleados, documentos,
+  incidencias, contratos, pagos, estudiantes, períodos, grados, matrículas y
+  calificaciones. El formulario se genera con el esquema real de SQLite
+  (`PRAGMA table_info`), así que una columna nueva del escritorio aparece sin
+  tocar código. Alta, edición y baja según el permiso de la cuenta.
+- **Funciona sin red**: cada cambio se guarda en Room, deja su operación en la
+  cola de salida y pide un ciclo de sincronización inmediato, todo en la misma
+  transacción.
+- **Sincronización** con el nodo central: envío por lotes al guardar, recepción
+  por cursor, reintentos con espera creciente (WorkManager), ciclo periódico de
+  15 minutos y bandeja de conflictos.
+- **Respaldos en el nodo central**: el teléfono no guarda copias propias (la
+  base institucional y sus respaldos automáticos viven en el escritorio). El
+  teléfono replica, encola y restaura su espejo desde el servidor.
 - **Material 3** con modo claro y oscuro, vinculación automática al escritorio
   y prueba de conexión con detección de desfase de reloj.
 
@@ -179,14 +183,17 @@ app/src/main/java/ve/edu/sdep/movil/
 │   ├── modelo/                 Registro, Sesion, Rol, Permiso, ConfiguracionSync
 │   └── PoliticaRoles           matriz de permisos comprobable
 ├── datos/
-│   ├── local/                  Room: entidades, DAO, base de datos, fechas
+│   ├── local/                  Room: entidades, DAO, base de datos, fechas,
+│   │                           EsquemaTabla (introspección del formulario)
 │   ├── remoto/                 DTO del protocolo, Retrofit, fábrica con cabeceras
-│   ├── repositorio/            Autenticación, registros, sincronización, sesión
+│   ├── repositorio/            Autenticación, registros, TablaRepositorio
+│   │                           (escritura genérica), sincronización, sesión
 │   └── seguridad/              PBKDF2, bóveda cifrada, BiometricPrompt
 ├── di/                         módulos de Hilt (base de datos y red)
 ├── sincronizacion/             trabajador y programador de WorkManager
-└── ui/                         tema, navegación, login, registros, módulos,
-                                empleados (alta/edición), ajustes, conflictos
+└── ui/                         inicio (portada), tablas (lista genérica),
+                                formulario (editor dinámico), módulos, empleados,
+                                registros, login, ajustes, conflictos
 ```
 
 - **Offline-first:** la escritura local manda; la red es un replicador.
@@ -195,6 +202,10 @@ app/src/main/java/ve/edu/sdep/movil/
 - **Un solo candado de sincronización:** la periódica y el botón manual no se
   pisan.
 - **Estado en `StateFlow`:** las pantallas no consultan la base a mano; observan.
+- **Un solo formulario para diez tablas:** `EsquemaTabla` lee columnas, tipos y
+  claves foráneas del esquema real; `TablaRepositorio` construye la entidad con
+  `Espejo.aplicar` y la guarda por el mismo camino que una operación remota
+  (identidad global, marcas por campo y cola de salida).
 - **Hilos:** el ciclo de sincronización corre entero en `Dispatchers.IO`; las
   descargas de binarios van en grupos de tres en paralelo y el cuerpo de cada
   respuesta se cierra con `use`. La interfaz nunca espera red ni disco.
@@ -211,7 +222,7 @@ app/src/main/java/ve/edu/sdep/movil/
 | Token del nodo legible | `EncryptedSharedPreferences` con clave en el Keystore |
 | Suplantación por huella | El sensor solo desbloquea una llave aleatoria, no la contraseña |
 | Pantalla bloqueada por rol | `PoliticaRoles` en UI **y** en el repositorio |
-| Respaldo automático | `allowBackup=false` y reglas de exclusión total |
+| Respaldo automático | `allowBackup=false` en el teléfono; los respaldos institucionales los hace el nodo central |
 | Red local sin TLS | Aviso en la documentación y opción de certificado propio |
 
 No se guarda la contraseña en ningún momento. El token biométrico se genera con
@@ -220,6 +231,8 @@ bóveda cifrada.
 
 ## 8. Sincronización y conflictos
 
+0. **Al guardar** se encola el cambio y se pide un ciclo inmediato: no hay que
+   esperar al periodo de 15 minutos ni pulsar «sincronizar».
 1. **Push** de la cola (lotes de 200). El servidor responde qué aplicó y qué
    rechazó; lo aplicado se borra de la cola, lo rechazado se conserva con motivo.
 2. **Pull** desde el cursor guardado, página a página, hasta que `hay_mas` sea
@@ -260,12 +273,19 @@ natural, mezcla por campo, borrado lógico e idempotencia.
 
 ## 10. Limitaciones conocidas
 
-- **Solo empleados se edita en el teléfono.** El resto de los módulos
-  (documentos, incidencias, contratos, nómina, estudiantes, calificaciones y
-  configuración) se consultan; sus altas y acciones de negocio se hacen en el
-  escritorio y llegarán por fases (ver `PARIDAD_ESCRITORIO.md`).
-- **Cuentas y auditoría no se replican.** Viven solo en el nodo central; la
-  pantalla de Configuración muestra los parámetros institucionales replicados.
+- **El panel de control y la configuración institucional no están en el
+  teléfono.** Son pantallas del escritorio; la app las reemplazó por la portada
+  de soluciones y por Ajustes (vinculación, sincronización y conflictos).
+- **Las acciones de negocio siguen en el servidor.** Aprobar o rechazar una
+  incidencia, renovar o terminar un contrato, generar nómina, abrir/cerrar
+  períodos y emitir tokens académicos se ejecutan en el nodo central; el
+  teléfono puede crear y editar los registros, pero no reimplementa esas
+  reglas.
+- **Los archivos adjuntos todavía se cargan desde el escritorio.** El
+  formulario genérico edita metadatos; el binario viaja por el canal de hash y
+  el teléfono solo lo recibe.
+- **Cuentas y auditoría no se replican.** Viven solo en el nodo central; no hay
+  pantalla de administración de usuarios en el teléfono.
 - **La pantalla de conflictos no edita.** Muestra qué se pisó y permite marcarlo
   como revisado; la corrección se hace en el registro.
 - **Sin recuperación de contraseña.** Las cuentas son locales; un administrador

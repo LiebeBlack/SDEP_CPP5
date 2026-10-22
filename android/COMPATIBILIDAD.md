@@ -89,19 +89,20 @@ ahora la misma lista y el mismo prefijo que el escritorio.
 
 ## 5. Qué falta para la paridad funcional
 
-La compatibilidad de datos está cubierta y la **escritura ya funciona para
-Empleados**: la cola genérica `operaciones_pendientes` guarda la operación en la
-misma transacción que la ficha, con el payload del protocolo y las marcas de
-mezcla locales. El resto de módulos sigue en consulta.
+La compatibilidad de datos está cubierta y la **escritura funciona para las diez
+tablas operativas**: `TablaRepositorio` construye la fila con `Espejo.aplicar`
+sobre el esquema real de SQLite y guarda la operación en la misma transacción que
+el dato, con el payload del protocolo y las marcas de mezcla locales. Empleados
+conserva además su formulario dedicado de 40 campos.
 
 Para completar la paridad hace falta:
 
-1. Repetir el patrón de `EmpleadoRepositorio` en documentos, incidencias,
-   contratos, estudiantes, matrículas y notas (cada uno con sus claves
-   foráneas resueltas a UUID y sus validaciones).
-2. Formularios móviles para esos módulos, con la misma matriz de permisos.
-3. Acciones de negocio contra `/api/v1/acciones` (nómina, incidencias,
-   contratos, académico), que ya existen en el nodo y no se reimplementan.
-4. Exportaciones y archivos adjuntos (PDF/Excel y descarga de documentos).
+1. Carga y descarga de **archivos adjuntos** (documentos e incidencias); los
+   metadatos y el hash ya se editan en el teléfono.
+2. **Acciones de negocio** contra `/api/v1/acciones` (generar nómina, aprobar
+   incidencias, renovar contratos, consolidados académicos), que ya existen en
+   el nodo y no se reimplementan.
+3. **Exportaciones** (PDF/Excel) y foto del empleado.
+4. Pruebas instrumentadas del formulario dinámico y de cada tabla.
 
 El detalle por fases está en [PARIDAD_ESCRITORIO.md](PARIDAD_ESCRITORIO.md).

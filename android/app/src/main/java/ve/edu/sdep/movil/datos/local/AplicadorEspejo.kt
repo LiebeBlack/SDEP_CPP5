@@ -145,6 +145,35 @@ class AplicadorEspejo @Inject constructor(
         versionFilaDao.guardar(actualizada)
     }
 
+    // ==================================================================
+    // Escritura local (formulario genérico)
+    // ==================================================================
+
+    /** Fila del espejo por id local; null si ya no existe */
+    suspend fun filaLocal(tabla: String, id: Long): Any? = buscarPorId(tabla, id)
+
+    /**
+     * Guarda una fila construida por el formulario, con la semántica de cada
+     * tabla (alta con identidad global o actualización de la existente).
+     *
+     * @return null si se guardó; el motivo si la base local la rechazó
+     */
+    suspend fun guardarFilaLocal(
+        tabla: String,
+        filaUuid: String,
+        base: Any?,
+        nueva: Any,
+    ): String? = guardarFila(tabla, filaUuid, base, nueva).error
+
+    /** Baja local: desactiva las tablas con borrado lógico y borra las demás */
+    suspend fun eliminarLocal(tabla: String, id: Long) {
+        if (Espejo.BORRADO_LOGICO[tabla] != null) {
+            desactivar(tabla, id)
+        } else {
+            borrarFila(tabla, id)
+        }
+    }
+
     /**
      * Reintenta las operaciones diferidas (faltaba el registro padre).
      *

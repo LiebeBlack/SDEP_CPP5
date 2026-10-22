@@ -30,6 +30,8 @@ import json
 from datetime import datetime, timedelta
 from typing import Any, Iterable
 
+from sync_agent import merge
+
 # Desfase de reloj que se acepta corregir. Más allá de un día, el sello del
 # puesto es un error de configuración, no un desfase medible en la intranet.
 DESFASE_MAXIMO_MS = 24 * 60 * 60 * 1000
@@ -152,6 +154,93 @@ def fila_publicada(tabla: str, fila_uuid: str, historial: Iterable[dict]) -> dic
     if estado is None:
         return None
     return {"tabla": tabla, "fila_uuid": fila_uuid, **estado}
+
+
+def _momento_de(evento: dict) -> datetime:
+    """Sello normalizado de un evento (mínimo si no trae ninguno legible)"""
+    return (
+        momento_de_texto(evento.get("ocurrido_corregido"))
+        or momento_de_texto(evento.get("ocurrido_en"))
+        or datetime.min
+    )
+
+
+def conflictos_del_ciclo(
+    tabla: str,
+    fila_uuid: str,
+    historial: Iterable[dict],
+    eventos_pendientes: set[str],
+) -> list[dict]:
+    """
+    Choques entre equipos que este ciclo deja fuera del estado publicado
+
+    El replay se queda con la última escritura de cada campo, así que una
+    edición antigua que llega tarde (o que compite con otro puesto) desaparece
+    sin dejar rastro. Aquí se recupera el valor perdedor de los eventos que se
+    están consolidando ahora: si otro equipo escribió ese mismo campo con un
+    valor distinto y quedó como ganador, el choque se devuelve para la bandeja
+    de conflictos. La edición posterior del mismo puesto no es un conflicto:
+    es su propia corrección.
+
+    Args:
+        tabla: Nombre de la tabla
+        fila_uuid: Identidad global de la fila
+        historial: Eventos completos de la fila, en cualquier orden
+        eventos_pendientes: ``op_id`` que este ciclo consolida
+
+    Returns:
+        Conflictos en la forma del protocolo (vacía si no hubo choques)
+    """
+    ganadoras: dict[str, dict[str, Any]] = {}
+    for evento in ordenar_eventos(historial):
+        if str(evento.get("operacion") or "upsert") == OPERACION_BORRADO:
+            continue
+        for campo, valor in payload_de(evento).items():
+            ganadoras[campo] = {
+                "valor": valor,
+                "op_id": str(evento.get("op_id") or ""),
+                "dispositivo": str(evento.get("dispositivo") or ""),
+                "momento": _momento_de(evento),
+            }
+
+    if not eventos_pendientes:
+        return []
+
+    conflictos: list[dict] = []
+    vistos: set[tuple[str, str]] = set()
+    for evento in ordenar_eventos(historial):
+        op_id = str(evento.get("op_id") or "")
+        if op_id not in eventos_pendientes:
+            continue
+        if str(evento.get("operacion") or "upsert") == OPERACION_BORRADO:
+            continue
+        dispositivo = str(evento.get("dispositivo") or "")
+        for campo, valor in payload_de(evento).items():
+            ganadora = ganadoras.get(campo)
+            if ganadora is None or ganadora["op_id"] == op_id:
+                continue
+            if ganadora["dispositivo"] == dispositivo:
+                continue
+            if _canonico(ganadora["valor"]) == _canonico(valor):
+                continue
+            clave = (campo, op_id)
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            conflictos.append(
+                {
+                    "tabla": tabla,
+                    "fila_uuid": fila_uuid,
+                    "campo": campo,
+                    "valor_local": ganadora["valor"],
+                    "valor_remoto": valor,
+                    "ganador": merge.GANADOR_LOCAL,
+                    "regla": merge.evaluar_reloj(_momento_de(evento), ganadora["momento"]),
+                    "op_local_id": ganadora["op_id"],
+                    "op_remoto_id": op_id,
+                }
+            )
+    return conflictos
 
 
 def _canonico(datos: Any) -> str:

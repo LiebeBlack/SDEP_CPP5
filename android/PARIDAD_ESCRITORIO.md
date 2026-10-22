@@ -19,8 +19,10 @@ editar, borrar, acción de negocio, permisos y estado offline).
 | Cola de salida transaccional, cursor, diferidas, blobs | **Hecho** | `RegistroRepositorio`, `SincronizacionRepositorio` |
 | Autenticación contra el nodo central, roles y permisos | **Hecho** | `AutenticacionRepositorio`, `dominio/PoliticaRoles` |
 | Compatibilidad columna a columna con los modelos del escritorio | **Hecho** | [COMPATIBILIDAD.md](COMPATIBILIDAD.md) |
-| Pantallas | **Solo 4** | registros, login, ajustes, conflictos |
-| Resto de módulos (empleados, documentos, incidencias, contratos, nómina, académico, administración) | **Falta la interfaz** | — |
+| Formulario dinámico por esquema (`PRAGMA table_info`) | **Hecho** | `datos/local/EsquemaTabla.kt` |
+| Escritura genérica con identidad, marcas y cola | **Hecho** | `datos/repositorio/TablaRepositorio.kt` |
+| Portada por categorías y listas de tablas académicas | **Hecho** | `ui/inicio`, `ui/tablas`, `ui/formulario` |
+| Panel de control y Configuración del escritorio | **Retirados del teléfono** | decisión de producto |
 
 La app **no necesita un canal nuevo**: las lecturas salen del espejo local y las
 escrituras se encolan en la misma transacción que el dato (offline-first).
@@ -31,15 +33,15 @@ escrituras se encolan en la misma transacción que el dato (offline-first).
 
 | Módulo escritorio | Capacidades que hay que replicar | Datos en el teléfono | Acción autoritativa en el servidor | Falta en Android |
 |---|---|---|---|---|
-| **Panel** | Indicadores (empleados, activos, documentos, incidencias, pagos), avisos de vencimientos, gráficos | Sí (consultas locales) | `GET /consultas/dashboard` | Pantalla + ViewModel |
-| **Empleados** | Listar, buscar, filtrar por tipo, ficha completa, alta, edición, baja lógica, foto, documentos del empleado, exportar | Sí (`empleados`, `documentos`, `blobs`) | — (push) | Todo |
-| **Documentos** | Listar, vencidos/por vencer, alta con archivo, edición, baja, descarga, exportar | Sí (metadatos + blob) | `/archivos/subir`, `/blob/{hash}` | Todo |
-| **Incidencias** | Listar, filtrar por estado, alta con soporte, edición, baja, aprobar, rechazar | Sí | `POST /acciones/incidencias/{id}/aprobar`, `/rechazar` | Todo |
-| **Contratos** | Listar, vigentes/por vencer/vencidos, alta, edición, renovar, terminar, PDF | Sí | `POST /acciones/contratos/{id}/renovar`, `/terminar` | Todo |
-| **Nómina** | Periodos, generar nómina, resumen, detalle por empleado, marcar pagado, recibo y planilla PDF | Sí (`pagos`) | `POST /acciones/nomina/generar`, `/resumen`, `/pagos/{id}/pagado` | Todo |
-| **Configuración** | Usuarios (alta/edición/bloqueo/desbloqueo), auditoría, datos de la institución, preferencias, ver estado de respaldos | Parcial (usuarios **no** se replican) | `/admin/usuarios`, `/consultas/auditoria` | Todo |
-| **Estudiantes** | Listar, buscar, legajo, alta, edición, baja, exportar | Sí | — (push) | Todo |
-| **Calificaciones** | Periodos (abrir/cerrar/reabrir), grados y secciones, matrículas, notas (una o por lote), consolidado, boletín, acta, tokens académicos | Sí (salvo tokens) | `/acciones/academicos/...` | Todo |
+| **Panel** | Indicadores, avisos de vencimientos, gráficos | Sí (consultas locales) | `GET /consultas/dashboard` | **No aplica**: panel del escritorio retirado del menú móvil |
+| **Empleados** | Listar, buscar, ficha completa, alta, edición, baja lógica, documentos del empleado, exportar | Sí (`empleados`, `documentos`, `blobs`) | — (push) | CRUD **hecho**; exportaciones y foto, fase de cierre |
+| **Documentos** | Listar, vencidos/por vencer, alta, edición, baja, descarga | Sí (metadatos + blob) | `/archivos/subir`, `/blob/{hash}` | CRUD de metadatos **hecho**; carga de archivo desde el teléfono, pendiente |
+| **Incidencias** | Listar, filtrar por estado, alta, edición, baja, aprobar, rechazar | Sí | `POST /acciones/incidencias/{id}/aprobar`, `/rechazar` | CRUD **hecho**; aprobar/rechazar siguen en el servidor |
+| **Contratos** | Listar, vencimientos, alta, edición, renovar, terminar, PDF | Sí | `POST /acciones/contratos/{id}/renovar`, `/terminar` | CRUD **hecho**; renovar/terminar/PDF en el servidor |
+| **Nómina** | Registros de pago, detalle por empleado, marcar pagado, recibo y planilla PDF | Sí (`pagos`) | `POST /acciones/nomina/generar`, `/resumen`, `/pagos/{id}/pagado` | Registros editables **hecho**; cálculo, pago y PDF en el servidor |
+| **Configuración** | Usuarios, auditoría, institución, preferencias, respaldos | Parcial (usuarios **no** se replican) | `/admin/usuarios`, `/consultas/auditoria` | **No aplica**: panel del escritorio eliminado del teléfono |
+| **Estudiantes** | Listar, buscar, legajo, alta, edición, baja, exportar | Sí | — (push) | CRUD **hecho**; exportaciones pendientes |
+| **Calificaciones** | Períodos, grados y secciones, matrículas, notas, consolidado, boletín, acta | Sí (salvo tokens) | `/acciones/academicos/...` | CRUD de notas, períodos, grados y matrículas **hecho**; consolidados y actas en el servidor |
 
 ### Lo que no se replica (y por qué)
 
@@ -56,33 +58,42 @@ escrituras se encolan en la misma transacción que el dato (offline-first).
 
 Cada fase termina con el módulo **completo** para los roles que lo usan.
 
-### Estado de esta entrega: lectura de todos los módulos
+### Estado de esta entrega: gestión dinámica de las diez tablas
 
-Entregado en `ui/modulos/`: índice de módulos con la matriz de roles, panel de
-control con cifras y avisos, y para **cada** módulo del escritorio su lista
-(búsqueda y estados) y su ficha completa por secciones.
+La portada (`ui/inicio`) agrupa las soluciones en Personal, Académico,
+Administración y Trabajo de campo. Cada módulo conserva su lista y su ficha; el
+botón **Nuevo** y el lápiz de la ficha abren el formulario dinámico
+(`ui/formulario`), que se construye con las columnas reales de la tabla. La
+baja se hace desde el mismo formulario, con confirmación.
 
 | Módulo | Lista | Ficha | Escritura |
 |---|---|---|---|
-| Panel de control | cifras y avisos | — | no aplica |
-| Empleados | sí | datos personales, contacto, laboral, formación, banco, salud, emergencia | **Hecha** |
-| Documentos | sí, con vencimientos | metadatos, archivo y huella | Pendiente |
-| Incidencias | sí, por estado | solicitud, aprobación, efecto en nómina, soporte | Fase 2 |
-| Contratos | sí, con vencimientos | vigencia, terminación, cláusulas | Fase 2 |
-| Nómina | sí, con pagos pendientes | devengos, deducciones, neto, base de cálculo | Fase 3 |
-| Estudiantes | sí | expediente, representantes, matrículas, notas | Fase 4 |
-| Calificaciones | sí, por grupo | período, grupo, promedio por materia, estudiantes | Fase 4 |
-| Configuración | sí | parámetro completo | Fase 5 |
+| Empleados | sí | completa por secciones | **Hecha** (formulario dedicado de 40 campos) |
+| Documentos | sí, con vencimientos | metadatos, archivo y huella | **Hecha** (metadatos) |
+| Incidencias | sí, por estado | solicitud, aprobación, efecto en nómina, soporte | **Hecha** |
+| Contratos | sí, con vencimientos | vigencia, terminación, cláusulas | **Hecha** |
+| Nómina | sí, con pagos pendientes | devengos, deducciones, neto, base de cálculo | **Hecha** (registros) |
+| Estudiantes | sí | expediente, representantes, matrículas, notas | **Hecha** |
+| Calificaciones | sí, por grupo | período, grupo, promedio por materia, estudiantes | **Hecha** |
+| Períodos, grados y matrículas | sí (`ui/tablas`) | — | **Hecha** |
+| Panel y Configuración | — | — | **No aplica**: retirados del teléfono |
 
-Las fichas leen el espejo local y no escriben: la autoridad sigue siendo el nodo
-central. Con esto la **cobertura de consulta de los datos replicados es total**;
-lo que resta es la escritura y las acciones de negocio, fase por fase.
+El formulario no tiene una copia de los campos: `EsquemaTabla` consulta
+`PRAGMA table_info` y deduce el control (texto, número, fecha, sí/no, lista
+cerrada o selector de registro padre). Si el escritorio agrega una columna y la
+replicación la trae, aparece sola. La validación cubre obligatorios, números,
+fechas, listas y claves foráneas; la unicidad y las reglas de negocio las sigue
+resolviendo la base y el nodo central.
 
-Dos cosas no están y no pueden estar en esta capa: **cuentas de usuario** y
-**auditoría** no se replican (solo existen en el nodo central) y la consulta de
-respaldos del PC no tiene equivalente móvil. La pantalla de Configuración
-muestra los parámetros institucionales replicados y las Fases 5 y 6 cubren el
-resto con llamadas de solo lectura al servidor.
+Las **acciones de negocio** que el escritorio ejecuta contra el servidor
+(aprobar/rechazar incidencias, renovar/terminar contratos, generar nómina,
+abrir/cerrar períodos, emitir tokens) no se reimplementan: el teléfono edita el
+registro y el servidor conserva la autoridad. **Cuentas y auditoría** no se
+replican y su pantalla se retiró con el resto del panel de escritorio.
+
+**Respaldos:** el teléfono no genera copias locales. La base institucional y sus
+respaldos automáticos viven en el nodo central; el teléfono replica el espejo y
+lo restaura desde el servidor cuando hace falta.
 
 ### Fase 0 — Fundación (bloqueante de todo lo demás)
 - `ui/navegacion`: grafo con inicio de sesión ya existente + «cajón» de módulos.
@@ -93,30 +104,35 @@ resto con llamadas de solo lectura al servidor.
 - Formato único de fechas, moneda y cédula.
 
 ### Fase 1 — Personal
-**Empleados entregado**: lista, búsqueda, ficha, alta, edición y baja lógica en
-el teléfono, con la operación de salida escrita en la misma transacción que la
-ficha (cola `operaciones_pendientes` + payload del protocolo).
+**Entregado**: empleados, documentos e incidencias con lista, búsqueda, ficha,
+alta, edición y baja desde el teléfono. Cada escritura guarda la fila y su
+operación de salida en la misma transacción (cola `operaciones_pendientes` +
+payload del protocolo) y pide un ciclo de sincronización inmediato.
 
-Documentos tiene lista y ficha; faltan su alta/edición, el archivo adjunto y la
-descarga desde el nodo central.
+Queda la **carga del archivo** de un documento desde el teléfono y la descarga
+del binario; los metadatos y su huella ya se editan.
 
 ### Fase 2 — Operación laboral
-Incidencias (alta con soporte, aprobar/rechazar con nota) y Contratos
-(alta, renovar, terminar, vencimientos).
+**Entregado**: incidencias y contratos con alta, edición y baja; los
+vencimientos y estados se siguen calculando en el servidor. Aprobar/rechazar
+una incidencia y renovar/terminar un contrato siguen siendo acciones del nodo
+central (el teléfono edita el registro que las origina).
 
 ### Fase 3 — Nómina
-Periodos, generación y resumen contra el servidor, detalle por empleado,
-marcar pagado, descarga de recibo y planilla. **El cálculo no se reimplementa
-en el teléfono**: se pide al servidor, que es la única fuente de verdad del
-dinero.
+**Entregado**: los registros de pago se crean, editan y dan de baja con el
+formulario dinámico. **El cálculo no se reimplementa en el teléfono**: generar
+la nómina, marcar pagado y emitir recibo y planilla se piden al servidor, que
+es la única fuente de verdad del dinero.
 
 ### Fase 4 — Académico
-Estudiantes, periodos, grados, matrículas, notas (individual y por lote),
-consolidado, boletín, acta, cierre/reapertura y tokens académicos.
+**Entregado**: estudiantes, períodos, grados, matrículas y calificaciones se
+administran desde el teléfono (las tres últimas con `ui/tablas`). Consolidados,
+boletines, actas y tokens académicos siguen en el servidor.
 
 ### Fase 5 — Administración
-Usuarios (alta, edición, desbloqueo), auditoría, datos de la institución y
-estado de respaldos (solo consulta).
+**No aplica en el teléfono**: usuarios, auditoría, institución, preferencias y
+respaldos son el panel del escritorio y se retiraron del menú móvil. Los
+respaldos automáticos los ejecuta el nodo central.
 
 ### Fase 6 — Cierre de paridad
 Exportaciones, fotos, accesibilidad, pruebas instrumentadas por módulo y

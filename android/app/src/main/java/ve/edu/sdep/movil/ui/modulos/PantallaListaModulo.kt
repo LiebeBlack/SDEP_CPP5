@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,7 +41,10 @@ import ve.edu.sdep.movil.ui.comun.BarraSuperior
 import ve.edu.sdep.movil.ui.comun.MensajeVacio
 
 /**
- * Lista de un módulo, o panel de control si el módulo es [Modulo.DASHBOARD].
+ * Lista de un módulo con búsqueda.
+ *
+ * El panel de control y la configuración institucional, que son pantallas del
+ * escritorio, se rechazan aquí aunque se llegue por una ruta interna.
  *
  * El acceso se vuelve a comprobar aquí, no solo en el índice: una ruta se
  * puede abrir por enlace interno, y la misma matriz de permisos del escritorio
@@ -61,14 +62,21 @@ fun PantallaListaModulo(
     vistaModelo: ModulosViewModel = hiltViewModel(),
 ) {
     val modulo = Modulo.desde(rutaModulo)
+    val soloEscritorio = modulo == Modulo.DASHBOARD || modulo == Modulo.CONFIGURACION
 
-    if (modulo == null || !sesion.puedeAbrir(modulo)) {
+    if (modulo == null || !sesion.puedeAbrir(modulo) || soloEscritorio) {
         Scaffold(topBar = { BarraSuperior(titulo = "Módulo", alVolver = alVolver) }) { relleno ->
             MensajeVacio(
                 icono = Icons.Filled.Lock,
-                titulo = "Módulo no disponible",
-                detalle = "Su rol (${sesion.etiquetaRol}) no tiene acceso a este módulo. " +
-                    "Si necesita consultarlo, pida al administrador que amplíe sus permisos.",
+                titulo = if (soloEscritorio) "Disponible solo en el escritorio" else "Módulo no disponible",
+                detalle = if (soloEscritorio) {
+                    "El panel de control y la configuración institucional son propias " +
+                        "del software de escritorio. En el teléfono consulte los datos " +
+                        "operativos desde Soluciones."
+                } else {
+                    "Su rol (${sesion.etiquetaRol}) no tiene acceso a este módulo. " +
+                        "Si necesita consultarlo, pida al administrador que amplíe sus permisos."
+                },
                 modificador = Modifier.padding(relleno),
             )
         }
@@ -89,97 +97,15 @@ fun PantallaListaModulo(
             }
         },
     ) { relleno ->
-        if (modulo == Modulo.DASHBOARD) {
-            PanelContenido(
-                catalogo = catalogo,
-                modificador = Modifier
-                    .fillMaxSize()
-                    .padding(relleno),
-                alAbrir = alAbrir,
-            )
-        } else {
-            ContenidoLista(
-                catalogo = catalogo,
-                modulo = modulo,
-                modificador = Modifier
-                    .fillMaxSize()
-                    .padding(relleno),
-                alAbrir = { id -> alAbrir(modulo, id) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun PanelContenido(
-    catalogo: Catalogo,
-    modificador: Modifier,
-    alAbrir: (Modulo, Long) -> Unit,
-) {
-    val indicadores = catalogo.indicadores()
-    val alertas = catalogo.alertas()
-
-    LazyColumn(
-        modifier = modificador,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item {
-            Text(
-                text = "Resumen general",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = "Cifras de la copia de trabajo de este teléfono.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        items(indicadores.chunked(2)) { fila ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                fila.forEach { indicador ->
-                    TarjetaIndicador(indicador, Modifier.weight(1f))
-                }
-                // Una fila impar deja el hueco a la derecha, no estira la tarjeta
-                if (fila.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-
-        item {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Avisos",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = "Vencimientos, incidencias abiertas y pagos sin registrar.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        if (alertas.isEmpty()) {
-            item {
-                MensajeVacio(
-                    icono = Icons.Filled.Inbox,
-                    titulo = "Sin avisos pendientes",
-                    detalle = "No hay documentos vencidos, contratos por vencer, " +
-                        "incidencias abiertas ni pagos pendientes.",
-                )
-            }
-        } else {
-            items(alertas) { alerta ->
-                TarjetaFila(fila = alerta.fila, alAbrir = {
-                    alAbrir(alerta.modulo, alerta.fila.id)
-                })
-            }
-        }
+        ContenidoLista(
+            catalogo = catalogo,
+            modulo = modulo,
+            puedeEditar = sesion.puede(Permiso.EDITAR),
+            modificador = Modifier
+                .fillMaxSize()
+                .padding(relleno),
+            alAbrir = { id -> alAbrir(modulo, id) },
+        )
     }
 }
 
@@ -187,6 +113,7 @@ private fun PanelContenido(
 private fun ContenidoLista(
     catalogo: Catalogo,
     modulo: Modulo,
+    puedeEditar: Boolean,
     modificador: Modifier,
     alAbrir: (Long) -> Unit,
 ) {
@@ -221,7 +148,7 @@ private fun ContenidoLista(
         ) {
             Text(
                 text = if (consulta.isBlank()) {
-                    "$total registro(s) · solo consulta"
+                    "$total registro(s) · " + if (puedeEditar) "puede editar" else "solo consulta"
                 } else {
                     "${filas.size} de $total coincidencia(s)"
                 },

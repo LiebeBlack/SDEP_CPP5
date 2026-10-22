@@ -1022,9 +1022,10 @@ class MainWindow(ctk.CTk):
             settings.set_config_value(CLAVE_SERVIDOR_AUTO, False)
             detener_servidor_embebido()
             try:
-                from sync_agent import detener_agente
-                from sync_agent import config as config_sync
                 from urllib.parse import urlparse
+
+                from sync_agent import config as config_sync
+                from sync_agent import detener_agente
 
                 detener_agente(timeout=3.0)
                 # Si este puesto sincronizaba contra el nodo local, dejarlo
@@ -1113,7 +1114,7 @@ class MainWindow(ctk.CTk):
         Ejecuta el primer método existente del frame actual.
 
         Returns:
-            True si se encontró y ejecutó un método
+            True si se encontró un método y terminó sin error
         """
         frame = self.current_frame
         if frame is None:
@@ -1125,6 +1126,7 @@ class MainWindow(ctk.CTk):
                     metodo()
                 except Exception as e:
                     self.status_label.configure(text=f"Error en atajo: {e}")
+                    return False
                 return True
         return False
 
@@ -1518,8 +1520,11 @@ class MainWindow(ctk.CTk):
 
     def _programar_respaldo_periodico(self):
         """Verifica el respaldo automático y se reprograma cada 30 minutos"""
-        if self.winfo_exists():
-            self._backup_timer = self.after(30 * 60 * 1000, self._programar_respaldo_periodico)
+        try:
+            if self.winfo_exists():
+                self._backup_timer = self.after(30 * 60 * 1000, self._programar_respaldo_periodico)
+        except tk.TclError:
+            logger.debug("La ventana se cerró al programar el respaldo periódico")
         try:
             self._verificar_respaldo_periodico()
         except Exception:

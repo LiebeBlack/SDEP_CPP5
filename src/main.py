@@ -223,12 +223,23 @@ def iniciar_servidor_sincronizacion() -> bool:
     """
     try:
         from sync_agent.servidor_embebido import (
+            CLAVE_SERVIDOR_AUTO,
             ESTADO_ACTIVO,
             iniciar_servidor_embebido,
             preferencia_servidor,
         )
 
-        if preferencia_servidor() is not True:
+        preferencia = preferencia_servidor()
+        if preferencia is None:
+            # Instalación nueva: el nodo central se abre solo. El teléfono no
+            # tiene configuración manual y necesita encontrarlo apenas arranca
+            # el sistema, incluso antes de que alguien inicie sesión aquí.
+            preferencia = True
+            from src.config import settings as _settings
+
+            _settings.set_config_value(CLAVE_SERVIDOR_AUTO, True)
+            logger.info("Nodo central activado por primera vez en este equipo")
+        if preferencia is not True:
             return False
         estado = iniciar_servidor_embebido(esperar=True)
         if estado.get("estado") == ESTADO_ACTIVO:
@@ -269,6 +280,27 @@ def iniciar_sincronizacion():
                 "; ".join(problemas) if problemas else "deshabilitada en la configuración",
             )
             return False
+
+        from urllib.parse import urlparse
+
+        # Si el destino es el nodo central de este mismo equipo y ese nodo no
+        # está activo (el usuario lo detuvo desde la bandeja), arrancar el
+        # agente solo produciría un fallo de conexión cada 30 segundos.
+        if urlparse(config.url_servidor).hostname in ("127.0.0.1", "localhost", "::1"):
+            from sync_agent.servidor_embebido import (
+                ESTADO_DETENIDO,
+                ESTADO_ERROR,
+                estado_servidor_embebido,
+            )
+
+            estado_local = estado_servidor_embebido().get("estado")
+            # ``ocupado`` significa que otra instancia ya está sirviendo en el
+            # puerto: ese nodo sí responde y el agente puede usarlo.
+            if estado_local in (ESTADO_DETENIDO, ESTADO_ERROR):
+                logger.info(
+                    "Sincronización local omitida: el nodo central de este equipo está detenido"
+                )
+                return False
 
         from src.config import db_config
 

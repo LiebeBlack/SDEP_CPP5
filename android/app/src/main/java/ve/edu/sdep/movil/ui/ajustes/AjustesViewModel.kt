@@ -13,27 +13,29 @@ import kotlinx.coroutines.withContext
 import ve.edu.sdep.movil.datos.local.dao.ConflictoDao
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
 import ve.edu.sdep.movil.datos.repositorio.AutenticacionRepositorio
+import ve.edu.sdep.movil.datos.repositorio.ConectorNodo
 import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SincronizacionRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Resultado
-import ve.edu.sdep.movil.dominio.modelo.Rol
 import ve.edu.sdep.movil.sincronizacion.ProgramadorSync
 import javax.inject.Inject
 
 data class EstadoAjustes(
     val cargando: Boolean = true,
-    val url: String = "",
-    val equipo: String = "",
-    val token: String = "",
+    /** Hay vinculación completa con el sistema de escritorio */
+    val conectado: Boolean = false,
+    /** Se está buscando de nuevo el escritorio */
+    val redescubriendo: Boolean = false,
+    val servidor: String? = null,
+    val urlServidor: String = "",
+    val versionProtocolo: String? = null,
     val activa: Boolean = true,
     val ocupado: Boolean = false,
     val probando: Boolean = false,
     val sincronizando: Boolean = false,
     val mensaje: String? = null,
     val esError: Boolean = false,
-    val servidor: String? = null,
-    val versionProtocolo: String? = null,
     val desfaseSegundos: Long? = null,
     val pendientes: Int = 0,
     val conflictos: Int = 0,
@@ -45,14 +47,14 @@ data class EstadoAjustes(
 /**
  * Estado de la pantalla de ajustes.
  *
- * Reúne la configuración del nodo central, los contadores de la cola, la lista
- * de cuentas y la comodidad biométrica. Las escrituras se hacen en un hilo de
- * entrada/salida (la bóveda cifrada toca el Keystore) y el resultado se refleja
- * en el mismo flujo que lee la pantalla.
+ * No hay dirección, equipo ni token editables: la vinculación con el escritorio
+ * es automática. Aquí solo se muestra su estado, se puede volver a buscar el
+ * equipo, activar o desactivar el envío automático y revisar la cola.
  */
 @HiltViewModel
 class AjustesViewModel @Inject constructor(
     private val configuracion: ConfiguracionRepositorio,
+    private val conector: ConectorNodo,
     private val sincronizacion: SincronizacionRepositorio,
     private val autenticacion: AutenticacionRepositorio,
     private val sesionRepositorio: SesionRepositorio,
@@ -71,13 +73,13 @@ class AjustesViewModel @Inject constructor(
             _estado.update {
                 it.copy(
                     cargando = false,
-                    url = config.url,
-                    equipo = config.equipo,
-                    token = config.token,
-                    activa = config.activa,
+                    conectado = config.completa,
+                    urlServidor = config.url,
+                    activa = if (config.completa) config.activa else true,
                     biometriaActiva = biometria,
                 )
             }
+            if (!config.completa) redescubrir()
         }
 
         viewModelScope.launch {
@@ -107,56 +109,79 @@ class AjustesViewModel @Inject constructor(
         }
     }
 
-    fun cambiarUrl(valor: String) = _estado.update { it.copy(url = valor) }
-
-    fun cambiarEquipo(valor: String) = _estado.update { it.copy(equipo = valor) }
-
-    fun cambiarToken(valor: String) = _estado.update { it.copy(token = valor) }
-
-    fun cambiarActiva(valor: Boolean) = _estado.update { it.copy(activa = valor) }
-
     fun limpiarMensaje() = _estado.update { it.copy(mensaje = null) }
 
     fun registrarMensaje(mensaje: String, esError: Boolean = false) =
         _estado.update { it.copy(mensaje = mensaje, esError = esError) }
 
-    /** Guarda la configuración y reprograma (o cancela) el trabajo periódico */
-    fun guardar() {
-        val actual = _estado.value
-        if (actual.ocupado) return
+    /**
+     * Vuelve a emparejar el teléfono, sin pedir la dirección ni el token.
+     *
+     * Se usa cuando el escritorio cambió de IP, se reinstaló o el token fue
+     * revocado en él. Si la dirección actual ya no responde, el conector hace
+     * el descubrimiento completo por difusión y subred.
+     */
+    fun redescubrir() {
+        if (_estado.value.redescubriendo) return
         viewModelScope.launch {
-            _estado.update { it.copy(ocupado = true) }
-            val guardado = configuracion.guardar(
-                url = actual.url,
-                equipo = actual.equipo,
-                token = actual.token,
-                activa = actual.activa,
-                periodoMinutos = configuracion.periodoMinutos,
-            )
+            _estado.update { it.copy(redescubriendo = true, esError = false, mensaje = null) }
+            when (val resultado = conector.revincular()) {
+                is Resultado.Exito -> {
+                    val config = resultado.valor
+                    withContext(Dispatchers.IO) {
+                        if (config.activa) programador.programar(configuracion.periodoMinutos)
+                    }
+                    _estado.update {
+                        it.copy(
+                            redescubriendo = false,
+                            conectado = true,
+                            urlServidor = config.url,
+                            activa = config.activa,
+                            mensaje = "Teléfono vinculado con el sistema de escritorio.",
+                            esError = false,
+                        )
+                    }
+                }
+
+                is Resultado.Fallo -> _estado.update {
+                    it.copy(
+                        redescubriendo = false,
+                        conectado = false,
+                        mensaje = resultado.mensaje,
+                        esError = true,
+                    )
+                }
+            }
+        }
+    }
+
+    /** Activa o desactiva el envío automático de inmediato (sin botón Guardar) */
+    fun cambiarActiva(valor: Boolean) {
+        val anterior = _estado.value.activa
+        if (anterior == valor) return
+        viewModelScope.launch {
+            _estado.update { it.copy(activa = valor) }
+            val guardado = configuracion.cambiarActiva(valor)
             if (!guardado) {
                 _estado.update {
                     it.copy(
-                        ocupado = false,
-                        mensaje = "No se pudo guardar de forma segura. Revise el almacenamiento del teléfono.",
+                        activa = anterior,
+                        mensaje = "No se pudo guardar la preferencia de sincronización.",
                         esError = true,
                     )
                 }
                 return@launch
             }
-
-            val config = configuracion.actual()
             withContext(Dispatchers.IO) {
-                if (config.activa && config.completa) {
-                    programador.programar(configuracion.periodoMinutos)
-                } else {
-                    programador.cancelar()
-                }
+                if (valor) programador.programar(configuracion.periodoMinutos) else programador.cancelar()
             }
-
             _estado.update {
                 it.copy(
-                    ocupado = false,
-                    mensaje = "Configuración guardada.",
+                    mensaje = if (valor) {
+                        "Sincronización automática activada."
+                    } else {
+                        "Sincronización automática desactivada."
+                    },
                     esError = false,
                 )
             }
@@ -168,6 +193,20 @@ class AjustesViewModel @Inject constructor(
         if (_estado.value.probando) return
         viewModelScope.launch {
             _estado.update { it.copy(probando = true) }
+            if (!_estado.value.conectado) {
+                when (val conexion = conector.asegurarConexion(forzar = true)) {
+                    is Resultado.Exito -> _estado.update {
+                        it.copy(conectado = true, urlServidor = conexion.valor.url)
+                    }
+
+                    is Resultado.Fallo -> {
+                        _estado.update {
+                            it.copy(probando = false, mensaje = conexion.mensaje, esError = true)
+                        }
+                        return@launch
+                    }
+                }
+            }
             when (val resultado = sincronizacion.probarConexion()) {
                 is Resultado.Exito -> {
                     val detalle = resultado.valor
@@ -181,6 +220,7 @@ class AjustesViewModel @Inject constructor(
                     _estado.update {
                         it.copy(
                             probando = false,
+                            conectado = true,
                             mensaje = "Conexión correcta con ${detalle.servidor.ifBlank { "el nodo central" }} " +
                                 "(protocolo ${detalle.versionProtocolo}). $desfase",
                             esError = false,
@@ -199,6 +239,20 @@ class AjustesViewModel @Inject constructor(
         if (_estado.value.sincronizando) return
         viewModelScope.launch {
             _estado.update { it.copy(sincronizando = true) }
+            if (!_estado.value.conectado) {
+                when (val conexion = conector.asegurarConexion(forzar = true)) {
+                    is Resultado.Exito -> _estado.update {
+                        it.copy(conectado = true, urlServidor = conexion.valor.url)
+                    }
+
+                    is Resultado.Fallo -> {
+                        _estado.update {
+                            it.copy(sincronizando = false, mensaje = conexion.mensaje, esError = true)
+                        }
+                        return@launch
+                    }
+                }
+            }
             when (val resultado = sincronizacion.sincronizar()) {
                 is Resultado.Exito -> {
                     val resumen = resultado.valor

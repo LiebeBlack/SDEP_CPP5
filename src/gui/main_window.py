@@ -154,6 +154,16 @@ class MainWindow(ctk.CTk):
         self._bandeja_estado_previo: str | None = None
         self._bandeja_menu_previo: list[Any] | None = None
         self._bandeja_reiniciar_sync = False
+        # Vigilancia del nodo central: si el servicio se cae (error de disco,
+        # cierre inesperado del hilo), se vuelve a levantar sin que el usuario
+        # tenga que hacer nada. No reintenta cuando el usuario lo detuvo desde
+        # la bandeja (allí la preferencia queda en False).
+        self._servidor_timer: str | None = None
+        self._servidor_reintentos = 0
+        # Solo la ventana abierta por el arranque normal gestiona el nodo
+        # central; las ventanas creadas sin esa responsabilidad (pruebas,
+        # herramientas) no deben abrir puertos por su cuenta.
+        self._vigilancia_servidor_activa = preparar_servidor
 
         # Resultados del respaldo automático: el hilo de respaldo encola el
         # evento y este hilo principal muestra el aviso al usuario.
@@ -216,6 +226,7 @@ class MainWindow(ctk.CTk):
             # Debe ejecutarse ANTES de vincular el agente: si el servidor queda
             # activo, el agente lee la configuración del puesto ya escrita.
             self._preparar_servidor_inicial()
+        self._programar_vigilancia_servidor()
         self._programar_respaldo_periodico()
         self._vincular_sincronizacion()
         self._procesar_eventos_hilo()
@@ -340,6 +351,13 @@ class MainWindow(ctk.CTk):
                 font=ctk.CTkFont(size=13),
                 height=38,
                 anchor="w",
+                # Sin colores explícitos, CustomTkinter usaba el azul de su
+                # tema por defecto sobre la paleta verde institucional y el
+                # botón desentonaba en ambos modos. El acento se reserva para
+                # la acción principal; aquí el fondo es el del panel.
+                fg_color="transparent",
+                hover_color=COLORES["panel_hover"],
+                text_color=COLORES["texto"],
                 command=lambda fn=frame_name: self._show_frame(fn),
             )
             btn.pack(pady=2, padx=10, fill="x")
@@ -655,10 +673,13 @@ class MainWindow(ctk.CTk):
     # ------------------------------------------------------------------
     def _preparar_servidor_inicial(self) -> None:
         """
-        Pregunta una sola vez si este equipo será el nodo central y lo arranca
+        Arranca el nodo central que el teléfono necesita para conectarse
 
-        La respuesta se recuerda en config.json. Si el equipo ya fue designado
-        en un arranque anterior, el servidor se inicia sin volver a preguntar.
+        En una instalación nueva el servidor se activa por sí solo: el teléfono
+        no tiene ninguna pantalla de configuración y debe encontrar el sistema
+        apenas se abra la aplicación. El usuario puede detenerlo desde el icono
+        de la bandeja; esa decisión queda guardada en config.json y se respeta
+        en los arranques siguientes.
         """
         try:
             from sync_agent.servidor_embebido import (
@@ -674,17 +695,12 @@ class MainWindow(ctk.CTk):
         try:
             preferencia = preferencia_servidor()
             if preferencia is None:
-                preferencia = bool(
-                    messagebox.askyesno(
-                        "Servidor para el teléfono",
-                        "¿Este equipo será el servidor central de la red?\n\n"
-                        "Al abrir el sistema se iniciará el servidor y el teléfono "
-                        "podrá conectarse por WiFi con su usuario y contraseña.\n\n"
-                        "Después podrá iniciarlo o detenerlo desde el icono de la "
-                        "bandeja del sistema.",
-                    )
-                )
-                settings.set_config_value(CLAVE_SERVIDOR_AUTO, preferencia)
+                # Primera vez: el nodo central es el comportamiento normal.
+                # Se informa en la barra de estado y en la bandeja, sin pedir
+                # al usuario que configure nada.
+                preferencia = True
+                settings.set_config_value(CLAVE_SERVIDOR_AUTO, True)
+                logger.info("Nodo central activado por primera vez en este equipo")
 
             if preferencia:
                 estado = iniciar_servidor_embebido(esperar=True)
@@ -692,8 +708,77 @@ class MainWindow(ctk.CTk):
                     self.status_label.configure(
                         text=f"Servidor para el teléfono: {estado.get('url_red')}"
                     )
+                else:
+                    self.status_label.configure(
+                        text=(
+                            "Servidor para el teléfono no disponible: "
+                            f"{estado.get('error') or estado.get('estado')}"
+                        )
+                    )
+            else:
+                self.status_label.configure(
+                    text="Servidor para el teléfono detenido (se inicia desde la bandeja)"
+                )
         except Exception:
             logger.warning("No se pudo preparar el servidor central", exc_info=True)
+
+    # ------------------------------------------------------------------
+    # Vigilancia del nodo central
+    # ------------------------------------------------------------------
+    def _programar_vigilancia_servidor(self) -> None:
+        """Revisa el estado del nodo central cada 20 segundos"""
+        if not self._vigilancia_servidor_activa:
+            return
+        if self._servidor_timer is not None:
+            try:
+                self.after_cancel(self._servidor_timer)
+            except Exception:
+                logger.debug("operación de interfaz ignorada", exc_info=True)
+        self._servidor_timer = None
+        try:
+            if self.winfo_exists():
+                self._servidor_timer = self.after(20_000, self._vigilar_servidor)
+        except tk.TclError:
+            logger.debug("La ventana se cerró al programar la vigilancia del servidor")
+
+    def _vigilar_servidor(self) -> None:
+        """Vuelve a levantar el servicio si se cayó y el usuario lo quiere activo"""
+        self._servidor_timer = None
+        try:
+            from sync_agent.servidor_embebido import (
+                ESTADO_ACTIVO,
+                ESTADO_DETENIDO,
+                ESTADO_ERROR,
+                ESTADO_OCUPADO,
+                estado_servidor_embebido,
+                iniciar_servidor_embebido,
+                preferencia_servidor,
+            )
+
+            estado = estado_servidor_embebido()
+            clave = str(estado.get("estado") or ESTADO_DETENIDO)
+            if clave == ESTADO_ACTIVO:
+                self._servidor_reintentos = 0
+            elif clave == ESTADO_OCUPADO:
+                # Hay otro servicio en el puerto (probablemente otra instancia
+                # de la aplicación): reiniciar solo repetiría el mismo error.
+                self._servidor_reintentos = 0
+            elif clave in (ESTADO_DETENIDO, ESTADO_ERROR):
+                if preferencia_servidor() is True and self._servidor_reintentos < 5:
+                    self._servidor_reintentos += 1
+                    logger.warning(
+                        "El nodo central está %s; reintentando arranque (%s/5)",
+                        clave,
+                        self._servidor_reintentos,
+                    )
+                    iniciar_servidor_embebido(esperar=False)
+                    # La configuración del puesto y el agente se reenganchan
+                    # cuando el servicio vuelva a estar activo.
+                    self._bandeja_reiniciar_sync = True
+        except Exception:
+            logger.debug("Vigilancia del servidor omitida", exc_info=True)
+        finally:
+            self._programar_vigilancia_servidor()
 
     def iniciar_bandeja_servidor(self) -> None:
         """Muestra el estado del servidor en el área de notificación (Windows)"""
@@ -901,8 +986,11 @@ class MainWindow(ctk.CTk):
         messagebox.showinfo(
             "Datos de conexión",
             "En el teléfono (SDEP Móvil):\n"
-            f"1. Dirección del servidor: {url}\n"
-            "2. Ingrese con el mismo usuario y contraseña de esta computadora.\n\n"
+            "1. Conéctelo a la misma red Wi-Fi que este equipo.\n"
+            "2. Abra la aplicación: encuentra este servidor sola, sin escribir "
+            "dirección ni token.\n"
+            "3. Ingrese con el mismo usuario y contraseña de esta computadora.\n\n"
+            f"Dirección del nodo (solo para diagnóstico): {url}\n\n"
             "El nodo central copia las cuentas de este equipo que aún no existan "
             "allí; las demás conservan su clave y las faltantes usan las iniciales.",
         )
@@ -917,6 +1005,7 @@ class MainWindow(ctk.CTk):
 
             settings.set_config_value(CLAVE_SERVIDOR_AUTO, True)
             self._bandeja_reiniciar_sync = True
+            self._servidor_reintentos = 0
             iniciar_servidor_embebido(esperar=False)
             self.status_label.configure(text="Iniciando servidor para el teléfono…")
         except Exception:
@@ -934,8 +1023,21 @@ class MainWindow(ctk.CTk):
             detener_servidor_embebido()
             try:
                 from sync_agent import detener_agente
+                from sync_agent import config as config_sync
+                from urllib.parse import urlparse
 
                 detener_agente(timeout=3.0)
+                # Si este puesto sincronizaba contra el nodo local, dejarlo
+                # habilitado solo generaría un intento fallido cada 30 s con
+                # el servidor apagado. Al volver a iniciarlo, el nodo escribe
+                # la configuración y lo habilita de nuevo.
+                actual = config_sync.cargar()
+                if urlparse(actual.url_servidor or "").hostname in (
+                    "127.0.0.1",
+                    "localhost",
+                    "::1",
+                ):
+                    config_sync.guardar(habilitado=False)
             except Exception:
                 logger.debug("No se pudo detener el agente al cerrar el servidor", exc_info=True)
             self.status_label.configure(text="Servidor detenido")
@@ -1219,6 +1321,13 @@ class MainWindow(ctk.CTk):
             self.about_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
             self.logout_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
             self.exit_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            # Los botones de módulos también siguen la paleta activa.
+            for boton in self.sidebar_buttons.values():
+                boton.configure(
+                    fg_color="transparent",
+                    hover_color=COLORES["panel_hover"],
+                    text_color=COLORES["texto"],
+                )
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
 
@@ -1350,7 +1459,12 @@ class MainWindow(ctk.CTk):
         # programada viva fallaría contra la sesión de base de datos ya
         # cerrada).
         self._cancelar_respaldo_programado()
-        for atributo in ("_clock_timer", "_eventos_poll_id", "_bandeja_poll_id"):
+        for atributo in (
+            "_clock_timer",
+            "_eventos_poll_id",
+            "_bandeja_poll_id",
+            "_servidor_timer",
+        ):
             identificador = getattr(self, atributo, None)
             if identificador is not None:
                 try:

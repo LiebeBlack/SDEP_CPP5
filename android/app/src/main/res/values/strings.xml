@@ -1,9 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SDEP Móvil</string>
-
-    <!-- Configuración por defecto del servidor -->
-    <string name="default_server_url">http://192.168.1.100:8765</string>
-    <string name="default_device_id"></string>
-    <string name="default_device_token"></string>
 </resources>

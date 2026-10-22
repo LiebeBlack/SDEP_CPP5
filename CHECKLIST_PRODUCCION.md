@@ -15,7 +15,7 @@ cada equipo real.
 - [ ] Equipo Windows 10/11 de 64 bits, con al menos 4 GB de RAM y 500 MB libres.
 - [ ] Sesión de Windows con permisos de administrador (el instalador los exige).
 - [ ] Red **privada** o de dominio; no usar una red pública para el servidor.
-- [ ] Puerto **8765/TCP** libre en el equipo que será servidor.
+- [ ] Puertos **8765/TCP** y **8766/UDP** libres en el equipo que será servidor.
 - [ ] Copia de seguridad de `%LOCALAPPDATA%\SistemaGestionPersonal` si ya existe
       una instalación anterior.
 - [ ] Verificar el instalador descargado:
@@ -31,8 +31,9 @@ cada equipo real.
 - [ ] Confirmar que el instalador:
       - [ ] Instala la aplicación en `C:\Program Files\Sistema de Gestión de Personal`.
       - [ ] Instala la cadena de certificados de LiebeBlack (3 pasos).
-      - [ ] Crea la regla de firewall **SDEP Servidor Sincronizacion** para
-            TCP 8765 en redes privada y de dominio.
+      - [ ] Crea la regla **SDEP Servidor Sincronizacion** para TCP 8765 y la
+            regla **SDEP Descubrimiento Sincronizacion** para UDP 8766, en
+            redes privada y de dominio.
       - [ ] Incluye y programa `SDEP_CPP5_AutoUpdater.exe` (cada 2 días).
       - [ ] Crea el acceso directo del menú Inicio (y el de escritorio si se pidió).
 - [ ] Comprobar la regla de firewall:
@@ -42,8 +43,9 @@ cada equipo real.
 
 ## 3. Primer arranque y servidor para el teléfono
 
+- [ ] Abrir la aplicación: el nodo central arranca solo, sin preguntas, incluso
+      antes de iniciar sesión.
 - [ ] Iniciar sesión con la cuenta administradora.
-- [ ] Responder **Sí** a “¿Este equipo será el servidor central de la red?”.
       - [ ] La barra de estado muestra la URL del servidor.
       - [ ] Aparece el icono en el área de notificación de Windows.
       - [ ] El tooltip del icono indica **Servidor activo** y la URL de red.
@@ -66,7 +68,9 @@ cada equipo real.
 ## 4. Conexión del teléfono
 
 - [ ] Conectar el teléfono a la **misma red WiFi** que el equipo servidor.
-- [ ] En SDEP Móvil, configurar la URL `http://<IP-de-red>:8765`.
+- [ ] Abrir SDEP Móvil: descubre el escritorio solo (UDP 8766 y sondeo de la
+      subred). No hay que escribir dirección, equipo ni token.
+- [ ] Si no aparece, pulsar **Volver a buscar**.
 - [ ] Iniciar sesión con el **mismo usuario y contraseña** usado en el escritorio.
 - [ ] Verificar:
       - [ ] El login responde y el teléfono muestra el panel.

@@ -34,8 +34,8 @@ equipo, y escribe en la tabla `registros_moviles` de la base institucional.
   cola de salida, en la misma transacción.
 - **Sincronización** con el nodo central: envío por lotes, recepción por cursor,
   reintentos con espera creciente (WorkManager) y bandeja de conflictos.
-- **Material 3** con modo claro y oscuro, pantalla de ajustes para emparejar el
-  teléfono y prueba de conexión con detección de desfase de reloj.
+- **Material 3** con modo claro y oscuro, vinculación automática al escritorio
+  y prueba de conexión con detección de desfase de reloj.
 
 ## 2. Requisitos
 
@@ -74,38 +74,30 @@ keytool -genkeypair -v -keystore sdep-movil.jks -alias sdep -keyalg RSA \
 > El proyecto se abre directamente en Android Studio (Giraffe o posterior). La
 > primera sincronización descarga Gradle 8.7 y las dependencias.
 
-## 4. Emparejar el teléfono con el sistema Python
+## 4. Conectar el teléfono con el sistema Python
 
 ### 4.1 En el equipo que hará de nodo central
 
-```bash
-# 1) Servicio de sincronización (deja la tabla registros_moviles creada)
-py -3 -m sync_agent servidor --db sync_central.db --host 0.0.0.0 --puerto 8765
-
-# 2) En otra consola: alta del teléfono como puesto
-py -3 -m sync_agent dispositivos --db sync_central.db --crear "Teléfono Secretaría"
-```
-
-El segundo comando imprime **una sola vez** el identificador del dispositivo y
-el token. Anótelos: en la base solo queda el hash PBKDF2 del token.
+No hay que ejecutar nada a mano. La aplicación de escritorio abre el nodo
+central (puerto 8765/TCP) y su difusión de descubrimiento (8766/UDP) al
+arrancar. El instalador crea las reglas de firewall para redes privada y de
+dominio; si se ejecuta desde el código fuente, hay que permitir esos puertos.
 
 ### 4.2 En el teléfono
 
-1. Primer arranque: cree la cuenta administradora (nombre, usuario, contraseña
-   de al menos 8 caracteres con letras y números).
-2. **Ajustes → Nodo central**: escriba la dirección (`http://192.168.1.10:8765`),
-   el identificador del equipo y el token; active «Sincronizar este equipo» y
-   guarde.
+1. Abra SDEP Móvil en la misma Wi-Fi que el escritorio.
+2. Escriba su usuario y contraseña de la institución. **No hay nada que
+   configurar**: la app descubre el escritorio por difusión UDP y, si la red la
+   bloquea, sondea la subred; después pide el alta como puesto y guarda el
+   token cifrado.
+3. Si el equipo aún no aparece, pulse **Volver a buscar** en el aviso de la
+   pantalla de ingreso. La app sigue intentando en segundo plano.
+4. Al entrar, los registros creados en el teléfono aparecen en la base central
+   y, desde allí, en todos los puestos de escritorio.
 
-   **Nota**: La app tiene una URL por defecto preconfigurada. Puede usarla
-   como punto de partida y solo cambiar la IP si es necesario. El identificador
-   del equipo y el token deben ser proporcionados por el administrador del
-   servidor.
-
-3. Pulse **Probar conexión**: debe responder con
-   `nodo-central-sincronizacion · protocolo 2`.
-4. Pulse **Sincronizar ahora**. Los registros creados en el teléfono aparecen en
-   la base central y, desde allí, en todos los puestos de escritorio.
+> Si el escritorio se reinstala o cambia de IP, **Ajustes → Sistema de
+> escritorio → Buscar de nuevo** repite el descubrimiento. La app también se
+> reempareja sola cuando el nodo rechaza el token del equipo.
 
 ### 4.3 Comprobar del lado Python
 
@@ -264,9 +256,10 @@ natural, mezcla por campo, borrado lógico e idempotencia.
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
-| «Sin conexión con el nodo central» | Servicio apagado, IP o puerto incorrectos, teléfono en otra red | Probar conexión desde Ajustes; revisar el puerto 8765 |
-| «El token no es válido o fue revocado» | Token mal copiado o puesto revocado | Volver a dar de alta el teléfono y pegar el token nuevo |
-| «La dirección no corresponde al nodo central (404)» | URL con ruta o puerto equivocados | Usar `http://IP:8765`, sin `/api` |
+| «No se encontró el sistema de escritorio» | Servicio apagado o teléfono en otra red | Abrir la aplicación de escritorio; pulsar «Volver a buscar» |
+| «Sin conexión con el nodo central» | El equipo cambió de IP o se cerró el servicio | «Buscar de nuevo» en Ajustes; la app se reempareja sola |
+| «El token no es válido o fue revocado» | El nodo se reinstaló o el puesto fue revocado | Se renueva automáticamente; si persiste, «Buscar de nuevo» |
+| «La dirección no corresponde al nodo central (404)» | Un servicio ajeno ocupa el puerto 8765 | Liberar el puerto; la app descarta hosts que no se identifican |
 | Aviso de reloj desfasado | Hora del teléfono muy adelantada | Activar hora automática; un reloj adelantado gana conflictos |
-| Cambios que no llegan | Sincronización desactivada en Ajustes | Activar el interruptor y guardar |
+| Cambios que no llegan | Sincronización desactivada en Ajustes | Activar el interruptor (se guarda al instante) |
 | Conflictos que se acumulan | Dos equipos editaron el mismo campo | Revisarlos y corregir el registro |

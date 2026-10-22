@@ -57,8 +57,8 @@ class AutenticacionRepositorio @Inject constructor(
         val config = configuracionRepositorio.cargar()
         if (!config.completa) {
             return@withContext Resultado.Fallo(
-                "Este teléfono todavía no está vinculado al nodo central. " +
-                    "Complete la dirección, el equipo y el token antes de entrar.",
+                "Este teléfono todavía no encontró el sistema de escritorio. " +
+                    "Compruebe que esté abierto y en la misma Wi-Fi, y reintente.",
             )
         }
 
@@ -125,7 +125,8 @@ class AutenticacionRepositorio @Inject constructor(
         val config = configuracionRepositorio.cargar()
         if (!config.completa) {
             return@withContext Resultado.Fallo(
-                "Este teléfono todavía no está vinculado al nodo central.",
+                "Este teléfono todavía no encontró el sistema de escritorio. " +
+                    "Entre con su contraseña cuando esté disponible.",
             )
         }
 
@@ -219,7 +220,9 @@ class AutenticacionRepositorio @Inject constructor(
 
             val config = configuracionRepositorio.cargar()
             if (!config.completa) {
-                return@withContext Resultado.Fallo("No hay conexión configurada con el nodo central.")
+                return@withContext Resultado.Fallo(
+                    "Sin vinculación con el sistema de escritorio. Busque el equipo de nuevo.",
+                )
             }
 
             try {

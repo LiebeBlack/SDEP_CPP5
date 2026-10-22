@@ -184,6 +184,11 @@ Filename: "certutil.exe"; Parameters: "-addstore -f CA ""{tmp}\cert_03.cer"""; S
 ; de la red puedan conectarse sin configurar el firewall a mano. Se limita a
 ; las redes privada y de dominio: en una red pública el puerto sigue cerrado.
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""SDEP Servidor Sincronizacion"" dir=in action=allow protocol=TCP localport=8765 profile=private,domain"; StatusMsg: "Abriendo el puerto 8765 para el teléfono..."; Flags: runhidden waituntilterminated
+; La difusión UDP 8766 es la que permite que el teléfono encuentre el nodo
+; sin escribir la IP. Sin esta regla el respaldo por sondeo de subred sigue
+; funcionando, pero la conexión tarda más y algunos puntos de acceso la
+; bloquean. Igual que la anterior, solo en redes privada y de dominio.
+Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""SDEP Descubrimiento Sincronizacion"" dir=in action=allow protocol=UDP localport=8766 profile=private,domain"; StatusMsg: "Abriendo el descubrimiento automático para el teléfono..."; Flags: runhidden waituntilterminated
 ; Programa la comprobación de actualizaciones cada 2 días en el
 ; Programador de tareas de Windows. Sin skipifsilent: también se
 ; ejecuta en las instalaciones silenciosas del actualizador.
@@ -201,6 +206,7 @@ Filename: "{app}\SDEP_CPP5_AutoUpdater.exe"; Parameters: "--unregister"; Flags: 
 #endif
 ; Retira la regla de firewall del nodo central.
 Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SDEP Servidor Sincronizacion"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SDEP Descubrimiento Sincronizacion"""; Flags: runhidden
 
 [UninstallDelete]
 ; Elimina la carpeta de datos creada por la versión portable antigua

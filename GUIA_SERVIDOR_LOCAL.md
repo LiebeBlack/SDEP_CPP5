@@ -363,13 +363,14 @@ py -3 -m sync_agent sesiones --db sqlite:///sync_central.db --revocar-usuario ad
 
 ## Configuración de Firewall (Importante para Red Local)
 
-Para que otros dispositivos en la red puedan conectarse al servidor, el firewall debe permitir conexiones en el puerto 8765.
+Para que otros dispositivos en la red puedan conectarse al servidor, el firewall debe permitir el puerto 8765/TCP y el 8766/UDP (descubrimiento automático del teléfono).
 
 ### Windows
 
 ```powershell
-# Permitir conexiones entrantes en el puerto 8765
+# Permitir conexiones entrantes en el puerto 8765 y el descubrimiento UDP
 New-NetFirewallRule -DisplayName "SDEP Servidor Sincronización" -Direction Inbound -LocalPort 8765 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "SDEP Descubrimiento Sincronización" -Direction Inbound -LocalPort 8766 -Protocol UDP -Action Allow
 ```
 
 O desde la interfaz gráfica:
@@ -383,6 +384,7 @@ O desde la interfaz gráfica:
 
 ```bash
 sudo ufw allow 8765/tcp
+sudo ufw allow 8766/udp
 sudo ufw reload
 ```
 
@@ -390,6 +392,7 @@ sudo ufw reload
 
 ```bash
 sudo firewall-cmd --permanent --add-port=8765/tcp
+sudo firewall-cmd --permanent --add-port=8766/udp
 sudo firewall-cmd --reload
 ```
 

@@ -71,11 +71,15 @@ def aplicar_modo_apariencia(modo: str = "Light") -> None:
     # de inicio por defecto) en lugar de romper la configuración visual.
     modo = modo if modo in ("Dark", "Light", "System") else "Light"
     ctk.set_appearance_mode(modo)
-    if modo == "Light":
+    # Con "System" el modo real lo decide el sistema operativo: se pregunta a
+    # CustomTkinter después de aplicarlo en lugar de asumir oscuro. Antes, un
+    # equipo con Windows en modo claro y la preferencia "System" recibía la
+    # paleta oscura mientras los controles nativos se pintaban claros, y la
+    # interfaz quedaba con mitades de dos temas.
+    modo_efectivo = ctk.get_appearance_mode()
+    if modo_efectivo == "Light":
         paleta = PALETA_CLARA
     else:
-        # "Dark" y "System" usan la paleta oscura (la interfaz está
-        # diseñada sobre esta; el tema claro es una alternativa explícita)
         paleta = PALETA_OSCURA
     COLORES.clear()
     COLORES.update(paleta)

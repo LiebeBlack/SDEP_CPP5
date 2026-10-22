@@ -10,13 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -31,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,11 +60,15 @@ import ve.edu.sdep.movil.datos.seguridad.AutenticadorBiometrico
 /**
  * Puerta de entrada.
  *
- * Si el teléfono todavía no está vinculado al nodo central, la pantalla pide
- * primero los datos que entrega el administrador (dirección, equipo y token).
- * Con la vinculación lista, el ingreso es con usuario y contraseña de la base
- * institucional, con la opción de desbloquear con huella. La pantalla no
- * navega: cuando la sesión se abre, la raíz de la aplicación cambia sola.
+ * La pantalla no tiene ninguna configuración de red: el teléfono busca el
+ * sistema de escritorio por sí solo (difusión UDP y, si hace falta, sondeo de
+ * la red) y se empareja. Cuando lo encuentra, el ingreso es con el usuario y la
+ * contraseña de la base institucional, las mismas cuentas del escritorio, con
+ * la opción de desbloquear con huella.
+ *
+ * Si el escritorio aún no aparece, se muestra un aviso y un botón para volver a
+ * buscar; nunca campos de IP, equipo o token. La pantalla no navega: cuando la
+ * sesión se abre, la raíz de la aplicación cambia sola.
  */
 @Composable
 fun PantallaLogin(vistaModelo: LoginViewModel = hiltViewModel()) {
@@ -98,28 +106,19 @@ fun PantallaLogin(vistaModelo: LoginViewModel = hiltViewModel()) {
         ) {
             Encabezado()
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
 
-            when {
-                estado.cargando -> Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
+            EstadoConexion(
+                estado = estado,
+                alReintentar = vistaModelo::reintentarConexion,
+            )
 
-                !estado.configCompleta -> FormularioVinculacion(
-                    estado = estado,
-                    alCambiarUrl = vistaModelo::cambiarUrl,
-                    alCambiarEquipo = vistaModelo::cambiarEquipo,
-                    alCambiarToken = vistaModelo::cambiarToken,
-                    alGuardar = vistaModelo::guardarConfiguracion,
-                    alDescubrir = vistaModelo::descubrirYVincular,
-                )
+            Spacer(Modifier.height(20.dp))
 
-                else -> FormularioIngreso(
+            if (estado.cargando) {
+                CircularProgressIndicator()
+            } else {
+                FormularioIngreso(
                     estado = estado,
                     biometriaDisponible = biometriaDisponible,
                     activarBiometria = activarBiometria,
@@ -166,132 +165,81 @@ private fun Encabezado() {
 }
 
 /**
- * Vinculación con el nodo central.
+ * Estado de la vinculación automática.
  *
- * Se muestra UNA sola vez (hasta que los tres datos queden guardados): son los
- * que el administrador entrega al dar de alta el teléfono como puesto más de
- * la intranet.
+ * Nunca expone datos que el usuario deba completar: solo informa si el
+ * escritorio ya está disponible, si se está buscando o si hay que reintentar.
  */
 @Composable
-private fun FormularioVinculacion(
-    estado: EstadoLogin,
-    alCambiarUrl: (String) -> Unit,
-    alCambiarEquipo: (String) -> Unit,
-    alCambiarToken: (String) -> Unit,
-    alGuardar: () -> Unit,
-    alDescubrir: () -> Unit,
-) {
-    var tokenVisible by remember { mutableStateOf(false) }
-
-    Text(
-        text = "Conectarse al sistema de escritorio",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Spacer(Modifier.height(4.dp))
-    Text(
-        text = if (estado.descubriendo) {
-            "Buscando el sistema de escritorio en esta Wi-Fi…"
-        } else {
-            "Este teléfono se conecta al sistema de gestión de personal de la institución."
-        },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-    )
-
-    Spacer(Modifier.height(16.dp))
-
-    // Botón de descubrimiento: mientras busca, se muestra el indicador; si
-    // termina sin encontrar nada, se puede reintentar sin escribir la IP.
-    OutlinedButton(
-        onClick = alDescubrir,
-        enabled = !estado.descubriendo,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp),
-    ) {
-        if (estado.descubriendo) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.size(8.dp))
-            Text("Buscando…")
-        } else {
-            Text("Buscar el sistema automáticamente")
-        }
-    }
-
-    Spacer(Modifier.height(16.dp))
-    HorizontalDivider()
-    Spacer(Modifier.height(16.dp))
-    Text(
-        text = "Escriba los datos a mano solo si no se encontró el equipo:",
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(Modifier.height(12.dp))
-
-    OutlinedTextField(
-        value = estado.url,
-        onValueChange = alCambiarUrl,
-        label = { Text("Dirección del servidor") },
-        placeholder = { Text("http://192.168.1.10:8765") },
-        supportingText = { Text("IP o nombre del equipo y puerto del servicio") },
-        singleLine = true,
-        enabled = !estado.descubriendo,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Uri,
-            imeAction = ImeAction.Next,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(12.dp))
-    OutlinedTextField(
-        value = estado.equipo,
-        onValueChange = alCambiarEquipo,
-        label = { Text("Identificador del equipo") },
-        supportingText = { Text("El mismo que devuelve el alta del puesto") },
-        singleLine = true,
-        enabled = !estado.descubriendo,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(12.dp))
-    OutlinedTextField(
-        value = estado.token,
-        onValueChange = alCambiarToken,
-        label = { Text("Token del equipo") },
-        supportingText = { Text("Se guarda cifrado en este teléfono") },
-        singleLine = true,
-        enabled = !estado.descubriendo,
-        visualTransformation = if (tokenVisible) {
-            VisualTransformation.None
-        } else {
-            PasswordVisualTransformation()
-        },
-        trailingIcon = {
-            IconButton(onClick = { tokenVisible = !tokenVisible }) {
-                Icon(
-                    imageVector = if (tokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                    contentDescription = if (tokenVisible) "Ocultar token" else "Mostrar token",
+private fun EstadoConexion(estado: EstadoLogin, alReintentar: () -> Unit) {
+    when {
+        estado.cargando || estado.conectando -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "Buscando el sistema de escritorio…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        },
-        modifier = Modifier.fillMaxWidth(),
-    )
+        }
 
-    MensajeError(estado.error)
+        !estado.conectado -> {
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        Icon(
+                            imageVector = Icons.Filled.SyncProblem,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = estado.error
+                                ?: "Aún no se encontró el sistema de escritorio en esta red.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
+                    TextButton(
+                        onClick = alReintentar,
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text("Volver a buscar")
+                    }
+                }
+            }
+        }
 
-    Spacer(Modifier.height(20.dp))
-    Button(
-        onClick = alGuardar,
-        enabled = !estado.guardandoConfig && !estado.descubriendo,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp),
-    ) {
-        if (estado.guardandoConfig) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-        } else {
-            Text("Guardar vinculación")
+        else -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Sistema de escritorio disponible",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -320,6 +268,7 @@ private fun FormularioIngreso(
         label = { Text("Usuario") },
         supportingText = { Text("La misma cuenta que usa en el escritorio") },
         singleLine = true,
+        enabled = !estado.ocupado,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Ascii,
             imeAction = ImeAction.Next,
@@ -333,6 +282,7 @@ private fun FormularioIngreso(
         etiqueta = "Contraseña",
         imeAction = ImeAction.Done,
         alEnviar = alEntrar,
+        habilitado = !estado.ocupado,
     )
 
     if (biometriaDisponible && !estado.biometriaGuardada) {
@@ -354,7 +304,9 @@ private fun FormularioIngreso(
         }
     }
 
-    MensajeError(estado.error)
+    // Los fallos de conexión ya se explican en la tarjeta superior; aquí solo
+    // se muestran los del ingreso (usuario, contraseña, cuenta bloqueada).
+    MensajeError(estado.error.takeIf { estado.conectado })
 
     Spacer(Modifier.height(20.dp))
     Button(
@@ -367,7 +319,7 @@ private fun FormularioIngreso(
         if (estado.ocupado) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
-            Text("Entrar")
+            Text(if (estado.conectado) "Entrar" else "Buscar y entrar")
         }
     }
 
@@ -406,6 +358,7 @@ private fun CampoContrasena(
     ayuda: String? = null,
     imeAction: ImeAction,
     alEnviar: () -> Unit = {},
+    habilitado: Boolean = true,
 ) {
     var visible by remember { mutableStateOf(false) }
     OutlinedTextField(
@@ -418,6 +371,7 @@ private fun CampoContrasena(
             null
         },
         singleLine = true,
+        enabled = habilitado,
         visualTransformation = if (visible) {
             VisualTransformation.None
         } else {

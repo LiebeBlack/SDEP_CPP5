@@ -54,6 +54,7 @@ class SincronizacionRepositorio @Inject constructor(
     private val aplicador: AplicadorEspejo,
     private val blobDao: BlobPendienteDao,
     private val configuracionRepositorio: ConfiguracionRepositorio,
+    private val conector: ConectorNodo,
     private val apiFactory: ApiSyncFactory,
 ) {
 
@@ -61,25 +62,49 @@ class SincronizacionRepositorio @Inject constructor(
 
     fun observarEstado(): Flow<EstadoSyncEntity?> = estadoDao.observar()
 
-    /** Envía y recibe. No se llama desde el hilo principal. */
+    /**
+     * Envía y recibe. No se llama desde el hilo principal.
+     *
+     * Si el teléfono aún no está vinculado, intenta la vinculación automática
+     * antes de rendirse. Si el nodo rechaza el token del equipo (401/403)
+     * porque su base se recreó o el puesto fue revocado, vuelve a emparejarse
+     * y repite el ciclo una sola vez: el usuario no tiene que escribir nada.
+     */
     suspend fun sincronizar(): Resultado<ResumenSync> = candado.withLock {
-        val configuracion = configuracionRepositorio.cargar()
+        var configuracion = configuracionRepositorio.cargar()
         if (!configuracion.completa) {
-            return@withLock Resultado.Fallo(
-                "Falta configurar la dirección, el equipo o el token del nodo central.",
-            )
+            when (val conexion = conector.asegurarConexion(forzar = true)) {
+                is Resultado.Exito -> configuracion = conexion.valor
+                is Resultado.Fallo -> return@withLock Resultado.Fallo(
+                    conexion.mensaje,
+                    conexion.causa,
+                    reintentable = true,
+                )
+            }
         }
 
+        val primero = intentarCiclo(configuracion)
+        if (primero is Resultado.Fallo && primero.esTokenRechazado()) {
+            when (val renovada = conector.revincular()) {
+                is Resultado.Exito -> return@withLock intentarCiclo(renovada.valor)
+                is Resultado.Fallo -> return@withLock primero
+            }
+        }
+        primero
+    }
+
+    /** Un ciclo completo con una configuración ya resuelta (puede lanzar) */
+    private suspend fun intentarCiclo(configuracion: ConfiguracionSync): Resultado<ResumenSync> {
         val api = try {
             apiFactory.protocolo(configuracion)
         } catch (error: Exception) {
-            return@withLock Resultado.Fallo(
+            return Resultado.Fallo(
                 "La dirección del servidor no es válida: «${configuracion.url}».",
                 error,
             )
         }
 
-        try {
+        return try {
             // Las diferidas de otros ciclos pueden resolverse ahora que quizá
             // haya llegado su registro padre por otra vía.
             aplicador.reintentarDiferidas()
@@ -102,7 +127,10 @@ class SincronizacionRepositorio @Inject constructor(
             Resultado.Fallo(
                 mensaje,
                 error,
-                reintentable = error.code() == 429 || error.code() >= 500,
+                reintentable = error.code() == 401 ||
+                    error.code() == 403 ||
+                    error.code() == 429 ||
+                    error.code() >= 500,
             )
         } catch (error: IOException) {
             val mensaje = "Sin conexión con el nodo central. Los cambios quedan guardados " +
@@ -121,6 +149,11 @@ class SincronizacionRepositorio @Inject constructor(
         }
     }
 
+    private fun Resultado.Fallo.esTokenRechazado(): Boolean {
+        val codigo = (causa as? retrofit2.HttpException)?.code()
+        return codigo == 401 || codigo == 403
+    }
+
     /**
      * Comprueba el servicio sin enviar ni recibir datos.
      *
@@ -129,9 +162,12 @@ class SincronizacionRepositorio @Inject constructor(
      * conviene detectarlo aquí y no en producción.
      */
     suspend fun probarConexion(): Resultado<DetalleConexion> {
-        val configuracion = configuracionRepositorio.cargar()
+        var configuracion = configuracionRepositorio.cargar()
         if (!configuracion.completa) {
-            return Resultado.Fallo("Complete la dirección, el equipo y el token antes de probar.")
+            when (val conexion = conector.asegurarConexion(forzar = true)) {
+                is Resultado.Exito -> configuracion = conexion.valor
+                is Resultado.Fallo -> return Resultado.Fallo(conexion.mensaje, conexion.causa, true)
+            }
         }
         return try {
             val api = apiFactory.protocolo(configuracion)

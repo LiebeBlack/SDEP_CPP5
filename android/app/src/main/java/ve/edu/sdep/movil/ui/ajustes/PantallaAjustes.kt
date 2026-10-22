@@ -11,33 +11,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,10 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -67,11 +61,10 @@ import ve.edu.sdep.movil.ui.comun.fechaHora
 /**
  * Ajustes del puesto móvil.
  *
- * Aquí se empareja el teléfono con el nodo central (dirección, equipo y token),
- * se revisa qué falta por sincronizar y se gestionan la huella y la contraseña
- * de la cuenta institucional. La configuración vive cifrada en el dispositivo;
- * el token nunca se escribe en un archivo legible ni se envía a nadie más que
- * al propio nodo.
+ * La conexión con el escritorio no se configura aquí: se establece sola y en
+ * esta pantalla solo se ve su estado. Se puede volver a buscar el equipo,
+ * probar la conexión, activar el envío automático y gestionar la huella y la
+ * contraseña de la cuenta institucional.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,14 +137,11 @@ fun PantallaAjustes(
                 alSalir = { confirmarSalida = true },
             )
 
-            TarjetaConexion(
+            TarjetaServidor(
                 estado = estado,
-                alCambiarUrl = vistaModelo::cambiarUrl,
-                alCambiarEquipo = vistaModelo::cambiarEquipo,
-                alCambiarToken = vistaModelo::cambiarToken,
-                alCambiarActiva = vistaModelo::cambiarActiva,
-                alGuardar = vistaModelo::guardar,
+                alRedescubrir = vistaModelo::redescubrir,
                 alProbar = vistaModelo::probarConexion,
+                alCambiarActiva = vistaModelo::cambiarActiva,
             )
 
             TarjetaSincronizacion(
@@ -300,145 +290,66 @@ private fun TarjetaCuenta(
     }
 }
 
+/**
+ * Estado del sistema de escritorio.
+ *
+ * No hay campos editables: el vínculo lo establece la aplicación. Si el
+ * servidor cambió de IP o se reinstaló, «Buscar de nuevo» repite el
+ * descubrimiento y el emparejamiento sin que haya que copiar ningún dato.
+ */
 @Composable
-private fun TarjetaConexion(
+private fun TarjetaServidor(
     estado: EstadoAjustes,
-    alCambiarUrl: (String) -> Unit,
-    alCambiarEquipo: (String) -> Unit,
-    alCambiarToken: (String) -> Unit,
-    alCambiarActiva: (Boolean) -> Unit,
-    alGuardar: () -> Unit,
+    alRedescubrir: () -> Unit,
     alProbar: () -> Unit,
+    alCambiarActiva: (Boolean) -> Unit,
 ) {
-    var tokenVisible by remember { mutableStateOf(false) }
-
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Nodo central", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (estado.conectado) Icons.Filled.CheckCircle else Icons.Filled.SyncProblem,
+                    contentDescription = null,
+                    tint = if (estado.conectado) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Sistema de escritorio", style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = "Datos que entrega el administrador al dar de alta este teléfono " +
-                    "como un puesto más de la intranet.",
+                text = when {
+                    estado.redescubriendo -> "Buscando el sistema de escritorio en esta red…"
+                    estado.conectado -> "Vinculado automáticamente. No hay nada que configurar."
+                    else -> "Aún no se encontró. Compruebe que la aplicación de escritorio " +
+                        "esté abierta y en la misma Wi-Fi."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = estado.url,
-                onValueChange = alCambiarUrl,
-                label = { Text("Dirección del servidor") },
-                placeholder = { Text("http://192.168.1.10:8765") },
-                supportingText = { Text("IP o nombre del equipo y puerto del servicio") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Next,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            OutlinedTextField(
-                value = estado.equipo,
-                onValueChange = alCambiarEquipo,
-                label = { Text("Identificador del equipo") },
-                supportingText = { Text("El mismo que devuelve el alta del puesto") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            OutlinedTextField(
-                value = estado.token,
-                onValueChange = alCambiarToken,
-                label = { Text("Token del equipo") },
-                supportingText = { Text("Se guarda cifrado en este teléfono") },
-                singleLine = true,
-                visualTransformation = if (tokenVisible) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                trailingIcon = {
-                    IconButton(onClick = { tokenVisible = !tokenVisible }) {
-                        Icon(
-                            imageVector = if (tokenVisible) {
-                                Icons.Filled.VisibilityOff
-                            } else {
-                                Icons.Filled.Visibility
-                            },
-                            contentDescription = if (tokenVisible) "Ocultar token" else "Mostrar token",
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Sincronizar este equipo", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        text = "Envío y recepción automáticos cada 15 minutos",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            if (estado.conectado) {
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+                if (estado.urlServidor.isNotBlank()) {
+                    FilaDato("Equipo del sistema", estado.urlServidor)
                 }
-                Switch(checked = estado.activa, onCheckedChange = alCambiarActiva)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Button(
-                onClick = alGuardar,
-                enabled = !estado.ocupado,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (estado.ocupado) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                } else {
-                    Text("Guardar configuración")
+                val servidor = estado.servidor
+                if (!servidor.isNullOrBlank()) {
+                    FilaDato("Servicio", servidor)
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedButton(
-                onClick = alProbar,
-                enabled = !estado.probando,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (estado.probando) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Filled.Sync, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Probar conexión")
+                val version = estado.versionProtocolo
+                if (!version.isNullOrBlank()) {
+                    FilaDato("Protocolo", version)
                 }
-            }
-
-            val servidor = estado.servidor
-            if (!servidor.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "$servidor · protocolo ${estado.versionProtocolo.orEmpty()}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 estado.desfaseSegundos?.let { desfase ->
                     val segundos = kotlin.math.abs(desfase)
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = if (segundos > 60) {
                             "Reloj desfasado ${segundos} s respecto al servidor: corríjalo antes de editar."
@@ -452,6 +363,58 @@ private fun TarjetaConexion(
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Sincronizar este equipo", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "Envío y recepción automáticos cada 15 minutos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = estado.activa,
+                    onCheckedChange = alCambiarActiva,
+                    enabled = estado.conectado,
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = alRedescubrir,
+                enabled = !estado.redescubriendo,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (estado.redescubriendo) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Buscar de nuevo")
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = alProbar,
+                enabled = !estado.probando && !estado.redescubriendo,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (estado.probando) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.Sync, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Probar conexión")
                 }
             }
         }
@@ -629,5 +592,3 @@ private fun FilaDato(etiqueta: String, valor: String) {
         Text(valor, style = MaterialTheme.typography.bodySmall)
     }
 }
-
-

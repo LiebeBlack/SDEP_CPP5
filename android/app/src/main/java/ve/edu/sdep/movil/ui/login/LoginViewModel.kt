@@ -10,31 +10,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ve.edu.sdep.movil.datos.remoto.Descubrimiento
 import ve.edu.sdep.movil.datos.repositorio.AutenticacionRepositorio
-import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
+import ve.edu.sdep.movil.datos.repositorio.ConectorNodo
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import javax.inject.Inject
 
 /**
- * Estado del formulario de ingreso.
+ * Estado de la pantalla de ingreso.
  *
- * Mientras el teléfono no esté vinculado al nodo central no hay nada que
- * autenticar: la pantalla pide primero la dirección, el equipo y el token que
- * entrega el administrador. Una vez guardados, el ingreso es contra la base
- * institucional (las mismas cuentas del escritorio).
+ * No hay dirección, equipo ni token que mostrar: el teléfono encuentra el
+ * sistema de escritorio solo y guarda la vinculación cifrada. La pantalla
+ * únicamente pide usuario y contraseña.
  */
 data class EstadoLogin(
     val cargando: Boolean = true,
     val usuario: String = "",
     val contrasena: String = "",
-    /** Vinculación con el nodo central */
-    val configCompleta: Boolean = false,
-    val url: String = "",
-    val equipo: String = "",
-    val token: String = "",
-    val guardandoConfig: Boolean = false,
-    val descubriendo: Boolean = false,
+    /** Hay vinculación completa con el sistema de escritorio */
+    val conectado: Boolean = false,
+    /** La búsqueda del escritorio está en curso */
+    val conectando: Boolean = false,
     val error: String? = null,
     val ocupado: Boolean = false,
     val biometriaGuardada: Boolean = false,
@@ -43,8 +38,7 @@ data class EstadoLogin(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val autenticacion: AutenticacionRepositorio,
-    private val configuracion: ConfiguracionRepositorio,
-    private val descubrimiento: Descubrimiento,
+    private val conector: ConectorNodo,
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(EstadoLogin())
@@ -52,29 +46,28 @@ class LoginViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val config = withContext(Dispatchers.IO) { configuracion.cargar(forzar = true) }
             val biometria = withContext(Dispatchers.IO) { autenticacion.hayCredencialBiometrica() }
+            // El formulario aparece de inmediato: la búsqueda del escritorio
+            // corre en paralelo y se informa en la franja de estado. Así una
+            // red lenta nunca deja al usuario mirando un indicador sin poder
+            // escribir su usuario.
+            _estado.update {
+                it.copy(cargando = false, conectando = true, biometriaGuardada = biometria)
+            }
+            val config = conector.asegurarConexion()
             _estado.update {
                 it.copy(
-                    cargando = false,
-                    configCompleta = config.completa,
-                    url = config.url,
-                    equipo = config.equipo,
-                    token = config.token,
-                    biometriaGuardada = biometria,
+                    conectado = config is Resultado.Exito,
+                    conectando = false,
+                    error = (config as? Resultado.Fallo)?.mensaje,
                 )
             }
-            // Sin vinculación todavía: se busca el escritorio solo, sin que el
-            // usuario pida nada. Si no aparece, queda el formulario manual.
-            if (!config.completa) descubrirYVincular()
+            // Si no se encontró al primer intento, se sigue intentando en
+            // segundo plano mientras el usuario escribe sus credenciales. La
+            // espera interna del conector evita recorrer la red sin pausa.
+            if (config is Resultado.Fallo) buscarNodoAutomaticamente()
         }
     }
-
-    fun cambiarUrl(valor: String) = _estado.update { it.copy(url = valor, error = null) }
-
-    fun cambiarEquipo(valor: String) = _estado.update { it.copy(equipo = valor, error = null) }
-
-    fun cambiarToken(valor: String) = _estado.update { it.copy(token = valor, error = null) }
 
     fun cambiarUsuario(valor: String) = _estado.update { it.copy(usuario = valor, error = null) }
 
@@ -98,120 +91,120 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Descubre el nodo central en la red, se da de alta y guarda la vinculación.
+     * Vuelve a buscar el sistema de escritorio.
      *
-     * Es el camino sin pasos manuales: el usuario solo espera a que el
-     * teléfono halle el escritorio y, cuando aparece el formulario de ingreso,
-     * entra con su cuenta habitual. Si no hay ningún nodo en la red, se
-     * muestra el formulario manual para escribir los datos a mano.
+     * Es el único «reintento» visible: no pide datos, solo repite el
+     * descubrimiento por si el equipo se encendió después o cambió de IP.
      */
-    fun descubrirYVincular() {
-        if (_estado.value.descubriendo || _estado.value.guardandoConfig) return
+    fun reintentarConexion() {
+        if (_estado.value.conectando) return
         viewModelScope.launch {
-            _estado.update { it.copy(descubriendo = true, error = null) }
-            val vinculo = withContext(Dispatchers.IO) { descubrimiento.descubrir() }
-            if (vinculo == null) {
+            _estado.update { it.copy(conectando = true, error = null, conectado = false) }
+            when (val resultado = conector.asegurarConexion(forzar = true)) {
+                is Resultado.Exito -> _estado.update {
+                    it.copy(conectando = false, conectado = true, error = null)
+                }
+
+                is Resultado.Fallo -> _estado.update {
+                    it.copy(conectando = false, conectado = false, error = resultado.mensaje)
+                }
+            }
+        }
+    }
+
+    /**
+     * Búsqueda silenciosa en segundo plano cuando la primera no encontró nada.
+     *
+     * No bloquea la pantalla ni muestra un formulario: si el escritorio se
+     * abre unos segundos después, el ingreso queda listo sin que el usuario
+     * haga nada.
+     */
+    private fun buscarNodoAutomaticamente() {
+        viewModelScope.launch {
+            repeat(INTENTOS_AUTOMATICOS) {
+                if (_estado.value.conectado) return@launch
+                withContext(Dispatchers.IO) { kotlinx.coroutines.delay(PAUSA_AUTOMATICA_MS) }
+                if (_estado.value.conectado) return@launch
+                _estado.update { it.copy(conectando = true) }
+                // Cada reintento busca de verdad: la espera de 4 s ya separa
+                // los intentos y el usuario ve que la app sigue trabajando.
+                when (val resultado = conector.asegurarConexion(forzar = true)) {
+                    is Resultado.Exito -> {
+                        _estado.update {
+                            it.copy(conectado = true, conectando = false, error = null)
+                        }
+                        return@launch
+                    }
+
+                    is Resultado.Fallo -> _estado.update {
+                        it.copy(conectado = false, conectando = false, error = resultado.mensaje)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Ingreso con usuario y contraseña de la base institucional */
+    fun entrar(activarBiometria: Boolean) {
+        val actual = _estado.value
+        if (actual.ocupado) return
+        if (actual.usuario.isBlank() || actual.contrasena.isEmpty()) {
+            _estado.update { it.copy(error = "Escriba su usuario y su contraseña.") }
+            return
+        }
+        viewModelScope.launch {
+            _estado.update { it.copy(ocupado = true, error = null, conectando = !it.conectado) }
+
+            // Sin vinculación no hay nada que autenticar: se busca el
+            // escritorio en este mismo gesto, sin pedirle datos al usuario.
+            val conexion = conector.asegurarConexion(forzar = true)
+            if (conexion is Resultado.Fallo) {
                 _estado.update {
                     it.copy(
-                        descubriendo = false,
-                        error = "No se encontró el sistema de escritorio en esta red. " +
-                            "Revisé que esté encendido y en la misma Wi-Fi, o escriba los datos a mano.",
+                        ocupado = false,
+                        conectando = false,
+                        conectado = false,
+                        error = conexion.mensaje,
                     )
                 }
                 return@launch
             }
-            val guardado = configuracion.guardar(
-                url = vinculo.url,
-                equipo = vinculo.equipo,
-                token = vinculo.token,
-                activa = true,
-                periodoMinutos = configuracion.periodoMinutos,
+            _estado.update { it.copy(conectado = true, conectando = false) }
+
+            var resultado = autenticacion.entrar(
+                usuario = actual.usuario,
+                contrasena = actual.contrasena,
+                activarBiometria = activarBiometria,
             )
-            if (guardado) {
-                val config = configuracion.actual()
-                _estado.update {
-                    it.copy(
-                        descubriendo = false,
-                        configCompleta = config.completa,
-                        url = config.url,
-                        equipo = config.equipo,
-                        token = config.token,
-                    )
-                }
-            } else {
-                _estado.update {
-                    it.copy(
-                        descubriendo = false,
-                        error = "Se encontró el sistema pero no se pudo guardar de forma segura. " +
-                            "Revise el almacenamiento del teléfono.",
+
+            // Un fallo de red con una vinculación vieja suele significar que el
+            // escritorio cambió de IP. Se renueva la vinculación y se reintenta
+            // una sola vez, sin mostrar formularios.
+            if (resultado is Resultado.Fallo && resultado.reintentable) {
+                val renovada = conector.revincular()
+                if (renovada is Resultado.Exito) {
+                    resultado = autenticacion.entrar(
+                        usuario = actual.usuario,
+                        contrasena = actual.contrasena,
+                        activarBiometria = activarBiometria,
                     )
                 }
             }
-        }
-    }
 
-    /** Guarda la vinculación con el nodo central (dirección, equipo y token) */
-    fun guardarConfiguracion() {
-        val actual = _estado.value
-        if (actual.guardandoConfig) return
-        if (actual.url.isBlank()) {
-            _estado.update { it.copy(error = "Escriba la dirección del nodo central.") }
-            return
-        }
-        viewModelScope.launch {
-            _estado.update { it.copy(guardandoConfig = true, error = null) }
-            val guardado = configuracion.guardar(
-                url = actual.url,
-                equipo = actual.equipo,
-                token = actual.token,
-                activa = true,
-                periodoMinutos = configuracion.periodoMinutos,
-            )
-            if (guardado) {
-                val config = configuracion.actual()
-                _estado.update {
-                    it.copy(
-                        guardandoConfig = false,
-                        configCompleta = config.completa,
-                        url = config.url,
-                        equipo = config.equipo,
-                        token = config.token,
-                    )
-                }
-            } else {
-                _estado.update {
-                    it.copy(
-                        guardandoConfig = false,
-                        error = "No se pudo guardar de forma segura. Revise el almacenamiento del teléfono.",
-                    )
-                }
-            }
-        }
-    }
-
-    /** Ingreso con usuario y contraseña contra el nodo central */
-    fun entrar(activarBiometria: Boolean) {
-        val actual = _estado.value
-        if (actual.ocupado) return
-        viewModelScope.launch {
-            _estado.update { it.copy(ocupado = true, error = null) }
-            when (
-                val resultado = autenticacion.entrar(
-                    usuario = actual.usuario,
-                    contrasena = actual.contrasena,
-                    activarBiometria = activarBiometria,
-                )
-            ) {
+            when (resultado) {
                 is Resultado.Exito -> _estado.update {
                     it.copy(
                         ocupado = false,
+                        conectando = false,
                         contrasena = "",
                         error = null,
                         biometriaGuardada = activarBiometria || it.biometriaGuardada,
                     )
                 }
 
-                is Resultado.Fallo -> _estado.update { it.copy(ocupado = false, error = resultado.mensaje) }
+                is Resultado.Fallo -> _estado.update {
+                    it.copy(ocupado = false, conectando = false, error = resultado.mensaje)
+                }
             }
         }
     }
@@ -221,12 +214,37 @@ class LoginViewModel @Inject constructor(
         if (_estado.value.ocupado) return
         viewModelScope.launch {
             _estado.update { it.copy(ocupado = true, error = null) }
-            when (val resultado = autenticacion.entrarConBiometria()) {
+
+            if (!_estado.value.conectado) {
+                val conexion = conector.asegurarConexion(forzar = true)
+                if (conexion is Resultado.Fallo) {
+                    _estado.update {
+                        it.copy(ocupado = false, error = conexion.mensaje)
+                    }
+                    return@launch
+                }
+                _estado.update { it.copy(conectado = true) }
+            }
+
+            var resultado = autenticacion.entrarConBiometria()
+            if (resultado is Resultado.Fallo && resultado.reintentable) {
+                val renovada = conector.revincular()
+                if (renovada is Resultado.Exito) {
+                    resultado = autenticacion.entrarConBiometria()
+                }
+            }
+
+            when (resultado) {
                 is Resultado.Exito -> _estado.update { it.copy(ocupado = false) }
                 is Resultado.Fallo -> _estado.update {
                     it.copy(ocupado = false, error = resultado.mensaje, biometriaGuardada = false)
                 }
             }
         }
+    }
+
+    private companion object {
+        const val INTENTOS_AUTOMATICOS = 3
+        const val PAUSA_AUTOMATICA_MS = 4_000L
     }
 }

@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from sync_agent.descubrimiento import PUERTO_DESCUBRIMIENTO
 from sync_agent.servidor import ServidorConfig, ServidorSync
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,14 @@ _CODIGOS_PUERTO_OCUPADO = {errno.EADDRINUSE, 10048}
 
 _CANDADO_MODULO = threading.Lock()
 _SERVIDOR: "ServidorEmbebido | None" = None
+
+# Vigilante del proceso: mantiene el nodo activo incluso mientras la aplicación
+# está en la pantalla de inicio de sesión, donde no existe la ventana principal
+# ni su temporizador. No reinicia nada si el usuario lo detuvo desde la
+# bandeja (la preferencia queda en False).
+_VIGILANTE: threading.Thread | None = None
+_VIGILANTE_DETENER = threading.Event()
+_INTERVALO_VIGILANCIA = 30.0
 
 
 def _a_bool(valor: Any, por_defecto: bool = False) -> bool:
@@ -248,6 +257,11 @@ class ServidorEmbebido:
                 dir_blobs=self.directorio / DIRECTORIO_BLOBS,
                 host=self.host,
                 puerto=self.puerto,
+                # En producción el puerto HTTP es fijo (8765) y la difusión
+                # escucha en 8766. Con puerto efímero (pruebas) se desactiva
+                # para no chocar con otra instancia en la misma máquina.
+                puerto_descubrimiento=PUERTO_DESCUBRIMIENTO if self.puerto else 0,
+                nombre_equipo=socket.gethostname(),
             )
             servidor = ServidorSync(config)
             nucleo = servidor.nucleo
@@ -457,6 +471,38 @@ def servidor_embebido_actual() -> ServidorEmbebido | None:
     return _SERVIDOR
 
 
+def _vigilar_servidor() -> None:
+    """Reinicia el nodo si se cayó y el usuario lo mantiene activado"""
+    while not _VIGILANTE_DETENER.wait(_INTERVALO_VIGILANCIA):
+        servidor = _SERVIDOR
+        if servidor is None:
+            continue
+        try:
+            if preferencia_servidor() is not True:
+                continue
+            estado = servidor.estado().get("estado")
+            if estado not in (ESTADO_DETENIDO, ESTADO_ERROR):
+                continue
+            logger.warning("Vigilante: el nodo central está %s; reiniciando", estado)
+            servidor.iniciar(esperar=False)
+        except Exception:
+            logger.warning("Vigilante del nodo central: fallo al reiniciar", exc_info=True)
+
+
+def _asegurar_vigilante() -> None:
+    """Arranca una sola vez el hilo de vigilancia del proceso"""
+    global _VIGILANTE
+    if _VIGILANTE is not None and _VIGILANTE.is_alive():
+        return
+    _VIGILANTE_DETENER.clear()
+    _VIGILANTE = threading.Thread(
+        target=_vigilar_servidor,
+        name="vigilante-servidor-sync",
+        daemon=True,
+    )
+    _VIGILANTE.start()
+
+
 def iniciar_servidor_embebido(
     esperar: bool = False,
     timeout: float = 30.0,
@@ -466,11 +512,18 @@ def iniciar_servidor_embebido(
     with _CANDADO_MODULO:
         if _SERVIDOR is None:
             _SERVIDOR = ServidorEmbebido()
+        _asegurar_vigilante()
     return _SERVIDOR.iniciar(esperar=esperar, timeout=timeout)
 
 
 def detener_servidor_embebido(timeout: float = 8.0) -> None:
-    """Detiene el nodo central si estaba en marcha"""
+    """Detiene el nodo central y su vigilante (cierre del proceso)"""
+    global _VIGILANTE
+    _VIGILANTE_DETENER.set()
+    hilo = _VIGILANTE
+    _VIGILANTE = None
+    if hilo is not None and hilo.is_alive():
+        hilo.join(timeout=max(0.1, min(timeout, 2.0)))
     if _SERVIDOR is not None:
         _SERVIDOR.detener(timeout=timeout)
 

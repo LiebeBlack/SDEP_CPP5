@@ -3,7 +3,14 @@
     <style name="Theme.SdepMovil" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <!-- Con barras transparentes, Android 10+ añadiría un velo gris para
+             garantizar contraste; la app ya pinta su propio fondo y el velo
+             solo ensuciaba el borde inferior. -->
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
         <item name="android:windowBackground">@color/fondo_claro</item>
     </style>
 </resources>

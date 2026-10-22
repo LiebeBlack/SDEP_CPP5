@@ -171,11 +171,11 @@ Esto:
 
 #### Inicio automático desde la aplicación
 
-En la instalación de escritorio no hace falta ejecutar ningún script. La
-primera vez que se inicia sesión, el sistema pregunta si este equipo será el
-servidor central. Si se acepta, el servidor arranca solo con la aplicación y
-queda visible en el **área de notificación de Windows**, que muestra su estado
-y avisa cuando ya está disponible para el teléfono.
+En la instalación de escritorio no hace falta ejecutar ningún script ni
+responder preguntas. Desde la primera ejecución el nodo central arranca solo
+con la aplicación, incluso antes de iniciar sesión, y queda visible en el
+**área de notificación de Windows**, que muestra su estado y avisa cuando ya
+está disponible para el teléfono.
 
 La auto-configuración copia al nodo central las cuentas de este equipo que aún
 no existan allí, con su misma contraseña (solo el hash), y crea las cuentas
@@ -212,20 +212,22 @@ salir de la aplicación.
 
 #### Desde la Aplicación Móvil Android
 
-1. Configure la URL del servidor en la app Android
-   - Use la IP local que muestra el servidor al iniciar
-   - Ejemplo: `http://192.168.1.100:8765`
-   - **NO use 127.0.0.1 desde Android**
-2. Use las credenciales de usuario (admin, manager, user, viewer)
-3. La app se conectará por WiFi a la computadora donde corre el servidor
+1. Instale y abra SDEP Móvil en el teléfono, en la misma Wi-Fi.
+2. Escriba solo su usuario y contraseña de la institución. No hay dirección,
+   equipo ni token que configurar: el teléfono descubre el escritorio por
+   difusión UDP y, si la red la bloquea, por sondeo de la subred.
+3. Si el escritorio aún no aparece, pulse «Volver a buscar». La app sigue
+   intentando en segundo plano mientras el equipo se enciende.
 
 ### Configuración de Firewall (Importante)
 
-Para que Android y otros PCs puedan conectarse, el firewall debe permitir conexiones en el puerto 8765:
+Para que Android y otros PCs puedan conectarse, el firewall debe permitir el
+puerto 8765/TCP y el 8766/UDP (descubrimiento automático):
 
 **Windows:**
 ```powershell
 New-NetFirewallRule -DisplayName "SDEP Servidor" -Direction Inbound -LocalPort 8765 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "SDEP Descubrimiento" -Direction Inbound -LocalPort 8766 -Protocol UDP -Action Allow
 ```
 
 El instalador crea esta regla automáticamente para las redes privada y de

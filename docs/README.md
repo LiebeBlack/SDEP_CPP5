@@ -64,7 +64,7 @@ El visor soporta enrutamiento por hash. Puedes compartir o acceder directamente 
 - `index.html#doc=readme` — README General del sistema
 - `index.html#doc=guia-usuario` — Guía de Usuario y manual operativo
 - `index.html#doc=doc-tecnica` — Documentación Técnica y arquitectura
-- `index.html#doc=tesis-capitulo-1` — Capítulo I: Planteamiento del Problema
+- `index.html#doc=tesis-documento-01` — Documento 01: Introducción y Planteamiento del Problema
 - `index.html#doc=tesis-capitulo-4` — Capítulo IV: Resultados y Software
 - `index.html#doc=tesis-bibliografia-anexos` — Bibliografía y los 10 Anexos
 

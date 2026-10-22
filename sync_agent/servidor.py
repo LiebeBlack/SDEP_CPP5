@@ -41,6 +41,7 @@ from sync_agent import registro
 from sync_agent.api_acciones import ApiAcciones, ErrorApi
 from sync_agent.aplicador import AplicadorRemoto, momento_de_operacion
 from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads
+from sync_agent.descubrimiento import PUERTO_DESCUBRIMIENTO, DifusorDescubrimiento
 from sync_agent.esquema import (
     BaseSync,
     BitacoraSync,
@@ -74,6 +75,10 @@ class ServidorConfig:
     peticiones_por_minuto: int = PETICIONES_POR_MINUTO
     certificado: str | None = None
     clave: str | None = None
+    # Puerto UDP donde el nodo se anuncia al teléfono. 0 lo desactiva (pruebas
+    # con puerto HTTP efímero o instalaciones donde la difusión no se permite).
+    puerto_descubrimiento: int = PUERTO_DESCUBRIMIENTO
+    nombre_equipo: str = ""
     # Une automáticamente cualquier teléfono de la red al nodo central, sin
     # código previo (decisión del propietario del sistema). Se puede apagar
     # desde la configuración del escritorio si en el futuro se quiere exigir
@@ -1094,6 +1099,17 @@ class ServidorSync(ThreadingHTTPServer):
         self.config_servidor = config
         if config.certificado and config.clave:
             self._envolver_tls(config.certificado, config.clave)
+        # La difusión se abre después del HTTP: el puerto real ya se conoce
+        # (importante cuando el sistema elige uno efímero) y un fallo aquí
+        # nunca impide atender a los puestos que ya conocen la dirección.
+        self.difusor: DifusorDescubrimiento | None = None
+        if config.puerto_descubrimiento:
+            self.difusor = DifusorDescubrimiento(
+                puerto_http=int(self.server_address[1]),
+                puerto=config.puerto_descubrimiento,
+                nombre=config.nombre_equipo,
+            )
+            self.difusor.iniciar()
 
     def _envolver_tls(self, certificado: str, clave: str) -> None:
         """Protege el canal con TLS cuando se entrega un certificado"""
@@ -1108,8 +1124,16 @@ class ServidorSync(ThreadingHTTPServer):
         """Pide el cierre del bucle de servicio sin bloquear a quien llama"""
         threading.Thread(target=self.shutdown, daemon=True).start()
 
+    def server_close(self) -> None:
+        """Cierra también la difusión al cerrar el socket HTTP"""
+        difusor = getattr(self, "difusor", None)
+        if difusor is not None:
+            difusor.detener()
+            self.difusor = None
+        super().server_close()
+
     def cerrar(self) -> None:
-        """Cierra el socket y libera el motor de base de datos"""
+        """Cierra el socket, la difusión y libera el motor de base de datos"""
         try:
             self.server_close()
         finally:

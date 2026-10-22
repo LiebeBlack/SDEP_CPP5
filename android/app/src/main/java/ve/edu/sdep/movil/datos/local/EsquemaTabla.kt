@@ -213,6 +213,7 @@ object EsquemaTabla {
         "pagos.metodo_pago" to listOf("transferencia", "efectivo", "cheque", "deposito"),
         "periodos_academicos.estado" to listOf("abierto", "cerrado"),
         "grados.nivel" to listOf("inicial", "secundaria"),
+        "estudiantes.nivel" to listOf("inicial", "secundaria"),
     )
 
     /** Etiquetas de cara al usuario; el resto se deriva del nombre de la columna */

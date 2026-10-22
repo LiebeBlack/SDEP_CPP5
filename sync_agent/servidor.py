@@ -515,9 +515,7 @@ class NucleoCentral:
                 if publicada is not None:
                     filas.append(publicada)
                 conflictos.extend(
-                    consolidacion.conflictos_del_ciclo(
-                        tabla, fila_uuid, historial, ids_pendientes
-                    )
+                    consolidacion.conflictos_del_ciclo(tabla, fila_uuid, historial, ids_pendientes)
                 )
 
             aplicador = AplicadorRemoto(

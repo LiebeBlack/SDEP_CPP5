@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ve.edu.sdep.movil.datos.remoto.Descubrimiento
 import ve.edu.sdep.movil.datos.repositorio.AutenticacionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Resultado
@@ -33,6 +34,7 @@ data class EstadoLogin(
     val equipo: String = "",
     val token: String = "",
     val guardandoConfig: Boolean = false,
+    val descubriendo: Boolean = false,
     val error: String? = null,
     val ocupado: Boolean = false,
     val biometriaGuardada: Boolean = false,
@@ -42,6 +44,7 @@ data class EstadoLogin(
 class LoginViewModel @Inject constructor(
     private val autenticacion: AutenticacionRepositorio,
     private val configuracion: ConfiguracionRepositorio,
+    private val descubrimiento: Descubrimiento,
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(EstadoLogin())
@@ -61,6 +64,9 @@ class LoginViewModel @Inject constructor(
                     biometriaGuardada = biometria,
                 )
             }
+            // Sin vinculación todavía: se busca el escritorio solo, sin que el
+            // usuario pida nada. Si no aparece, queda el formulario manual.
+            if (!config.completa) descubrirYVincular()
         }
     }
 
@@ -88,6 +94,59 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             val biometria = withContext(Dispatchers.IO) { autenticacion.hayCredencialBiometrica() }
             _estado.update { it.copy(biometriaGuardada = biometria) }
+        }
+    }
+
+    /**
+     * Descubre el nodo central en la red, se da de alta y guarda la vinculación.
+     *
+     * Es el camino sin pasos manuales: el usuario solo espera a que el
+     * teléfono halle el escritorio y, cuando aparece el formulario de ingreso,
+     * entra con su cuenta habitual. Si no hay ningún nodo en la red, se
+     * muestra el formulario manual para escribir los datos a mano.
+     */
+    fun descubrirYVincular() {
+        if (_estado.value.descubriendo || _estado.value.guardandoConfig) return
+        viewModelScope.launch {
+            _estado.update { it.copy(descubriendo = true, error = null) }
+            val vinculo = withContext(Dispatchers.IO) { descubrimiento.descubrir() }
+            if (vinculo == null) {
+                _estado.update {
+                    it.copy(
+                        descubriendo = false,
+                        error = "No se encontró el sistema de escritorio en esta red. " +
+                            "Revisé que esté encendido y en la misma Wi-Fi, o escriba los datos a mano.",
+                    )
+                }
+                return@launch
+            }
+            val guardado = configuracion.guardar(
+                url = vinculo.url,
+                equipo = vinculo.equipo,
+                token = vinculo.token,
+                activa = true,
+                periodoMinutos = configuracion.periodoMinutos,
+            )
+            if (guardado) {
+                val config = configuracion.actual()
+                _estado.update {
+                    it.copy(
+                        descubriendo = false,
+                        configCompleta = config.completa,
+                        url = config.url,
+                        equipo = config.equipo,
+                        token = config.token,
+                    )
+                }
+            } else {
+                _estado.update {
+                    it.copy(
+                        descubriendo = false,
+                        error = "Se encontró el sistema pero no se pudo guardar de forma segura. " +
+                            "Revise el almacenamiento del teléfono.",
+                    )
+                }
+            }
         }
     }
 

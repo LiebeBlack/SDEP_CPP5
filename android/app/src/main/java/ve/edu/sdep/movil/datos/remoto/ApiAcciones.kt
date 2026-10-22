@@ -32,6 +32,17 @@ interface ApiAcciones {
     @POST("api/v1/auth/login")
     suspend fun login(@Body cuerpo: LoginDto): SesionRespuestaDto
 
+    /**
+     * Auto-emparejamiento: convierte a este teléfono en un puesto de la red.
+     *
+     * Solo necesita la URL (es el otro punto abierto del nodo central). El
+     * servidor devuelve el identificador de equipo y su token, que quedan
+     * cifrados en la bóveda del teléfono. El nombre del equipo viaja en la
+     * cabecera `X-Nombre-Equipo` para que el administrador lo reconozca.
+     */
+    @POST("api/v1/auth/emparejar")
+    suspend fun emparejar(): EmparejarRespuestaDto
+
     @POST("api/v1/auth/logout")
     suspend fun logout(): CorrectoDto
 

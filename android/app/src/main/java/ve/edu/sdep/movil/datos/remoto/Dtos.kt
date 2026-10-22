@@ -116,6 +116,17 @@ data class SesionInfoDto(
 @Serializable
 data class CorrectoDto(val correcto: Boolean = true)
 
+/**
+ * Respuesta del auto-emparejamiento: el par que convierte a este teléfono en
+ * un puesto más de la red. El servidor solo lo devuelve una vez; en su base
+ * queda únicamente el hash del token.
+ */
+@Serializable
+data class EmparejarRespuestaDto(
+    @SerialName("dispositivo_id") val dispositivoId: String = "",
+    val token: String = "",
+)
+
 /** Error del protocolo: el mismo cuerpo para todos los códigos HTTP */
 @Serializable
 data class ErrorDto(val error: String = "")

@@ -116,6 +116,7 @@ fun PantallaLogin(vistaModelo: LoginViewModel = hiltViewModel()) {
                     alCambiarEquipo = vistaModelo::cambiarEquipo,
                     alCambiarToken = vistaModelo::cambiarToken,
                     alGuardar = vistaModelo::guardarConfiguracion,
+                    alDescubrir = vistaModelo::descubrirYVincular,
                 )
 
                 else -> FormularioIngreso(
@@ -178,25 +179,56 @@ private fun FormularioVinculacion(
     alCambiarEquipo: (String) -> Unit,
     alCambiarToken: (String) -> Unit,
     alGuardar: () -> Unit,
+    alDescubrir: () -> Unit,
 ) {
     var tokenVisible by remember { mutableStateOf(false) }
 
     Text(
-        text = "Vincular con el nodo central",
+        text = "Conectarse al sistema de escritorio",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
     Spacer(Modifier.height(4.dp))
     Text(
-        text = "Este teléfono todavía no se ha conectado al sistema de escritorio. " +
-            "Pida al administrador la dirección del servicio, el identificador de " +
-            "este equipo y su token.",
+        text = if (estado.descubriendo) {
+            "Buscando el sistema de escritorio en esta Wi-Fi…"
+        } else {
+            "Este teléfono se conecta al sistema de gestión de personal de la institución."
+        },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
     )
 
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(16.dp))
+
+    // Botón de descubrimiento: mientras busca, se muestra el indicador; si
+    // termina sin encontrar nada, se puede reintentar sin escribir la IP.
+    OutlinedButton(
+        onClick = alDescubrir,
+        enabled = !estado.descubriendo,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+    ) {
+        if (estado.descubriendo) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.size(8.dp))
+            Text("Buscando…")
+        } else {
+            Text("Buscar el sistema automáticamente")
+        }
+    }
+
+    Spacer(Modifier.height(16.dp))
+    HorizontalDivider()
+    Spacer(Modifier.height(16.dp))
+    Text(
+        text = "Escriba los datos a mano solo si no se encontró el equipo:",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(12.dp))
 
     OutlinedTextField(
         value = estado.url,
@@ -205,6 +237,7 @@ private fun FormularioVinculacion(
         placeholder = { Text("http://192.168.1.10:8765") },
         supportingText = { Text("IP o nombre del equipo y puerto del servicio") },
         singleLine = true,
+        enabled = !estado.descubriendo,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Uri,
             imeAction = ImeAction.Next,
@@ -218,6 +251,7 @@ private fun FormularioVinculacion(
         label = { Text("Identificador del equipo") },
         supportingText = { Text("El mismo que devuelve el alta del puesto") },
         singleLine = true,
+        enabled = !estado.descubriendo,
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(12.dp))
@@ -227,6 +261,7 @@ private fun FormularioVinculacion(
         label = { Text("Token del equipo") },
         supportingText = { Text("Se guarda cifrado en este teléfono") },
         singleLine = true,
+        enabled = !estado.descubriendo,
         visualTransformation = if (tokenVisible) {
             VisualTransformation.None
         } else {
@@ -248,7 +283,7 @@ private fun FormularioVinculacion(
     Spacer(Modifier.height(20.dp))
     Button(
         onClick = alGuardar,
-        enabled = !estado.guardandoConfig,
+        enabled = !estado.guardandoConfig && !estado.descubriendo,
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp),

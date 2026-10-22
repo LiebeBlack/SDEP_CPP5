@@ -74,6 +74,13 @@ class ServidorConfig:
     peticiones_por_minuto: int = PETICIONES_POR_MINUTO
     certificado: str | None = None
     clave: str | None = None
+    # Une automáticamente cualquier teléfono de la red al nodo central, sin
+    # código previo (decisión del propietario del sistema). Se puede apagar
+    # desde la configuración del escritorio si en el futuro se quiere exigir
+    # un emparejamiento supervisado; mientras tanto, la única protecciones son
+    # el límite de peticiones y el hecho de que el login de usuario sigue
+    # exigiendo una cuenta válida de la base institucional.
+    emparejamiento_abierto: bool = True
 
 
 class ErrorPeticion(Exception):
@@ -629,6 +636,40 @@ class NucleoCentral:
     # ------------------------------------------------------------------
     # Administración
     # ------------------------------------------------------------------
+    def emparejar(self, nombre: str | None, ip: str) -> dict:
+        """
+        Da de alta un puesto nuevo que se auto-descubrió en la red
+
+        Es el camino sin supervisión: el teléfono que encontró el nodo pide sus
+        credenciales de equipo sin que el administrador escriba nada. Solo se
+        admite si ``emparejamiento_abierto`` está activo; se limita por IP para
+        que nadie pueda crear cientos de equipos en bucle, y el alta queda
+        registrada en la bitácora con la IP de origen.
+
+        Args:
+            nombre: Nombre visible del puesto (puede venir vacío)
+            ip: Dirección del equipo que llama, para la bitácora y la tasa
+
+        Returns:
+            dict con ``dispositivo_id`` y ``token`` (el token solo se devuelve
+            aquí; en la base queda únicamente su hash).
+
+        Raises:
+            ErrorPeticion: 403 si el emparejamiento está cerrado, 429 si la
+                IP superó el límite de peticiones.
+        """
+        if not self.config.emparejamiento_abierto:
+            raise ErrorPeticion(
+                "El emparejamiento automático está desactivado en el nodo central",
+                403,
+            )
+        # Tasa propia y más restrictiva que la general: el emparejamiento es
+        # un evento raro, así que un bombardeo aquí es siempre sospechoso.
+        self.limitar_tasa(f"emparejar:{ip}")
+        dispositivo_id, token = self.crear_dispositivo((nombre or "").strip() or "Teléfono")
+        logger.info("Puesto emparejado automáticamente desde la red (%s)", ip)
+        return {"dispositivo_id": dispositivo_id, "token": token}
+
     def crear_dispositivo(self, nombre: str) -> tuple[str, str]:
         """
         Da de alta un puesto y devuelve su identificador y su token en claro
@@ -871,6 +912,17 @@ class ManejadorSync(BaseHTTPRequestHandler):
             if ruta.path == f"{RUTA_AUTH}/login" and metodo == "POST":
                 self.nucleo.limitar_tasa("login:" + (self.client_address[0] or "?"))
                 datos = self.nucleo.api.login(self._leer_json(), self.headers.get("X-Dispositivo"))
+                self._responder_json(200, datos)
+                return
+
+            # --- Auto-emparejamiento: un teléfono que se descubrió solo pide
+            # sus credenciales de equipo. Abierto por decisión del propietario;
+            # el toggle del nodo central lo puede cerrar. ---
+            if ruta.path == f"{RUTA_AUTH}/emparejar" and metodo == "POST":
+                datos = self.nucleo.emparejar(
+                    self.headers.get("X-Nombre-Equipo"),
+                    self.client_address[0] or "?",
+                )
                 self._responder_json(200, datos)
                 return
 

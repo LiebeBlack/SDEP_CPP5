@@ -352,6 +352,10 @@ class DispositivoSync(BaseSync):
     creado_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
     ultima_conexion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     version_app: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Un equipo móvil no es un puesto de confianza: para leer o escribir datos
+    # debe presentar además la sesión de la persona (X-Sesion). Así el token
+    # del equipo, por sí solo, no puede descargar la ficha de otro trabajador.
+    es_movil: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class SesionApi(BaseSync):
@@ -371,6 +375,8 @@ class SesionApi(BaseSync):
     username: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     nombre_completo: Mapped[str | None] = mapped_column(String(150), nullable=True)
     rol: Mapped[str] = mapped_column(String(20), nullable=False)
+    usuario_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cedula: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     dispositivo_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     creada_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
     expira_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
@@ -415,6 +421,38 @@ def tablas() -> list:
     return list(BaseSync.metadata.sorted_tables)
 
 
+def _migrar_columnas(engine) -> int:
+    """Agrega columnas nuevas a tablas del agente ya existentes.
+
+    ``create_all`` no modifica una tabla creada por una versión anterior. Las
+    columnas de aislamiento (``es_movil``, ``usuario_id`` y ``cedula``) deben
+    existir antes de validar una sesión o de filtrar un ``pull``.
+    """
+    from sqlalchemy import inspect, text
+
+    nuevas = {
+        "sync_dispositivos": {"es_movil": "INTEGER NOT NULL DEFAULT 0"},
+        "sync_sesiones": {
+            "usuario_id": "INTEGER",
+            "cedula": "VARCHAR(20)",
+        },
+    }
+    inspector = inspect(engine)
+    tablas = set(inspector.get_table_names())
+    agregadas = 0
+    for tabla, columnas in nuevas.items():
+        if tabla not in tablas:
+            continue
+        existentes = {columna["name"] for columna in inspector.get_columns(tabla)}
+        for columna, tipo in columnas.items():
+            if columna in existentes:
+                continue
+            with engine.begin() as conexion:
+                conexion.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}"))
+            agregadas += 1
+    return agregadas
+
+
 def asegurar_esquema(engine) -> None:
     """
     Crea las tablas del agente si no existen (idempotente)
@@ -423,6 +461,7 @@ def asegurar_esquema(engine) -> None:
         engine: Motor SQLAlchemy del archivo de base de datos
     """
     BaseSync.metadata.create_all(bind=engine, checkfirst=True)
+    _migrar_columnas(engine)
 
 
 def preparar(engine, session_factory=None) -> None:

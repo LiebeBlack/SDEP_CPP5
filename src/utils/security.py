@@ -403,14 +403,12 @@ class PermissionChecker:
         "contratos": ("admin", "manager"),
         "nomina": ("admin", "manager"),
         "configuracion": ("admin",),
-        # ``estudiantes`` incluye el legajo y la estructura escolar (grados y
-        # matrículas); la escritura sigue exigiendo el permiso operativo
-        # (create/update/delete), de modo que el rol de consulta solo mira.
-        "estudiantes": ("admin", "manager", "user", "viewer"),
-        # ``notas``: los docentes (rol ``user``) necesitan consultar y
-        # registrar las notas de su grado; la escritura efectiva la autoriza
-        # el token académico del servicio de notas, no este mapa.
-        "notas": ("admin", "manager", "user"),
+        # El legajo académico y las notas pertenecen al ámbito institucional,
+        # no a la ficha personal de un trabajador: el rol ``user`` (WORKER) no
+        # los abre. Así el aislamiento por cédula no tiene que inventar una
+        # propiedad académica que el modelo actual no declara.
+        "estudiantes": ("admin", "manager", "viewer"),
+        "notas": ("admin", "manager"),
     }
 
     @classmethod
@@ -443,13 +441,12 @@ class PermissionChecker:
                 "restore",
             ],
             "manager": ["create", "read", "update", "delete", "report"],
-            # ``update_own``: decisión explícita, no descuido. El rol Usuario
-            # no tiene un vínculo de propiedad con una cuenta de empleado que
-            # validar, así que el permiso NO se trata como ``update`` y hoy
-            # ningún módulo lo consume. Si algún día existe esa relación, el
-            # consumidor debe declararse en el módulo que corresponda y
-            # probarse; se conserva aquí como la capacidad reservada del rol.
-            "user": ["read", "update_own"],
+            # El WORKER ya tiene un vínculo de propiedad: ``usuarios.cedula``.
+            # ``create_own``/``update_own`` permiten completar su ficha y sus
+            # propios documentos e incidencias; nunca se traducen a ``create``
+            # o ``update`` globales. La comprobación de la cédula se hace en
+            # ``src.security.aislamiento``, no solo en la pantalla.
+            "user": ["read", "create_own", "update_own"],
             "viewer": ["read"],
         }
 

@@ -407,6 +407,7 @@ class ServidorEmbebido:
                             username=origen.username,
                             password_hash=origen.password_hash,
                             nombre_completo=origen.nombre_completo,
+                            cedula=origen.cedula,
                             rol=origen.rol,
                             activo=origen.activo,
                             debe_cambiar_password=origen.debe_cambiar_password,

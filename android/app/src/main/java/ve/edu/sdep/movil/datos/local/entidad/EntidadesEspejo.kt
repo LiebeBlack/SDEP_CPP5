@@ -79,6 +79,8 @@ data class SesionUsuarioEntity(
     val usuario: String,
     val nombreCompleto: String?,
     val rol: String,
+    /** Cédula del trabajador, necesaria para aislar también sin red. */
+    val cedula: String? = null,
     val expiraEn: Long,
     val debeCambiarPassword: Boolean,
     val actualizadoEn: Long,

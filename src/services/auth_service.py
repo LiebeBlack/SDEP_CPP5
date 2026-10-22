@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from src.models import RolUsuario, Usuario
 from src.repositories import UsuarioRepository
+from src.security.contexto import normalizar_cedula
 from src.utils.audit_logger import AuditEventType, get_audit_logger
 from src.utils.security import SecurityValidator
 
@@ -71,6 +72,15 @@ class AuthService:
         if not usuario.activo:
             self._audit_fallido(username, "cuenta inactiva")
             raise ValueError("La cuenta está desactivada. Contacte al administrador.")
+
+        if usuario.rol_valor == RolUsuario.USER.value and not normalizar_cedula(usuario.cedula):
+            # La regla es parte de la identidad, no de la pantalla: una cuenta
+            # WORKER sin cédula no puede aislar nada y no debe entrar.
+            self._audit_fallido(username, "cuenta de trabajador sin cédula")
+            raise ValueError(
+                "Esta cuenta de trabajador no tiene cédula asignada. "
+                "Contacte al administrador para completarla."
+            )
 
         max_intentos = self.max_intentos_fallidos()
         if not SecurityValidator.verify_password(password, usuario.password_hash):
@@ -161,8 +171,14 @@ class AuthService:
         rol: str,
         nombre_completo: str = "",
         debe_cambiar_password: bool = True,
+        cedula: str | None = None,
     ) -> Usuario:
-        """Crea un nuevo usuario de sistema"""
+        """Crea un nuevo usuario de sistema.
+
+        El rol ``user`` es el WORKER y exige cédula: es la clave con la que se
+        aislarán todas sus consultas. Las cuentas administrativas pueden no
+        tenerla.
+        """
         username = (username or "").strip()
         if not username:
             raise ValueError("El nombre de usuario es requerido")
@@ -177,10 +193,13 @@ class AuthService:
         if rol not in RolUsuario.values():
             raise ValueError(f"Rol inválido. Roles válidos: {', '.join(RolUsuario.values())}")
 
+        cedula_normalizada = self._validar_cedula(rol, cedula)
+
         usuario = Usuario(
             username=username,
             password_hash=SecurityValidator.hash_password(password),
             nombre_completo=(nombre_completo or "").strip() or None,
+            cedula=cedula_normalizada,
             rol=rol,
             activo=1,
             debe_cambiar_password=1 if debe_cambiar_password else 0,
@@ -217,6 +236,8 @@ class AuthService:
                 if self.repository.get_by_username(nuevo_username):
                     raise ValueError("Ya existe un usuario con ese nombre")
 
+        rol_final = usuario.rol_valor
+        cambio_rol = bool(datos.get("rol"))
         if "rol" in datos and datos["rol"]:
             if datos["rol"] not in RolUsuario.values():
                 raise ValueError("Rol inválido")
@@ -226,6 +247,15 @@ class AuthService:
                 and datos["rol"] != RolUsuario.ADMIN.value
             ):
                 raise ValueError("No puede degradar su propia cuenta de administrador")
+            rol_final = str(datos["rol"])
+
+        if "cedula" in datos or cambio_rol:
+            cedula_objetivo = datos.get("cedula") if "cedula" in datos else usuario.cedula
+            cedula_validada = self._validar_cedula(
+                rol_final, cedula_objetivo, excluir_id=usuario.id
+            )
+        else:
+            cedula_validada = usuario.cedula
 
         nuevo_activo = None
         if "activo" in datos and datos["activo"] is not None:
@@ -241,8 +271,10 @@ class AuthService:
 
         if nuevo_username and nuevo_username != usuario.username:
             usuario.username = nuevo_username
-        if "rol" in datos and datos["rol"]:
+        if cambio_rol:
             usuario.rol = datos["rol"]
+        if "cedula" in datos or cambio_rol:
+            usuario.cedula = cedula_validada
         if "nombre_completo" in datos:
             usuario.nombre_completo = str(datos["nombre_completo"] or "").strip() or None
         if nuevo_activo is not None:
@@ -394,6 +426,26 @@ class AuthService:
 
     def usuario_por_username(self, username: str) -> Usuario | None:
         return self.repository.get_by_username(username)
+
+    def _validar_cedula(
+        self, rol: str, cedula: str | None, excluir_id: int | None = None
+    ) -> str | None:
+        """Normaliza y valida la cédula según el rol de destino."""
+        normalizada = normalizar_cedula(cedula)
+        if rol == RolUsuario.USER.value and not normalizada:
+            raise ValueError(
+                "La cédula es obligatoria para una cuenta de trabajador (rol Usuario)"
+            )
+        if not normalizada:
+            return None
+        if len(normalizada) > 20:
+            raise ValueError("La cédula no puede superar 20 caracteres")
+        consulta = self.session.query(Usuario).filter(Usuario.cedula == normalizada)
+        if excluir_id is not None:
+            consulta = consulta.filter(Usuario.id != excluir_id)
+        if consulta.first() is not None:
+            raise ValueError("Ya existe una cuenta con esa cédula")
+        return normalizada
 
     def _now(self):
         from src.utils.helpers import utcnow

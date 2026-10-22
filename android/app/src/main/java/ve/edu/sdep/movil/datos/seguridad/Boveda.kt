@@ -63,6 +63,21 @@ class Boveda @Inject constructor(
     fun olvidarSesionToken(): Boolean = escribir(mapOf(CLAVE_SESION_TOKEN to ""))
 
     // ------------------------------------------------------------------
+    // Identidad del último usuario
+    // ------------------------------------------------------------------
+    /**
+     * Usuario al que pertenece el espejo local.
+     *
+     * Al entrar otra persona se borra el espejo completo antes de descargar
+     * sus datos. Sin esta marca no se podría distinguir un cambio de usuario de
+     * un simple reinicio de la app.
+     */
+    fun guardarUltimoUsuario(usuario: String): Boolean =
+        escribir(mapOf(CLAVE_ULTIMO_USUARIO to usuario.trim()))
+
+    fun leerUltimoUsuario(): String? = leer(CLAVE_ULTIMO_USUARIO)
+
+    // ------------------------------------------------------------------
     // Desbloqueo biométrico
     // ------------------------------------------------------------------
     fun guardarCredencialBiometrica(usuario: String, token: String): Boolean = escribir(
@@ -146,5 +161,6 @@ class Boveda @Inject constructor(
         const val CLAVE_BIO_USUARIO = "bio_usuario"
         const val CLAVE_BIO_TOKEN = "bio_token"
         const val CLAVE_SESION_TOKEN = "sesion_token"
+        const val CLAVE_ULTIMO_USUARIO = "ultimo_usuario"
     }
 }

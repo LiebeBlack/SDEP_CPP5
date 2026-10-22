@@ -21,6 +21,7 @@ import ve.edu.sdep.movil.datos.local.entidad.IdentidadEntity
 import ve.edu.sdep.movil.datos.local.entidad.OperacionPendienteEntity
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Resultado
+import ve.edu.sdep.movil.dominio.modelo.normalizarCedula
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -69,7 +70,10 @@ class TablaRepositorio @Inject constructor(
             listOf("id", "updated_at")
         val sql = "SELECT ${columnas.joinToString(", ")} FROM $tabla WHERE id = ? LIMIT 1"
         return baseDatos.openHelper.readableDatabase.query(sql, arrayOf<Any>(id)).use { cursor ->
-            if (!cursor.moveToFirst()) null else leerFila(cursor)
+            if (!cursor.moveToFirst()) return@use null
+            val fila = leerFila(cursor)
+            val sesion = sesionRepositorio.actual
+            if (sesion?.esTrabajador == true && !esFilaPropia(tabla, fila, sesion)) null else fila
         }
     }
 
@@ -77,10 +81,14 @@ class TablaRepositorio @Inject constructor(
     suspend fun listar(tabla: String, limite: Int = 500): List<Map<String, String?>> =
         withContext(Dispatchers.IO) {
             if (!EsquemaTabla.esAdministrable(tabla)) return@withContext emptyList()
+            val sesion = sesionRepositorio.actual
             val columnas = columnas(tabla).map { it.nombre } + listOf("id", "updated_at")
             val orden = if ("fecha_inicio" in columnas) "fecha_inicio DESC" else "id DESC"
-            val sql = "SELECT ${columnas.joinToString(", ")} FROM $tabla ORDER BY $orden LIMIT $limite"
-            baseDatos.openHelper.readableDatabase.query(sql).use { cursor ->
+            val (filtro, argumentos) = filtroDeLectura(tabla, sesion)
+                ?: return@withContext emptyList()
+            val sql = "SELECT ${columnas.joinToString(", ")} FROM $tabla $filtro " +
+                "ORDER BY $orden LIMIT $limite"
+            baseDatos.openHelper.readableDatabase.query(sql, argumentos).use { cursor ->
                 val filas = mutableListOf<Map<String, String?>>()
                 while (cursor.moveToNext()) filas += leerFila(cursor)
                 filas
@@ -97,10 +105,13 @@ class TablaRepositorio @Inject constructor(
             "contratos" -> "numero"
             else -> "CAST(id AS TEXT)"
         }
-        val sql = "SELECT id, $etiqueta AS etiqueta FROM $tabla ORDER BY etiqueta"
+        val sesion = sesionRepositorio.actual
+        val (filtro, argumentos) = filtroDeOpciones(tabla, sesion)
+            ?: return@withContext emptyList()
+        val sql = "SELECT id, $etiqueta AS etiqueta FROM $tabla $filtro ORDER BY etiqueta"
         val opciones = mutableListOf<OpcionTabla>()
         runCatching {
-            baseDatos.openHelper.readableDatabase.query(sql).use { cursor ->
+            baseDatos.openHelper.readableDatabase.query(sql, argumentos).use { cursor ->
                 while (cursor.moveToNext()) {
                     opciones += OpcionTabla(
                         id = cursor.getLong(0),
@@ -136,7 +147,13 @@ class TablaRepositorio @Inject constructor(
 
         val esquema = columnas(tabla)
         if (esquema.isEmpty()) return Resultado.Fallo("La tabla no tiene columnas editables.")
-        val datos = valores.filterKeys { clave -> esquema.any { it.nombre == clave } }
+
+        val datosBase = valores.toMutableMap()
+        if (sesion.esTrabajador) {
+            val problema = prepararEscrituraDeTrabajador(tabla, id, datosBase, sesion)
+            if (problema != null) return Resultado.Fallo(problema)
+        }
+        val datos = datosBase.filterKeys { clave -> esquema.any { it.nombre == clave } }
         val problema = withContext(Dispatchers.IO) { validar(tabla, esquema, datos) }
         if (problema != null) return Resultado.Fallo(problema)
 
@@ -302,8 +319,122 @@ class TablaRepositorio @Inject constructor(
     }
 
     // ------------------------------------------------------------------
-    // Utilidades
+    // Aislamiento por cédula (defensa local)
     // ------------------------------------------------------------------
+
+    /** Tablas con un vínculo directo al empleado de la cédula. */
+    private val tablasDeEmpleado = setOf(
+        "documentos", "incidencias", "contratos", "pagos",
+    )
+
+    private val tablasAcademicas = setOf(
+        "estudiantes", "periodos_academicos", "grados", "matriculas", "notas_finales",
+    )
+
+    private fun idEmpleadoPropio(sesion: ve.edu.sdep.movil.dominio.modelo.Sesion): Long? {
+        if (sesion.cedulaNormalizada.isBlank()) return null
+        val sql = "SELECT id FROM empleados WHERE " +
+            "UPPER(REPLACE(REPLACE(cedula, '.', ''), ' ', '')) = ? LIMIT 1"
+        return baseDatos.openHelper.readableDatabase
+            .query(sql, arrayOf<Any>(sesion.cedulaNormalizada))
+            .use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else null }
+    }
+
+    /** Filtro de lectura para una tabla; null = el WORKER no puede verla. */
+    private fun filtroDeLectura(
+        tabla: String,
+        sesion: ve.edu.sdep.movil.dominio.modelo.Sesion?,
+    ): Pair<String, Array<Any>>? {
+        if (sesion?.esTrabajador != true) return "" to emptyArray()
+        return when {
+            tabla == "empleados" -> {
+                if (sesion.cedulaNormalizada.isBlank()) null
+                else "WHERE UPPER(REPLACE(REPLACE(cedula, '.', ''), ' ', '')) = ?" to
+                    arrayOf<Any>(sesion.cedulaNormalizada)
+            }
+
+            tabla in tablasDeEmpleado -> {
+                val propio = idEmpleadoPropio(sesion) ?: return null
+                "WHERE empleado_id = ?" to arrayOf<Any>(propio)
+            }
+
+            tabla in tablasAcademicas -> null
+            else -> null
+        }
+    }
+
+    /** Opciones de un selector de clave foránea, ya limitadas al WORKER. */
+    private fun filtroDeOpciones(
+        tabla: String,
+        sesion: ve.edu.sdep.movil.dominio.modelo.Sesion?,
+    ): Pair<String, Array<Any>>? {
+        if (sesion?.esTrabajador != true) return "" to emptyArray()
+        return when {
+            tabla == "empleados" -> {
+                if (sesion.cedulaNormalizada.isBlank()) null
+                else "WHERE UPPER(REPLACE(REPLACE(cedula, '.', ''), ' ', '')) = ?" to
+                    arrayOf<Any>(sesion.cedulaNormalizada)
+            }
+
+            tabla == "grados" || tabla == "estudiantes" || tabla == "periodos_academicos" -> null
+            else -> "" to emptyArray()
+        }
+    }
+
+    private fun esFilaPropia(
+        tabla: String,
+        fila: Map<String, String?>,
+        sesion: ve.edu.sdep.movil.dominio.modelo.Sesion,
+    ): Boolean = when {
+        tabla == "empleados" ->
+            normalizarCedula(fila["cedula"]) == sesion.cedulaNormalizada
+
+        tabla in tablasDeEmpleado ->
+            fila["empleado_id"]?.toLongOrNull() == idEmpleadoPropio(sesion)
+
+        else -> false
+    }
+
+    /** Fuerza la cédula y el empleado propios antes de escribir. */
+    private fun prepararEscrituraDeTrabajador(
+        tabla: String,
+        id: Long?,
+        datos: MutableMap<String, String>,
+        sesion: ve.edu.sdep.movil.dominio.modelo.Sesion,
+    ): String? {
+        if (sesion.cedulaNormalizada.isBlank()) {
+            return "La cuenta no tiene cédula asignada; consulte al administrador."
+        }
+        if (tabla in tablasAcademicas || tabla == "contratos" || tabla == "pagos") {
+            return "Su rol no permite modificar este módulo."
+        }
+        if (id != null) {
+            val existente = cargarDirecto(tabla, id)
+                ?: return "El registro ya no existe en este equipo."
+            if (!esFilaPropia(tabla, existente, sesion)) {
+                return "El registro pertenece a otra cédula."
+            }
+        }
+        if (tabla == "empleados") {
+            val cedula = normalizarCedula(datos["cedula"])
+            if (cedula.isNotBlank() && cedula != sesion.cedulaNormalizada) {
+                return "Solo puede completar la ficha de su propia cédula."
+            }
+            datos["cedula"] = sesion.cedula.orEmpty()
+            return null
+        }
+        if (tabla in tablasDeEmpleado) {
+            val propio = idEmpleadoPropio(sesion)
+                ?: return "Primero complete su ficha de empleado."
+            val indicado = datos["empleado_id"]?.toLongOrNull()
+            if (indicado != null && indicado != propio) {
+                return "No puede registrar datos a nombre de otra cédula."
+            }
+            datos["empleado_id"] = propio.toString()
+            return null
+        }
+        return "Esta tabla no está disponible para su rol."
+    }
 
     private fun leerFila(cursor: android.database.Cursor): Map<String, String?> {
         val fila = mutableMapOf<String, String?>()

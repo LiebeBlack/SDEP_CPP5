@@ -299,6 +299,8 @@ class ApiAcciones:
             "username": valido.username,
             "nombre_completo": valido.nombre_completo,
             "rol": valido.rol,
+            "usuario_id": valido.usuario_id,
+            "cedula": valido.cedula,
             "debe_cambiar_password": valido.debe_cambiar_password,
             "expira_en": valido.expira_en.isoformat() if valido.expira_en else None,
             "password_min_longitud": minimo,
@@ -405,6 +407,7 @@ class ApiAcciones:
                     rol=str(cuerpo.get("rol") or ""),
                     nombre_completo=str(cuerpo.get("nombre_completo") or ""),
                     debe_cambiar_password=bool(cuerpo.get("debe_cambiar_password", True)),
+                    cedula=str(cuerpo.get("cedula") or "") or None,
                 )
             )
             _auditar(

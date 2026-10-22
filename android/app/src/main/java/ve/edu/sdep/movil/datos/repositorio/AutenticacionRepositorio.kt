@@ -42,6 +42,7 @@ class AutenticacionRepositorio @Inject constructor(
     private val apiFactory: ApiSyncFactory,
     private val boveda: Boveda,
     private val sesionRepositorio: SesionRepositorio,
+    private val sincronizacion: SincronizacionRepositorio,
     private val sesionUsuarioDao: SesionUsuarioDao,
     private val json: Json,
 ) {
@@ -124,12 +125,20 @@ class AutenticacionRepositorio @Inject constructor(
             usuario = respuesta.username.ifBlank { nombreUsuario },
             nombre = respuesta.nombreCompleto ?: respuesta.username.ifBlank { nombreUsuario },
             rol = Rol.desde(respuesta.rol),
+            cedula = respuesta.cedula,
             token = respuesta.sesionToken,
             expiraEn = Fechas.desdeIso(respuesta.expiraEn)
                 ?: System.currentTimeMillis() + respuesta.vidaRelativaHoras * 3_600_000L,
             debeCambiarPassword = respuesta.debeCambiarPassword,
             minLongitudPassword = respuesta.passwordMinLongitud.coerceAtLeast(1),
         )
+        // El espejo pertenece a una sola persona. Si entra otra cuenta, se
+        // envía lo pendiente de la anterior y se borra antes de descargar lo
+        // nuevo; si no se puede enviar, se rechaza el cambio.
+        when (val cambio = sincronizacion.prepararCambioDeUsuario(sesion.usuario)) {
+            is Resultado.Exito -> Unit
+            is Resultado.Fallo -> return@withContext cambio
+        }
         guardarCaché(sesion)
         sesionRepositorio.iniciar(sesion)
         if (activarBiometria) activarBiometria(sesion)
@@ -163,11 +172,16 @@ class AutenticacionRepositorio @Inject constructor(
                 usuario = info.username.ifBlank { par.usuario },
                 nombre = info.nombreCompleto ?: info.username.ifBlank { par.usuario },
                 rol = Rol.desde(info.rol),
+                cedula = info.cedula,
                 token = par.token,
                 expiraEn = Fechas.desdeIso(info.expiraEn) ?: 0L,
                 debeCambiarPassword = info.debeCambiarPassword,
                 minLongitudPassword = info.passwordMinLongitud.coerceAtLeast(1),
             )
+            when (val cambio = sincronizacion.prepararCambioDeUsuario(sesion.usuario)) {
+                is Resultado.Exito -> Unit
+                is Resultado.Fallo -> return@withContext cambio
+            }
             boveda.guardarSesionToken(par.token)
             guardarCaché(sesion)
             sesionRepositorio.iniciar(sesion)
@@ -198,6 +212,7 @@ class AutenticacionRepositorio @Inject constructor(
                 usuario = caché.usuario,
                 nombre = caché.nombreCompleto ?: caché.usuario,
                 rol = Rol.desde(caché.rol),
+                cedula = caché.cedula,
                 token = par.token,
                 expiraEn = caché.expiraEn,
                 debeCambiarPassword = caché.debeCambiarPassword,
@@ -315,6 +330,7 @@ class AutenticacionRepositorio @Inject constructor(
                 usuario = sesion.usuario,
                 nombreCompleto = sesion.nombre,
                 rol = sesion.rol.valor,
+                cedula = sesion.cedula,
                 expiraEn = sesion.expiraEn,
                 debeCambiarPassword = sesion.debeCambiarPassword,
                 actualizadoEn = System.currentTimeMillis(),

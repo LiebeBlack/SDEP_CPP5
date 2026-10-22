@@ -82,7 +82,12 @@ fun PantallaEmpleado(
     Scaffold(
         topBar = {
             BarraSuperior(
-                titulo = if (estado.id == null) "Nuevo empleado" else "Editar empleado",
+                titulo = when {
+                    estado.id == null && sesion.esTrabajador -> "Completar mi ficha"
+                    estado.id == null -> "Nuevo empleado"
+                    sesion.esTrabajador -> "Mi ficha"
+                    else -> "Editar empleado"
+                },
                 alVolver = alVolver,
             )
         },
@@ -146,7 +151,8 @@ fun PantallaEmpleado(
                     CampoEmpleado(
                         campo = campo,
                         valor = estado.valores[campo.clave].orEmpty(),
-                        habilitado = !estado.guardando && puedeGuardar,
+                        habilitado = !estado.guardando && puedeGuardar &&
+                            !(estado.cedulaBloqueada && campo.clave == "cedula"),
                         alCambiar = { vistaModelo.cambiar(campo.clave, it) },
                     )
                 }

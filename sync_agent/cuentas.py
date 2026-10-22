@@ -123,6 +123,7 @@ def cuentas_difieren(destino, origen) -> bool:
         or bool(destino.activo) != bool(origen.activo)
         or bool(destino.debe_cambiar_password) != bool(origen.debe_cambiar_password)
         or (destino.nombre_completo or "") != (origen.nombre_completo or "")
+        or (destino.cedula or "") != (origen.cedula or "")
     )
 
 
@@ -150,12 +151,14 @@ def copiar_cuenta(destino, origen, incluir_estado: bool = True) -> bool:
             cambio_hash
             or bool(destino.debe_cambiar_password) != bool(origen.debe_cambiar_password)
             or (destino.nombre_completo or "") != (origen.nombre_completo or "")
+            or (destino.cedula or "") != (origen.cedula or "")
         )
     if not diferente:
         return False
 
     destino.password_hash = origen.password_hash
     destino.nombre_completo = origen.nombre_completo
+    destino.cedula = origen.cedula
     destino.password_historial = origen.password_historial
     destino.fecha_cambio_password = origen.fecha_cambio_password
     destino.debe_cambiar_password = origen.debe_cambiar_password
@@ -221,6 +224,7 @@ def refrescar_desde_escritorio(url_central: str | None, username: str, password:
                     username=origen.username,
                     password_hash=origen.password_hash,
                     nombre_completo=origen.nombre_completo,
+                    cedula=origen.cedula,
                     rol=_rol_valor(origen),
                     activo=int(origen.activo or 0),
                     debe_cambiar_password=int(origen.debe_cambiar_password or 0),

@@ -48,6 +48,8 @@ MIGRACIONES: dict[str, dict[str, str]] = {
         "fecha_cambio_password": "DATETIME",
         "password_historial": "TEXT",
         "bloqueado_hasta": "DATETIME",
+        # Cédula del trabajador (WORKER): define la frontera de aislamiento.
+        "cedula": "VARCHAR(20)",
     },
     "pagos": {
         "modalidad_calculo": "VARCHAR(20)",
@@ -742,6 +744,17 @@ class DatabaseConfig:
         # puesto tiene el agente configurado (ver crear_tables).
         self._sync_esquema_listo = False
         self._sync_captura_activa = False
+
+        # Filtro global por cédula para las sesiones del escritorio. Se instala
+        # una sola vez por proceso y solo actúa cuando la sesión activa es un
+        # trabajador (rol ``user``) con cédula: los hilos del agente de
+        # sincronización y el nodo central no heredan ese contexto.
+        try:
+            from src.security.aislamiento import instalar
+
+            instalar()
+        except Exception:  # pragma: no cover - la instalación no debe impedir arrancar
+            logger.warning("No se pudo instalar el filtro de aislamiento", exc_info=True)
 
         logger.info(f"Base de datos configurada: {self.database_path}")
 

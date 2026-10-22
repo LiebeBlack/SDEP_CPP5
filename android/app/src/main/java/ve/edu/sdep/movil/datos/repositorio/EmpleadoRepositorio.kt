@@ -16,6 +16,7 @@ import ve.edu.sdep.movil.datos.local.entidad.IdentidadEntity
 import ve.edu.sdep.movil.datos.local.entidad.OperacionPendienteEntity
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Resultado
+import ve.edu.sdep.movil.dominio.modelo.normalizarCedula
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,8 +45,17 @@ class EmpleadoRepositorio @Inject constructor(
     private val sesionRepositorio: SesionRepositorio,
 ) {
 
-    /** Ficha completa para el formulario; null si ya no está en el espejo */
-    suspend fun cargar(id: Long): EmpleadoEntity? = empleadoDao.buscarPorId(id)
+    /** Ficha completa para el formulario; null si no existe o es de otra cédula. */
+    suspend fun cargar(id: Long): EmpleadoEntity? {
+        val ficha = empleadoDao.buscarPorId(id) ?: return null
+        val sesion = sesionRepositorio.actual
+        if (sesion?.esTrabajador == true &&
+            normalizarCedula(ficha.cedula) != sesion.cedulaNormalizada
+        ) {
+            return null
+        }
+        return ficha
+    }
 
     /**
      * Crea (``id`` nulo) o modifica una ficha.
@@ -56,11 +66,33 @@ class EmpleadoRepositorio @Inject constructor(
         val sesion = sesionRepositorio.actual
             ?: return Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
         val permiso = if (id == null) Permiso.CREAR else Permiso.EDITAR
-        if (!sesion.puede(permiso)) {
+        // El rol Usuario ya tiene create_own/update_own, no create/update
+        // globales: el permiso por sí solo no alcanza, hay que comprobar la
+        // cédula de la fila y forzar la propia en el alta.
+        if (sesion.esTrabajador) {
+            if (sesion.cedulaNormalizada.isBlank()) {
+                return Resultado.Fallo(
+                    "La cuenta no tiene cédula asignada; consulte al administrador.",
+                )
+            }
+            if (id != null) {
+                val existente = empleadoDao.buscarPorId(id)
+                    ?: return Resultado.Fallo("La ficha ya no existe en este equipo.")
+                if (normalizarCedula(existente.cedula) != sesion.cedulaNormalizada) {
+                    return Resultado.Fallo("Solo puede editar su propia ficha.")
+                }
+            }
+        } else if (!sesion.puede(permiso)) {
             val accion = if (id == null) "crear" else "editar"
             return Resultado.Fallo("El rol «${sesion.rol.etiqueta}» no permite $accion fichas.")
         }
-        validar(datos)?.let { return Resultado.Fallo(it) }
+
+        val datosFinal = if (sesion.esTrabajador) {
+            datos.copy(cedula = sesion.cedula.orEmpty())
+        } else {
+            datos
+        }
+        validar(datosFinal)?.let { return Resultado.Fallo(it) }
 
         val equipo = configuracionRepositorio.cargar().equipo.ifBlank { "movil" }
 
@@ -79,7 +111,7 @@ class EmpleadoRepositorio @Inject constructor(
                 )
                 val iso = Fechas.isoDesde(ahora)
                 val esAlta = existente == null
-                var entidad = datos.copy(
+                var entidad = datosFinal.copy(
                     id = existente?.id ?: 0L,
                     creadoEn = existente?.creadoEn ?: iso,
                     actualizadoEn = iso,

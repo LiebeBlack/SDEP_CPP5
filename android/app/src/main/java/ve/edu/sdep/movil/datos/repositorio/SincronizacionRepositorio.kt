@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import ve.edu.sdep.movil.datos.local.AplicadorEspejo
+import ve.edu.sdep.movil.datos.local.BaseDatosSdep
 import ve.edu.sdep.movil.datos.local.Fechas
 import ve.edu.sdep.movil.datos.local.dao.BlobPendienteDao
 import ve.edu.sdep.movil.datos.local.dao.ConflictoDao
@@ -25,6 +26,7 @@ import ve.edu.sdep.movil.datos.remoto.ConflictoRemotoDto
 import ve.edu.sdep.movil.datos.remoto.OperacionDto
 import ve.edu.sdep.movil.datos.remoto.ProtocoloApi
 import ve.edu.sdep.movil.datos.remoto.PushDto
+import ve.edu.sdep.movil.datos.seguridad.Boveda
 import ve.edu.sdep.movil.dominio.modelo.ConfiguracionSync
 import ve.edu.sdep.movil.dominio.modelo.EstadoSincronizacion
 import ve.edu.sdep.movil.dominio.modelo.Resultado
@@ -62,6 +64,9 @@ class SincronizacionRepositorio @Inject constructor(
     private val configuracionRepositorio: ConfiguracionRepositorio,
     private val conector: ConectorNodo,
     private val apiFactory: ApiSyncFactory,
+    private val sesionRepositorio: SesionRepositorio,
+    private val boveda: Boveda,
+    private val baseDatos: BaseDatosSdep,
 ) {
 
     private val candado = Mutex()
@@ -77,6 +82,18 @@ class SincronizacionRepositorio @Inject constructor(
      * y repite el ciclo una sola vez: el usuario no tiene que escribir nada.
      */
     suspend fun sincronizar(): Resultado<ResumenSync> = candado.withLock {
+        // El token de la persona viaja en cada petición. Se prefiere el de la
+        // sesión en memoria y, si la app fue cerrada, el guardado cifrado: es
+        // lo que permite que el trabajador de fondo siga sincronizando sin
+        // dejar una sesión visible abierta.
+        val tokenSesion = sesionRepositorio.actual?.token?.takeIf { it.isNotBlank() }
+            ?: boveda.leerSesionToken()?.takeIf { it.isNotBlank() }
+        if (tokenSesion.isNullOrBlank()) {
+            return@withLock Resultado.Fallo(
+                "Inicie sesión para sincronizar los datos de su cédula.",
+                reintentable = false,
+            )
+        }
         var configuracion = configuracionRepositorio.cargar()
         if (!configuracion.completa) {
             when (val conexion = conector.asegurarConexion(forzar = true)) {
@@ -89,24 +106,78 @@ class SincronizacionRepositorio @Inject constructor(
             }
         }
 
-        val primero = intentarCiclo(configuracion)
+        val primero = intentarCiclo(configuracion, tokenSesion)
         if (primero is Resultado.Fallo && primero.esTokenRechazado()) {
             when (val renovada = conector.revincular()) {
-                is Resultado.Exito -> return@withLock intentarCiclo(renovada.valor)
+                is Resultado.Exito -> return@withLock intentarCiclo(renovada.valor, tokenSesion)
                 is Resultado.Fallo -> return@withLock primero
             }
         }
         primero
     }
 
+    /**
+     * Vacía el espejo cuando otra persona inicia sesión.
+     *
+     * Antes de borrar se intenta enviar lo pendiente de la cuenta anterior. Si
+     * no se puede, se rechaza el cambio: perder una ficha recién escrita es
+     * peor que pedirle al usuario que se conecte y sincronice.
+     */
+    suspend fun prepararCambioDeUsuario(nuevoUsuario: String): Resultado<Unit> = candado.withLock {
+        val anterior = boveda.leerUltimoUsuario()?.trim().orEmpty()
+        val mismo = anterior.isNotBlank() && anterior == nuevoUsuario.trim()
+        if (mismo) {
+            boveda.guardarUltimoUsuario(nuevoUsuario)
+            return@withLock Resultado.Exito(Unit)
+        }
+
+        val hayDatos = identidadDaoContar() > 0
+        if (hayDatos) {
+            if (operacionDao.pendientes(1).isNotEmpty()) {
+                val configuracion = configuracionRepositorio.cargar()
+                val tokenViejo = boveda.leerSesionToken()?.takeIf { it.isNotBlank() }
+                if (!configuracion.completa || tokenViejo.isNullOrBlank()) {
+                    return@withLock Resultado.Fallo(
+                        "Hay cambios sin enviar de la cuenta anterior. Conecte el " +
+                            "teléfono y sincronice antes de cambiar de usuario.",
+                    )
+                }
+                val envio = intentarCiclo(configuracion, tokenViejo)
+                if (envio is Resultado.Fallo || operacionDao.pendientes(1).isNotEmpty()) {
+                    return@withLock Resultado.Fallo(
+                        "Hay cambios sin enviar de la cuenta anterior. Conecte el " +
+                            "teléfono y sincronice antes de cambiar de usuario.",
+                        (envio as? Resultado.Fallo)?.causa,
+                    )
+                }
+            }
+        }
+
+        withContext(Dispatchers.IO) {
+            // Es el espejo completo: fichas, documentos, cola, cursor, conflictos
+            // y metadatos de mezcla. La configuración del nodo vive cifrada en
+            // la bóveda y no se toca.
+            baseDatos.clearAllTables()
+            boveda.guardarUltimoUsuario(nuevoUsuario)
+        }
+        Resultado.Exito(Unit)
+    }
+
+    private suspend fun identidadDaoContar(): Int = withContext(Dispatchers.IO) {
+        baseDatos.identidadDao().contar()
+    }
+
     /** Un ciclo completo con una configuración ya resuelta (puede lanzar) */
-    private suspend fun intentarCiclo(configuracion: ConfiguracionSync): Resultado<ResumenSync> =
+    private suspend fun intentarCiclo(
+        configuracion: ConfiguracionSync,
+        tokenSesion: String,
+    ): Resultado<ResumenSync> =
         // Todo el ciclo es E/S: red, disco y JSON. Sacarlo del hilo principal
         // evita que una sincronización larga congele la interfaz, y deja que el
         // grupo de hilos de IO use varios núcleos en las descargas.
         withContext(Dispatchers.IO) {
         val api = try {
-            apiFactory.protocolo(configuracion)
+            apiFactory.protocolo(configuracion, tokenSesion)
         } catch (error: Exception) {
             return@withContext Resultado.Fallo(
                 "La dirección del servidor no es válida: «${configuracion.url}».",
@@ -185,7 +256,7 @@ class SincronizacionRepositorio @Inject constructor(
             }
         }
         return try {
-            val api = apiFactory.protocolo(configuracion)
+            val api = apiFactory.protocolo(configuracion, sesion = null)
             val ping = api.ping()
             val horaServidor = Fechas.desdeIso(ping.hora)
             val desfase = horaServidor?.let { (System.currentTimeMillis() - it) / 1000 }

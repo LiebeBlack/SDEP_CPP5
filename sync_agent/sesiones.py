@@ -28,6 +28,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from src.security.contexto import normalizar_cedula
 from sync_agent import cuentas
 from sync_agent.comun import ahora_utc
 from sync_agent.esquema import SesionApi
@@ -60,6 +61,8 @@ class SesionValida:
     dispositivo_id: str | None
     expira_en: datetime
     debe_cambiar_password: bool = False
+    usuario_id: int = 0
+    cedula: str | None = None
 
 
 def hash_token(token: str) -> str:
@@ -156,6 +159,8 @@ class GestorSesiones:
                 username=usuario.username,
                 nombre_completo=usuario.nombre_completo,
                 rol=usuario.rol_valor,
+                usuario_id=usuario.id,
+                cedula=normalizar_cedula(usuario.cedula) or None,
                 dispositivo_id=dispositivo_id,
                 creada_en=ahora,
                 expira_en=ahora + timedelta(hours=self.vida_relativa),
@@ -170,6 +175,8 @@ class GestorSesiones:
                 "username": usuario.username,
                 "nombre_completo": usuario.nombre_completo,
                 "rol": usuario.rol_valor,
+                "usuario_id": usuario.id,
+                "cedula": normalizar_cedula(usuario.cedula) or None,
                 "debe_cambiar_password": bool(usuario.debe_cambiar_password),
                 "expira_en": registro.expira_en.isoformat(),
                 "vida_relativa_horas": self.vida_relativa,
@@ -265,8 +272,17 @@ class GestorSesiones:
                 sesion.commit()
                 raise ErrorSesion("La cuenta está desactivada; consulte al administrador", 401)
             rol = usuario.rol_valor
+            if rol == "user" and not normalizar_cedula(usuario.cedula):
+                fila.revocada = 1
+                sesion.commit()
+                raise ErrorSesion(
+                    "La cuenta no tiene cédula asignada; consulte al administrador", 403
+                )
             if rol != fila.rol:
                 fila.rol = rol
+            cedula = normalizar_cedula(usuario.cedula) or None
+            fila.usuario_id = usuario.id
+            fila.cedula = cedula
             debe_cambiar = bool(usuario.debe_cambiar_password)
             if debe_cambiar != bool(fila.debe_cambiar_password):
                 fila.debe_cambiar_password = int(debe_cambiar)
@@ -280,6 +296,8 @@ class GestorSesiones:
                 dispositivo_id=fila.dispositivo_id,
                 expira_en=fila.expira_en,
                 debe_cambiar_password=debe_cambiar,
+                usuario_id=usuario.id,
+                cedula=cedula,
             )
         except SQLAlchemyError:
             sesion.rollback()

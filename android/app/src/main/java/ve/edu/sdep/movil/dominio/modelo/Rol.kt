@@ -97,8 +97,11 @@ object PoliticaRoles {
         Modulo.CONTRATOS to setOf(Rol.ADMIN, Rol.MANAGER),
         Modulo.NOMINA to setOf(Rol.ADMIN, Rol.MANAGER),
         Modulo.CONFIGURACION to setOf(Rol.ADMIN),
-        Modulo.ESTUDIANTES to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER, Rol.VIEWER),
-        Modulo.NOTAS to setOf(Rol.ADMIN, Rol.MANAGER, Rol.USER),
+        // El legajo académico y las notas son institucionales, no la ficha
+        // personal del trabajador. El rol USER (WORKER) no los abre: así no
+        // existe una lista global de estudiantes detrás de una cuenta personal.
+        Modulo.ESTUDIANTES to setOf(Rol.ADMIN, Rol.MANAGER, Rol.VIEWER),
+        Modulo.NOTAS to setOf(Rol.ADMIN, Rol.MANAGER),
         // La captura de campo es el uso propio del teléfono: cualquier rol
         // autenticado puede levantar registros; el editor de notas lo autoriza
         // además el token académico en el servidor.
@@ -111,9 +114,11 @@ object PoliticaRoles {
         Rol.MANAGER to setOf(
             Permiso.CREAR, Permiso.CONSULTAR, Permiso.EDITAR, Permiso.ELIMINAR, Permiso.REPORTAR,
         ),
-        // `user` conserva su capacidad reservada de «editar lo propio»; hoy
-        // ningún módulo la consume, igual que en el escritorio.
-        Rol.USER to setOf(Permiso.CONSULTAR),
+        // El WORKER puede completar su ficha y sus propios documentos e
+        // incidencias. ``TablaRepositorio`` fuerza la cédula de la sesión y la
+        // comprueba en cada escritura; el servidor hace la misma comprobación
+        // antes de consolidar. Nunca son permisos globales.
+        Rol.USER to setOf(Permiso.CONSULTAR, Permiso.CREAR, Permiso.EDITAR),
         Rol.VIEWER to setOf(Permiso.CONSULTAR),
     )
 

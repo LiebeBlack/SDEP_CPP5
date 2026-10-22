@@ -51,7 +51,7 @@ import ve.edu.sdep.movil.datos.local.entidad.*
         OpAplicadaEntity::class,
         BlobPendienteEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class BaseDatosSdep : RoomDatabase() {
@@ -90,6 +90,19 @@ abstract class BaseDatosSdep : RoomDatabase() {
          * `usuarios`, cuyas contraseñas locales dejan de existir porque el
          * ingreso ahora se valida contra el nodo central.
          */
+        /**
+         * v2 → v3: la sesión cacheada guarda también la cédula.
+         *
+         * Sin ella, al reabrir sin red el aislamiento del WORKER no tendría
+         * con qué comparar las filas del espejo. La columna es nullable para
+         * no romper sesiones de cuentas administrativas.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sesion_usuario ADD COLUMN cedula TEXT")
+            }
+        }
+
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Las cuentas locales se sustituyen por la base institucional

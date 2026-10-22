@@ -47,13 +47,27 @@ class RegistroRepositorio @Inject constructor(
 ) {
 
     fun observarActivos(): Flow<List<Registro>> =
-        registroDao.observarActivos().map { filas -> filas.map { it.aDominio() } }
+        registroDao.observarActivos().map { filas ->
+            val sesion = sesionRepositorio.actual
+            filas
+                .filter { sesion?.esTrabajador != true || it.usuario == sesion?.usuario }
+                .map { it.aDominio() }
+        }
 
     fun observar(uuid: String): Flow<Registro?> =
-        registroDao.observarPorUuid(uuid).map { fila -> fila?.aDominio() }
+        registroDao.observarPorUuid(uuid).map { fila ->
+            val sesion = sesionRepositorio.actual
+            val visible = fila == null || sesion?.esTrabajador != true ||
+                fila.usuario == sesion?.usuario
+            if (visible) fila?.aDominio() else null
+        }
 
-    suspend fun buscar(uuid: String): Registro? =
-        registroDao.buscarPorUuid(uuid)?.aDominio()
+    suspend fun buscar(uuid: String): Registro? {
+        val fila = registroDao.buscarPorUuid(uuid) ?: return null
+        val sesion = sesionRepositorio.actual
+        if (sesion?.esTrabajador == true && fila.usuario != sesion.usuario) return null
+        return fila.aDominio()
+    }
 
     /**
      * Crea (``uuid`` nulo) o modifica un registro.
@@ -74,6 +88,12 @@ class RegistroRepositorio @Inject constructor(
         if (!sesion.puede(permiso)) {
             val accion = if (uuid == null) "crear" else "editar"
             return Resultado.Fallo("El rol «${sesion.rol.etiqueta}» no permite $accion registros.")
+        }
+        if (uuid != null && sesion.esTrabajador) {
+            val existente = registroDao.buscarPorUuid(uuid)
+            if (existente != null && existente.usuario != sesion.usuario) {
+                return Resultado.Fallo("El registro pertenece a otra cuenta.")
+            }
         }
 
         val tituloLimpio = titulo.trim()
@@ -193,6 +213,12 @@ class RegistroRepositorio @Inject constructor(
             ?: return Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
         if (!sesion.puede(Permiso.ELIMINAR)) {
             return Resultado.Fallo("El rol «${sesion.rol.etiqueta}» no permite eliminar registros.")
+        }
+        if (sesion.esTrabajador) {
+            val existente = registroDao.buscarPorUuid(uuid)
+            if (existente != null && existente.usuario != sesion.usuario) {
+                return Resultado.Fallo("El registro pertenece a otra cuenta.")
+            }
         }
 
         val config = configuracionRepositorio.cargar()

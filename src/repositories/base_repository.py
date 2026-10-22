@@ -96,7 +96,16 @@ class BaseRepository[T: BaseModel]:
             # "system" y sin valor forense-- en los flujos que resuelven el
             # nombre de cada registro fila a fila. Un fallo real de lectura
             # sigue quedando registrado por ``_log_audit_error``.
-            return self.session.get(self.model, id)
+            obj = self.session.get(self.model, id)
+            # ``Session.get`` puede devolver una fila del mapa de identidad sin
+            # pasar por el filtro global de SELECT. La comprobación explícita
+            # evita que un WORKER abra por id una ficha de otra cédula.
+            if obj is not None:
+                from src.security.aislamiento import puede_ver_objeto
+
+                if not puede_ver_objeto(obj, self.session):
+                    return None
+            return obj
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al obtener {self._model_name} ID {id}: {e}")

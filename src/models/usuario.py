@@ -32,6 +32,13 @@ class Usuario(Base, BaseModel):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     nombre_completo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    # Cédula del trabajador. Es obligatoria para el rol ``user`` (WORKER) y
+    # define la frontera de aislamiento: todas las consultas de esa cuenta se
+    # limitan a las filas ligadas a esta cédula. Las cuentas administrativas
+    # pueden no tenerla.
+    cedula: Mapped[str | None] = mapped_column(
+        String(20), unique=True, nullable=True, index=True
+    )
     rol: Mapped[RolUsuario] = mapped_column(
         SQLEnum(RolUsuario, values_callable=_enum_values),
         nullable=False,

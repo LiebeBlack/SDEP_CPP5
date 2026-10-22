@@ -26,9 +26,11 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
 import secrets
 import sys
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -40,6 +42,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
+from src.security.contexto import normalizar_cedula
 from sync_agent import consolidacion, registro
 from sync_agent.api_acciones import ApiAcciones, ErrorApi
 from sync_agent.aplicador import AplicadorRemoto, FilaPendiente, momento_de_operacion
@@ -47,6 +50,7 @@ from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads, nuevo_uuid
 from sync_agent.descubrimiento import PUERTO_DESCUBRIMIENTO, DifusorDescubrimiento
 from sync_agent.esquema import (
     EVENTO_CONSOLIDADO,
+    asegurar_esquema,
     EVENTO_EN_STAGING,
     LOTE_CONSOLIDADO,
     LOTE_RECHAZADO,
@@ -62,6 +66,7 @@ from sync_agent.esquema import (
     LoteEntrada,
     OpServidor,
     RelojPuesto,
+    SyncId,
 )
 from sync_agent.sesiones import ErrorSesion, SesionValida
 
@@ -151,6 +156,11 @@ class NucleoCentral:
         # de la red: publica el ciclo desde memoria en lugar de consultar la
         # base en cada latido.
         self._epoch_cache = 0
+        # Suscriptores SSE del nodo. Solo reciben el aviso de que hay un ciclo
+        # nuevo: los datos siguen viajando por ``pull``, ya filtrados por cédula.
+        self._suscriptores: set[queue.Queue] = set()
+        self._suscriptores_lock = threading.Lock()
+        self._sse_max = 50
         self.importar_legado()
         logger.info("Nodo central listo en %s", self.config.url_db)
 
@@ -170,7 +180,10 @@ class NucleoCentral:
         from src.models import Base
 
         Base.metadata.create_all(bind=self.engine, checkfirst=True)
-        BaseSync.metadata.create_all(bind=self.engine, checkfirst=True)
+        # ``create_all`` no agrega columnas a una base ya existente: esta
+        # llamada completa las de aislamiento (dispositivo móvil y cédula de
+        # la sesión) antes de atender la primera petición.
+        asegurar_esquema(self.engine)
         logger.info(
             "Esquema del nodo central listo: %s tablas de dominio y %s del agente",
             len(Base.metadata.tables),
@@ -201,10 +214,40 @@ class NucleoCentral:
 
     def cerrar(self) -> None:
         """Libera el pool de conexiones"""
+        with self._suscriptores_lock:
+            self._suscriptores.clear()
         try:
             self.engine.dispose()
         except Exception:  # pragma: no cover - cierre defensivo
             logger.debug("No se pudo liberar el motor del nodo central", exc_info=True)
+
+    # ------------------------------------------------------------------
+    # Avisos en tiempo real (SSE)
+    # ------------------------------------------------------------------
+    def suscribir_eventos(self) -> queue.Queue | None:
+        """Alta de un oyente SSE; None si se alcanzó el límite."""
+        with self._suscriptores_lock:
+            if len(self._suscriptores) >= self._sse_max:
+                return None
+            buzon: queue.Queue = queue.Queue(maxsize=20)
+            self._suscriptores.add(buzon)
+            return buzon
+
+    def cancelar_suscripcion(self, buzon: queue.Queue) -> None:
+        with self._suscriptores_lock:
+            self._suscriptores.discard(buzon)
+
+    def _notificar(self, evento: dict) -> None:
+        """Despierta a los oyentes sin bloquear la consolidación."""
+        with self._suscriptores_lock:
+            suscriptores = list(self._suscriptores)
+        for buzon in suscriptores:
+            try:
+                buzon.put_nowait(evento)
+            except queue.Full:
+                # Un cliente lento no puede frenar al resto: perderá el aviso y
+                # su polling de respaldo lo pondrá al día.
+                logger.debug("Suscriptor SSE lento: aviso descartado")
 
     # ------------------------------------------------------------------
     # Autenticación
@@ -285,7 +328,12 @@ class NucleoCentral:
             ],
         }
 
-    def push(self, dispositivo: DispositivoSync, cuerpo: dict) -> dict:
+    def push(
+        self,
+        dispositivo: DispositivoSync,
+        cuerpo: dict,
+        sesion_usuario: SesionValida | None = None,
+    ) -> dict:
         """
         Recibe un lote y lo consolida como un ciclo indivisible
 
@@ -296,7 +344,9 @@ class NucleoCentral:
         el siguiente intento.
         """
         if not self.config.consolidacion_activa:
-            return self.aplicar_lote_heredado(dispositivo, cuerpo)
+            return self.aplicar_lote_heredado(
+                dispositivo, cuerpo, sesion_usuario=sesion_usuario
+            )
 
         operaciones = cuerpo.get("ops") or []
         if not isinstance(operaciones, list):
@@ -315,7 +365,12 @@ class NucleoCentral:
                 # Reenvío del mismo paquete: se responde lo que ya se decidió.
                 return self._resumen_lote(sesion, existente)
             eventos, rechazadas, duplicadas = self._preparar_eventos(
-                sesion, dispositivo, operaciones, lote_id, desfase_ms
+                sesion,
+                dispositivo,
+                operaciones,
+                lote_id,
+                desfase_ms,
+                sesion_usuario=sesion_usuario,
             )
             self._registrar_reloj(sesion, dispositivo.dispositivo_id, desfase_ms)
             if eventos:
@@ -380,6 +435,7 @@ class NucleoCentral:
         operaciones: list,
         lote_id: str,
         desfase_ms: int,
+        sesion_usuario: SesionValida | None = None,
     ) -> tuple[list[dict], list[dict], list[str]]:
         """
         Convierte el lote del protocolo en eventos del log, sin aplicarlos
@@ -440,7 +496,18 @@ class NucleoCentral:
             if len(payload.encode("utf-8")) > self.config.max_bytes_peticion:
                 rechazadas.append({"op_id": op_id, "motivo": "payload_demasiado_grande"})
                 continue
-            motivo_permiso = self._autorizar_escritura(sesion, operacion, roles_cache)
+            if sesion_usuario is not None:
+                # La cuenta autenticada manda sobre el campo ``usuario`` que
+                # traiga el payload: un teléfono no puede atribuir una escritura
+                # a otra persona.
+                operacion = {**operacion, "usuario": sesion_usuario.username}
+            motivo_permiso = self._autorizar_escritura(
+                sesion, operacion, roles_cache, sesion_usuario=sesion_usuario
+            )
+            if not motivo_permiso:
+                motivo_permiso = self._autorizar_cedula(
+                    sesion, operacion, sesion_usuario
+                )
             if motivo_permiso:
                 rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
                 logger.info("Operación %s rechazada por permisos (%s)", op_id[:8], motivo_permiso)
@@ -597,6 +664,9 @@ class NucleoCentral:
                 )
             sesion.commit()
             self._epoch_cache = epoch
+            self._notificar(
+                {"tipo": "epoch", "epoch": epoch, "filas": len(filas)}
+            )
             logger.info(
                 "Ciclo %s consolidado: %s eventos, %s filas", epoch, len(eventos), len(filas)
             )
@@ -687,13 +757,25 @@ class NucleoCentral:
         finally:
             sesion.close()
 
-    def pull_epochs(self, dispositivo: DispositivoSync, desde: int, limite: int) -> dict:
+    def pull_epochs(
+        self,
+        dispositivo: DispositivoSync,
+        desde: int,
+        limite: int,
+        sesion_usuario: SesionValida | None = None,
+    ) -> dict:
         """
         Entrega los ciclos publicados posteriores a ``desde``
 
         Cada paquete es indivisible: el cliente lo aplica entero o no aplica
-        nada, y el manifiesto le permite comprobar que llegó completo.
+        nada, y el manifiesto le permite comprobar que llegó completo. Un
+        WORKER no usa este canal: el manifiesto global no se puede recortar sin
+        romper su verificación, así que el teléfono usa ``/pull`` filtrado.
         """
+        if sesion_usuario is not None and sesion_usuario.rol == "user":
+            raise ErrorPeticion(
+                "El teléfono debe sincronizar por /api/v1/pull", 403
+            )
         desde = max(0, int(desde or 0))
         limite = max(1, min(int(limite or 1), 20))
         sesion = self._sesion()
@@ -911,7 +993,12 @@ class NucleoCentral:
         finally:
             sesion.close()
 
-    def aplicar_lote_heredado(self, dispositivo: DispositivoSync, cuerpo: dict) -> dict:
+    def aplicar_lote_heredado(
+        self,
+        dispositivo: DispositivoSync,
+        cuerpo: dict,
+        sesion_usuario: SesionValida | None = None,
+    ) -> dict:
         """
         Aplica un lote de operaciones con el motor anterior (sin staging)
 
@@ -944,10 +1031,18 @@ class NucleoCentral:
                 op_id = str(operacion.get("op_id") or "")
                 if not op_id:
                     continue
+                if sesion_usuario is not None:
+                    operacion = {**operacion, "usuario": sesion_usuario.username}
                 # Autoridad final de permisos: una cuenta central sin permiso
                 # de escritura no puede meter filas por la puerta de
                 # sincronización, aunque el teléfono se la salte en la UI.
-                motivo_permiso = self._autorizar_escritura(sesion, operacion, roles_cache)
+                motivo_permiso = self._autorizar_escritura(
+                    sesion, operacion, roles_cache, sesion_usuario=sesion_usuario
+                )
+                if not motivo_permiso:
+                    motivo_permiso = self._autorizar_cedula(
+                        sesion, operacion, sesion_usuario
+                    )
                 if motivo_permiso:
                     rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
                     logger.info(
@@ -987,6 +1082,9 @@ class NucleoCentral:
                 aplicadas.append(op_id)
                 conflictos.extend(self._conflictos_json(resultado.conflictos))
             sesion.commit()
+            self._notificar(
+                {"tipo": "cambio", "epoch": self._epoch_cache, "filas": len(aplicadas)}
+            )
         except SQLAlchemyError:
             sesion.rollback()
             logger.error("No se pudo aplicar el lote recibido", exc_info=True)
@@ -1002,7 +1100,11 @@ class NucleoCentral:
         }
 
     def _autorizar_escritura(
-        self, sesion, operacion: dict, roles_cache: dict[str, str | None]
+        self,
+        sesion,
+        operacion: dict,
+        roles_cache: dict[str, str | None],
+        sesion_usuario: SesionValida | None = None,
     ) -> str | None:
         """
         Comprueba los permisos del rol de la cuenta que envía una operación
@@ -1015,13 +1117,18 @@ class NucleoCentral:
         if regla is None:
             return None
         username = str(operacion.get("usuario") or "").strip()
+        if sesion_usuario is not None:
+            username = sesion_usuario.username
         if not username:
             # Puestos antiguos no envían usuario: la confianza sigue en el
             # token del dispositivo (y en la revocación administrativa).
             return None
-        if username not in roles_cache:
-            roles_cache[username] = self._rol_central(sesion, username)
-        rol = roles_cache[username]
+        if sesion_usuario is not None:
+            rol = sesion_usuario.rol
+        else:
+            if username not in roles_cache:
+                roles_cache[username] = self._rol_central(sesion, username)
+            rol = roles_cache[username]
         if rol is None:
             # La cuenta no existe en la base central: pertenece a un puesto
             # que administra sus propias cuentas (usuarios no se replica).
@@ -1031,12 +1138,155 @@ class NucleoCentral:
 
         modulo, permiso_escritura = regla
         tipo = str(operacion.get("operacion") or "upsert")
+        if rol == "user" and tabla in TABLAS_PROPIAS:
+            if tipo == "delete":
+                return "permiso_insuficiente:delete"
+            if not PermissionChecker.can_access_module(rol, modulo):
+                return f"modulo_no_autorizado:{modulo}"
+            # La propiedad de la fila la comprueba ``_autorizar_cedula``.
+            return None
         permiso = "delete" if tipo == "delete" else permiso_escritura
         if not PermissionChecker.has_permission(rol, permiso):
             return f"permiso_insuficiente:{permiso}"
         if not PermissionChecker.can_access_module(rol, modulo):
             return f"modulo_no_autorizado:{modulo}"
         return None
+
+    # ------------------------------------------------------------------
+    # Aislamiento por cédula en la sincronización
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _payload(operacion: dict) -> dict:
+        """Payload de una operación, ya decodificado ({} si no es válido)."""
+        crudo = operacion.get("payload")
+        if isinstance(crudo, dict):
+            return crudo
+        try:
+            datos = loads(crudo) if isinstance(crudo, str) and crudo else {}
+        except (TypeError, ValueError):
+            return {}
+        return datos if isinstance(datos, dict) else {}
+
+    @staticmethod
+    def _modelo(tabla: str):
+        descripcion = registro.entidad(tabla)
+        return descripcion.clase if descripcion is not None else None
+
+    def _fila_existente(self, sesion, tabla: str, fila_uuid: str):
+        """Fila de dominio que corresponde a una identidad global, si existe."""
+        modelo = self._modelo(tabla)
+        if modelo is None:
+            return None
+        fila_id = (
+            sesion.query(SyncId.id_local)
+            .filter(SyncId.tabla == tabla, SyncId.uuid == fila_uuid)
+            .scalar()
+        )
+        if fila_id is None:
+            return None
+        return sesion.get(modelo, int(fila_id))
+
+    def _empleado_por_uuid(self, sesion, empleado_uuid: str | None):
+        from src.models import Empleado
+
+        if not empleado_uuid:
+            return None
+        return self._fila_existente(sesion, "empleados", str(empleado_uuid))
+
+    def _empleado_de(self, sesion, tabla: str, fila_uuid: str):
+        """Empleado propietario de una fila (o None si no se puede resolver)."""
+        from src.models import Empleado
+
+        if tabla == "empleados":
+            fila = self._fila_existente(sesion, tabla, fila_uuid)
+            return fila if isinstance(fila, Empleado) else None
+        fila = self._fila_existente(sesion, tabla, fila_uuid)
+        if fila is None:
+            return None
+        empleado_id = getattr(fila, "empleado_id", None)
+        if not empleado_id:
+            return None
+        return sesion.get(Empleado, int(empleado_id))
+
+    def _autorizar_cedula(
+        self,
+        sesion,
+        operacion: dict,
+        sesion_usuario: SesionValida | None,
+    ) -> str | None:
+        """Comprueba que un WORKER solo toque filas de su propia cédula."""
+        if sesion_usuario is None or sesion_usuario.rol != "user":
+            return None
+        if not sesion_usuario.cedula:
+            return "cuenta_sin_cedula"
+        tabla = str(operacion.get("tabla") or "")
+        fila_uuid = str(operacion.get("fila_uuid") or "")
+        payload = self._payload(operacion)
+
+        if tabla == "registros_moviles":
+            usuario = str(payload.get("usuario") or "").strip()
+            if usuario and usuario != sesion_usuario.username:
+                return "fuera_de_su_usuario"
+            return None
+
+        if tabla not in TABLAS_PROPIAS:
+            return "fuera_de_su_cedula"
+
+        if tabla == "empleados":
+            cedula_payload = normalizar_cedula(payload.get("cedula"))
+            if cedula_payload and cedula_payload != sesion_usuario.cedula:
+                return "fuera_de_su_cedula"
+            existente = self._fila_existente(sesion, tabla, fila_uuid)
+            if existente is not None:
+                if normalizar_cedula(existente.cedula) != sesion_usuario.cedula:
+                    return "fuera_de_su_cedula"
+            elif not cedula_payload:
+                return "falta_cedula"
+            return None
+
+        # Documentos e incidencias: el empleado puede venir en el payload (alta
+        # o cambio de dueño) o deducirse de la fila ya existente (edición
+        # parcial o baja).
+        empleado = self._empleado_por_uuid(sesion, payload.get("empleado_id"))
+        if empleado is None:
+            empleado = self._empleado_de(sesion, tabla, fila_uuid)
+        if empleado is None:
+            return "empleado_no_disponible"
+        if normalizar_cedula(empleado.cedula) != sesion_usuario.cedula:
+            return "fuera_de_su_cedula"
+        return None
+
+    def _fila_visible_para_trabajador(
+        self, sesion, tabla: str, fila_uuid: str, sesion_usuario: SesionValida
+    ) -> bool:
+        """Indica si una operación publicada pertenece a la cédula indicada."""
+        if sesion_usuario.rol != "user":
+            return True
+        if not sesion_usuario.cedula:
+            return False
+        if tabla == "configuraciones":
+            return True
+        if tabla == "registros_moviles":
+            from src.models import RegistroMovil
+
+            fila = (
+                sesion.query(RegistroMovil)
+                .filter(RegistroMovil.uuid_movil == fila_uuid)
+                .first()
+            )
+            return bool(fila is not None and (fila.usuario or "") == sesion_usuario.username)
+        if tabla not in TABLAS_PROPIAS:
+            return False
+        if tabla == "empleados":
+            fila = self._fila_existente(sesion, tabla, fila_uuid)
+            if fila is None:
+                return False
+            return normalizar_cedula(fila.cedula) == sesion_usuario.cedula
+        empleado = self._empleado_de(sesion, tabla, fila_uuid)
+        return bool(
+            empleado is not None
+            and normalizar_cedula(empleado.cedula) == sesion_usuario.cedula
+        )
 
     @staticmethod
     def _rol_central(sesion, username: str) -> str | None:
@@ -1046,43 +1296,91 @@ class NucleoCentral:
         usuario = sesion.query(Usuario).filter(Usuario.username == username).first()
         return usuario.rol_valor if usuario is not None else None
 
-    def pull(self, dispositivo: DispositivoSync, cursor: int, limite: int) -> dict:
-        """Devuelve las operaciones posteriores al cursor, sin las propias"""
+    @staticmethod
+    def _operacion_wire(fila: OpServidor) -> dict:
+        return {
+            "seq": fila.seq,
+            "op_id": fila.op_id,
+            "tabla": fila.tabla,
+            "fila_uuid": fila.fila_uuid,
+            "operacion": fila.operacion,
+            "payload": fila.payload,
+            "base_op_id": fila.base_op_id,
+            "dispositivo": fila.dispositivo,
+            "usuario": fila.usuario,
+            "creado_en": fila.creado_en.isoformat(),
+        }
+
+    def pull(
+        self,
+        dispositivo: DispositivoSync,
+        cursor: int,
+        limite: int,
+        sesion_usuario: SesionValida | None = None,
+    ) -> dict:
+        """Devuelve las operaciones posteriores al cursor, sin las propias.
+
+        Un teléfono de un WORKER recibe únicamente las operaciones de su
+        cédula. El cursor avanza también sobre las filas descartadas: de lo
+        contrario el cliente volvería a pedirlas en cada ciclo.
+        """
         limite = max(1, min(int(limite or 200), self.config.max_ops_por_lote))
+        cursor = int(cursor or 0)
+        restringido = sesion_usuario is not None and sesion_usuario.rol == "user"
         sesion = self._sesion()
         try:
-            filas = (
-                sesion.query(OpServidor)
-                .filter(
-                    OpServidor.seq > int(cursor or 0),
-                    OpServidor.dispositivo != dispositivo.dispositivo_id,
-                )
-                .order_by(OpServidor.seq)
-                .limit(limite)
-                .all()
-            )
-            operaciones = [
-                {
-                    "seq": fila.seq,
-                    "op_id": fila.op_id,
-                    "tabla": fila.tabla,
-                    "fila_uuid": fila.fila_uuid,
-                    "operacion": fila.operacion,
-                    "payload": fila.payload,
-                    "base_op_id": fila.base_op_id,
-                    "dispositivo": fila.dispositivo,
-                    "usuario": fila.usuario,
-                    "creado_en": fila.creado_en.isoformat(),
-                }
-                for fila in filas
-            ]
             maximo = int(sesion.query(func.max(OpServidor.seq)).scalar() or 0)
-            ultimo = filas[-1].seq if filas else int(cursor or 0)
+            if not restringido:
+                filas = (
+                    sesion.query(OpServidor)
+                    .filter(
+                        OpServidor.seq > cursor,
+                        OpServidor.dispositivo != dispositivo.dispositivo_id,
+                    )
+                    .order_by(OpServidor.seq)
+                    .limit(limite)
+                    .all()
+                )
+                ultimo = filas[-1].seq if filas else cursor
+                return {
+                    "ops": [self._operacion_wire(fila) for fila in filas],
+                    "cursor": ultimo,
+                    "hay_mas": bool(filas) and ultimo < maximo,
+                    "maximo": maximo,
+                }
+
+            operaciones: list[dict] = []
+            ultimo = cursor
+            vueltas = 0
+            while len(operaciones) < limite and vueltas < 25:
+                filas = (
+                    sesion.query(OpServidor)
+                    .filter(
+                        OpServidor.seq > ultimo,
+                        OpServidor.dispositivo != dispositivo.dispositivo_id,
+                    )
+                    .order_by(OpServidor.seq)
+                    .limit(limite)
+                    .all()
+                )
+                if not filas:
+                    break
+                for fila in filas:
+                    ultimo = fila.seq
+                    if self._fila_visible_para_trabajador(
+                        sesion, fila.tabla, fila.fila_uuid, sesion_usuario
+                    ):
+                        operaciones.append(self._operacion_wire(fila))
+                        if len(operaciones) >= limite:
+                            break
+                vueltas += 1
             return {
                 "ops": operaciones,
                 "cursor": ultimo,
-                "hay_mas": bool(operaciones) and ultimo < maximo,
-                "maximo": maximo,
+                "hay_mas": ultimo < maximo,
+                # No se revela el volumen global de operaciones a una cuenta
+                # personal: basta con saber si quedan páginas por leer.
+                "maximo": ultimo,
             }
         except SQLAlchemyError:
             logger.error("No se pudo leer el log de operaciones", exc_info=True)
@@ -1102,6 +1400,35 @@ class NucleoCentral:
     # Protocolo 2: consultas, administración, acciones y archivos
     # ------------------------------------------------------------------
     def api_acciones(
+        self,
+        sesion_usuario,
+        dispositivo: DispositivoSync,
+        ruta: str,
+        cuerpo: dict,
+        parametros: dict,
+        contenido: bytes | None = None,
+    ) -> dict:
+        """Ejecuta una acción con el contexto de cédula de su sesión.
+
+        El contexto es local al hilo de la petición. Se limpia al terminar para
+        que una conexión HTTP persistente no reutilice la identidad anterior.
+        """
+        from src.security.contexto import establecer, limpiar
+
+        establecer(
+            sesion_usuario.usuario_id,
+            sesion_usuario.username,
+            sesion_usuario.rol,
+            sesion_usuario.cedula,
+        )
+        try:
+            return self._despachar_api(
+                sesion_usuario, dispositivo, ruta, cuerpo, parametros, contenido
+            )
+        finally:
+            limpiar()
+
+    def _despachar_api(
         self,
         sesion_usuario,
         dispositivo: DispositivoSync,
@@ -1327,15 +1654,23 @@ class NucleoCentral:
         # Tasa propia y más restrictiva que la general: el emparejamiento es
         # un evento raro, así que un bombardeo aquí es siempre sospechoso.
         self.limitar_tasa(f"emparejar:{ip}")
-        dispositivo_id, token = self.crear_dispositivo((nombre or "").strip() or "Teléfono")
-        logger.info("Puesto emparejado automáticamente desde la red (%s)", ip)
+        dispositivo_id, token = self.crear_dispositivo(
+            (nombre or "").strip() or "Teléfono", es_movil=True
+        )
+        logger.info("Puesto móvil emparejado automáticamente desde la red (%s)", ip)
         return {"dispositivo_id": dispositivo_id, "token": token}
 
-    def crear_dispositivo(self, nombre: str) -> tuple[str, str]:
+    def crear_dispositivo(self, nombre: str, es_movil: bool = False) -> tuple[str, str]:
         """
         Da de alta un puesto y devuelve su identificador y su token en claro
 
         El token no se puede recuperar después: en la base solo queda su hash.
+
+        Args:
+            nombre: Nombre visible del puesto
+            es_movil: True para un teléfono, que además deberá presentar la
+                sesión de la persona en cada lectura o escritura. Los puestos
+                de escritorio siguen siendo equipos de confianza de la red.
         """
         from src.utils.security import SecurityValidator
         from sync_agent.comun import nuevo_uuid
@@ -1350,6 +1685,7 @@ class NucleoCentral:
                     nombre=nombre.strip() or "Puesto sin nombre",
                     token_hash=SecurityValidator.hash_password(token),
                     activo=1,
+                    es_movil=1 if es_movil else 0,
                 )
             )
             self._bitacora(sesion, dispositivo_id, "dispositivo_creado", nombre, True)
@@ -1367,6 +1703,7 @@ class NucleoCentral:
                     "dispositivo_id": fila.dispositivo_id,
                     "nombre": fila.nombre,
                     "activo": bool(fila.activo),
+                    "es_movil": bool(fila.es_movil),
                     "creado_en": fila.creado_en.isoformat() if fila.creado_en else None,
                     "ultima_conexion": (
                         fila.ultima_conexion.isoformat() if fila.ultima_conexion else None
@@ -1502,6 +1839,7 @@ RUTA_PULL = "/api/v1/pull"
 RUTA_EPOCHS = "/api/v1/epochs"
 RUTA_ACK = "/api/v1/ack"
 RUTA_BLOB = "/api/v1/blob"
+RUTA_EVENTOS = "/api/v1/eventos"
 
 # Rutas del protocolo 2 (acciones y consultas de la aplicación móvil)
 RUTA_AUTH = "/api/v1/auth"
@@ -1518,6 +1856,12 @@ RUTA_ARCHIVOS = "/api/v1/archivos"
 # cuenta es conocida en el nodo central. ``registros_moviles`` y
 # ``notas_finales`` quedan fuera: la primera es captura de campo autenticada y
 # las segundas las autoriza el token académico, no el mapa de módulos.
+# Tablas que un WORKER puede modificar cuando la fila es de su cédula. La
+# comprobación de propiedad se hace aparte, en ``_autorizar_cedula``.
+TABLAS_PROPIAS: frozenset[str] = frozenset(
+    {"empleados", "documentos", "incidencias", "registros_moviles"}
+)
+
 TABLAS_PROTEGIDAS: dict[str, tuple[str, str]] = {
     "empleados": ("empleados", "update"),
     "documentos": ("documentos", "update"),
@@ -1618,22 +1962,52 @@ class ManejadorSync(BaseHTTPRequestHandler):
             dispositivo = self._autenticar()
             self.nucleo.limitar_tasa(dispositivo.dispositivo_id)
 
+            if ruta.path == RUTA_EVENTOS and metodo == "GET":
+                # Los avisos no llevan datos personales, pero un móvil sigue
+                # obligado a presentar la sesión de la persona que lo usa.
+                self._sesion_opcional(dispositivo)
+                self._transmitir_eventos()
+                return
+
+            sesion_usuario = self._sesion_opcional(dispositivo, exigir=False)
+
             if ruta.path == RUTA_PULL and metodo == "GET":
                 parametros = parse_qs(ruta.query)
                 cursor = int((parametros.get("cursor") or ["0"])[0] or 0)
                 limite = int((parametros.get("limite") or ["200"])[0] or 200)
-                self._responder_json(200, self.nucleo.pull(dispositivo, cursor, limite))
+                self._responder_json(
+                    200,
+                    self.nucleo.pull(
+                        dispositivo, cursor, limite, sesion_usuario=sesion_usuario
+                    ),
+                )
                 return
 
             if ruta.path == RUTA_PUSH and metodo == "POST":
-                self._responder_json(200, self.nucleo.push(dispositivo, self._leer_json()))
+                if dispositivo.es_movil and sesion_usuario is None:
+                    raise ErrorPeticion(
+                        "El teléfono debe iniciar sesión para enviar cambios", 401
+                    )
+                self._responder_json(
+                    200,
+                    self.nucleo.push(
+                        dispositivo,
+                        self._leer_json(),
+                        sesion_usuario=sesion_usuario,
+                    ),
+                )
                 return
 
             if ruta.path == RUTA_EPOCHS and metodo == "GET":
                 parametros = parse_qs(ruta.query)
                 desde = int((parametros.get("desde") or ["0"])[0] or 0)
                 limite = int((parametros.get("limite") or ["1"])[0] or 1)
-                self._responder_json(200, self.nucleo.pull_epochs(dispositivo, desde, limite))
+                self._responder_json(
+                    200,
+                    self.nucleo.pull_epochs(
+                        dispositivo, desde, limite, sesion_usuario=sesion_usuario
+                    ),
+                )
                 return
 
             if ruta.path == RUTA_ACK and metodo == "POST":
@@ -1685,6 +2059,10 @@ class ManejadorSync(BaseHTTPRequestHandler):
 
     def _atender_blob(self, metodo: str, dispositivo: DispositivoSync, hash_archivo: str) -> None:
         """Sube o entrega un archivo del almacén central"""
+        if dispositivo.es_movil:
+            # Un móvil necesita sesión también para los binarios: el hash es
+            # una capacidad, pero no se entrega a un equipo sin identidad.
+            self._sesion_opcional(dispositivo)
         if metodo == "POST":
             self._responder_json(
                 200, self.nucleo.guardar_blob(dispositivo, hash_archivo, self._cuerpo)
@@ -1705,6 +2083,71 @@ class ManejadorSync(BaseHTTPRequestHandler):
     def _token_sesion(self) -> str:
         """Token de sesión de usuario (cabecera ``X-Sesion``)"""
         return (self.headers.get("X-Sesion") or "").strip()
+
+    def _sesion_opcional(
+        self, dispositivo: DispositivoSync, exigir: bool = True
+    ) -> SesionValida | None:
+        """Sesión de la persona que usa un dispositivo móvil.
+
+        Los puestos de escritorio siguen autenticándose solo con su token de
+        equipo: son equipos de confianza administrados por la institución. Un
+        teléfono, en cambio, debe presentar además la sesión de su usuario; sin
+        ella el token del equipo no sirve para leer ni escribir.
+        """
+        if not dispositivo.es_movil:
+            return None
+        token = self._token_sesion()
+        if not token:
+            if exigir:
+                raise ErrorPeticion(
+                    "El teléfono debe iniciar sesión para acceder a los datos", 401
+                )
+            return None
+        sesion = self.nucleo.api.validar(token)
+        if sesion.dispositivo_id and sesion.dispositivo_id != dispositivo.dispositivo_id:
+            raise ErrorPeticion("La sesión pertenece a otro equipo", 403)
+        return sesion
+
+    def _transmitir_eventos(self) -> None:
+        """Mantiene una conexión SSE con latidos y avisos de consolidación."""
+        buzon = self.nucleo.suscribir_eventos()
+        if buzon is None:
+            self._responder_json(
+                503, {"error": "Demasiados oyentes en tiempo real; reintente"}
+            )
+            return
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-transform")
+            self.send_header("Connection", "close")
+            self.send_header("X-Accel-Buffering", "no")
+            self.end_headers()
+            self.close_connection = True
+            self._escribir_sse(b": conectado\n\n")
+            inicio = time.monotonic()
+            while time.monotonic() - inicio < 300:
+                try:
+                    evento = buzon.get(timeout=20)
+                except queue.Empty:
+                    self._escribir_sse(b": latido\n\n")
+                else:
+                    self._escribir_sse(
+                        f"event: cambio\ndata: {dumps(evento)}\n\n".encode("utf-8")
+                    )
+        except (
+            BrokenPipeError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            TimeoutError,
+        ) as error:
+            logger.info("El oyente SSE %s se desconectó: %s", self.client_address[0], error)
+        finally:
+            self.nucleo.cancelar_suscripcion(buzon)
+
+    def _escribir_sse(self, contenido: bytes) -> None:
+        self.wfile.write(contenido)
+        self.wfile.flush()
 
     def _cuerpo_archivo(self) -> bytes:
         """Cuerpo crudo de la petición (para subidas binarias)"""

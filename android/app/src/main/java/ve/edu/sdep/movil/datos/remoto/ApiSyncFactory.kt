@@ -33,18 +33,25 @@ class ApiSyncFactory @Inject constructor(
     private var cacheProtocolo: CacheProtocolo? = null
     private var cacheAcciones: CacheAcciones? = null
 
-    /** Cliente del protocolo de replicación (v1), con las cabeceras del equipo */
+    /**
+     * Cliente del protocolo de replicación (v1), con las cabeceras del equipo
+     * y, para un teléfono, también la sesión de la persona (``X-Sesion``).
+     *
+     * El nodo central no entrega datos de una cédula a un equipo móvil que no
+     * acredite quién lo está usando; el token del puesto ya no es suficiente.
+     */
     @Synchronized
-    fun protocolo(configuracion: ConfiguracionSync): ProtocoloApi {
+    fun protocolo(configuracion: ConfiguracionSync, sesion: String? = null): ProtocoloApi {
+        val clave = ClaveProtocolo(configuracion, sesion)
         val actual = cacheProtocolo
-        if (actual != null && actual.clave == configuracion) return actual.api
+        if (actual != null && actual.clave == clave) return actual.api
 
         require(configuracion.completa) { "La configuración del nodo central está incompleta" }
 
-        val api = constructor(configuracion.urlNormalizada(), configuracion, sesion = null)
+        val api = constructor(configuracion.urlNormalizada(), configuracion, sesion)
             .create(ProtocoloApi::class.java)
 
-        cacheProtocolo = CacheProtocolo(configuracion, api)
+        cacheProtocolo = CacheProtocolo(clave, api)
         return api
     }
 
@@ -119,7 +126,8 @@ class ApiSyncFactory @Inject constructor(
         }
     }
 
+    private data class ClaveProtocolo(val configuracion: ConfiguracionSync, val sesion: String?)
     private data class ClaveAcciones(val url: String, val equipo: String, val token: String, val sesion: String?)
-    private data class CacheProtocolo(val clave: ConfiguracionSync, val api: ProtocoloApi)
+    private data class CacheProtocolo(val clave: ClaveProtocolo, val api: ProtocoloApi)
     private data class CacheAcciones(val clave: ClaveAcciones, val api: ApiAcciones)
 }

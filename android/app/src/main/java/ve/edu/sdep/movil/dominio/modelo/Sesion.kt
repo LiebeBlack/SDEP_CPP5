@@ -15,6 +15,12 @@ data class Sesion(
     val usuario: String,
     val nombre: String,
     val rol: Rol,
+    /**
+     * Cédula del trabajador. Es la frontera de aislamiento del rol Usuario:
+     * el servidor filtra por ella y la app vuelve a comprobar cada fila antes
+     * de mostrarla o escribirla. Las cuentas administrativas pueden no tenerla.
+     */
+    val cedula: String? = null,
     val token: String = "",
     val expiraEn: Long = 0L,
     val debeCambiarPassword: Boolean = false,
@@ -25,6 +31,12 @@ data class Sesion(
     fun puede(permiso: Permiso): Boolean = PoliticaRoles.tiene(rol, permiso)
 
     fun puedeAbrir(modulo: Modulo): Boolean = PoliticaRoles.puedeAbrir(rol, modulo)
+
+    /** El rol ``user`` es el WORKER y solo opera sobre su propia cédula. */
+    val esTrabajador: Boolean get() = rol == Rol.USER
+
+    /** Cédula normalizada para comparar filas del espejo. */
+    val cedulaNormalizada: String get() = normalizarCedula(cedula)
 
     /** La sesión abierta sin red solo sirve dentro de su ventana de gracia */
     fun vigente(ahora: Long = System.currentTimeMillis()): Boolean =
@@ -48,6 +60,13 @@ sealed interface Resultado<out T> {
         val reintentable: Boolean = false,
     ) : Resultado<Nothing>
 }
+
+/**
+ * Normaliza una cédula como lo hace el escritorio: mayúsculas, sin puntos ni
+ * espacios. Se conserva el guion del prefijo (V-, E-).
+ */
+fun normalizarCedula(valor: String?): String =
+    (valor ?: "").trim().uppercase().replace(".", "").replace(" ", "")
 
 /** Devuelve el valor si la operación salió bien; null en caso contrario */
 fun <T> Resultado<T>.valorONull(): T? = (this as? Resultado.Exito)?.valor

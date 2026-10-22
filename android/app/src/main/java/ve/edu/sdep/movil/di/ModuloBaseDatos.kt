@@ -46,7 +46,10 @@ object ModuloBaseDatos {
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             // Sin la migración explícita, Room destruiría y recrearía la base
             // al actualizar, perdiendo la cola de salida y lo capturado sin red.
-            .addMigrations(BaseDatosSdep.MIGRATION_1_2)
+            .addMigrations(
+                BaseDatosSdep.MIGRATION_1_2,
+                BaseDatosSdep.MIGRATION_2_3,
+            )
             .build()
 
     @Provides

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity
 import ve.edu.sdep.movil.datos.repositorio.EmpleadoRepositorio
+import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import javax.inject.Inject
 
@@ -25,6 +26,8 @@ data class EstadoEmpleado(
     val mensaje: String? = null,
     val guardado: Boolean = false,
     val dadoDeBaja: Boolean = false,
+    /** Un WORKER no puede cambiar la cédula que define su propio aislamiento. */
+    val cedulaBloqueada: Boolean = false,
 )
 
 /**
@@ -37,13 +40,21 @@ data class EstadoEmpleado(
 @HiltViewModel
 class EmpleadoViewModel @Inject constructor(
     private val repositorio: EmpleadoRepositorio,
+    private val sesionRepositorio: SesionRepositorio,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val id: Long = savedStateHandle.get<Long>("id") ?: 0L
+    private val trabajador = sesionRepositorio.actual?.esTrabajador == true
+    private val cedulaSesion = sesionRepositorio.actual?.cedula.orEmpty()
 
     private val _estado = MutableStateFlow(
-        EstadoEmpleado(id = id.takeIf { it > 0L }, cargando = id > 0L),
+        EstadoEmpleado(
+            id = id.takeIf { it > 0L },
+            valores = if (trabajador) mapOf("cedula" to cedulaSesion) else emptyMap(),
+            cargando = id > 0L,
+            cedulaBloqueada = trabajador,
+        ),
     )
     val estado: StateFlow<EstadoEmpleado> = _estado.asStateFlow()
 
@@ -74,6 +85,7 @@ class EmpleadoViewModel @Inject constructor(
     }
 
     fun cambiar(clave: String, valor: String) {
+        if (clave == "cedula" && trabajador) return
         _estado.update { actual ->
             actual.copy(valores = actual.valores + (clave to valor), error = null)
         }

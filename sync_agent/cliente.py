@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 RUTA_PING = "/api/v1/ping"
 RUTA_PUSH = "/api/v1/push"
 RUTA_PULL = "/api/v1/pull"
+RUTA_EPOCHS = "/api/v1/epochs"
+RUTA_ACK = "/api/v1/ack"
 RUTA_BLOB = "/api/v1/blob"
 
 USER_AGENT = "SDEP-SyncAgent/1.0"
@@ -48,6 +50,10 @@ class ErrorAutenticacion(ErrorSincronizacion):
 
 class ErrorProtocolo(ErrorSincronizacion):
     """El servidor respondió algo que el agente no entiende"""
+
+
+class ErrorNoSoportado(ErrorProtocolo):
+    """El nodo central no publica ciclos: hay que usar el protocolo anterior"""
 
 
 @dataclass
@@ -97,17 +103,30 @@ class ClienteSync:
         """Comprueba el servicio y devuelve su estado y su hora"""
         return self._peticion("GET", RUTA_PING).datos
 
-    def enviar_ops(self, operaciones: list[dict]) -> dict:
+    def enviar_ops(
+        self,
+        operaciones: list[dict],
+        lote_id: str | None = None,
+        desfase_ms: int = 0,
+    ) -> dict:
         """
         Envía un lote de operaciones locales
 
         Args:
             operaciones: Operaciones del protocolo
+            lote_id: Identificador del paquete (idempotencia del staging)
+            desfase_ms: Desfase medido del reloj de este equipo
 
         Returns:
-            Resultado del servidor (aplicadas, rechazadas, conflictos, cursor)
+            Resultado del servidor (aplicadas, rechazadas, epoch, cursor)
         """
-        cuerpo = {"dispositivo": self.dispositivo, "ops": operaciones}
+        cuerpo: dict[str, Any] = {
+            "dispositivo": self.dispositivo,
+            "ops": operaciones,
+            "desfase_ms": int(desfase_ms or 0),
+        }
+        if lote_id:
+            cuerpo["lote_id"] = str(lote_id)
         return self._peticion("POST", RUTA_PUSH, cuerpo).datos
 
     def recibir_ops(self, cursor: int, limite: int = 200) -> dict:
@@ -123,6 +142,20 @@ class ClienteSync:
         """
         ruta = f"{RUTA_PULL}?cursor={int(cursor)}&limite={int(limite)}"
         return self._peticion("GET", ruta).datos
+
+    def recibir_epochs(self, desde: int, limite: int = 1) -> dict:
+        """
+        Descarga los ciclos consolidados posteriores a ``desde``
+
+        Raises:
+            ErrorNoSoportado: si el nodo central es de una versión anterior
+        """
+        ruta = f"{RUTA_EPOCHS}?desde={int(desde)}&limite={int(limite)}"
+        return self._peticion("GET", ruta).datos
+
+    def confirmar_epoch(self, epoch: int) -> dict:
+        """Confirma que este puesto aplicó el ciclo indicado"""
+        return self._peticion("POST", RUTA_ACK, {"epoch": int(epoch)}).datos
 
     def subir_blob(self, hash_archivo: str, contenido: bytes) -> None:
         """Envía un archivo binario identificado por su hash"""
@@ -205,7 +238,7 @@ class ClienteSync:
         if error.code == 401:
             return ErrorAutenticacion("El token del equipo no es válido o fue revocado")
         if error.code == 404:
-            return ErrorProtocolo(f"Recurso no encontrado ({error.code}): {detalle}")
+            return ErrorNoSoportado(f"Recurso no encontrado ({error.code}): {detalle}")
         if error.code in (413, 422):
             return ErrorProtocolo(f"Lote rechazado por el servidor ({error.code}): {detalle}")
         if error.code == 429:

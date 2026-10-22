@@ -63,6 +63,12 @@ computador. El contenido en sí sí viaja, identificado por su hash.
 * **Nodo central**: único escritor de la base compartida, con su `seq` global.
   Los puestos nunca escriben en él de forma directa.
 
+> Desde el protocolo de ciclos (§9), el nodo central ya no mezcla al recibir:
+> guarda cada evento en un log inmutable, lo ordena por su marca corregida y
+> publica el estado reconstruido como un `epoch` atómico. La mezcla por campo
+> de este apartado sigue viva para los clientes anteriores y para el modo de
+> compatibilidad.
+
 ### Offline y online
 
 El agente nunca espera a la red para dejar escribir al usuario. Un ciclo dura
@@ -238,7 +244,8 @@ py -3 -m sync_agent agente --una-vez # un solo ciclo, útil para probar
 |---|---|
 | `comun.py` | Utilidades puras: UUID, hash, serialización con etiquetas de tipo |
 | `registro.py` | Descripción declarativa de qué se replica de cada tabla |
-| `merge.py` | Motor de mezcla (**funciones puras**, sin base de datos) |
+| `merge.py` | Mezcla por campo del protocolo anterior (compatibilidad) |
+| `consolidacion.py` | Orden cronológico, replay por fila y manifiesto del ciclo |
 | `esquema.py` | Tablas propias del agente (journal, identidad, marcas, blobs) |
 | `identidad.py` | Traducción entre identidad global (UUID) e ids locales |
 | `captura.py` | Enganche al ORM: journal por evento, en la misma transacción |
@@ -251,3 +258,76 @@ py -3 -m sync_agent agente --una-vez # un solo ciclo, útil para probar
 
 Pruebas: `tests/test_sync_merge.py`, `test_sync_captura.py`,
 `test_sync_agente.py`, `test_sync_servidor.py` y `test_sync_integracion.py`.
+
+---
+
+## 9. Reconstrucción por ciclos (event sourcing)
+
+El nodo central ya no aplica cada operación al recibirla. Ahora **reconstruye la
+historia**: guarda cada evento en un log inmutable, lo ordena por su marca de
+tiempo y publica el resultado como un ciclo (`epoch`) indivisible.
+
+```
+ push del puesto            staging                 consolidación                clientes
+┌──────────────────┐   ┌──────────────────┐   ┌────────────────────────┐   ┌──────────────────┐
+│ ops + sello      │──▶│ sync_lotes       │──▶│ orden por (momento,    │──▶│ GET /epochs       │
+│ + desfase medido │   │ sync_eventos     │   │  equipo, op_id)        │   │ manifiesto       │
+│                  │   │ (no aplica nada) │   │ replay por fila        │   │ aplicación atómica│
+└──────────────────┘   └──────────────────┘   │ commit + epoch + ack   │   │ ack               │
+                                               └────────────────────────┘   └──────────────────┘
+```
+
+### Qué garantiza
+
+* **Nada se descarta.** Cada operación es un evento con su sello original y el
+  corregido. Si la máquina A escribió a las 10:00:01 y el paquete llegó a las
+  10:05, el evento entra en la línea de tiempo a las 10:00:01, no al final.
+* **Un evento tardío se reubica donde ocurrió.** Al consolidar, la fila afectada
+  se reconstruye desde su historia completa en orden cronológico; no se aplica
+  «encima» del estado actual.
+* **Commit indivisible.** El paquete se aplica entero o no se aplica. Si la red
+  se corta, si falta un padre o el manifiesto no coincide, se revierte todo y el
+  puesto conserva su estado anterior.
+* **Mismo estado en todas las máquinas.** El ciclo viaja con un `manifiesto`
+  (SHA-256 de eventos + filas); cada cliente lo recalcula antes de aplicar.
+* **Relojes corregidos.** El agente mide el desfase contra el servidor en el
+  `ping` y lo envía con cada lote; el servidor guarda el sello crudo, el
+  corregido y el desfase aplicado (`sync_relojes`).
+* **Confirmación por puesto.** `sync_acks` registra hasta qué ciclo aplicó cada
+  equipo; `confirmar_epoch` devuelve los atrasados, que es la lista que usa la
+  ventana de consolidación para reintentar a los conectados.
+
+### Qué pasa con un puesto apagado
+
+El ciclo cierra con los puestos conectados. Los eventos del puesto ausente
+llegan cuando vuelve y se consolidan en un ciclo posterior **conservando su
+posición cronológica**: la fila afectada se reconstruye con su historia
+completa, así que el resultado es el mismo que si hubiera estado en línea.
+
+### Compatibilidad
+
+* `sync_ops` se sigue escribiendo, en el orden del replay, y `GET /pull`
+  (por `seq`) sigue disponible para los clientes anteriores.
+* El primer arranque tras actualizar copia los `sync_ops` existentes al log como
+  ciclo 0 (`importar_legado`), sin tocar los datos.
+* Un puesto sin ciclos aplicados se pone al día con `pull` y luego se engancha al
+  último publicado; si el nodo no expone `/epochs`, el agente sigue con el
+  protocolo anterior.
+* `ServidorConfig.consolidacion_activa = False` recupera el motor anterior en
+  una instalación concreta, sin cambiar el código.
+
+### Endpoints nuevos
+
+| Método | Ruta | Para qué |
+|---|---|---|
+| `GET` | `/api/v1/epochs?desde=&limite=` | Ciclos publicados con manifiesto y filas consolidadas |
+| `POST` | `/api/v1/ack` | Confirma el ciclo aplicado por el puesto |
+
+### Límites conocidos
+
+* El log crece sin límite: la compactación por snapshots todavía no está
+  implementada (la retención actual de `sync_ops` no lo toca).
+* El replay reconstruye las filas afectadas por cada ciclo; una fila con miles
+  de eventos hace más lento ese ciclo.
+* La app Android sigue usando `push`/`pull` por `seq`; adoptar los ciclos en el
+  cliente móvil es el paso siguiente.

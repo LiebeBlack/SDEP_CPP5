@@ -26,10 +26,16 @@ from typing import Any, Callable
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from sync_agent import identidad, registro
-from sync_agent.aplicador import MOTIVO_ERROR, AplicadorRemoto
+from sync_agent import consolidacion, identidad, registro
+from sync_agent.aplicador import MOTIVO_ERROR, AplicadorRemoto, FilaPendiente
 from sync_agent.captura import cambios_silenciosos, establecer_dispositivo
-from sync_agent.cliente import ClienteSync, ErrorAutenticacion, ErrorSincronizacion
+from sync_agent.cliente import (
+    ClienteSync,
+    ErrorAutenticacion,
+    ErrorNoSoportado,
+    ErrorProtocolo,
+    ErrorSincronizacion,
+)
 from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads, nuevo_uuid
 from sync_agent.config import ConfigSync, cargar
 from sync_agent.esquema import (
@@ -92,6 +98,10 @@ class AgenteSincronizacion:
         self._candado = threading.Lock()
         self._en_ciclo = threading.Lock()
         self._estado_lock = threading.Lock()
+        # Desfase del reloj de este equipo respecto del nodo central, en
+        # milisegundos: viaja con cada lote para que el servidor coloque los
+        # eventos en la línea de tiempo común.
+        self._desfase_ms = 0
         self._estado: dict[str, Any] = {
             "habilitado": self.config.activo,
             "estado": ESTADO_DETENIDO,
@@ -100,6 +110,7 @@ class AgenteSincronizacion:
             "ultima_sincronizacion": None,
             "ultimo_error": None,
             "desfase_reloj_segundos": None,
+            "congelado": None,
             "ms_ultimo_ciclo": None,
             "ciclos": 0,
             "subidas": 0,
@@ -316,17 +327,27 @@ class AgenteSincronizacion:
     # Pasos del ciclo
     # ------------------------------------------------------------------
     def _ping(self, cliente: ClienteSync) -> int:
-        """Comprueba el servicio y mide el desfase de reloj con el servidor"""
+        """
+        Comprueba el servicio y mide el desfase de reloj con el servidor
+
+        El desfase se conserva en milisegundos porque es lo que el nodo central
+        necesita para colocar cada evento en la línea de tiempo común; el valor
+        en segundos se mantiene para la barra de estado.
+        """
         datos = cliente.ping()
         desfase = 0
+        self._desfase_ms = 0
         try:
             hora_servidor = datos.get("hora")
             if hora_servidor:
                 from datetime import datetime
 
-                desfase = int((ahora_utc() - datetime.fromisoformat(hora_servidor)).total_seconds())
+                diferencia = ahora_utc() - datetime.fromisoformat(hora_servidor)
+                desfase = int(diferencia.total_seconds())
+                self._desfase_ms = int(diferencia.total_seconds() * 1000)
         except (TypeError, ValueError):
             desfase = 0
+            self._desfase_ms = 0
         if abs(desfase) > 120:
             logger.warning(
                 "El reloj de este equipo difiere %s s del servidor central; "
@@ -346,7 +367,11 @@ class AgenteSincronizacion:
             operaciones = [entrada["operacion"] for entrada in lote]
             identificadores = [entrada["op_id"] for entrada in lote]
             try:
-                respuesta = cliente.enviar_ops(operaciones)
+                respuesta = cliente.enviar_ops(
+                    operaciones,
+                    lote_id=nuevo_uuid(),
+                    desfase_ms=self._desfase_ms,
+                )
             except ErrorSincronizacion:
                 self._devolver_a_pendiente(identificadores)
                 raise
@@ -459,7 +484,137 @@ class AgenteSincronizacion:
             self._cerrar(sesion)
 
     def _bajar(self, cliente: ClienteSync) -> int:
-        """Descarga y aplica las novedades del nodo central por lotes"""
+        """
+        Descarga y aplica las novedades en ciclos indivisibles
+
+        Si el nodo central todavía no publica ciclos (o es de una versión
+        anterior), se usa el camino de siempre: operaciones sueltas con su
+        ``seq``. En la primera bajada tras actualizar, el puesto se reconstruye
+        desde ese log y se engancha al último ciclo publicado.
+        """
+        try:
+            if self._epoch_local() <= 0:
+                info = cliente.recibir_epochs(0, limite=1)
+                objetivo = int(info.get("epoch_actual") or 0)
+                aplicadas = self._bajar_seq(cliente)
+                self._guardar_epoch(objetivo)
+                return aplicadas
+            return self._bajar_epochs(cliente)
+        except ErrorNoSoportado:
+            logger.info("El nodo central no publica ciclos; se usa el protocolo anterior")
+            return self._bajar_seq(cliente)
+
+    def _bajar_epochs(self, cliente: ClienteSync) -> int:
+        """Descarga y aplica ciclos completos, uno por transacción"""
+        aplicadas = 0
+        for _ in range(MAX_LOTES_POR_CICLO):
+            epoch_local = self._epoch_local()
+            respuesta = cliente.recibir_epochs(epoch_local, limite=1)
+            paquetes = respuesta.get("epochs") or []
+            actual = int(respuesta.get("epoch_actual") or 0)
+            if not paquetes:
+                if actual < epoch_local:
+                    logger.warning(
+                        "El nodo central está en el ciclo %s y este puesto en el %s: "
+                        "se repite la puesta al día",
+                        actual,
+                        epoch_local,
+                    )
+                    self._guardar_epoch(0, forzar=True)
+                    self._guardar_cursor(0)
+                break
+            for paquete in paquetes:
+                aplicadas += self._aplicar_epoch(paquete)
+                cliente.confirmar_epoch(int(paquete.get("epoch") or 0))
+            if not respuesta.get("hay_mas"):
+                break
+        return aplicadas
+
+    def _aplicar_epoch(self, paquete: dict) -> int:
+        """
+        Aplica un ciclo completo en una sola transacción
+
+        El manifiesto se recalcula con lo recibido: si no coincide, el paquete
+        llegó incompleto o alterado y no se aplica nada. Tampoco se aplica a
+        medias si una fila depende de un padre ausente: se revierte todo, el
+        puesto queda congelado y lo reintenta en el ciclo siguiente conservando
+        su estado anterior.
+
+        Returns:
+            Cantidad de filas consolidadas aplicadas
+        """
+        motivo = consolidacion.validar_paquete(paquete)
+        if motivo:
+            ciclo = paquete.get("epoch")
+            detalle = f"ciclo {ciclo}: {motivo}"
+            self._guardar_estado(congelado=detalle)
+            self._publicar(congelado=detalle)
+            raise ErrorProtocolo(f"Ciclo rechazado: {motivo}")
+        epoch = int(paquete.get("epoch") or 0)
+        filas = paquete.get("filas") or []
+        eventos = paquete.get("eventos") or []
+        sesion = self._sesion()
+        try:
+            aplicador = AplicadorRemoto(
+                sesion,
+                dispositivo_local=self.config.dispositivo_id,
+                max_bytes_binario=self.config.max_bytes_binario,
+            )
+            aplicador.aplicar_ciclo(filas)
+            for evento in eventos:
+                aplicador.marcar_aplicada(
+                    str(evento.get("op_id") or ""), str(evento.get("tabla") or "")
+                )
+            self._guardar_epoch_en_sesion(sesion, epoch)
+            sesion.commit()
+        except (SQLAlchemyError, FilaPendiente) as error:
+            sesion.rollback()
+            detalle = f"ciclo {epoch}: {error}"
+            self._guardar_estado(congelado=detalle)
+            self._publicar(congelado=detalle)
+            logger.error("Ciclo %s no aplicado: %s", epoch, error, exc_info=True)
+            raise ErrorProtocolo(f"No se pudo aplicar el ciclo {epoch}: {error}") from error
+        finally:
+            self._cerrar(sesion)
+        self._guardar_estado(congelado="")
+        self._publicar(congelado=None)
+        return len(filas)
+
+    def _epoch_local(self) -> int:
+        """Último ciclo aplicado en este puesto (0 si aún no se enganchó)"""
+        sesion = self._sesion()
+        try:
+            fila = sesion.get(EstadoSync, "ultimo_epoch")
+            return int(fila.valor) if fila and fila.valor else 0
+        except (SQLAlchemyError, ValueError):
+            return 0
+        finally:
+            self._cerrar(sesion)
+
+    @staticmethod
+    def _guardar_epoch_en_sesion(sesion, epoch: int) -> None:
+        """Avanza el ciclo aplicado dentro de la misma transacción"""
+        fila = sesion.get(EstadoSync, "ultimo_epoch")
+        if fila is None:
+            sesion.add(EstadoSync(clave="ultimo_epoch", valor=str(int(epoch))))
+        else:
+            fila.valor = str(int(epoch))
+
+    def _guardar_epoch(self, epoch: int, forzar: bool = False) -> None:
+        """Guarda el ciclo aplicado (con ``forzar`` admite volver a cero)"""
+        if epoch <= 0 and not forzar:
+            return
+        sesion = self._sesion()
+        try:
+            self._guardar_epoch_en_sesion(sesion, epoch)
+            sesion.commit()
+        except SQLAlchemyError:
+            sesion.rollback()
+        finally:
+            self._cerrar(sesion)
+
+    def _bajar_seq(self, cliente: ClienteSync) -> int:
+        """Descarga por ``seq`` (protocolo anterior y puesta al día inicial)"""
         aplicadas = 0
         for _ in range(MAX_LOTES_POR_CICLO):
             cursor = self._cursor()

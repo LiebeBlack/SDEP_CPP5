@@ -80,6 +80,22 @@ class ResultadoAplicacion:
         return f"{estado}: {self.tabla}/{self.fila_uuid[:8]}{detalle}"
 
 
+class FilaPendiente(Exception):
+    """
+    Una fila del ciclo depende de un padre que todavía no existe
+
+    Se lanza para que el ciclo completo se revierta: consolidar unas filas y
+    dejar otras fuera produciría un estado intermedio, que es justo lo que el
+    modelo quiere evitar.
+    """
+
+    def __init__(self, tabla: str, fila_uuid: str, faltantes: list[str]):
+        super().__init__(f"{tabla}/{fila_uuid[:8]} depende de {', '.join(faltantes)}")
+        self.tabla = tabla
+        self.fila_uuid = fila_uuid
+        self.faltantes = faltantes
+
+
 class AplicadorRemoto:
     """Aplica operaciones del protocolo sobre la base de datos local"""
 
@@ -152,6 +168,109 @@ class AplicadorRemoto:
             self._marcar_aplicada(op_id, tabla)
         self._guardar_conflictos(tabla, fila_uuid, resultado.conflictos)
         return resultado
+
+    # ------------------------------------------------------------------
+    # Ciclo consolidado (reconstrucción histórica)
+    # ------------------------------------------------------------------
+    def aplicar_ciclo(self, filas: list[dict], diferir: bool = False) -> list[dict]:
+        """
+        Escribe el estado consolidado de un ciclo (todo o nada)
+
+        Lo que llega ya es el resultado del replay cronológico hecho por el nodo
+        central: aquí no se decide nada, solo se traduce la identidad global y se
+        escribe. Confirma la transacción quien llama; si algo falla, se revierte
+        el ciclo completo y no queda un estado a medias.
+
+        Args:
+            filas: Estado final de cada fila afectada
+            diferir: Si es True, una fila cuyo padre aún no existe se devuelve
+                en lugar de abortar el ciclo
+
+        Returns:
+            Filas pendientes (solo cuando ``diferir`` es True)
+
+        Raises:
+            FilaPendiente: si falta un padre y no se pidió diferir
+        """
+        pendientes: list[dict] = []
+        for fila in filas:
+            if not isinstance(fila, dict):
+                continue
+            try:
+                self._aplicar_fila_consolidada(fila)
+            except FilaPendiente as pendiente:
+                if not diferir:
+                    raise
+                pendientes.append(
+                    {
+                        "tabla": pendiente.tabla,
+                        "fila_uuid": pendiente.fila_uuid,
+                        "valores": dict(fila.get("valores") or {}),
+                        "borrado": bool(fila.get("borrado")),
+                    }
+                )
+        return pendientes
+
+    def _aplicar_fila_consolidada(self, fila: dict) -> None:
+        """Aplica el estado final de una fila, sin decisiones de mezcla"""
+        tabla = str(fila.get("tabla") or "")
+        fila_uuid = str(fila.get("fila_uuid") or "")
+        if not registro.es_sincronizable(tabla) or not fila_uuid:
+            return
+        descripcion = registro.ENTIDADES[tabla]
+        valores = dict(fila.get("valores") or {})
+        borrado = bool(fila.get("borrado"))
+
+        if borrado and identidad.id_local_de(self.session, tabla, fila_uuid) is None:
+            # Un borrado de una fila que este puesto nunca tuvo no necesita
+            # crearla apenas para volver a borrarla.
+            return
+
+        traducido, faltantes = identidad.traducir_payload_a_local(self.session, tabla, valores)
+        if faltantes:
+            raise FilaPendiente(tabla, fila_uuid, sorted(faltantes))
+
+        existente = self._resolver_fila(tabla, fila_uuid, traducido)
+        if existente is None:
+            logger.warning("No se pudo resolver %s/%s al aplicar el ciclo", tabla, fila_uuid[:8])
+            return
+
+        with cambios_silenciosos(self.session):
+            if borrado:
+                if descripcion.borrado_logico:
+                    setattr(existente, descripcion.columna_activo, 0)
+                else:
+                    self.session.delete(existente)
+            else:
+                for campo, valor in traducido.items():
+                    columna = registro.columna(tabla, campo)
+                    if columna is None:
+                        continue
+                    if es_marca_blob(valor):
+                        self._programar_blob_consolidado(tabla, fila_uuid, campo, valor)
+                        continue
+                    setattr(existente, campo, deserializar_valor(columna, valor))
+                # Una edición posterior al borrado revive la fila.
+                if descripcion.borrado_logico and not getattr(
+                    existente, descripcion.columna_activo, 1
+                ):
+                    setattr(existente, descripcion.columna_activo, 1)
+        self.session.flush()
+
+    def _programar_blob_consolidado(
+        self, tabla: str, fila_uuid: str, campo: str, valor: Any
+    ) -> None:
+        """Programa la descarga del binario que referencia el ciclo"""
+        hash_remoto = hash_de_marca(valor)
+        if not hash_remoto:
+            return
+        tamano = tamano_de_marca(valor)
+        estado = BLOB_POR_BAJAR if tamano <= self.max_bytes_binario else BLOB_OMITIDO
+        self._programar_blob(tabla, fila_uuid, campo, hash_remoto, tamano, estado)
+
+    def marcar_aplicada(self, op_id: str, tabla: str = "") -> None:
+        """Registra una operación del ciclo como aplicada (idempotencia)"""
+        self._marcar_aplicada(str(op_id or ""), tabla)
 
     # ------------------------------------------------------------------
     # Borrado

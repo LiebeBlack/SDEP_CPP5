@@ -46,6 +46,15 @@ BLOB_POR_BAJAR = "por_bajar"
 BLOB_DISPONIBLE = "disponible"
 BLOB_OMITIDO = "omitido"
 
+# Estados de un lote recibido en el staging del nodo central
+LOTE_RECIBIDO = "recibido"
+LOTE_CONSOLIDADO = "consolidado"
+LOTE_RECHAZADO = "rechazado"
+
+# Estados de un evento del log inmutable
+EVENTO_EN_STAGING = "staging"
+EVENTO_CONSOLIDADO = "consolidado"
+
 
 class BaseSync(DeclarativeBase):
     """Base declarativa exclusiva de las tablas del agente"""
@@ -157,6 +166,131 @@ class CursorSync(BaseSync):
     actualizado_en: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=ahora_utc, onupdate=ahora_utc
     )
+
+
+class LoteEntrada(BaseSync):
+    """
+    Paquete recibido de un puesto: la unidad de validación del staging
+
+    El lote se registra completo antes de consolidar. Si la consolidación no
+    puede cerrarse, el lote queda marcado con su motivo y **sus eventos siguen
+    en el log**: nada se aplica a medias y nada se pierde.
+    """
+
+    __tablename__ = "sync_lotes"
+
+    lote_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    dispositivo: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    n_ops: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    desfase_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=LOTE_RECIBIDO, index=True
+    )
+    motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
+    consolidado_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    epoch: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
+
+class EventoSync(BaseSync):
+    """
+    Log inmutable: cada acción de cada máquina, con su sello crudo y corregido
+
+    Es la fuente de verdad del nodo central. ``ocurrido_en`` es lo que declaró
+    el puesto y ``ocurrido_corregido`` lo que resulta de restarle el desfase
+    medido de su reloj; el replay ordena por el segundo y conserva el primero
+    para poder auditar qué reloj estaba mal.
+
+    ``secuencia_global`` solo se asigna al consolidar: es el orden definitivo
+    del replay dentro del ciclo, y es lo que publica el ``epoch``.
+    """
+
+    __tablename__ = "sync_eventos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    op_id: Mapped[str] = mapped_column(String(36), nullable=False, unique=True, index=True)
+    lote_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    tabla: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    fila_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    operacion: Mapped[str] = mapped_column(String(20), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    base_op_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    dispositivo: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    usuario: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    ocurrido_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    ocurrido_corregido: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    desfase_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recibido_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
+    secuencia_global: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    epoch: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=EVENTO_EN_STAGING, index=True
+    )
+    motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_sync_eventos_estado_momento", "estado", "ocurrido_corregido"),
+    )
+
+
+class EpochSync(BaseSync):
+    """Ciclo consolidado: la unidad atómica que reciben los puestos"""
+
+    __tablename__ = "sync_epochs"
+
+    epoch: Mapped[int] = mapped_column(Integer, primary_key=True)
+    manifiesto: Mapped[str] = mapped_column(String(64), nullable=False)
+    n_eventos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    n_filas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    publicado_en: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=ahora_utc
+    )
+
+
+class EpochFila(BaseSync):
+    """Estado consolidado de cada fila afectada por un ciclo"""
+
+    __tablename__ = "sync_epoch_filas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    epoch: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    tabla: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    fila_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    valores: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    borrado: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        UniqueConstraint("epoch", "tabla", "fila_uuid", name="uq_sync_epoch_filas_clave"),
+    )
+
+
+class AckEpoch(BaseSync):
+    """Confirmación de un puesto: hasta qué ciclo tiene aplicado"""
+
+    __tablename__ = "sync_acks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    dispositivo: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    epoch: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    confirmado_en: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=ahora_utc
+    )
+
+    __table_args__ = (
+        UniqueConstraint("dispositivo", "epoch", name="uq_sync_acks_clave"),
+    )
+
+
+class RelojPuesto(BaseSync):
+    """Desfase de reloj medido de cada puesto (para corregir sus sellos)"""
+
+    __tablename__ = "sync_relojes"
+
+    dispositivo: Mapped[str] = mapped_column(String(36), primary_key=True)
+    desfase_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rtt_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    medido_en: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=ahora_utc)
 
 
 class ConflictoSync(BaseSync):

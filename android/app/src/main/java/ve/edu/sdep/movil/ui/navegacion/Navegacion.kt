@@ -13,6 +13,9 @@ import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.ajustes.PantallaAjustes
 import ve.edu.sdep.movil.ui.conflictos.PantallaConflictos
 import ve.edu.sdep.movil.ui.login.PantallaLogin
+import ve.edu.sdep.movil.ui.modulos.PantallaFichaModulo
+import ve.edu.sdep.movil.ui.modulos.PantallaListaModulo
+import ve.edu.sdep.movil.ui.modulos.PantallaModulos
 import ve.edu.sdep.movil.ui.registros.PantallaEditor
 import ve.edu.sdep.movil.ui.registros.PantallaRegistros
 import ve.edu.sdep.movil.ui.sesion.SesionViewModel
@@ -47,7 +50,45 @@ private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
                 sesion = sesion,
                 alNuevo = { navegador.navigate(Rutas.EDITOR) },
                 alEditar = { uuid -> navegador.navigate("${Rutas.EDITOR}?uuid=$uuid") },
+                alModulos = { navegador.navigate(Rutas.MODULOS) },
                 alAjustes = { navegador.navigate(Rutas.AJUSTES) },
+            )
+        }
+
+        composable(Rutas.MODULOS) {
+            PantallaModulos(
+                sesion = sesion,
+                alVolver = { navegador.popBackStack() },
+                alAbrir = { modulo -> navegador.navigate("${Rutas.LISTA}/${modulo.ruta}") },
+            )
+        }
+
+        composable(
+            route = "${Rutas.LISTA}/{modulo}",
+            arguments = listOf(navArgument("modulo") { type = NavType.StringType }),
+        ) { entrada ->
+            PantallaListaModulo(
+                sesion = sesion,
+                rutaModulo = entrada.arguments?.getString("modulo").orEmpty(),
+                alVolver = { navegador.popBackStack() },
+                alAbrir = { modulo, id ->
+                    navegador.navigate("${Rutas.FICHA}/${modulo.ruta}/$id")
+                },
+            )
+        }
+
+        composable(
+            route = "${Rutas.FICHA}/{modulo}/{id}",
+            arguments = listOf(
+                navArgument("modulo") { type = NavType.StringType },
+                navArgument("id") { type = NavType.LongType },
+            ),
+        ) { entrada ->
+            PantallaFichaModulo(
+                sesion = sesion,
+                rutaModulo = entrada.arguments?.getString("modulo").orEmpty(),
+                id = entrada.arguments?.getLong("id") ?: 0L,
+                alVolver = { navegador.popBackStack() },
             )
         }
 
@@ -78,9 +119,13 @@ private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
     }
 }
 
+/** Rutas del grafo interno; los módulos usan su propia ruta como argumento */
 private object Rutas {
     const val REGISTROS = "registros"
     const val EDITOR = "editor"
     const val AJUSTES = "ajustes"
     const val CONFLICTOS = "conflictos"
+    const val MODULOS = "modulos"
+    const val LISTA = "modulo"
+    const val FICHA = "ficha"
 }

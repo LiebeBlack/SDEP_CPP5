@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Search
@@ -68,6 +69,7 @@ fun PantallaRegistros(
     sesion: Sesion,
     alNuevo: () -> Unit,
     alEditar: (String) -> Unit,
+    alModulos: () -> Unit,
     alAjustes: () -> Unit,
     vistaModelo: RegistrosViewModel = hiltViewModel(),
 ) {
@@ -88,6 +90,9 @@ fun PantallaRegistros(
             BarraSuperior(
                 titulo = "Registros",
                 acciones = {
+                    IconButton(onClick = alModulos) {
+                        Icon(Icons.Filled.Apps, contentDescription = "Módulos")
+                    }
                     IconButton(onClick = alAjustes) {
                         Icon(Icons.Filled.Settings, contentDescription = "Ajustes")
                     }

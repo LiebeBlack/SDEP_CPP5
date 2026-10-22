@@ -372,6 +372,10 @@ interface MatriculaDao {
     @Query("SELECT * FROM matriculas WHERE grado_id = :gradoId AND activa = 1 ORDER BY id")
     fun observarPorGrado(gradoId: Long): Flow<List<MatriculaEntity>>
 
+    /** Todas las matrículas: la vista de solo lectura las cuenta por grado */
+    @Query("SELECT * FROM matriculas ORDER BY grado_id, fecha_matricula")
+    fun observarTodas(): Flow<List<MatriculaEntity>>
+
     @Query("SELECT * FROM matriculas WHERE estudiante_id = :estudianteId ORDER BY fecha_matricula DESC")
     fun observarPorEstudiante(estudianteId: Long): Flow<List<MatriculaEntity>>
 
@@ -414,6 +418,10 @@ interface NotaFinalDao {
 
     @Query("SELECT * FROM notas_finales WHERE estudiante_id = :estudianteId ORDER BY materia")
     fun observarPorEstudiante(estudianteId: Long): Flow<List<NotaFinalEntity>>
+
+    /** Todas las calificaciones: promedios por grupo y por estudiante */
+    @Query("SELECT * FROM notas_finales ORDER BY grado_id, materia, estudiante_id")
+    fun observarTodas(): Flow<List<NotaFinalEntity>>
 
     @Query("SELECT * FROM notas_finales WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): NotaFinalEntity?

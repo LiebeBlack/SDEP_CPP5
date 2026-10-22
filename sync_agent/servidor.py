@@ -2,10 +2,13 @@
 Nodo central de sincronización
 
 Es un servicio HTTP pequeño (biblioteca estándar) que se ejecuta en un equipo de
-la intranet y guarda el estado autoritativo: aplica las operaciones que reciben
-los puestos con **el mismo motor de mezcla** que usan ellos, les asigna un ``seq``
-global (que es el orden definitivo entre equipos) y responde las novedades que
-cada puesto aún no tiene.
+la intranet y guarda el estado autoritativo. Desde el protocolo de ciclos, cada
+lote que llega se valida y queda en un **staging**: el servidor lo ordena por la
+marca de tiempo corregida de cada evento, reconstruye la historia de las filas
+afectadas y publica el resultado como un ``epoch`` indivisible (ver
+``consolidacion.py``). Nada se aplica al estado operativo hasta que el ciclo
+completo está validado; si falla, se revierte entero y los eventos se conservan
+para el siguiente intento.
 
 No hay dependencias nuevas: el servidor HTTP y el cliente TLS son de la
 biblioteca estándar, y la persistencia reutiliza SQLAlchemy y los modelos del
@@ -37,17 +40,28 @@ from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
-from sync_agent import registro
+from sync_agent import consolidacion, registro
 from sync_agent.api_acciones import ApiAcciones, ErrorApi
-from sync_agent.aplicador import AplicadorRemoto, momento_de_operacion
-from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads
+from sync_agent.aplicador import AplicadorRemoto, FilaPendiente, momento_de_operacion
+from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads, nuevo_uuid
 from sync_agent.descubrimiento import PUERTO_DESCUBRIMIENTO, DifusorDescubrimiento
 from sync_agent.esquema import (
+    EVENTO_CONSOLIDADO,
+    EVENTO_EN_STAGING,
+    LOTE_CONSOLIDADO,
+    LOTE_RECHAZADO,
+    LOTE_RECIBIDO,
+    AckEpoch,
     BaseSync,
     BitacoraSync,
     ConflictoSync,
     DispositivoSync,
+    EpochFila,
+    EpochSync,
+    EventoSync,
+    LoteEntrada,
     OpServidor,
+    RelojPuesto,
 )
 from sync_agent.sesiones import ErrorSesion, SesionValida
 
@@ -86,6 +100,11 @@ class ServidorConfig:
     # el límite de peticiones y el hecho de que el login de usuario sigue
     # exigiendo una cuenta válida de la base institucional.
     emparejamiento_abierto: bool = True
+    # Cuando está activo, los lotes pasan por el staging y se publican como
+    # ciclos (reconstrucción histórica). Desactivarlo recupera el motor
+    # anterior, que aplicaba cada operación al recibirla: solo para volver
+    # atrás en una instalación concreta, nunca para operar a diario.
+    consolidacion_activa: bool = True
 
 
 class ErrorPeticion(Exception):
@@ -124,6 +143,15 @@ class NucleoCentral:
         # Capa del protocolo 2: autenticación de usuario, acciones de negocio
         # y generación de documentos. Comparte el motor y el almacén de blobs.
         self.api = ApiAcciones(self)
+        # Un solo consolidador a la vez: ordenar, reconstruir y publicar el
+        # ciclo tiene que ser una secuencia única aunque lleguen varios lotes
+        # al mismo tiempo.
+        self._consolidacion = threading.Lock()
+        # El ``ping`` es la única ruta sin autenticar y la llama cada teléfono
+        # de la red: publica el ciclo desde memoria en lugar de consultar la
+        # base en cada latido.
+        self._epoch_cache = 0
+        self.importar_legado()
         logger.info("Nodo central listo en %s", self.config.url_db)
 
     # ------------------------------------------------------------------
@@ -240,6 +268,8 @@ class NucleoCentral:
             "servidor": "nodo-central-sincronizacion",
             "version_protocolo": VERSION_PROTOCOLO,
             "hora": ahora_utc().isoformat(),
+            "epoch_actual": self._epoch_cache,
+            "ciclos": True,
             "tablas": registro.tablas_sincronizadas(),
             # Capacidades del protocolo 2: el móvil decide qué pantallas
             # ofrecer según lo que el nodo central anuncia.
@@ -257,7 +287,618 @@ class NucleoCentral:
 
     def push(self, dispositivo: DispositivoSync, cuerpo: dict) -> dict:
         """
-        Aplica un lote de operaciones y las registra en el log del servidor
+        Recibe un lote y lo consolida como un ciclo indivisible
+
+        El lote no se aplica al estado operativo: se valida, se guarda en el
+        staging (``sync_eventos``) y solo después se reconstruye la historia de
+        las filas afectadas y se publica un ``epoch``. Si la consolidación no
+        puede cerrarse, no se aplica nada y los eventos quedan en el log para
+        el siguiente intento.
+        """
+        if not self.config.consolidacion_activa:
+            return self.aplicar_lote_heredado(dispositivo, cuerpo)
+
+        operaciones = cuerpo.get("ops") or []
+        if not isinstance(operaciones, list):
+            raise ErrorPeticion("El lote de operaciones no es una lista")
+        if len(operaciones) > self.config.max_ops_por_lote:
+            raise ErrorPeticion(
+                f"El lote supera el máximo de {self.config.max_ops_por_lote} operaciones", 413
+            )
+
+        lote_id = str(cuerpo.get("lote_id") or "").strip() or nuevo_uuid()
+        desfase_ms = consolidacion.acotar_desfase(cuerpo.get("desfase_ms"))
+        sesion = self._sesion()
+        try:
+            existente = sesion.get(LoteEntrada, lote_id)
+            if existente is not None:
+                # Reenvío del mismo paquete: se responde lo que ya se decidió.
+                return self._resumen_lote(sesion, existente)
+            eventos, rechazadas, duplicadas = self._preparar_eventos(
+                sesion, dispositivo, operaciones, lote_id, desfase_ms
+            )
+            self._registrar_reloj(sesion, dispositivo.dispositivo_id, desfase_ms)
+            if eventos:
+                sesion.add(
+                    LoteEntrada(
+                        lote_id=lote_id,
+                        dispositivo=dispositivo.dispositivo_id,
+                        n_ops=len(eventos),
+                        hash=consolidacion.hash_lote(eventos),
+                        desfase_ms=desfase_ms,
+                        estado=LOTE_RECIBIDO,
+                    )
+                )
+                for evento in eventos:
+                    sesion.add(EventoSync(**evento))
+            sesion.commit()
+        except SQLAlchemyError:
+            sesion.rollback()
+            logger.error("No se pudo guardar el lote en el staging", exc_info=True)
+            raise ErrorPeticion("Error interno al recibir el lote", 500) from None
+        finally:
+            sesion.close()
+
+        if not eventos:
+            # Todo el lote era un reenvío: se consolida lo que haya pendiente y
+            # se confirman las operaciones que ya estaban en el log.
+            resultado = self.consolidar()
+            al_dia = resultado.get("estado") in (
+                LOTE_CONSOLIDADO,
+                consolidacion.ESTADO_SIN_NOVEDADES,
+            )
+            return {
+                "lote_id": lote_id,
+                "estado": resultado.get("estado"),
+                "epoch": resultado.get("epoch") or self.epoch_actual(),
+                "aplicadas": list(duplicadas) if al_dia else [],
+                "rechazadas": rechazadas + list(resultado.get("rechazadas") or []),
+                "conflictos": [],
+                "cursor": self.cursor_actual(),
+            }
+
+        # Se consolidan todos los eventos pendientes, no solo los de este lote:
+        # si un ciclo anterior no pudo cerrarse, sus eventos se reintentan aquí
+        # en lugar de quedarse esperando un reenvío que ya no va a llegar.
+        resultado = self.consolidar()
+        resultado["lote_id"] = lote_id
+        resultado["rechazadas"] = rechazadas + list(resultado.get("rechazadas") or [])
+        if resultado.get("estado") == LOTE_CONSOLIDADO:
+            # Las operaciones que ya estaban en el log (reenvío) también se
+            # confirman: si no, el puesto las reintentaría para siempre.
+            resultado["aplicadas"] = list(resultado.get("aplicadas") or []) + list(duplicadas)
+        else:
+            # No se aplicó nada: no se confirman los identificadores para que
+            # el puesto conserve sus operaciones y las reintente.
+            resultado["aplicadas"] = []
+        return resultado
+
+    def _preparar_eventos(
+        self,
+        sesion,
+        dispositivo: DispositivoSync,
+        operaciones: list,
+        lote_id: str,
+        desfase_ms: int,
+    ) -> tuple[list[dict], list[dict], list[str]]:
+        """
+        Convierte el lote del protocolo en eventos del log, sin aplicarlos
+
+        Cada operación se valida y se normaliza aquí: sello crudo, sello
+        corregido por el desfase medido y lote al que pertenece. Las inválidas
+        se devuelven aparte y no entran al staging; las que ya estaban en el log
+        (reenvío del mismo puesto) se devuelven como duplicadas para poder
+        confirmarlas sin volver a escribirlas.
+        """
+        eventos: list[dict] = []
+        rechazadas: list[dict] = []
+        duplicadas: list[str] = []
+        identificadores = [
+            str(operacion.get("op_id") or "")
+            for operacion in operaciones
+            if isinstance(operacion, dict)
+        ]
+        vistos = (
+            {
+                op_id
+                for (op_id,) in sesion.query(EventoSync.op_id)
+                .filter(EventoSync.op_id.in_(identificadores))
+                .all()
+            }
+            if identificadores
+            else set()
+        )
+        roles_cache: dict[str, str | None] = {}
+        recibido = ahora_utc()
+        for operacion in operaciones:
+            if not isinstance(operacion, dict):
+                continue
+            op_id = str(operacion.get("op_id") or "")
+            if not op_id:
+                continue
+            if op_id in vistos:
+                # Reenvío de una operación ya recibida: es idempotente.
+                duplicadas.append(op_id)
+                continue
+            tabla = str(operacion.get("tabla") or "")
+            if not registro.es_sincronizable(tabla):
+                rechazadas.append({"op_id": op_id, "motivo": "tabla_no_sincronizable"})
+                continue
+            fila_uuid = str(operacion.get("fila_uuid") or "")
+            if not fila_uuid:
+                rechazadas.append({"op_id": op_id, "motivo": "sin_identidad_global"})
+                continue
+            momento = consolidacion.momento_de_texto(operacion.get("creado_en"))
+            if momento is None:
+                rechazadas.append({"op_id": op_id, "motivo": "sello_de_tiempo_invalido"})
+                continue
+            payload = operacion.get("payload")
+            if isinstance(payload, dict):
+                payload = dumps(payload)
+            if not isinstance(payload, str) or not payload:
+                payload = "{}"
+            if len(payload.encode("utf-8")) > self.config.max_bytes_peticion:
+                rechazadas.append({"op_id": op_id, "motivo": "payload_demasiado_grande"})
+                continue
+            motivo_permiso = self._autorizar_escritura(sesion, operacion, roles_cache)
+            if motivo_permiso:
+                rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
+                logger.info(
+                    "Operación %s rechazada por permisos (%s)", op_id[:8], motivo_permiso
+                )
+                continue
+            eventos.append(
+                {
+                    "op_id": op_id,
+                    "lote_id": lote_id,
+                    "tabla": tabla,
+                    "fila_uuid": fila_uuid,
+                    "operacion": str(operacion.get("operacion") or "upsert"),
+                    "payload": payload,
+                    "base_op_id": operacion.get("base_op_id"),
+                    "dispositivo": dispositivo.dispositivo_id,
+                    "usuario": operacion.get("usuario"),
+                    "ocurrido_en": momento,
+                    "ocurrido_corregido": consolidacion.corregir_momento(momento, desfase_ms),
+                    "desfase_ms": desfase_ms,
+                    "recibido_en": recibido,
+                    "estado": EVENTO_EN_STAGING,
+                }
+            )
+        return eventos, rechazadas, duplicadas
+
+    def consolidar(self, lotes: list[str] | None = None) -> dict:
+        """
+        Reproduce el staging y publica un ciclo indivisible
+
+        Se ordenan todos los eventos pendientes por su marca corregida, se
+        reconstruye la historia completa de cada fila afectada y el resultado se
+        escribe en una sola transacción. Si algo falla, se revierte todo: los
+        eventos permanecen en el staging y el lote queda marcado con el motivo.
+        """
+        with self._consolidacion:
+            return self._consolidar(lotes)
+
+    def _consolidar(self, lotes: list[str] | None) -> dict:
+        sesion = self._sesion()
+        lotes_afectados: list[str] = []
+        try:
+            consulta = sesion.query(EventoSync).filter(EventoSync.estado == EVENTO_EN_STAGING)
+            if lotes:
+                consulta = consulta.filter(EventoSync.lote_id.in_(lotes))
+            pendientes = consulta.all()
+            if not pendientes:
+                return {
+                    "estado": consolidacion.ESTADO_SIN_NOVEDADES,
+                    "epoch": self._epoch_actual(sesion),
+                    "aplicadas": [],
+                    "rechazadas": [],
+                    "conflictos": [],
+                    "cursor": self.cursor_actual(),
+                }
+
+            pendientes.sort(
+                key=lambda fila: (
+                    fila.ocurrido_corregido or fila.ocurrido_en,
+                    fila.dispositivo or "",
+                    fila.op_id,
+                )
+            )
+            lotes_afectados = sorted({fila.lote_id for fila in pendientes})
+            filas: list[dict] = []
+            afectadas = sorted({(fila.tabla, fila.fila_uuid) for fila in pendientes})
+            for tabla, fila_uuid in afectadas:
+                historial = [
+                    self._evento_wire(fila)
+                    for fila in self._historial(sesion, tabla, fila_uuid)
+                ]
+                publicada = consolidacion.fila_publicada(tabla, fila_uuid, historial)
+                if publicada is not None:
+                    filas.append(publicada)
+
+            aplicador = AplicadorRemoto(
+                sesion,
+                dispositivo_local="nodo-central",
+                max_bytes_binario=self.config.max_bytes_blob,
+            )
+            # Un hijo puede preceder a su padre en el reloj: el primer pase
+            # difiere las filas huérfanas y el segundo, ya con los padres
+            # escritos, las aplica. Si aún falta algo, no se consolida nada.
+            pendientes_filas = aplicador.aplicar_ciclo(filas, diferir=True)
+            if pendientes_filas:
+                aplicador.aplicar_ciclo(pendientes_filas, diferir=False)
+
+            epoch = self._epoch_actual(sesion) + 1
+            # La secuencia se asigna antes de calcular el manifiesto: es parte
+            # de lo que el cliente recalcula, y tiene que coincidir exacto.
+            for secuencia, fila in enumerate(pendientes, start=1):
+                fila.epoch = epoch
+                fila.secuencia_global = secuencia
+            eventos = [self._evento_wire(fila) for fila in pendientes]
+            manifiesto = consolidacion.manifiesto_epoch(eventos, filas)
+            for fila in pendientes:
+                fila.estado = EVENTO_CONSOLIDADO
+                fila.motivo = None
+                sesion.add(
+                    OpServidor(
+                        op_id=fila.op_id,
+                        tabla=fila.tabla,
+                        fila_uuid=fila.fila_uuid,
+                        operacion=fila.operacion,
+                        payload=fila.payload,
+                        base_op_id=fila.base_op_id,
+                        dispositivo=fila.dispositivo,
+                        usuario=fila.usuario,
+                        creado_en=fila.ocurrido_corregido,
+                        recibido_en=fila.recibido_en,
+                    )
+                )
+            for lote_id in sorted({fila.lote_id for fila in pendientes}):
+                lote = sesion.get(LoteEntrada, lote_id)
+                if lote is not None:
+                    lote.estado = LOTE_CONSOLIDADO
+                    lote.epoch = epoch
+                    lote.consolidado_en = ahora_utc()
+                    lote.motivo = None
+            sesion.add(
+                EpochSync(
+                    epoch=epoch,
+                    manifiesto=manifiesto,
+                    n_eventos=len(eventos),
+                    n_filas=len(filas),
+                )
+            )
+            for publicada in filas:
+                sesion.add(
+                    EpochFila(
+                        epoch=epoch,
+                        tabla=publicada["tabla"],
+                        fila_uuid=publicada["fila_uuid"],
+                        valores=dumps(publicada.get("valores") or {}),
+                        borrado=1 if publicada.get("borrado") else 0,
+                    )
+                )
+            sesion.commit()
+            self._epoch_cache = epoch
+            logger.info(
+                "Ciclo %s consolidado: %s eventos, %s filas", epoch, len(eventos), len(filas)
+            )
+            return {
+                "estado": LOTE_CONSOLIDADO,
+                "epoch": epoch,
+                "aplicadas": [fila.op_id for fila in pendientes],
+                "rechazadas": [],
+                "conflictos": [],
+                "cursor": self.cursor_actual(),
+            }
+        except (SQLAlchemyError, FilaPendiente) as error:
+            sesion.rollback()
+            logger.error("El ciclo no se pudo consolidar: %s", error, exc_info=True)
+            self._rechazar_lotes(lotes_afectados or lotes, str(error))
+            return {
+                "estado": LOTE_RECHAZADO,
+                "epoch": None,
+                "aplicadas": [],
+                "rechazadas": [{"op_id": "", "motivo": f"ciclo_no_consolidado: {error}"}],
+                "conflictos": [],
+                "cursor": self.cursor_actual(),
+                "error": str(error),
+            }
+        finally:
+            sesion.close()
+
+    def _rechazar_lotes(self, lotes: list[str] | None, motivo: str) -> None:
+        """Deja constancia del ciclo que no pudo cerrarse (los eventos se conservan)"""
+        if not lotes:
+            return
+        sesion = self._sesion()
+        try:
+            for lote in sesion.query(LoteEntrada).filter(LoteEntrada.lote_id.in_(lotes)).all():
+                lote.estado = LOTE_RECHAZADO
+                lote.motivo = motivo[:2000]
+            sesion.commit()
+        except SQLAlchemyError:
+            sesion.rollback()
+            logger.warning("No se pudo marcar el lote rechazado", exc_info=True)
+        finally:
+            sesion.close()
+
+    @staticmethod
+    def _historial(sesion, tabla: str, fila_uuid: str) -> list[EventoSync]:
+        """Historia completa de una fila, en orden cronológico"""
+        filas = (
+            sesion.query(EventoSync)
+            .filter(EventoSync.tabla == tabla, EventoSync.fila_uuid == fila_uuid)
+            .all()
+        )
+        filas.sort(
+            key=lambda fila: (
+                fila.ocurrido_corregido or fila.ocurrido_en,
+                fila.dispositivo or "",
+                fila.op_id,
+            )
+        )
+        return filas
+
+    @staticmethod
+    def _evento_wire(fila: EventoSync) -> dict:
+        """Forma de un evento en el protocolo y en el manifiesto"""
+        return {
+            "op_id": fila.op_id,
+            "tabla": fila.tabla,
+            "fila_uuid": fila.fila_uuid,
+            "operacion": fila.operacion,
+            "payload": fila.payload,
+            "base_op_id": fila.base_op_id,
+            "dispositivo": fila.dispositivo,
+            "usuario": fila.usuario,
+            "ocurrido_en": fila.ocurrido_en.isoformat(),
+            "ocurrido_corregido": fila.ocurrido_corregido.isoformat(),
+            "secuencia_global": int(fila.secuencia_global or 0),
+        }
+
+    @staticmethod
+    def _epoch_actual(sesion) -> int:
+        """Último ciclo publicado (0 si todavía no hay ninguno)"""
+        return int(sesion.query(func.max(EpochSync.epoch)).scalar() or 0)
+
+    def epoch_actual(self) -> int:
+        """Último ciclo publicado, con sesión propia"""
+        sesion = self._sesion()
+        try:
+            return self._epoch_actual(sesion)
+        finally:
+            sesion.close()
+
+    def pull_epochs(self, dispositivo: DispositivoSync, desde: int, limite: int) -> dict:
+        """
+        Entrega los ciclos publicados posteriores a ``desde``
+
+        Cada paquete es indivisible: el cliente lo aplica entero o no aplica
+        nada, y el manifiesto le permite comprobar que llegó completo.
+        """
+        desde = max(0, int(desde or 0))
+        limite = max(1, min(int(limite or 1), 20))
+        sesion = self._sesion()
+        try:
+            actual = self._epoch_actual(sesion)
+            filas = (
+                sesion.query(EpochSync)
+                .filter(EpochSync.epoch > desde, EpochSync.epoch > 0)
+                .order_by(EpochSync.epoch)
+                .limit(limite)
+                .all()
+            )
+            paquetes = [self._paquete_epoch(sesion, fila) for fila in filas]
+            ultimo = filas[-1].epoch if filas else desde
+            return {
+                "epochs": paquetes,
+                "epoch_actual": actual,
+                "cursor": ultimo,
+                "hay_mas": bool(filas) and ultimo < actual,
+            }
+        except SQLAlchemyError:
+            logger.error("No se pudieron leer los ciclos", exc_info=True)
+            raise ErrorPeticion("Error interno al leer los ciclos", 500) from None
+        finally:
+            sesion.close()
+
+    def _paquete_epoch(self, sesion, epoch: EpochSync) -> dict:
+        """Ciclo completo listo para el cliente, con su manifiesto"""
+        eventos = (
+            sesion.query(EventoSync)
+            .filter(EventoSync.epoch == epoch.epoch)
+            .order_by(EventoSync.secuencia_global, EventoSync.id)
+            .all()
+        )
+        filas = (
+            sesion.query(EpochFila)
+            .filter(EpochFila.epoch == epoch.epoch)
+            .order_by(EpochFila.id)
+            .all()
+        )
+        return {
+            "epoch": epoch.epoch,
+            "manifiesto": epoch.manifiesto,
+            "publicado_en": epoch.publicado_en.isoformat(),
+            "eventos": [self._evento_wire(fila) for fila in eventos],
+            "filas": [
+                {
+                    "tabla": fila.tabla,
+                    "fila_uuid": fila.fila_uuid,
+                    "valores": loads(fila.valores) or {},
+                    "borrado": bool(fila.borrado),
+                }
+                for fila in filas
+            ],
+        }
+
+    def confirmar_epoch(self, dispositivo: DispositivoSync, epoch: int) -> dict:
+        """Registra hasta qué ciclo tiene aplicado un puesto"""
+        epoch = int(epoch or 0)
+        sesion = self._sesion()
+        try:
+            existente = (
+                sesion.query(AckEpoch)
+                .filter(
+                    AckEpoch.dispositivo == dispositivo.dispositivo_id,
+                    AckEpoch.epoch == epoch,
+                )
+                .first()
+            )
+            if existente is None:
+                sesion.add(AckEpoch(dispositivo=dispositivo.dispositivo_id, epoch=epoch))
+            dispositivo.ultima_conexion = ahora_utc()
+            sesion.commit()
+            return {
+                "epoch": epoch,
+                "epoch_actual": self._epoch_actual(sesion),
+                "atrasados": self._puestos_atrasados(sesion),
+            }
+        except SQLAlchemyError:
+            sesion.rollback()
+            logger.error("No se pudo confirmar el ciclo %s", epoch, exc_info=True)
+            raise ErrorPeticion("Error interno al confirmar el ciclo", 500) from None
+        finally:
+            sesion.close()
+
+    @staticmethod
+    def _puestos_atrasados(sesion) -> list[dict]:
+        """
+        Puestos activos que aún no aplicaron el último ciclo publicado
+
+        Es la lista que alimenta la ventana de consolidación: un puesto
+        conectado que se atrasa se reintenta; uno apagado queda para el backfill
+        del siguiente ciclo, conservando la posición de sus eventos.
+        """
+        actual = int(sesion.query(func.max(EpochSync.epoch)).scalar() or 0)
+        atrasados: list[dict] = []
+        for dispositivo in (
+            sesion.query(DispositivoSync).filter(DispositivoSync.activo == 1).all()
+        ):
+            ultimo = (
+                sesion.query(func.max(AckEpoch.epoch))
+                .filter(AckEpoch.dispositivo == dispositivo.dispositivo_id)
+                .scalar()
+            )
+            if int(ultimo or 0) < actual:
+                atrasados.append(
+                    {
+                        "dispositivo": dispositivo.dispositivo_id,
+                        "nombre": dispositivo.nombre,
+                        "epoch": int(ultimo or 0),
+                        "ultima_conexion": dispositivo.ultima_conexion.isoformat()
+                        if dispositivo.ultima_conexion
+                        else None,
+                    }
+                )
+        return atrasados
+
+    @staticmethod
+    def _registrar_reloj(
+        sesion, dispositivo_id: str, desfase_ms: int, rtt_ms: int = 0
+    ) -> None:
+        """Guarda el desfase medido del reloj del puesto"""
+        fila = sesion.get(RelojPuesto, dispositivo_id)
+        if fila is None:
+            sesion.add(
+                RelojPuesto(
+                    dispositivo=dispositivo_id,
+                    desfase_ms=desfase_ms,
+                    rtt_ms=rtt_ms,
+                    medido_en=ahora_utc(),
+                )
+            )
+        else:
+            fila.desfase_ms = desfase_ms
+            fila.rtt_ms = rtt_ms
+            fila.medido_en = ahora_utc()
+
+    def _resumen_lote(self, sesion, lote: LoteEntrada) -> dict:
+        """Respuesta idempotente para un lote ya recibido"""
+        aplicadas = []
+        if lote.estado == LOTE_CONSOLIDADO:
+            aplicadas = [
+                op_id
+                for (op_id,) in sesion.query(EventoSync.op_id)
+                .filter(EventoSync.lote_id == lote.lote_id)
+                .all()
+            ]
+        return {
+            "lote_id": lote.lote_id,
+            "estado": lote.estado,
+            "epoch": lote.epoch,
+            "aplicadas": aplicadas,
+            "rechazadas": [],
+            "conflictos": [],
+            "cursor": self.cursor_actual(),
+        }
+
+    def importar_legado(self) -> int:
+        """
+        Copia al log los ``sync_ops`` anteriores al protocolo de ciclos
+
+        Son operaciones que el nodo ya aplicó con el motor anterior. Se
+        convierten en eventos del ciclo 0, conservando su ``seq`` como orden, y
+        las operaciones nuevas se publican como ciclos a partir del 1. Es
+        idempotente: si ya hay ciclos, no hace nada.
+        """
+        self._epoch_cache = self.epoch_actual()
+        sesion = self._sesion()
+        try:
+            if sesion.query(EpochSync).first() is not None:
+                return 0
+            existentes = {op_id for (op_id,) in sesion.query(EventoSync.op_id).all()}
+            importados = 0
+            for fila in sesion.query(OpServidor).order_by(OpServidor.seq).all():
+                if fila.op_id in existentes:
+                    continue
+                sesion.add(
+                    EventoSync(
+                        op_id=fila.op_id,
+                        lote_id="legado",
+                        tabla=fila.tabla,
+                        fila_uuid=fila.fila_uuid,
+                        operacion=fila.operacion,
+                        payload=fila.payload,
+                        base_op_id=fila.base_op_id,
+                        dispositivo=fila.dispositivo,
+                        usuario=fila.usuario,
+                        ocurrido_en=fila.creado_en,
+                        ocurrido_corregido=fila.creado_en,
+                        desfase_ms=0,
+                        recibido_en=fila.recibido_en or fila.creado_en,
+                        secuencia_global=fila.seq,
+                        epoch=0,
+                        estado=EVENTO_CONSOLIDADO,
+                    )
+                )
+                importados += 1
+            sesion.add(
+                EpochSync(
+                    epoch=0,
+                    manifiesto=consolidacion.manifiesto_epoch([], []),
+                    n_eventos=importados,
+                    n_filas=0,
+                )
+            )
+            sesion.commit()
+            self._epoch_cache = self.epoch_actual()
+            if importados:
+                logger.info(
+                    "Log de sincronización migrado: %s eventos del motor anterior", importados
+                )
+            return importados
+        except SQLAlchemyError:
+            sesion.rollback()
+            logger.warning("No se pudo importar el log anterior", exc_info=True)
+            return 0
+        finally:
+            sesion.close()
+
+    def aplicar_lote_heredado(self, dispositivo: DispositivoSync, cuerpo: dict) -> dict:
+        """
+        Aplica un lote de operaciones con el motor anterior (sin staging)
 
         La respuesta incluye en ``aplicadas`` **todo** identificador que el
         servidor tiene por aplicado (nuevo o ya conocido): eso hace que el
@@ -843,6 +1484,8 @@ class NucleoCentral:
 RUTA_PING = "/api/v1/ping"
 RUTA_PUSH = "/api/v1/push"
 RUTA_PULL = "/api/v1/pull"
+RUTA_EPOCHS = "/api/v1/epochs"
+RUTA_ACK = "/api/v1/ack"
 RUTA_BLOB = "/api/v1/blob"
 
 # Rutas del protocolo 2 (acciones y consultas de la aplicación móvil)
@@ -957,6 +1600,19 @@ class ManejadorSync(BaseHTTPRequestHandler):
 
             if ruta.path == RUTA_PUSH and metodo == "POST":
                 self._responder_json(200, self.nucleo.push(dispositivo, self._leer_json()))
+                return
+
+            if ruta.path == RUTA_EPOCHS and metodo == "GET":
+                parametros = parse_qs(ruta.query)
+                desde = int((parametros.get("desde") or ["0"])[0] or 0)
+                limite = int((parametros.get("limite") or ["1"])[0] or 1)
+                self._responder_json(200, self.nucleo.pull_epochs(dispositivo, desde, limite))
+                return
+
+            if ruta.path == RUTA_ACK and metodo == "POST":
+                cuerpo = self._leer_json()
+                epoch = int(cuerpo.get("epoch") or 0)
+                self._responder_json(200, self.nucleo.confirmar_epoch(dispositivo, epoch))
                 return
 
             if ruta.path.startswith(RUTA_BLOB + "/"):

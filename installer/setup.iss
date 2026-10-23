@@ -205,7 +205,7 @@ var
   EulaAccepted, PrivacyAccepted, TermsAccepted, ThirdPartyAccepted: TNewCheckBox;
   AllAccepted: Boolean;
 
-procedure UpdateNextButton;
+procedure UpdateNextButton(Sender: Object);
 var
   CanProceed: Boolean;
 begin

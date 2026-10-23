@@ -1348,23 +1348,28 @@ class MainWindow(ctk.CTk):
             )
             # Botones de la cabecera (se recrean con la paleta nueva)
             self.apariencia_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
+                fg_color=COLORES["acento"],
+                hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.ayuda_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
+                fg_color=COLORES["acento"],
+                hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.about_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
+                fg_color=COLORES["acento"],
+                hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.logout_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
+                fg_color=COLORES["acento"],
+                hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.exit_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
+                fg_color=COLORES["acento"],
+                hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             # Los botones de módulos también siguen la paleta activa.

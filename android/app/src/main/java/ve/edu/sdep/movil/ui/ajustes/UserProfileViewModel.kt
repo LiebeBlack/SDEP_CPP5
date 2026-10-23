@@ -88,8 +88,8 @@ class UserProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _estado.update { it.copy(ocupado = true, mensaje = null, esError = false) }
             val dto = ActualizarPerfilDto(
-                nombre_completo = nombreCompleto?.trim().takeIf { it.isNotEmpty() },
-                cedula = cedula?.trim().takeIf { it.isNotEmpty() },
+                nombre_completo = nombreCompleto?.trim()?.takeIf { it.isNotEmpty() },
+                cedula = cedula?.trim()?.takeIf { it.isNotEmpty() },
             )
             when (val resultado = autenticacion.actualizarPerfil(dto)) {
                 is Resultado.Exito -> _estado.update {

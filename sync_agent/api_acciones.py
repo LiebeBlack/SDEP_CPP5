@@ -319,6 +319,7 @@ class ApiAcciones:
         db = self._sesion()
         try:
             from src.models import Usuario
+
             usuario = db.query(Usuario).filter(Usuario.id == valido.usuario_id).first()
             if not usuario:
                 raise ErrorApi("Usuario no encontrado", 404)

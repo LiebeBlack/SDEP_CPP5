@@ -136,6 +136,7 @@ fun PantallaAjustes(
                 },
                 alCambiarContrasena = { dialogoPassword = true },
                 alSalir = { confirmarSalida = true },
+                alEditarPerfil = alEditarPerfil,
             )
 
             TarjetaServidor(
@@ -199,6 +200,7 @@ private fun TarjetaCuenta(
     alAlternarBiometria: (Boolean) -> Unit,
     alCambiarContrasena: () -> Unit,
     alSalir: () -> Unit,
+    alEditarPerfil: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -282,7 +284,6 @@ private fun TarjetaCuenta(
             OutlinedButton(
                 onClick = alEditarPerfil,
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
             ) {
                 Text("Editar perfil")
             }

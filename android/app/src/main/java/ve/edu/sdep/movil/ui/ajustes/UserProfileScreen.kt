@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -112,7 +116,6 @@ fun UserProfileScreen(
                             dialogoEdicion = true
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                     ) {
                         Text("Editar perfil")
                     }
@@ -128,8 +131,8 @@ fun UserProfileScreen(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
+                                Icon(
+                                    imageVector = Icons.Filled.CheckCircle,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.size(18.dp),
@@ -199,11 +202,11 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(24.dp))
+                Icon(Icons.Filled.Person, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (perfil.nombre_completo.isNotBlank()) perfil.nombre_completo else "Sin nombre",
+                        text = if (perfil.nombre_completo?.isNotBlank() == true) perfil.nombre_completo else "Sin nombre",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
@@ -218,7 +221,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            FilaPerfil("Cédula", if (perfil.cedula.isNotBlank()) perfil.cedula else "Sin asignar")
+            FilaPerfil("Cédula", if (perfil.cedula?.isNotBlank() == true) perfil.cedula else "Sin asignar")
             FilaPerfil("Rol", perfil.rol.toUpperCase())
             FilaPerfil("Estado", if (perfil.activo) "Activa" else "Inactiva")
             FilaPerfil(
@@ -364,7 +367,7 @@ private fun DialogoEdicionPerfil(
                 if (ocupado) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Default.Save, contentDescription = null)
+                    Icon(Icons.Filled.Save, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Guardar")
                 }

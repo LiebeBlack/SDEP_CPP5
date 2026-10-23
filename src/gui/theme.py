@@ -25,38 +25,38 @@ _DPI_INTENTADO = False
 
 # Paleta oscura (tema por defecto) - profundidad, no plana
 PALETA_OSCURA = {
-    "fondo": "#0f172a",        # azul muy oscuro (slate-900)
-    "panel": "#1e293b",        # slate-800 (tarjetas, paneles)
+    "fondo": "#0f172a",  # azul muy oscuro (slate-900)
+    "panel": "#1e293b",  # slate-800 (tarjetas, paneles)
     "panel_hover": "#334155",  # slate-700 (hover)
-    "campo": "#334155",        # slate-700 (campos de entrada)
+    "campo": "#334155",  # slate-700 (campos de entrada)
     "campo_fondo": "#1e293b",  # slate-800 (fondo de campos)
-    "texto": "#f8fafc",        # slate-50 (texto principal)
+    "texto": "#f8fafc",  # slate-50 (texto principal)
     "texto_suave": "#94a3b8",  # slate-400 (texto secundario)
-    "acento": "#3b82f6",       # blue-500 (acento Windows 11)
-    "acento_hover": "#60a5fa", # blue-400 (acento hover)
-    "borde": "#475569",        # slate-600 (bordes sutiles)
-    "sombra": "#000000",       # sombra (simulada con capas)
-    "exito": "#10b981",        # emerald-500
+    "acento": "#3b82f6",  # blue-500 (acento Windows 11)
+    "acento_hover": "#60a5fa",  # blue-400 (acento hover)
+    "borde": "#475569",  # slate-600 (bordes sutiles)
+    "sombra": "#000000",  # sombra (simulada con capas)
+    "exito": "#10b981",  # emerald-500
     "advertencia": "#f59e0b",  # amber-500
-    "error": "#ef4444",        # red-500
+    "error": "#ef4444",  # red-500
 }
 
 # Paleta clara (tema alternativo) - estilo Windows 11 claro
 PALETA_CLARA = {
-    "fondo": "#f8fafc",        # slate-50
-    "panel": "#ffffff",        # blanco puro (tarjetas elevadas)
+    "fondo": "#f8fafc",  # slate-50
+    "panel": "#ffffff",  # blanco puro (tarjetas elevadas)
     "panel_hover": "#f1f5f9",  # slate-100 (hover)
-    "campo": "#ffffff",        # blanco (campos de entrada)
+    "campo": "#ffffff",  # blanco (campos de entrada)
     "campo_fondo": "#ffffff",  # blanco (fondo de campos)
-    "texto": "#0f172a",        # slate-900 (texto principal)
+    "texto": "#0f172a",  # slate-900 (texto principal)
     "texto_suave": "#64748b",  # slate-500 (texto secundario)
-    "acento": "#2563eb",       # blue-600 (acento Windows 11)
-    "acento_hover": "#3b82f6", # blue-500 (acento hover)
-    "borde": "#cbd5e1",        # slate-200 (bordes sutiles)
-    "sombra": "#000000",       # sombra (simulada con capas)
-    "exito": "#059669",        # emerald-600
+    "acento": "#2563eb",  # blue-600 (acento Windows 11)
+    "acento_hover": "#3b82f6",  # blue-500 (acento hover)
+    "borde": "#cbd5e1",  # slate-200 (bordes sutiles)
+    "sombra": "#000000",  # sombra (simulada con capas)
+    "exito": "#059669",  # emerald-600
     "advertencia": "#d97706",  # amber-600
-    "error": "#dc2626",        # red-600
+    "error": "#dc2626",  # red-600
 }
 
 # Paleta activa (se muta en caliente al cambiar de tema, de modo que los

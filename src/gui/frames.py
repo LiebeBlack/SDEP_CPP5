@@ -5458,8 +5458,11 @@ class UsuarioDialog(ctk.CTkToplevel):
             row=3, column=0, padx=8, pady=6, sticky="e"
         )
         self.cedula_entry = ctk.CTkEntry(
-            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"],
-            placeholder_text="Obligatorio para rol 'user' (trabajador)"
+            form,
+            width=260,
+            fg_color=COLORES["campo"],
+            text_color=COLORES["texto"],
+            placeholder_text="Obligatorio para rol 'user' (trabajador)",
         )
         self.cedula_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
 

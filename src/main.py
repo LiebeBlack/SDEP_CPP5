@@ -61,9 +61,7 @@ def _ruta_log_arranque() -> Path:
 
 def _configurar_logging() -> Path:
     """Configura logging a consola (si existe) y, sobre todo, a archivo."""
-    formato = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formato = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     raiz = logging.getLogger()
     raiz.setLevel(logging.INFO)
 

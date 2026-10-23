@@ -643,9 +643,9 @@ class NotasFrame(ctk.CTkFrame):
             filas.append(
                 {
                     "Estudiante": self._nombre_estudiante(nota),
-                    "Cedula": self._cedula_estudiante(nota),
+                    "Cédula": self._cedula_estudiante(nota),
                     "Materia": nota.materia,
-                    "Calificacion": calif,
+                    "Calificación": calif,
                     "Estado": "Aprobada" if calif >= self._nota_aprobatoria else "Reprobada",
                     "Registrada_por": nota.registrado_por or "",
                 }

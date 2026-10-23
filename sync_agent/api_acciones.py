@@ -1185,19 +1185,19 @@ class ApiAcciones:
             empleado = servicio_empleados.obtener_empleado(contrato.empleado_id)
             filas.append(
                 {
-                    "Numero": contrato.numero,
+                    "Número": contrato.numero,
                     "Empleado": empleado.nombre_completo if empleado else contrato.empleado_id,
-                    "Cedula": getattr(empleado, "cedula", "") if empleado else "",
+                    "Cédula": getattr(empleado, "cedula", "") if empleado else "",
                     "Tipo": str(contrato.tipo_valor).capitalize(),
                     "Cargo": contrato.cargo,
                     "Departamento": contrato.departamento or "",
                     "Inicio": str(contrato.fecha_inicio or ""),
                     "Fin": str(contrato.fecha_fin) if contrato.fecha_fin else "Indefinido",
-                    "Dias_vigencia": contrato.dias_vigencia,
+                    "Días_vigencia": contrato.dias_vigencia,
                     "Salario_pactado": float(contrato.salario_pactado or 0),
                     "Horas_semanales": int(contrato.horas_semanales or 0),
                     "Estado": str(contrato.estado_valor).capitalize(),
-                    "Liquidacion": float(contrato.liquidacion_monto or 0),
+                    "Liquidación": float(contrato.liquidacion_monto or 0),
                 }
             )
         return filas

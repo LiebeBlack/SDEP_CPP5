@@ -1537,12 +1537,14 @@ class PDFGenerator:
             total_salarios += salario
             dias = _dato(fila, "dias_para_vencer", defecto=None)
             if dias in (None, ""):
-                dias = _dato(fila, "Dias_vigencia", defecto=None)
+                # Acepta la clave con tilde ("Días_vigencia", la que hoy usan
+                # los listados de la interfaz) y la antigua sin ella.
+                dias = _dato(fila, "Días_vigencia", "Dias_vigencia", defecto=None)
             fin = _dato(fila, "fecha_fin", "Fin", defecto=None)
             tabla_datos.append(
                 [
                     str(indice),
-                    str(_dato(fila, "numero", "Numero")),
+                    str(_dato(fila, "numero", "Número", "Numero")),
                     str(_dato(fila, "empleado", "Empleado"))[:28],
                     str(_dato(fila, "tipo", "Tipo")).capitalize(),
                     str(_dato(fila, "cargo", "Cargo"))[:22],

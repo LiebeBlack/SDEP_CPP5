@@ -523,12 +523,12 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
         filas: list[dict[str, Any]] = [
             {
-                "Cedula": estudiante.cedula or "",
+                "Cédula": estudiante.cedula or "",
                 "Estudiante": estudiante.nombre_completo,
                 "Nivel": _titulo_nivel(estudiante.nivel_valor),
                 "Edad": estudiante.edad if estudiante.edad is not None else "",
                 "Representante": estudiante.representante or "",
-                "Telefono": estudiante.telefono or "",
+                "Teléfono": estudiante.telefono or "",
                 "Email": estudiante.email or "",
                 "Estado": "Activo" if estudiante.activo else "Retirado",
             }

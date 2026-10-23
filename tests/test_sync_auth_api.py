@@ -46,7 +46,12 @@ def _crear_usuarios(nucleo):
             )
         if servicio.usuario_por_username("docente") is None:
             servicio.crear_usuario(
-                "docente", "Clave1234", "user", "Docente", debe_cambiar_password=False, cedula="12345678"
+                "docente",
+                "Clave1234",
+                "user",
+                "Docente",
+                debe_cambiar_password=False,
+                cedula="12345678",
             )
         if servicio.usuario_por_username("lector") is None:
             servicio.crear_usuario(

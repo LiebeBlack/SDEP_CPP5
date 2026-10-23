@@ -58,7 +58,9 @@ def _crear_cuentas(nucleo):
             ("lector", "viewer", None),
         ):
             if servicio.usuario_por_username(usuario) is None:
-                servicio.crear_usuario(usuario, "Clave1234", rol, rol, debe_cambiar_password=False, cedula=cedula)
+                servicio.crear_usuario(
+                    usuario, "Clave1234", rol, rol, debe_cambiar_password=False, cedula=cedula
+                )
     finally:
         sesion.close()
 

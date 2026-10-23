@@ -95,14 +95,40 @@ RUTA_LOG_ARRANQUE = _configurar_logging()
 application_instance = None
 
 
-def _notificar_error_global(titulo: str, mensaje: str):
-    """Intenta informar al usuario del error sin bloquear la consola"""
+def _dialogo_win32(titulo: str, mensaje: str) -> bool:
+    """Muestra un diálogo nativo de Windows (user32.MessageBoxW).
+
+    Respaldo para cuando no hay ventanas Tk disponibles. El ejecutable es de
+    VENTANA (sin consola): sin un cuadro de diálogo visible, un fallo de
+    arranque sería invisible y el programa parecería "cerrarse sin abrir".
+    """
+    try:
+        import ctypes
+
+        # MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_SYSTEMMODAL
+        banderas = 0x00000000 | 0x00000010 | 0x00010000 | 0x00001000
+        ctypes.windll.user32.MessageBoxW(None, str(mensaje), str(titulo), banderas)
+        return True
+    except Exception:
+        logger.debug("paso de arranque ignorado", exc_info=True)
+        return False
+
+
+def _mostrar_dialogo_error(titulo: str, mensaje: str) -> None:
+    """Muestra un diálogo de error: primero con Tk, si no, con Windows."""
     try:
         from tkinter import messagebox
 
         messagebox.showerror(titulo, mensaje)
+        return
     except Exception:
         logger.debug("paso de arranque ignorado", exc_info=True)
+    _dialogo_win32(titulo, mensaje)
+
+
+def _notificar_error_global(titulo: str, mensaje: str):
+    """Intenta informar al usuario del error sin bloquear la consola"""
+    _mostrar_dialogo_error(titulo, mensaje)
 
 
 def _alerta_fatal(titulo: str, mensaje: str) -> None:
@@ -118,14 +144,9 @@ def _alerta_fatal(titulo: str, mensaje: str) -> None:
         logger.error("%s: %s", titulo, mensaje.replace("\n", " "))
     except Exception:
         pass
-    try:
-        from tkinter import messagebox
-
-        messagebox.showerror(titulo, mensaje)
-    except Exception:
-        # Sin Tk operativo: no se puede mostrar nada, pero el error ya
-        # quedó registrado en el archivo de log.
-        logger.debug("No se pudo mostrar la alerta fatal", exc_info=True)
+    # Tk primero y, si no hay ventanas disponibles, un diálogo nativo de
+    # Windows: así el motivo del fallo nunca queda solo en el log.
+    _mostrar_dialogo_error(titulo, mensaje)
 
 
 def manejar_excepcion_no_capturada(exc_type, exc_value, exc_traceback):

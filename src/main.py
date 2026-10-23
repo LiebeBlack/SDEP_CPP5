@@ -5,6 +5,7 @@ Punto de entrada principal de la aplicación con mejoras de seguridad
 
 import io
 import logging
+import logging.handlers
 import signal
 import sys
 from pathlib import Path
@@ -34,12 +35,60 @@ try:
 except Exception:
     logger.debug("paso de arranque ignorado", exc_info=True)
 
-# Configurar logging detallado
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout) if sys.stdout else logging.NullHandler()],
-)
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+# El ejecutable empaquetado es de VENTANA (console=False): no hay stdout, de
+# modo que un logging que solo escribe a consola no deja rastro. Un manejador
+# de ARCHIVO garantiza que cualquier fallo de arranque quede registrado en
+# disco y pueda diagnosticarse (SDEP_CPP5.exe "se cierra sin abrir").
+
+
+def _ruta_log_arranque() -> Path:
+    """Ruta del log principal, a prueba de fallos (nunca se propaga)."""
+    try:
+        from src.config import settings
+
+        return Path(settings.log_file)
+    except Exception:
+        try:
+            base = Path.home() / "SistemaGestionPersonal"
+            base.mkdir(parents=True, exist_ok=True)
+            return base / "app.log"
+        except Exception:
+            return Path.home() / "sdep_arranque.log"
+
+
+def _configurar_logging() -> Path:
+    """Configura logging a consola (si existe) y, sobre todo, a archivo."""
+    formato = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    raiz = logging.getLogger()
+    raiz.setLevel(logging.INFO)
+
+    if sys.stdout is not None:
+        consola = logging.StreamHandler(sys.stdout)
+        consola.setFormatter(formato)
+        raiz.addHandler(consola)
+    else:
+        raiz.addHandler(logging.NullHandler())
+
+    ruta_log = _ruta_log_arranque()
+    try:
+        ruta_log.parent.mkdir(parents=True, exist_ok=True)
+        archivo = logging.handlers.RotatingFileHandler(
+            ruta_log, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
+        )
+        archivo.setFormatter(formato)
+        raiz.addHandler(archivo)
+    except Exception:
+        raiz.debug("No se pudo abrir el archivo de log %s", ruta_log, exc_info=True)
+
+    return ruta_log
+
+
+RUTA_LOG_ARRANQUE = _configurar_logging()
 
 
 # Variable global para manejo de cierre seguro
@@ -54,6 +103,29 @@ def _notificar_error_global(titulo: str, mensaje: str):
         messagebox.showerror(titulo, mensaje)
     except Exception:
         logger.debug("paso de arranque ignorado", exc_info=True)
+
+
+def _alerta_fatal(titulo: str, mensaje: str) -> None:
+    """
+    Muestra un diálogo visible ante un fallo fatal de arranque.
+
+    El ejecutable de ventana no tiene consola: si la aplicación termina con
+    ``sys.exit(1)`` sin avisar, el usuario solo ve que "no abre". Aquí se
+    registra el error en el archivo de log y se muestra un cuadro de
+    diálogo para que la causa nunca pase inadvertida.
+    """
+    try:
+        logger.error("%s: %s", titulo, mensaje.replace("\n", " "))
+    except Exception:
+        pass
+    try:
+        from tkinter import messagebox
+
+        messagebox.showerror(titulo, mensaje)
+    except Exception:
+        # Sin Tk operativo: no se puede mostrar nada, pero el error ya
+        # quedó registrado en el archivo de log.
+        logger.debug("No se pudo mostrar la alerta fatal", exc_info=True)
 
 
 def manejar_excepcion_no_capturada(exc_type, exc_value, exc_traceback):
@@ -628,12 +700,23 @@ def main():
 
     # Configurar entorno
     if not setup_environment():
-        logger.error("No se pudo configurar el entorno. Saliendo...")
+        _alerta_fatal(
+            "Error de arranque",
+            "No se pudo preparar la carpeta de datos de la aplicación.\n\n"
+            f"Detalle en el registro: {RUTA_LOG_ARRANQUE}\n\n"
+            "Revise los permisos del perfil de usuario e intente de nuevo.",
+        )
         sys.exit(1)
 
     # Inicializar base de datos
     if not initialize_database():
-        logger.error("No se pudo inicializar la base de datos. Saliendo...")
+        _alerta_fatal(
+            "Error de arranque",
+            "No se pudo inicializar la base de datos.\n\n"
+            f"Detalle en el registro: {RUTA_LOG_ARRANQUE}\n\n"
+            "Cierre cualquier otra copia del sistema que esté abierta e "
+            "intente de nuevo.",
+        )
         sys.exit(1)
 
     # Servidor central (si este equipo quedó designado como tal) y
@@ -650,7 +733,12 @@ def main():
         logger.info("Aplicación interrumpida por el usuario")
         cleanup_application()
     except Exception as e:
-        logger.error(f"Error fatal en la aplicación: {str(e)}")
+        logger.error(f"Error fatal en la aplicación: {str(e)}", exc_info=True)
+        _alerta_fatal(
+            "Error fatal",
+            f"La aplicación encontró un error y debe cerrarse:\n\n{e}\n\n"
+            f"Detalle en el registro: {RUTA_LOG_ARRANQUE}",
+        )
         cleanup_application()
         sys.exit(1)
     finally:

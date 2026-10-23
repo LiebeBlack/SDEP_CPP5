@@ -1,5 +1,6 @@
 import logging
 from datetime import date, timedelta
+from typing import cast
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
@@ -19,7 +20,7 @@ class DocumentoRepository(BaseRepository[Documento]):
 
     def get_by_empleado(self, empleado_id: int) -> list[Documento]:
         """Obtiene documentos de un empleado"""
-        return self.session.query(Documento).filter(Documento.empleado_id == empleado_id).all()
+        return cast(list[Documento], self.session.query(Documento).filter(Documento.empleado_id == empleado_id).all())
 
     def get_by_tipo(self, tipo: str | TipoDocumento) -> list[Documento]:
         """Obtiene documentos por tipo"""

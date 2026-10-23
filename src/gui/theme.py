@@ -713,7 +713,7 @@ def estilo_boton_moderno(variante: str = "primario") -> dict:
       - "secundario": fondo transparente, borde acento, texto acento
       - "fantasma": fondo transparente, sin borde, texto suave, hover panel_hover
     """
-    base = {
+    base: dict[str, object] = {
         "corner_radius": RADIO_MEDIO,
         "height": 36,
         "border_width": 0,

@@ -4,6 +4,7 @@ Repositorio para operaciones de datos de las matrículas
 """
 
 import logging
+from typing import cast
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -31,7 +32,10 @@ class MatriculaRepository(BaseRepository[Matricula]):
             )
             if solo_activas:
                 query = query.filter(Matricula.activa == 1)
-            return query.order_by(Estudiante.apellidos, Estudiante.nombres).all()
+            return cast(
+                list[Matricula],
+                query.order_by(Estudiante.apellidos, Estudiante.nombres).all(),
+            )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al listar matrículas del grado {grado_id}: {e}")
             return []
@@ -45,10 +49,13 @@ class MatriculaRepository(BaseRepository[Matricula]):
             query = self.session.query(Matricula).filter(Matricula.estudiante_id == estudiante_id)
             if solo_activas:
                 query = query.filter(Matricula.activa == 1)
-            return (
-                query.join(Grado, Matricula.grado_id == Grado.id)
-                .order_by(Grado.nombre, Grado.seccion)
-                .all()
+            return cast(
+                list[Matricula],
+                (
+                    query.join(Grado, Matricula.grado_id == Grado.id)
+                    .order_by(Grado.nombre, Grado.seccion)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(
@@ -69,15 +76,18 @@ class MatriculaRepository(BaseRepository[Matricula]):
         la que valida esa regla al matricular.
         """
         try:
-            return (
-                self.session.query(Matricula)
-                .join(Grado, Matricula.grado_id == Grado.id)
-                .filter(
-                    Matricula.estudiante_id == estudiante_id,
-                    Matricula.activa == 1,
-                    Grado.periodo_id == periodo_id,
-                )
-                .first()
+            return cast(
+                Matricula | None,
+                (
+                    self.session.query(Matricula)
+                    .join(Grado, Matricula.grado_id == Grado.id)
+                    .filter(
+                        Matricula.estudiante_id == estudiante_id,
+                        Matricula.activa == 1,
+                        Grado.periodo_id == periodo_id,
+                    )
+                    .first()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(
@@ -116,7 +126,7 @@ class MatriculaRepository(BaseRepository[Matricula]):
             query = self.session.query(Matricula).filter(Matricula.activa == 1)
             if grado_id is not None:
                 query = query.filter(Matricula.grado_id == grado_id)
-            return query.count()
+            return cast(int, query.count())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al contar el grado {grado_id}: {e}")
             return 0

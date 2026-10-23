@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from typing import cast
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -19,81 +20,105 @@ class PagoRepository(BaseRepository[Pago]):
 
     def get_by_empleado(self, empleado_id: int) -> list[Pago]:
         """Obtiene pagos de un empleado"""
-        return (
-            self.session.query(Pago)
-            .filter(Pago.empleado_id == empleado_id)
-            .order_by(Pago.periodo_inicio.desc())
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(Pago.empleado_id == empleado_id)
+                .order_by(Pago.periodo_inicio.desc())
+                .all()
+            ),
         )
 
     def get_by_tipo(self, tipo: str | TipoPago) -> list[Pago]:
         """Obtiene pagos por tipo"""
         tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
-        return (
-            self.session.query(Pago)
-            .filter(or_(Pago.tipo_pago == tipo_val, Pago.tipo_pago == tipo))
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(or_(Pago.tipo_pago == tipo_val, Pago.tipo_pago == tipo))
+                .all()
+            ),
         )
 
     def get_by_metodo(self, metodo: str | MetodoPago) -> list[Pago]:
         """Obtiene pagos por método de pago"""
         metodo_val = metodo.value if hasattr(metodo, "value") else str(metodo)
-        return (
-            self.session.query(Pago)
-            .filter(or_(Pago.metodo_pago == metodo_val, Pago.metodo_pago == metodo))
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(or_(Pago.metodo_pago == metodo_val, Pago.metodo_pago == metodo))
+                .all()
+            ),
         )
 
     def get_by_periodo(self, fecha_inicio: date, fecha_fin: date) -> list[Pago]:
         """Obtiene pagos en un periodo"""
-        return (
-            self.session.query(Pago)
-            .filter(and_(Pago.periodo_inicio <= fecha_fin, Pago.periodo_fin >= fecha_inicio))
-            .order_by(Pago.periodo_inicio.desc())
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(and_(Pago.periodo_inicio <= fecha_fin, Pago.periodo_fin >= fecha_inicio))
+                .order_by(Pago.periodo_inicio.desc())
+                .all()
+            ),
         )
 
     def get_by_empleado_periodo(
         self, empleado_id: int, fecha_inicio: date, fecha_fin: date
     ) -> list[Pago]:
         """Obtiene pagos de un empleado en un periodo"""
-        return (
-            self.session.query(Pago)
-            .filter(
-                and_(
-                    Pago.empleado_id == empleado_id,
-                    Pago.periodo_inicio <= fecha_fin,
-                    Pago.periodo_fin >= fecha_inicio,
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(
+                    and_(
+                        Pago.empleado_id == empleado_id,
+                        Pago.periodo_inicio <= fecha_fin,
+                        Pago.periodo_fin >= fecha_inicio,
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def get_pagados(self) -> list[Pago]:
         """Obtiene pagos ya realizados"""
-        return (
-            self.session.query(Pago)
-            .filter(Pago.pagado == 1)
-            .order_by(Pago.periodo_inicio.desc())
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(Pago.pagado == 1)
+                .order_by(Pago.periodo_inicio.desc())
+                .all()
+            ),
         )
 
     def get_pendientes(self) -> list[Pago]:
         """Obtiene pagos pendientes"""
-        return (
-            self.session.query(Pago)
-            .filter(Pago.pagado == 0)
-            .order_by(Pago.periodo_inicio.desc())
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(Pago.pagado == 0)
+                .order_by(Pago.periodo_inicio.desc())
+                .all()
+            ),
         )
 
     def get_pendientes_by_empleado(self, empleado_id: int) -> list[Pago]:
         """Obtiene pagos pendientes de un empleado"""
-        return (
-            self.session.query(Pago)
-            .filter(and_(Pago.empleado_id == empleado_id, Pago.pagado == 0))
-            .order_by(Pago.periodo_inicio.desc())
-            .all()
+        return cast(
+            list[Pago],
+            (
+                self.session.query(Pago)
+                .filter(and_(Pago.empleado_id == empleado_id, Pago.pagado == 0))
+                .order_by(Pago.periodo_inicio.desc())
+                .all()
+            ),
         )
 
     def marcar_pagado(self, id: int) -> bool:
@@ -177,9 +202,12 @@ class PagoRepository(BaseRepository[Pago]):
 
     def get_ultimo_pago_empleado(self, empleado_id: int) -> Pago | None:
         """Obtiene el último pago de un empleado"""
-        return (
-            self.session.query(Pago)
-            .filter(Pago.empleado_id == empleado_id)
-            .order_by(Pago.fecha_pago.desc(), Pago.id.desc())
-            .first()
+        return cast(
+            Pago | None,
+            (
+                self.session.query(Pago)
+                .filter(Pago.empleado_id == empleado_id)
+                .order_by(Pago.fecha_pago.desc(), Pago.id.desc())
+                .first()
+            ),
         )

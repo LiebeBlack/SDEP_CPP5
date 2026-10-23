@@ -14,6 +14,8 @@ La regla de oro: la interfaz móvil oculta lo que el rol no permite, pero la
 
 import json
 import threading
+from datetime import datetime, timedelta
+
 import urllib.error
 import urllib.request
 
@@ -73,7 +75,7 @@ def _sesion(rol: str) -> SesionValida:
         nombre_completo=None,
         rol=rol,
         dispositivo_id="equipo-test",
-        expira_en=None,
+        expira_en=datetime.now() + timedelta(days=1),
     )
 
 

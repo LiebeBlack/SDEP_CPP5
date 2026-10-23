@@ -4,7 +4,7 @@ Repositorio para operaciones de datos de empleados con manejo de errores mejorad
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,7 +27,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     def get_by_cedula(self, cedula: str) -> Empleado | None:
         """Obtiene un empleado por cédula con manejo de errores"""
         try:
-            return self.session.query(Empleado).filter(Empleado.cedula == cedula).first()
+            return cast(Empleado | None, self.session.query(Empleado).filter(Empleado.cedula == cedula).first())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar empleado por cédula {cedula}: {e}")
             return None
@@ -39,10 +39,13 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         """Obtiene empleados por tipo con manejo de errores"""
         try:
             tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
-            return (
-                self.session.query(Empleado)
-                .filter(or_(Empleado.tipo_empleado == tipo_val, Empleado.tipo_empleado == tipo))
-                .all()
+            return cast(
+                list[Empleado],
+                (
+                    self.session.query(Empleado)
+                    .filter(or_(Empleado.tipo_empleado == tipo_val, Empleado.tipo_empleado == tipo))
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar empleados por tipo {tipo}: {e}")
@@ -54,7 +57,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     def get_activos(self) -> list[Empleado]:
         """Obtiene solo empleados activos con manejo de errores"""
         try:
-            return self.session.query(Empleado).filter(Empleado.activo == 1).all()
+            return cast(list[Empleado], self.session.query(Empleado).filter(Empleado.activo == 1).all())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar empleados activos: {e}")
             return []
@@ -65,7 +68,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     def get_by_departamento(self, departamento: str) -> list[Empleado]:
         """Obtiene empleados por departamento con manejo de errores"""
         try:
-            return self.session.query(Empleado).filter(Empleado.departamento == departamento).all()
+            return cast(list[Empleado], self.session.query(Empleado).filter(Empleado.departamento == departamento).all())
         except SQLAlchemyError as e:
             logger.error(
                 f"Error de base de datos al buscar empleados por departamento {departamento}: {e}"
@@ -88,17 +91,20 @@ class EmpleadoRepository(BaseRepository[Empleado]):
             if not term:
                 return self.get_activos()
             patron = f"%{term}%"
-            return (
-                self.session.query(Empleado)
-                .filter(
-                    Empleado.activo == 1,
-                    or_(
-                        normalizar_expr(Empleado.nombres).like(patron),
-                        normalizar_expr(Empleado.apellidos).like(patron),
-                        normalizar_expr(Empleado.cedula).like(patron),
-                    ),
-                )
-                .all()
+            return cast(
+                list[Empleado],
+                (
+                    self.session.query(Empleado)
+                    .filter(
+                        Empleado.activo == 1,
+                        or_(
+                            normalizar_expr(Empleado.nombres).like(patron),
+                            normalizar_expr(Empleado.apellidos).like(patron),
+                            normalizar_expr(Empleado.cedula).like(patron),
+                        ),
+                    )
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(
@@ -112,7 +118,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
     def get_by_cargo(self, cargo: str) -> list[Empleado]:
         """Obtiene empleados por cargo con manejo de errores"""
         try:
-            return self.session.query(Empleado).filter(Empleado.cargo == cargo).all()
+            return cast(list[Empleado], self.session.query(Empleado).filter(Empleado.cargo == cargo).all())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar empleados por cargo {cargo}: {e}")
             return []
@@ -159,7 +165,7 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                         )
                     )
 
-            return query.all()
+            return cast(list[Empleado], query.all())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar empleados con filtros: {e}")
             return []

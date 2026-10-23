@@ -4,6 +4,7 @@ Repositorio para operaciones de datos de los periodos académicos
 """
 
 import logging
+from typing import cast
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -24,10 +25,11 @@ class PeriodoAcademicoRepository(BaseRepository[PeriodoAcademico]):
     def get_by_nombre(self, nombre: str) -> PeriodoAcademico | None:
         """Obtiene un periodo por su nombre (año escolar)"""
         try:
-            return (
+            return cast(
+                PeriodoAcademico | None,
                 self.session.query(PeriodoAcademico)
                 .filter(PeriodoAcademico.nombre == nombre)
-                .first()
+                .first(),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar periodo {nombre}: {e}")
@@ -40,7 +42,7 @@ class PeriodoAcademicoRepository(BaseRepository[PeriodoAcademico]):
         """Lista los periodos del más reciente al más antiguo (o al revés)"""
         try:
             orden = PeriodoAcademico.nombre.desc() if descendente else PeriodoAcademico.nombre
-            return self.session.query(PeriodoAcademico).order_by(orden).all()
+            return cast(list[PeriodoAcademico], self.session.query(PeriodoAcademico).order_by(orden).all())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al listar periodos: {e}")
             return []
@@ -51,11 +53,12 @@ class PeriodoAcademicoRepository(BaseRepository[PeriodoAcademico]):
     def get_abiertos(self) -> list[PeriodoAcademico]:
         """Lista los periodos abiertos (admiten registrar notas)"""
         try:
-            return (
+            return cast(
+                list[PeriodoAcademico],
                 self.session.query(PeriodoAcademico)
                 .filter(PeriodoAcademico.estado == EstadoPeriodoAcademico.ABIERTO.value)
                 .order_by(PeriodoAcademico.nombre.desc())
-                .all()
+                .all(),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al listar periodos abiertos: {e}")
@@ -67,11 +70,12 @@ class PeriodoAcademicoRepository(BaseRepository[PeriodoAcademico]):
     def get_ultimo_abierto(self) -> PeriodoAcademico | None:
         """Periodo abierto más reciente (el año escolar en curso)"""
         try:
-            return (
+            return cast(
+                PeriodoAcademico | None,
                 self.session.query(PeriodoAcademico)
                 .filter(PeriodoAcademico.estado == EstadoPeriodoAcademico.ABIERTO.value)
                 .order_by(PeriodoAcademico.nombre.desc())
-                .first()
+                .first(),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar el periodo en curso: {e}")

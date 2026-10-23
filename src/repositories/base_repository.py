@@ -8,7 +8,7 @@ utilizadas por todos los repositorios específicos.
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -105,7 +105,7 @@ class BaseRepository[T: BaseModel]:
 
                 if not puede_ver_objeto(obj, self.session):
                     return None
-            return obj
+            return cast(T | None, obj)
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al obtener {self._model_name} ID {id}: {e}")
@@ -135,7 +135,7 @@ class BaseRepository[T: BaseModel]:
         try:
             # Sin auditoría de lectura (misma política que get_by_id): el
             # listado es la consulta más frecuente de la aplicación.
-            return self.session.query(self.model).offset(skip).limit(limit).all()
+            return cast(list[T], self.session.query(self.model).offset(skip).limit(limit).all())
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al obtener {self._model_name}: {e}")
@@ -330,7 +330,7 @@ class BaseRepository[T: BaseModel]:
             Cantidad total de registros en la tabla
         """
         try:
-            return self.session.query(self.model).count()
+            return cast(int, self.session.query(self.model).count())
         except OperationalError as e:
             logger.error(f"Error de base de datos al contar {self._model_name}: {e}")
             self._log_audit_error(e, context={"operation": "count"})
@@ -387,7 +387,7 @@ class BaseRepository[T: BaseModel]:
                 .first()
             )
 
-            return result
+            return cast(T | None, result)
 
         except OperationalError as e:
             logger.error(
@@ -426,7 +426,7 @@ class BaseRepository[T: BaseModel]:
                 .all()
             )
 
-            return result
+            return cast(list[T], result)
 
         except OperationalError as e:
             logger.error(
@@ -463,7 +463,7 @@ class BaseRepository[T: BaseModel]:
                 else:
                     logger.warning(f"Campo {field} no existe en {self._model_name}")
 
-            return query.all()
+            return cast(list[T], query.all())
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al buscar {self._model_name} con filtros: {e}")
@@ -496,7 +496,7 @@ class BaseRepository[T: BaseModel]:
                 .all()
             )
 
-            return result
+            return cast(list[T], result)
 
         except OperationalError as e:
             logger.error(f"Error de base de datos al buscar {self._model_name} con LIKE: {e}")

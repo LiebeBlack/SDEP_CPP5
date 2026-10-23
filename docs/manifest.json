@@ -1,0 +1,19 @@
+{
+  "name": "SDEP — Documentación Oficial",
+  "short_name": "SDEP Docs",
+  "description": "Portal oficial de documentación del Sistema de Gestión de Personal y Nómina de LiebeBlack Systems.",
+  "start_url": "/docs/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#2456e6",
+  "orientation": "portrait",
+  "lang": "es-VE",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

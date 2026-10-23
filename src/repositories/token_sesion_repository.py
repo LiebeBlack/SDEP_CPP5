@@ -5,6 +5,7 @@ Repositorio para operaciones de datos de los tokens de sesión
 
 import logging
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,8 +28,9 @@ class TokenSesionRepository(BaseRepository[TokenSesion]):
     def get_by_hash(self, token_hash: str) -> TokenSesion | None:
         """Obtiene un token por el hash de su valor (nunca por el valor)"""
         try:
-            return (
-                self.session.query(TokenSesion).filter(TokenSesion.token_hash == token_hash).first()
+            return cast(
+                TokenSesion | None,
+                self.session.query(TokenSesion).filter(TokenSesion.token_hash == token_hash).first(),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar un token: {e}")
@@ -50,7 +52,7 @@ class TokenSesionRepository(BaseRepository[TokenSesion]):
                 query = query.filter(TokenSesion.usuario_id == usuario_id)
             if alcance:
                 query = query.filter(TokenSesion.alcance == alcance)
-            return query.order_by(TokenSesion.expira_en.desc()).all()
+            return cast(list[TokenSesion], query.order_by(TokenSesion.expira_en.desc()).all())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al listar tokens vigentes: {e}")
             return []

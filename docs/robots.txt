@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://liebeblack.github.io/SDEP_CPP5/docs/sitemap.xml

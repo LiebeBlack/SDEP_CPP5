@@ -4,6 +4,7 @@ Repositorio para operaciones de datos de estudiantes
 """
 
 import logging
+from typing import cast
 
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,7 +27,7 @@ class EstudianteRepository(BaseRepository[Estudiante]):
     def get_by_cedula(self, cedula: str) -> Estudiante | None:
         """Obtiene un estudiante por cédula"""
         try:
-            return self.session.query(Estudiante).filter(Estudiante.cedula == cedula).first()
+            return cast(Estudiante | None, self.session.query(Estudiante).filter(Estudiante.cedula == cedula).first())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar estudiante por cédula {cedula}: {e}")
             return None
@@ -37,11 +38,14 @@ class EstudianteRepository(BaseRepository[Estudiante]):
     def get_activos(self) -> list[Estudiante]:
         """Obtiene solo los estudiantes activos, ordenados por apellido"""
         try:
-            return (
-                self.session.query(Estudiante)
-                .filter(Estudiante.activo == 1)
-                .order_by(Estudiante.apellidos, Estudiante.nombres)
-                .all()
+            return cast(
+                list[Estudiante],
+                (
+                    self.session.query(Estudiante)
+                    .filter(Estudiante.activo == 1)
+                    .order_by(Estudiante.apellidos, Estudiante.nombres)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar estudiantes activos: {e}")
@@ -54,14 +58,17 @@ class EstudianteRepository(BaseRepository[Estudiante]):
         """Obtiene los estudiantes activos de un nivel educativo"""
         try:
             nivel_val = nivel.value if hasattr(nivel, "value") else str(nivel)
-            return (
-                self.session.query(Estudiante)
-                .filter(
-                    Estudiante.activo == 1,
-                    or_(Estudiante.nivel == nivel_val, Estudiante.nivel == nivel),
-                )
-                .order_by(Estudiante.apellidos, Estudiante.nombres)
-                .all()
+            return cast(
+                list[Estudiante],
+                (
+                    self.session.query(Estudiante)
+                    .filter(
+                        Estudiante.activo == 1,
+                        or_(Estudiante.nivel == nivel_val, Estudiante.nivel == nivel),
+                    )
+                    .order_by(Estudiante.apellidos, Estudiante.nombres)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar estudiantes del nivel {nivel}: {e}")
@@ -81,18 +88,21 @@ class EstudianteRepository(BaseRepository[Estudiante]):
             if not term:
                 return self.get_activos()
             patron = f"%{term}%"
-            return (
-                self.session.query(Estudiante)
-                .filter(
-                    Estudiante.activo == 1,
-                    or_(
-                        normalizar_expr(Estudiante.nombres).like(patron),
-                        normalizar_expr(Estudiante.apellidos).like(patron),
-                        normalizar_expr(Estudiante.cedula).like(patron),
-                    ),
-                )
-                .order_by(Estudiante.apellidos, Estudiante.nombres)
-                .all()
+            return cast(
+                list[Estudiante],
+                (
+                    self.session.query(Estudiante)
+                    .filter(
+                        Estudiante.activo == 1,
+                        or_(
+                            normalizar_expr(Estudiante.nombres).like(patron),
+                            normalizar_expr(Estudiante.apellidos).like(patron),
+                            normalizar_expr(Estudiante.cedula).like(patron),
+                        ),
+                    )
+                    .order_by(Estudiante.apellidos, Estudiante.nombres)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(
@@ -142,7 +152,7 @@ class EstudianteRepository(BaseRepository[Estudiante]):
     def count_activos(self) -> int:
         """Cantidad de estudiantes activos"""
         try:
-            return self.session.query(Estudiante).filter(Estudiante.activo == 1).count()
+            return cast(int, self.session.query(Estudiante).filter(Estudiante.activo == 1).count())
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al contar estudiantes activos: {e}")
             return 0

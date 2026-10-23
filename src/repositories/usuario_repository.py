@@ -3,6 +3,8 @@ Usuario Repository
 Repositorio para operaciones de datos de usuarios
 """
 
+from typing import cast
+
 from sqlalchemy.orm import Session
 
 from src.models import Usuario
@@ -18,12 +20,12 @@ class UsuarioRepository(BaseRepository[Usuario]):
 
     def get_by_username(self, username: str) -> Usuario | None:
         """Obtiene un usuario por nombre de usuario"""
-        return self.session.query(Usuario).filter(Usuario.username == username).first()
+        return cast(Usuario | None, self.session.query(Usuario).filter(Usuario.username == username).first())
 
     def get_activos(self) -> list[Usuario]:
         """Obtiene usuarios activos"""
-        return self.session.query(Usuario).filter(Usuario.activo == 1).all()
+        return cast(list[Usuario], self.session.query(Usuario).filter(Usuario.activo == 1).all())
 
     def count_activos(self) -> int:
         """Cuenta usuarios activos"""
-        return self.session.query(Usuario).filter(Usuario.activo == 1).count()
+        return cast(int, self.session.query(Usuario).filter(Usuario.activo == 1).count())

@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from typing import cast
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -19,29 +20,38 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
 
     def get_by_empleado(self, empleado_id: int) -> list[Incidencia]:
         """Obtiene incidencias de un empleado"""
-        return (
-            self.session.query(Incidencia)
-            .filter(Incidencia.empleado_id == empleado_id)
-            .order_by(Incidencia.fecha_inicio.desc())
-            .all()
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(Incidencia.empleado_id == empleado_id)
+                .order_by(Incidencia.fecha_inicio.desc())
+                .all()
+            ),
         )
 
     def get_by_tipo(self, tipo: str | TipoIncidencia) -> list[Incidencia]:
         """Obtiene incidencias por tipo"""
         tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
-        return (
-            self.session.query(Incidencia)
-            .filter(or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo))
-            .all()
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo))
+                .all()
+            ),
         )
 
     def get_by_estado(self, estado: str | EstadoIncidencia) -> list[Incidencia]:
         """Obtiene incidencias por estado"""
         estado_val = estado.value if hasattr(estado, "value") else str(estado)
-        return (
-            self.session.query(Incidencia)
-            .filter(or_(Incidencia.estado == estado_val, Incidencia.estado == estado))
-            .all()
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(or_(Incidencia.estado == estado_val, Incidencia.estado == estado))
+                .all()
+            ),
         )
 
     def get_by_empleado_y_tipo(
@@ -49,64 +59,79 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
     ) -> list[Incidencia]:
         """Obtiene incidencias de un empleado por tipo"""
         tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
-        return (
-            self.session.query(Incidencia)
-            .filter(
-                and_(
-                    Incidencia.empleado_id == empleado_id,
-                    or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo),
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(
+                    and_(
+                        Incidencia.empleado_id == empleado_id,
+                        or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo),
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def get_pendientes(self) -> list[Incidencia]:
         """Obtiene incidencias pendientes de aprobación"""
-        return (
-            self.session.query(Incidencia)
-            .filter(Incidencia.estado == EstadoIncidencia.PENDIENTE.value)
-            .all()
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(Incidencia.estado == EstadoIncidencia.PENDIENTE.value)
+                .all()
+            ),
         )
 
     def get_vigentes(self) -> list[Incidencia]:
         """Obtiene incidencias vigentes actualmente"""
         hoy = date.today()
-        return (
-            self.session.query(Incidencia)
-            .filter(
-                and_(
-                    Incidencia.fecha_inicio <= hoy,
-                    Incidencia.fecha_fin >= hoy,
-                    Incidencia.estado == EstadoIncidencia.APROBADO.value,
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(
+                    and_(
+                        Incidencia.fecha_inicio <= hoy,
+                        Incidencia.fecha_fin >= hoy,
+                        Incidencia.estado == EstadoIncidencia.APROBADO.value,
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def get_by_periodo(self, fecha_inicio: date, fecha_fin: date) -> list[Incidencia]:
         """Obtiene incidencias en un periodo de tiempo"""
-        return (
-            self.session.query(Incidencia)
-            .filter(
-                and_(Incidencia.fecha_inicio <= fecha_fin, Incidencia.fecha_fin >= fecha_inicio)
-            )
-            .all()
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(
+                    and_(Incidencia.fecha_inicio <= fecha_fin, Incidencia.fecha_fin >= fecha_inicio)
+                )
+                .all()
+            ),
         )
 
     def get_by_empleado_periodo(
         self, empleado_id: int, fecha_inicio: date, fecha_fin: date
     ) -> list[Incidencia]:
         """Obtiene incidencias de un empleado en un periodo"""
-        return (
-            self.session.query(Incidencia)
-            .filter(
-                and_(
-                    Incidencia.empleado_id == empleado_id,
-                    Incidencia.fecha_inicio <= fecha_fin,
-                    Incidencia.fecha_fin >= fecha_inicio,
+        return cast(
+            list[Incidencia],
+            (
+                self.session.query(Incidencia)
+                .filter(
+                    and_(
+                        Incidencia.empleado_id == empleado_id,
+                        Incidencia.fecha_inicio <= fecha_fin,
+                        Incidencia.fecha_fin >= fecha_inicio,
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def aprobar(

@@ -8,7 +8,7 @@ cientos de INSERT individuales.
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import insert
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,16 +30,19 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
     def get_by_grado(self, grado_id: int) -> list[NotaFinal]:
         """Notas de un grado, ordenadas por estudiante y materia"""
         try:
-            return (
-                self.session.query(NotaFinal)
-                .join(Estudiante, NotaFinal.estudiante_id == Estudiante.id)
-                .filter(NotaFinal.grado_id == grado_id)
-                .order_by(
-                    Estudiante.apellidos,
-                    Estudiante.nombres,
-                    NotaFinal.materia,
-                )
-                .all()
+            return cast(
+                list[NotaFinal],
+                (
+                    self.session.query(NotaFinal)
+                    .join(Estudiante, NotaFinal.estudiante_id == Estudiante.id)
+                    .filter(NotaFinal.grado_id == grado_id)
+                    .order_by(
+                        Estudiante.apellidos,
+                        Estudiante.nombres,
+                        NotaFinal.materia,
+                    )
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al listar notas del grado {grado_id}: {e}")
@@ -58,7 +61,7 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
                 query = query.join(Grado, NotaFinal.grado_id == Grado.id).filter(
                     Grado.periodo_id == periodo_id
                 )
-            return query.order_by(NotaFinal.materia).all()
+            return cast(list[NotaFinal], query.order_by(NotaFinal.materia).all())
         except SQLAlchemyError as e:
             logger.error(
                 f"Error de base de datos al listar notas del estudiante {estudiante_id}: {e}"
@@ -71,14 +74,17 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
     def get_una(self, estudiante_id: int, grado_id: int, materia: str) -> NotaFinal | None:
         """Busca la nota de un estudiante en una materia y grado concretos"""
         try:
-            return (
-                self.session.query(NotaFinal)
-                .filter(
-                    NotaFinal.estudiante_id == estudiante_id,
-                    NotaFinal.grado_id == grado_id,
-                    NotaFinal.materia == materia,
-                )
-                .first()
+            return cast(
+                NotaFinal | None,
+                (
+                    self.session.query(NotaFinal)
+                    .filter(
+                        NotaFinal.estudiante_id == estudiante_id,
+                        NotaFinal.grado_id == grado_id,
+                        NotaFinal.materia == materia,
+                    )
+                    .first()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(

@@ -203,9 +203,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = perfil.nombre_completo.isNotBlank()
-                            ? perfil.nombre_completo
-                            : "Sin nombre",
+                        text = if (perfil.nombre_completo.isNotBlank()) perfil.nombre_completo else "Sin nombre",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
@@ -220,7 +218,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            FilaPerfil("Cédula", perfil.cedula.isNotBlank() ? perfil.cedula : "Sin asignar")
+            FilaPerfil("Cédula", if (perfil.cedula.isNotBlank()) perfil.cedula else "Sin asignar")
             FilaPerfil("Rol", perfil.rol.toUpperCase())
             FilaPerfil("Estado", if (perfil.activo) "Activa" else "Inactiva")
             FilaPerfil(

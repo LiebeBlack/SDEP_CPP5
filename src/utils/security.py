@@ -404,11 +404,11 @@ class PermissionChecker:
         "nomina": ("admin", "manager"),
         "configuracion": ("admin",),
         # El legajo académico y las notas pertenecen al ámbito institucional,
-        # no a la ficha personal de un trabajador: el rol ``user`` (WORKER) no
-        # los abre. Así el aislamiento por cédula no tiene que inventar una
-        # propiedad académica que el modelo actual no declara.
-        "estudiantes": ("admin", "manager", "viewer"),
-        "notas": ("admin", "manager"),
+        # pero el escritorio permite al rol ``user`` (trabajador) consultar
+        # sus propios legajos académicos y notas. El aislamiento por cédula
+        # filtra luego las filas que no le pertenecen.
+        "estudiantes": ("admin", "manager", "user", "viewer"),
+        "notas": ("admin", "manager", "user"),
     }
 
     @classmethod

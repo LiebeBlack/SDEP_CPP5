@@ -105,7 +105,7 @@ def test_login_solo_muestra_cambio_obligatorio_si_esta_marcado(central):
     sesion = central.SessionFactory()
     try:
         AuthService(sesion).crear_usuario(
-            "nuevo", "Clave1234", "user", "Nuevo", debe_cambiar_password=True, cedula="12345678"
+            "nuevo", "Clave1234", "user", "Nuevo", debe_cambiar_password=True, cedula="12345679"
         )
     finally:
         sesion.close()

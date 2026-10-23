@@ -33,10 +33,6 @@
   #define MyAppVersion "3.0.1"
 #endif
 
-; VersionInfoVersion requiere formato #.#.# o #.#.#.# (Inno Setup).
-; MyAppVersion puede ser "X.Y" (2 partes, desde el archivo VERSION).
-; El workflow de Release Firmada puede pasar MyVersionInfo ya normalizado.
-; Sin él, MyAppVersion se rellena hasta un formato valido (min. 3 partes).
 #ifndef MyVersionInfo
   #if Pos(".", MyAppVersion) == 0
     #define MyVersionInfo MyAppVersion + ".0.0"
@@ -53,14 +49,10 @@
   #define MyAppExeName "SistemaGestionPersonal.exe"
 #endif
 
-; OJO: la sintaxis {#...} NO se expande dentro del valor de un #define
-; (quedaría literal en el nombre, p.ej. "...-Setup-{#MyAppVersion}.exe").
-; Se usa concatenación ISPP para incrustar la versión en el nombre.
 #ifndef MyOutputBaseFilename
   #define MyOutputBaseFilename "SistemaGestionPersonal-Setup-" + MyAppVersion
 #endif
 
-; Nombre de la carpeta de salida de PyInstaller (spec/app.spec)
 #ifndef MyDistDir
   #define MyDistDir "SistemaGestionPersonal"
 #endif
@@ -80,7 +72,8 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile=..\LICENSE
+; Licencia personalizada mediante páginas de asistente (ver [Code])
+; LicenseFile=..\LICENSE
 OutputDir=..\dist_installer
 OutputBaseFilename={#MyOutputBaseFilename}
 SetupIconFile=..\assets\app.ico
@@ -92,12 +85,7 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
-; La instalación de la cadena en Cert:\LocalMachine\Root y
-; Cert:\LocalMachine\CA (confianza de la MÁQUINA, para todos los usuarios)
-; exige elevación: el instalador siempre pide privilegios de administrador.
 PrivilegesRequired=admin
-; Cierra procesos que bloqueen archivos de la aplicación durante la actualización.
-; Puede perderse trabajo sin guardar; los procesos cerrados no se reinician.
 CloseApplications=force
 RestartApplications=no
 VersionInfoVersion={#MyVersionInfo}
@@ -105,20 +93,9 @@ VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName}
 VersionInfoProductName={#MyAppName}
 
-; Firma del instalador (y del desinstalador) cuando el CI está compilando.
-;   - La directiva SignTool de Inno Setup NO admite el comando inline: exige
-;     un Sign Tool NOMBRE registrado antes (opción /S de ISCC o el IDE). El
-;     workflow registra 'GitHubSign' con /S"GitHubSign=..." y define
-;     ConFirmaCI (ver .github/workflows/release.yml); aquí solo se referencia
-;     por nombre.
-;   - Sin ese registro (compilación local sin /S ni ConFirmaCI) no se firma:
-;     se genera un instalador sin firmar sin ningún cambio.
-;   - La definición del tool fija el certificado con /sha1 (huella hoja) o /a
-;     como fallback: el PFX lleva la cadena completa y VARIOS certificados
-;     resultan "aptos para firmar"; sin selección explícita signtool falla
-;     con "Multiple certificates were found that meet all the given criteria".
-;   - Placeholders de Inno (en la definición del tool): $f = archivo a firmar
-;     (entre comillas), $q = comilla, $p = parámetros de la directiva.
+#ifndef ConFirmaCI
+SignedUninstaller=no
+#endif
 #ifdef ConFirmaCI
 SignTool=GitHubSign
 SignedUninstaller=yes
@@ -142,8 +119,7 @@ Source: "..\dist\{#MyDistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recurse
 ; Cadena de certificados de LiebeBlack Systems: se copian a {tmp} y se
 ; eliminan al terminar la instalación (deleteafterinstall). Los .cer son
 ; PÚBLICOS y deben versionarse. El #pragma error hace FALLAR LA COMPILACIÓN
-; si falta alguno: es preferible a distribuir un instalador que deja la
-; firma de LiebeBlack sin confianza en los equipos cliente.
+; si falta alguno.
 #if FileExists("..\tools\cert_01.cer")
 Source: "..\tools\cert_01.cer"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #endif
@@ -159,9 +135,17 @@ Source: "..\tools\cert_04.cer"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #if !FileExists("..\tools\cert_01.cer") || !FileExists("..\tools\cert_02.cer") || !FileExists("..\tools\cert_03.cer") || !FileExists("..\tools\cert_04.cer")
   #pragma error "Faltan los certificados de la cadena en tools\ (cert_01.cer, cert_02.cer, cert_03.cer y cert_04.cer). El instalador no puede dejar la firma de LiebeBlack sin confianza."
 #endif
-; Actualizador automático: se incluye en el instalador y se programa en
-; el Programador de tareas de Windows para ejecutarse cada 2 días.
+; Actualizador automático
 Source: "..\dist_updater\SDEP_CPP5_AutoUpdater.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Documentos legales (RTF) para las páginas de licencia del instalador
+Source: "installer\EULA_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\EULA_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\Privacy_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\Privacy_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\Terms_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\Terms_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\ThirdParty_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "installer\ThirdParty_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -209,9 +193,6 @@ Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SDEP
 Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SDEP Descubrimiento Sincronizacion"""; Flags: runhidden
 
 [UninstallDelete]
-; Elimina la carpeta de datos creada por la versión portable antigua
-; (junto al ejecutable). Los datos del usuario en %LOCALAPPDATA% se
-; conservan para no perder información al desinstalar.
 Type: dirifempty; Name: "{app}\backups"
 Type: dirifempty; Name: "{app}\documents"
 Type: dirifempty; Name: "{app}\exports"
@@ -219,15 +200,127 @@ Type: dirifempty; Name: "{app}\photos"
 Type: dirifempty; Name: "{app}\logs"
 
 [Code]
-// Notificación final: informa que la cadena de certificados de LiebeBlack
-// Systems quedó actualizada en este equipo (garantiza que Windows valide
-// las firmas digitales de los parches oficiales y actualizaciones).
+var
+  EulaPage, PrivacyPage, TermsPage, ThirdPartyPage: TWizardPage;
+  EulaAccepted, PrivacyAccepted, TermsAccepted, ThirdPartyAccepted: TNewCheckBox;
+  AllAccepted: Boolean = False;
+
+procedure UpdateNextButton;
+var
+  CanProceed: Boolean;
+begin
+  CanProceed := EulaAccepted.Checked and PrivacyAccepted.Checked and
+                TermsAccepted.Checked and ThirdPartyAccepted.Checked;
+  AllAccepted := CanProceed;
+  WizardForm.NextButton.Enabled := CanProceed;
+end;
+
+function CreateRichTextPage(const Title, SubTitle, RTFFile: String; var AcceptCheck: TNewCheckBox): TWizardPage;
+var
+  Page: TWizardPage;
+  RichTextViewer: TRichEditViewer;
+  AcceptBox: TNewCheckBox;
+begin
+  Page := CreateCustomPage(wpWelcome, Title, SubTitle);
+  RichTextViewer := TRichEditViewer.Create(Page);
+  RichTextViewer.Parent := Page.Surface;
+  RichTextViewer.Left := ScaleX(30);
+  RichTextViewer.Top := ScaleY(10);
+  RichTextViewer.Width := ScaleX(Page.SurfaceWidth - 60);
+  RichTextViewer.Height := ScaleY(Page.SurfaceHeight - 90);
+  RichTextViewer.Anchors := [akLeft, akTop, akRight, akBottom];
+  RichTextViewer.RTFText := RTFFile;
+  RichTextViewer.ReadOnly := True;
+
+  AcceptBox := TNewCheckBox.Create(Page);
+  AcceptBox.Parent := Page.Surface;
+  AcceptBox.Left := ScaleX(30);
+  AcceptBox.Top := ScaleY(Page.SurfaceHeight - 70);
+  AcceptBox.Width := ScaleX(Page.SurfaceWidth - 60);
+  AcceptBox.Height := ScaleY(25);
+  AcceptBox.Anchors := [akLeft, akBottom, akRight];
+  AcceptBox.Caption := 'Acepto los términos y condiciones de este documento';
+  AcceptBox.Checked := False;
+  AcceptBox.OnClick := @UpdateNextButton;
+  AcceptCheck := AcceptBox;
+
+  Result := Page;
+end;
+
+function InitializeWizard: Boolean;
+var
+  RTFFile: String;
+begin
+  Result := True;
+
+  if WizardLanguageID = 1034 then
+  begin
+    RTFFile := ExpandConstant('{tmp}\EULA_ES.rtf');
+    EulaPage := CreateRichTextPage(
+      'Contrato de Licencia de Usuario Final (EULA)',
+      'Lea atentamente el siguiente contrato antes de instalar el software.',
+      RTFFile, EulaAccepted);
+
+    RTFFile := ExpandConstant('{tmp}\Privacy_ES.rtf');
+    PrivacyPage := CreateRichTextPage(
+      'Política de Privacidad',
+      'Lea la política de privacidad para entender cómo se tratan sus datos.',
+      RTFFile, PrivacyAccepted);
+
+    RTFFile := ExpandConstant('{tmp}\Terms_ES.rtf');
+    TermsPage := CreateRichTextPage(
+      'Términos de Servicio',
+      'Lea los términos de servicio que regulan el uso del software.',
+      RTFFile, TermsAccepted);
+
+    RTFFile := ExpandConstant('{tmp}\ThirdParty_ES.rtf');
+    ThirdPartyPage := CreateRichTextPage(
+      'Licencias de Terceros',
+      'Lea las licencias de los componentes de código abierto incluidos.',
+      RTFFile, ThirdPartyAccepted);
+  end
+  else
+  begin
+    RTFFile := ExpandConstant('{tmp}\EULA_EN.rtf');
+    EulaPage := CreateRichTextPage(
+      'End-User License Agreement (EULA)',
+      'Please read the following agreement carefully before installing the software.',
+      RTFFile, EulaAccepted);
+
+    RTFFile := ExpandConstant('{tmp}\Privacy_EN.rtf');
+    PrivacyPage := CreateRichTextPage(
+      'Privacy Policy',
+      'Read the privacy policy to understand how your data is handled.',
+      RTFFile, PrivacyAccepted);
+
+    RTFFile := ExpandConstant('{tmp}\Terms_EN.rtf');
+    TermsPage := CreateRichTextPage(
+      'Terms of Service',
+      'Read the terms of service that govern the use of the software.',
+      RTFFile, TermsAccepted);
+
+    RTFFile := ExpandConstant('{tmp}\ThirdParty_EN.rtf');
+    ThirdPartyPage := CreateRichTextPage(
+      'Third-Party Licenses',
+      'Read the licenses of the open-source components included.',
+      RTFFile, ThirdPartyAccepted);
+  end;
+
+  WizardForm.NextButton.Enabled := False;
+  Result := True;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := AllAccepted;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
     WizardForm.FinishedLabel.Caption :=
-      'La cadena de certificados de LiebeBlack Systems se ha actualizado con éxito en este equipo. ' +
+      'La instalación se ha completado con éxito. La cadena de certificados de LiebeBlack Systems se ha actualizado en este equipo. ' +
       'Esto garantiza la validación de los parches oficiales y actualizaciones firmadas por LiebeBlack Systems.';
   end;
 end;

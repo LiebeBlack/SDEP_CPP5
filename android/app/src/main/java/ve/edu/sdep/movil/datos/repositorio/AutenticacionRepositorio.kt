@@ -7,9 +7,11 @@ import retrofit2.HttpException
 import ve.edu.sdep.movil.datos.local.Fechas
 import ve.edu.sdep.movil.datos.local.dao.SesionUsuarioDao
 import ve.edu.sdep.movil.datos.local.entidad.SesionUsuarioEntity
+import ve.edu.sdep.movil.datos.remoto.ActualizarPerfilDto
 import ve.edu.sdep.movil.datos.remoto.ApiSyncFactory
 import ve.edu.sdep.movil.datos.remoto.CambioPasswordDto
 import ve.edu.sdep.movil.datos.remoto.LoginDto
+import ve.edu.sdep.movil.datos.remoto.PerfilDto
 import ve.edu.sdep.movil.datos.remoto.mensajeDelServidor
 import ve.edu.sdep.movil.datos.seguridad.Boveda
 import ve.edu.sdep.movil.dominio.modelo.Permiso

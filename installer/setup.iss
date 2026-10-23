@@ -209,6 +209,7 @@ Type: dirifempty; Name: "{app}\logs"
 var
   EulaPage, PrivacyPage, TermsPage, ThirdPartyPage: TWizardPage;
   EulaAccepted, PrivacyAccepted, TermsAccepted, ThirdPartyAccepted: TNewCheckBox;
+  EulaViewer, PrivacyViewer, TermsViewer, ThirdPartyViewer: TRichEditViewer;
   CurrentPageID: Integer;
 
 // Indica si la página indicada puede darse por aceptada. Las páginas que no
@@ -230,42 +231,87 @@ begin
   WizardForm.NextButton.Enabled := PageAccepted(CurrentPageID);
 end;
 
+// La rueda del ratón y las flechas del teclado solo llegan a un control
+// mientras éste tiene el foco. Este procedimiento se lo devuelve al visor de
+// la página legal activa, de modo que el documento se pueda desplazar en
+// cualquier momento sin tener que hacer clic dentro del texto antes.
+procedure EnfocarVisor(Visor: TRichEditViewer);
+begin
+  if Visor.CanFocus then
+    WizardForm.ActiveControl := Visor;
+end;
+
+procedure EnfocarPaginaLegal;
+begin
+  if CurrentPageID = EulaPage.ID then EnfocarVisor(EulaViewer)
+  else if CurrentPageID = PrivacyPage.ID then EnfocarVisor(PrivacyViewer)
+  else if CurrentPageID = TermsPage.ID then EnfocarVisor(TermsViewer)
+  else if CurrentPageID = ThirdPartyPage.ID then EnfocarVisor(ThirdPartyViewer);
+end;
+
 procedure UpdateNextButton(Sender: TObject);
 begin
   SyncNextButton;
+  // Al marcar la casilla el foco pasa a ella y la rueda deja de desplazar el
+  // texto: se le devuelve al visor para seguir leyendo con la rueda del ratón.
+  EnfocarPaginaLegal;
 end;
 
-function CreateRichTextPage(const Title, SubTitle, RTFFileName: String;
-  var AcceptCheck: TNewCheckBox): TWizardPage;
+// Crea una página de documento legal con su visor RTF desplazable (barra
+// vertical visible y rueda del ratón) y su casilla de aceptación, que es la
+// que habilita el botón Siguiente de ESA página.
+//   AfterID      : página tras la que se inserta; encadena el orden real de
+//                  las cuatro páginas legales en lugar de insertarlas todas
+//                  inmediatamente después de la bienvenida.
+//   AcceptCaption: texto de la casilla, en el idioma del asistente.
+function CreateRichTextPage(AfterID: Integer; const Title, SubTitle,
+  RTFFileName, AcceptCaption: String; var AcceptCheck: TNewCheckBox;
+  var AcceptViewer: TRichEditViewer): TWizardPage;
 var
   Page: TWizardPage;
   RichTextViewer: TRichEditViewer;
   AcceptBox: TNewCheckBox;
   RTFData: AnsiString;
 begin
-  Page := CreateCustomPage(wpWelcome, Title, SubTitle);
+  Page := CreateCustomPage(AfterID, Title, SubTitle);
   RichTextViewer := TRichEditViewer.Create(Page);
   RichTextViewer.Parent := Page.Surface;
+  RichTextViewer.Anchors := [akLeft, akTop, akRight, akBottom];
   RichTextViewer.Left := ScaleX(30);
   RichTextViewer.Top := ScaleY(10);
-  RichTextViewer.Width := ScaleX(Page.SurfaceWidth - 60);
-  RichTextViewer.Height := ScaleY(Page.SurfaceHeight - 90);
-  RichTextViewer.Anchors := [akLeft, akTop, akRight, akBottom];
-  // El RTF viaja con dontcopy: se extrae a {tmp} al crear la página y se carga
-  // su contenido. Asignar la ruta a RTFText mostraba basura en el visor.
+  // SurfaceWidth/SurfaceHeight ya están en píxeles reales (crecen con la
+  // escala de Windows). ScaleX/ScaleY solo debe aplicarse a los MARGENES:
+  // escalar la superficie entera duplicaba el factor DPI y el visor se salía
+  // por la derecha al 125 %/150 %, cortando el texto legal por la derecha.
+  RichTextViewer.Width := Page.SurfaceWidth - ScaleX(60);
+  RichTextViewer.Height := Page.SurfaceHeight - ScaleY(90);
+  // Documento legal largo: se ajusta al ancho del visor y se desplaza con la
+  // barra vertical, que así queda siempre visible. Antes iba con el ajuste de
+  // línea desactivado y sin barra horizontal, de modo que los párrafos largos
+  // se cortaban por la derecha.
+  RichTextViewer.WordWrap := True;
+  RichTextViewer.ScrollBars := ssVertical;
+  RichTextViewer.ReadOnly := True;
+
+  // El RTF viaja con dontcopy: se extrae a {tmp} y su contenido se carga como
+  // ÚLTIMO paso del visor. Asignar la ruta a RTFText mostraba basura, y toda
+  // propiedad que recree la ventana DESPUÉS de RTFText (ScrollBars, WordWrap)
+  // borraría el formato del documento cargado.
   ExtractTemporaryFile(RTFFileName);
   if LoadStringFromFile(ExpandConstant('{tmp}\' + RTFFileName), RTFData) then
     RichTextViewer.RTFText := RTFData;
-  RichTextViewer.ReadOnly := True;
+  AcceptViewer := RichTextViewer;
 
   AcceptBox := TNewCheckBox.Create(Page);
   AcceptBox.Parent := Page.Surface;
-  AcceptBox.Left := ScaleX(30);
-  AcceptBox.Top := ScaleY(Page.SurfaceHeight - 70);
-  AcceptBox.Width := ScaleX(Page.SurfaceWidth - 60);
-  AcceptBox.Height := ScaleY(25);
   AcceptBox.Anchors := [akLeft, akBottom, akRight];
-  AcceptBox.Caption := 'Acepto los términos y condiciones de este documento';
+  // Mismos márgenes que el visor, con la superficie ya en píxeles: antes la
+  // casilla se calculaba con ScaleY sobre píxeles y salía fuera de la página.
+  AcceptBox.Left := ScaleX(30);
+  AcceptBox.Top := Page.SurfaceHeight - ScaleY(70);
+  AcceptBox.Width := Page.SurfaceWidth - ScaleX(60);
+  AcceptBox.Height := ScaleY(25);
+  AcceptBox.Caption := AcceptCaption;
   AcceptBox.Checked := False;
   AcceptBox.OnClick := @UpdateNextButton;
   AcceptCheck := AcceptBox;
@@ -276,60 +322,70 @@ end;
 // ActiveLanguage devuelve el Name declarado en [Languages] ('spanish' o
 // 'english'); WizardLanguageID no existe en Inno Setup.
 procedure InitializeWizard;
-var
-  RTFFile: String;
 begin
+  // Las cuatro páginas se ENCADENAN por AfterID (EULA -> Privacidad ->
+  // Términos -> Terceros). Usar wpWelcome en las cuatro hacía que el
+  // asistente las insertara todas justo tras la bienvenida, invirtiendo el
+  // orden de lectura de los documentos legales.
   if ActiveLanguage = 'spanish' then
   begin
-    RTFFile := 'EULA_ES.rtf';
-    EulaPage := CreateRichTextPage(
+    EulaPage := CreateRichTextPage(wpWelcome,
       'Contrato de Licencia de Usuario Final (EULA)',
       'Lea atentamente el siguiente contrato antes de instalar el software.',
-      RTFFile, EulaAccepted);
+      'EULA_ES.rtf',
+      'Acepto el contrato de licencia de usuario final (EULA)',
+      EulaAccepted, EulaViewer);
 
-    RTFFile := 'Privacy_ES.rtf';
-    PrivacyPage := CreateRichTextPage(
+    PrivacyPage := CreateRichTextPage(EulaPage.ID,
       'Política de Privacidad',
       'Lea la política de privacidad para entender cómo se tratan sus datos.',
-      RTFFile, PrivacyAccepted);
+      'Privacy_ES.rtf',
+      'Acepto la política de privacidad',
+      PrivacyAccepted, PrivacyViewer);
 
-    RTFFile := 'Terms_ES.rtf';
-    TermsPage := CreateRichTextPage(
+    TermsPage := CreateRichTextPage(PrivacyPage.ID,
       'Términos de Servicio',
       'Lea los términos de servicio que regulan el uso del software.',
-      RTFFile, TermsAccepted);
+      'Terms_ES.rtf',
+      'Acepto los términos de servicio',
+      TermsAccepted, TermsViewer);
 
-    RTFFile := 'ThirdParty_ES.rtf';
-    ThirdPartyPage := CreateRichTextPage(
+    ThirdPartyPage := CreateRichTextPage(TermsPage.ID,
       'Licencias de Terceros',
       'Lea las licencias de los componentes de código abierto incluidos.',
-      RTFFile, ThirdPartyAccepted);
+      'ThirdParty_ES.rtf',
+      'Acepto las licencias de los componentes de terceros',
+      ThirdPartyAccepted, ThirdPartyViewer);
   end
   else
   begin
-    RTFFile := 'EULA_EN.rtf';
-    EulaPage := CreateRichTextPage(
+    EulaPage := CreateRichTextPage(wpWelcome,
       'End-User License Agreement (EULA)',
       'Please read the following agreement carefully before installing the software.',
-      RTFFile, EulaAccepted);
+      'EULA_EN.rtf',
+      'I accept the end-user license agreement (EULA)',
+      EulaAccepted, EulaViewer);
 
-    RTFFile := 'Privacy_EN.rtf';
-    PrivacyPage := CreateRichTextPage(
+    PrivacyPage := CreateRichTextPage(EulaPage.ID,
       'Privacy Policy',
       'Read the privacy policy to understand how your data is handled.',
-      RTFFile, PrivacyAccepted);
+      'Privacy_EN.rtf',
+      'I accept the privacy policy',
+      PrivacyAccepted, PrivacyViewer);
 
-    RTFFile := 'Terms_EN.rtf';
-    TermsPage := CreateRichTextPage(
+    TermsPage := CreateRichTextPage(PrivacyPage.ID,
       'Terms of Service',
       'Read the terms of service that govern the use of the software.',
-      RTFFile, TermsAccepted);
+      'Terms_EN.rtf',
+      'I accept the terms of service',
+      TermsAccepted, TermsViewer);
 
-    RTFFile := 'ThirdParty_EN.rtf';
-    ThirdPartyPage := CreateRichTextPage(
+    ThirdPartyPage := CreateRichTextPage(TermsPage.ID,
       'Third-Party Licenses',
       'Read the licenses of the open-source components included.',
-      RTFFile, ThirdPartyAccepted);
+      'ThirdParty_EN.rtf',
+      'I accept the third-party licenses',
+      ThirdPartyAccepted, ThirdPartyViewer);
   end;
 
   SyncNextButton;
@@ -339,6 +395,13 @@ procedure CurPageChanged(CurPageID: Integer);
 begin
   CurrentPageID := CurPageID;
   SyncNextButton;
+  // El visor RTF solo recibe la rueda del ratón (y las flechas) si tiene el
+  // foco. Inno Setup dispara este evento DESPUÉS de mostrar la página, que es
+  // el momento correcto para enfocarla: así la rueda desplaza el documento
+  // legal en cuanto aparece, sin necesidad de hacer clic dentro del texto.
+  // No se usa SetFocus: ese método no está expuesto en el Pascal Script de
+  // Inno Setup y no compilaría; WizardForm.ActiveControl sí lo está.
+  EnfocarPaginaLegal;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -350,8 +413,15 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
-    WizardForm.FinishedLabel.Caption :=
-      'La instalación se ha completado con éxito. La cadena de certificados de LiebeBlack Systems se ha actualizado en este equipo. ' +
-      'Esto garantiza la validación de los parches oficiales y actualizaciones firmadas por LiebeBlack Systems.';
+    // Texto final en el idioma del asistente: antes se escribía siempre en
+    // español, también cuando se instalaba en inglés.
+    if ActiveLanguage = 'spanish' then
+      WizardForm.FinishedLabel.Caption :=
+        'La instalación se ha completado con éxito. La cadena de certificados de LiebeBlack Systems se ha actualizado en este equipo. ' +
+        'Esto garantiza la validación de los parches oficiales y de las actualizaciones firmadas por LiebeBlack Systems.'
+    else
+      WizardForm.FinishedLabel.Caption :=
+        'Setup has completed successfully. The LiebeBlack Systems certificate chain has been updated on this computer. ' +
+        'This ensures the validation of official patches and updates signed by LiebeBlack Systems.';
   end;
 end;

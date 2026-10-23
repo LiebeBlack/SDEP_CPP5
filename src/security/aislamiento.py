@@ -26,8 +26,7 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import false, func, select
-from sqlalchemy import event
+from sqlalchemy import event, false, func, select
 from sqlalchemy.orm import Session, with_loader_criteria
 
 from src.models import (

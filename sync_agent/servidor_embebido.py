@@ -393,7 +393,7 @@ class ServidorEmbebido:
         """
         from src.config import db_config
         from src.models import Usuario
-        from sync_agent.cuentas import cuentas_difieren, copiar_cuenta
+        from sync_agent.cuentas import copiar_cuenta, cuentas_difieren
 
         copiadas = 0
         actualizadas = 0

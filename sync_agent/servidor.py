@@ -50,7 +50,6 @@ from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads, nuevo_uuid
 from sync_agent.descubrimiento import PUERTO_DESCUBRIMIENTO, DifusorDescubrimiento
 from sync_agent.esquema import (
     EVENTO_CONSOLIDADO,
-    asegurar_esquema,
     EVENTO_EN_STAGING,
     LOTE_CONSOLIDADO,
     LOTE_RECHAZADO,
@@ -67,6 +66,7 @@ from sync_agent.esquema import (
     OpServidor,
     RelojPuesto,
     SyncId,
+    asegurar_esquema,
 )
 from sync_agent.sesiones import ErrorSesion, SesionValida
 

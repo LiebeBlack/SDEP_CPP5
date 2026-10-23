@@ -1,7 +1,7 @@
 """Controles de seguridad compartidos por escritorio y nodo central."""
 
-from .contexto import ContextoSesion, actual, establecer, limpiar
 from .aislamiento import ErrorAislamiento, instalar
+from .contexto import ContextoSesion, actual, establecer, limpiar
 
 __all__ = [
     "ContextoSesion",

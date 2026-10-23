@@ -50,7 +50,7 @@ class RegistroRepositorio @Inject constructor(
         registroDao.observarActivos().map { filas ->
             val sesion = sesionRepositorio.actual
             filas
-                .filter { sesion?.esTrabajador != true || it.usuario == sesion?.usuario }
+                .filter { sesion?.esTrabajador != true || it.usuario == sesion.usuario }
                 .map { it.aDominio() }
         }
 
@@ -58,7 +58,7 @@ class RegistroRepositorio @Inject constructor(
         registroDao.observarPorUuid(uuid).map { fila ->
             val sesion = sesionRepositorio.actual
             val visible = fila == null || sesion?.esTrabajador != true ||
-                fila.usuario == sesion?.usuario
+                fila.usuario == sesion.usuario
             if (visible) fila?.aDominio() else null
         }
 

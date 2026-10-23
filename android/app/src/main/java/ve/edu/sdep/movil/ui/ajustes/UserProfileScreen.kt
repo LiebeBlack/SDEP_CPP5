@@ -41,7 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,7 +63,6 @@ fun UserProfileScreen(
     vistaModelo: UserProfileViewModel = hiltViewModel(),
 ) {
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
-    val contexto = LocalContext.current
     val barra = remember { SnackbarHostState() }
 
     var dialogoEdicion by remember { mutableStateOf(false) }

@@ -154,7 +154,7 @@ class TablaRepositorio @Inject constructor(
             if (problema != null) return Resultado.Fallo(problema)
         }
         val datos = datosBase.filterKeys { clave -> esquema.any { it.nombre == clave } }
-        val problema = withContext(Dispatchers.IO) { validar(tabla, esquema, datos) }
+        val problema = withContext(Dispatchers.IO) { validar(esquema, datos) }
         if (problema != null) return Resultado.Fallo(problema)
 
         val equipo = configuracionRepositorio.cargar().equipo.ifBlank { "movil" }
@@ -466,7 +466,6 @@ class TablaRepositorio @Inject constructor(
 
     /** Comprueba obligatorios, números, fechas, listas cerradas y claves foráneas */
     private fun validar(
-        _tabla: String,
         columnas: List<ve.edu.sdep.movil.datos.local.ColumnaTabla>,
         datos: Map<String, String>,
     ): String? {

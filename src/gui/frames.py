@@ -5453,18 +5453,28 @@ class UsuarioDialog(ctk.CTkToplevel):
         self.rol_combo.grid(row=2, column=1, padx=8, pady=6, sticky="w")
         self.rol_combo.set("user")
 
+        # Cédula (requerida para rol 'user')
+        ctk.CTkLabel(form, text="Cédula:", text_color=COLORES["texto"]).grid(
+            row=3, column=0, padx=8, pady=6, sticky="e"
+        )
+        self.cedula_entry = ctk.CTkEntry(
+            form, width=260, fg_color=COLORES["campo"], text_color=COLORES["texto"],
+            placeholder_text="Obligatorio para rol 'user' (trabajador)"
+        )
+        self.cedula_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
+
         if self.usuario is None:
             ctk.CTkLabel(form, text="Contraseña:", text_color=COLORES["texto"]).grid(
-                row=3, column=0, padx=8, pady=6, sticky="e"
+                row=4, column=0, padx=8, pady=6, sticky="e"
             )
             self.password_entry = ctk.CTkEntry(
                 form, width=260, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
             )
-            self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
+            self.password_entry.grid(row=4, column=1, padx=8, pady=6, sticky="w")
         else:
             ctk.CTkLabel(
                 form, text="Nueva Contraseña (opcional):", text_color=COLORES["texto"]
-            ).grid(row=3, column=0, padx=8, pady=6, sticky="e")
+            ).grid(row=4, column=0, padx=8, pady=6, sticky="e")
             self.password_entry = ctk.CTkEntry(
                 form,
                 width=260,
@@ -5473,11 +5483,11 @@ class UsuarioDialog(ctk.CTkToplevel):
                 text_color=COLORES["texto"],
                 placeholder_text="Dejar vacía para no cambiar",
             )
-            self.password_entry.grid(row=3, column=1, padx=8, pady=6, sticky="w")
+            self.password_entry.grid(row=4, column=1, padx=8, pady=6, sticky="w")
 
         self.activo_var = tk.BooleanVar(value=True)
         activo_chk = ctk.CTkCheckBox(form, text="Cuenta activa", variable=self.activo_var)
-        activo_chk.grid(row=4, column=1, padx=8, pady=6, sticky="w")
+        activo_chk.grid(row=5, column=1, padx=8, pady=6, sticky="w")
 
         hint = ctk.CTkLabel(
             form,
@@ -5485,7 +5495,7 @@ class UsuarioDialog(ctk.CTkToplevel):
             text_color=COLORES["texto_suave"],
             font=ctk.CTkFont(size=11),
         )
-        hint.grid(row=5, column=1, padx=8, pady=2, sticky="w")
+        hint.grid(row=6, column=1, padx=8, pady=2, sticky="w")
 
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
@@ -5500,6 +5510,8 @@ class UsuarioDialog(ctk.CTkToplevel):
         if self.usuario.nombre_completo:
             self.nombre_entry.insert(0, self.usuario.nombre_completo)
         self.rol_combo.set(self.usuario.rol_valor)
+        if self.usuario.cedula:
+            self.cedula_entry.insert(0, self.usuario.cedula)
         self.activo_var.set(bool(self.usuario.activo))
 
     def _on_save(self):
@@ -5519,6 +5531,7 @@ class UsuarioDialog(ctk.CTkToplevel):
                         "nombre_completo": self.nombre_entry.get(),
                         "rol": self.rol_combo.get(),
                         "activo": 1 if self.activo_var.get() else 0,
+                        "cedula": self.cedula_entry.get() or None,
                     }
                     nueva_pass = self.password_entry.get()
                     if nueva_pass:
@@ -5534,6 +5547,7 @@ class UsuarioDialog(ctk.CTkToplevel):
                         rol=self.rol_combo.get(),
                         nombre_completo=self.nombre_entry.get(),
                         debe_cambiar_password=False,
+                        cedula=self.cedula_entry.get() or None,
                     )
                     messagebox.showinfo("Éxito", "Usuario creado correctamente")
                 self.result = True

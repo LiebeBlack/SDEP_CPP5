@@ -1187,8 +1187,6 @@ class NucleoCentral:
         return sesion.get(modelo, int(fila_id))
 
     def _empleado_por_uuid(self, sesion, empleado_uuid: str | None):
-        from src.models import Empleado
-
         if not empleado_uuid:
             return None
         return self._fila_existente(sesion, "empleados", str(empleado_uuid))

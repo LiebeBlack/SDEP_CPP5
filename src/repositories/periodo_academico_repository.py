@@ -42,7 +42,9 @@ class PeriodoAcademicoRepository(BaseRepository[PeriodoAcademico]):
         """Lista los periodos del más reciente al más antiguo (o al revés)"""
         try:
             orden = PeriodoAcademico.nombre.desc() if descendente else PeriodoAcademico.nombre
-            return cast(list[PeriodoAcademico], self.session.query(PeriodoAcademico).order_by(orden).all())
+            return cast(
+                list[PeriodoAcademico], self.session.query(PeriodoAcademico).order_by(orden).all()
+            )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al listar periodos: {e}")
             return []

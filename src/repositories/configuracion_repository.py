@@ -4,7 +4,7 @@ Repositorio para operaciones de datos de configuración
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
@@ -23,15 +23,24 @@ class ConfiguracionRepository(BaseRepository[Configuracion]):
 
     def get_by_clave(self, clave: str) -> Configuracion | None:
         """Obtiene una configuración por clave"""
-        return self.session.query(Configuracion).filter(Configuracion.clave == clave).first()
+        return cast(
+            Configuracion | None,
+            self.session.query(Configuracion).filter(Configuracion.clave == clave).first(),
+        )
 
     def get_by_categoria(self, categoria: str) -> list[Configuracion]:
         """Obtiene configuraciones por categoría"""
-        return self.session.query(Configuracion).filter(Configuracion.categoria == categoria).all()
+        return cast(
+            list[Configuracion],
+            self.session.query(Configuracion).filter(Configuracion.categoria == categoria).all(),
+        )
 
     def get_editables(self) -> list[Configuracion]:
         """Obtiene configuraciones editables"""
-        return self.session.query(Configuracion).filter(Configuracion.editable == 1).all()
+        return cast(
+            list[Configuracion],
+            self.session.query(Configuracion).filter(Configuracion.editable == 1).all(),
+        )
 
     def set_valor(self, clave: str, valor: Any) -> bool:
         """Establece el valor de una configuración"""

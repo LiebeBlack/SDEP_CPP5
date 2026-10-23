@@ -20,7 +20,9 @@ class UsuarioRepository(BaseRepository[Usuario]):
 
     def get_by_username(self, username: str) -> Usuario | None:
         """Obtiene un usuario por nombre de usuario"""
-        return cast(Usuario | None, self.session.query(Usuario).filter(Usuario.username == username).first())
+        return cast(
+            Usuario | None, self.session.query(Usuario).filter(Usuario.username == username).first()
+        )
 
     def get_activos(self) -> list[Usuario]:
         """Obtiene usuarios activos"""

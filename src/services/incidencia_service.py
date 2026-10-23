@@ -10,7 +10,7 @@ import logging
 import os
 import uuid
 from datetime import date
-from typing import TypeGuard
+from typing import TypeGuard, cast
 
 from sqlalchemy.orm import Session
 
@@ -307,7 +307,7 @@ class IncidenciaService:
         incidencia = self.repository.get_by_id(incidencia_id)
         if incidencia:
             if incidencia.documento_soporte_binario:
-                return incidencia.documento_soporte_binario
+                return cast(bytes, incidencia.documento_soporte_binario)
             elif self._ruta_gestionada(incidencia.documento_soporte_ruta) and os.path.exists(
                 incidencia.documento_soporte_ruta
             ):

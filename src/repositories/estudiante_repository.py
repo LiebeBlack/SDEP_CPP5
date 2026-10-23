@@ -27,7 +27,10 @@ class EstudianteRepository(BaseRepository[Estudiante]):
     def get_by_cedula(self, cedula: str) -> Estudiante | None:
         """Obtiene un estudiante por cédula"""
         try:
-            return cast(Estudiante | None, self.session.query(Estudiante).filter(Estudiante.cedula == cedula).first())
+            return cast(
+                Estudiante | None,
+                self.session.query(Estudiante).filter(Estudiante.cedula == cedula).first(),
+            )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar estudiante por cédula {cedula}: {e}")
             return None

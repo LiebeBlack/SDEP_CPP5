@@ -10,6 +10,7 @@ de vencimientos.
 import logging
 import os
 import uuid
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -250,7 +251,7 @@ class DocumentoService:
         documento = self.repository.get_by_id(documento_id)
         if documento:
             if documento.contenido_binario:
-                return documento.contenido_binario
+                return cast(bytes, documento.contenido_binario)
             elif self._ruta_gestionada(documento.ruta_archivo) and os.path.exists(
                 documento.ruta_archivo
             ):

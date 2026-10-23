@@ -24,6 +24,7 @@ import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import cast
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -403,10 +404,13 @@ class GestorSesiones:
     def _buscar(sesion: Session, token: str) -> SesionApi | None:
         if not token or not token.strip():
             return None
-        return (
-            sesion.query(SesionApi)
-            .filter(SesionApi.token_hash == hash_token(token.strip()))
-            .first()
+        return cast(
+            SesionApi | None,
+            (
+                sesion.query(SesionApi)
+                .filter(SesionApi.token_hash == hash_token(token.strip()))
+                .first()
+            ),
         )
 
     @staticmethod

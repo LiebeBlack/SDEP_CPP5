@@ -8,7 +8,7 @@ que cursa en un año escolar se registran en la tabla de matrículas.
 """
 
 from datetime import date
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import Date
 from sqlalchemy import Enum as SQLEnum
@@ -92,10 +92,11 @@ class Estudiante(Base, BaseModel):
         if not self.fecha_nacimiento:
             return None
         hoy = date.today()
-        return (
+        return cast(
+            int,
             hoy.year
             - self.fecha_nacimiento.year
-            - ((hoy.month, hoy.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day))
+            - ((hoy.month, hoy.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)),
         )
 
     def to_dict(self) -> dict:

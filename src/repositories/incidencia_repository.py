@@ -37,7 +37,9 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
             list[Incidencia],
             (
                 self.session.query(Incidencia)
-                .filter(or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo))
+                .filter(
+                    or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo)
+                )
                 .all()
             ),
         )
@@ -66,7 +68,10 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
                 .filter(
                     and_(
                         Incidencia.empleado_id == empleado_id,
-                        or_(Incidencia.tipo_incidencia == tipo_val, Incidencia.tipo_incidencia == tipo),
+                        or_(
+                            Incidencia.tipo_incidencia == tipo_val,
+                            Incidencia.tipo_incidencia == tipo,
+                        ),
                     )
                 )
                 .all()

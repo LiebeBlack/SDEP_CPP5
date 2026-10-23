@@ -10,7 +10,7 @@ vez, al emitirlo.
 """
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -64,7 +64,7 @@ class TokenSesion(Base, BaseModel):
         """
         if self.revocado_en is not None:
             return False
-        return self.expira_en > (momento or _utcnow())
+        return cast(bool, self.expira_en > (momento or _utcnow()))
 
     @property
     def username(self) -> str | None:

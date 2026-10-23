@@ -8,6 +8,7 @@ operaciones quedan pendientes con su marca de tiempo para el próximo intento.
 
 import socket
 import threading
+from typing import cast
 
 from sync_agent.agente import (
     ESPERA_MAXIMA,
@@ -25,7 +26,7 @@ def _puerto_libre() -> int:
     """Puerto que nadie está escuchando (para simular la caída de la red)"""
     with socket.socket() as sonda:
         sonda.bind(("127.0.0.1", 0))
-        return sonda.getsockname()[1]
+        return cast(int, sonda.getsockname()[1])
 
 
 def _config(entorno, url, token, dispositivo, intervalo=5):
@@ -88,7 +89,7 @@ class ServicioEnMarcha:
 
     @property
     def nucleo(self) -> NucleoCentral:
-        return self.servidor.nucleo
+        return cast(NucleoCentral, self.servidor.nucleo)
 
     def __enter__(self):
         self._hilo.start()

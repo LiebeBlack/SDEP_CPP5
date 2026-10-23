@@ -14,10 +14,9 @@ La regla de oro: la interfaz móvil oculta lo que el rol no permite, pero la
 
 import json
 import threading
-from datetime import datetime, timedelta
-
 import urllib.error
 import urllib.request
+from datetime import datetime, timedelta
 
 import pytest
 

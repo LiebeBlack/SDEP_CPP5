@@ -9,7 +9,7 @@ vencer, vencido, renovado o terminado).
 
 from datetime import date
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import (
     Date,
@@ -122,7 +122,7 @@ class Contrato(Base, BaseModel):
         if self.fecha_inicio is None:
             return 0
         fin = self.fecha_fin or date.today()
-        return max(0, (fin - self.fecha_inicio).days)
+        return cast(int, max(0, (fin - self.fecha_inicio).days))
 
     @property
     def dias_para_vencer(self) -> int | None:
@@ -134,7 +134,7 @@ class Contrato(Base, BaseModel):
         """
         if self.fecha_fin is None or self.estado_valor == EstadoContrato.TERMINADO.value:
             return None
-        return (self.fecha_fin - date.today()).days
+        return cast(int, (self.fecha_fin - date.today()).days)
 
     def por_vencer(self, dias: int = DIAS_UMBRAL_VENCIMIENTO) -> bool:
         """
@@ -160,7 +160,7 @@ class Contrato(Base, BaseModel):
             return False
         if self.fecha_fin is None:
             return True
-        return self.fecha_fin >= date.today()
+        return cast(bool, self.fecha_fin >= date.today())
 
     @property
     def salario_diario(self) -> Decimal:

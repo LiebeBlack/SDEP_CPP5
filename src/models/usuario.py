@@ -5,6 +5,7 @@ Modelo de datos para usuarios del sistema (autenticación y roles)
 
 import json
 from datetime import datetime, timezone
+from typing import cast
 
 from sqlalchemy import DateTime
 from sqlalchemy import Enum as SQLEnum
@@ -101,7 +102,7 @@ class Usuario(Base, BaseModel):
         # local adelantaba o retrasaba la caducidad según la zona horaria
         # del equipo; la referencia debe estar en la misma escala.
         momento = referencia or datetime.now(timezone.utc).replace(tzinfo=None)
-        return (momento - desde).days <= dias_caducidad
+        return cast(bool, (momento - desde).days <= dias_caducidad)
 
     @property
     def rol_valor(self) -> str:

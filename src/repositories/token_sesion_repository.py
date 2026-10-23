@@ -30,7 +30,9 @@ class TokenSesionRepository(BaseRepository[TokenSesion]):
         try:
             return cast(
                 TokenSesion | None,
-                self.session.query(TokenSesion).filter(TokenSesion.token_hash == token_hash).first(),
+                self.session.query(TokenSesion)
+                .filter(TokenSesion.token_hash == token_hash)
+                .first(),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error de base de datos al buscar un token: {e}")

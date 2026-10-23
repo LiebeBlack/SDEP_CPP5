@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import customtkinter as ctk
 from sqlalchemy.exc import SQLAlchemyError
@@ -362,7 +362,7 @@ class NotasFrame(ctk.CTkFrame):
         """Nombre del periodo abierto más reciente, si existe"""
         for periodo in self._periodos:
             if not periodo.esta_cerrado:
-                return periodo.nombre
+                return cast(str, periodo.nombre)
         return self._periodos[0].nombre if self._periodos else None
 
     def _periodo_seleccionado(self) -> PeriodoAcademico | None:

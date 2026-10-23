@@ -9,6 +9,7 @@ estadísticas por tipo y estado.
 
 import logging
 from datetime import date, timedelta
+from typing import cast
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,11 +33,14 @@ class ContratoRepository(BaseRepository[Contrato]):
     def get_by_empleado(self, empleado_id: int) -> list[Contrato]:
         """Historial de contratos de un empleado, del más reciente al más antiguo"""
         try:
-            return (
-                self.session.query(Contrato)
-                .filter(Contrato.empleado_id == empleado_id)
-                .order_by(Contrato.fecha_inicio.desc(), Contrato.id.desc())
-                .all()
+            return cast(
+                list[Contrato],
+                (
+                    self.session.query(Contrato)
+                    .filter(Contrato.empleado_id == empleado_id)
+                    .order_by(Contrato.fecha_inicio.desc(), Contrato.id.desc())
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo contratos del empleado {empleado_id}: {e}")
@@ -45,7 +49,10 @@ class ContratoRepository(BaseRepository[Contrato]):
     def get_by_numero(self, numero: str) -> Contrato | None:
         """Contrato por su número único"""
         try:
-            return self.session.query(Contrato).filter(Contrato.numero == numero).first()
+            return cast(
+                Contrato | None,
+                self.session.query(Contrato).filter(Contrato.numero == numero).first(),
+            )
         except SQLAlchemyError as e:
             logger.error(f"Error buscando el contrato {numero}: {e}")
             return None
@@ -62,15 +69,18 @@ class ContratoRepository(BaseRepository[Contrato]):
         """
         try:
             hoy = date.today()
-            return (
-                self.session.query(Contrato)
-                .filter(
-                    Contrato.empleado_id == empleado_id,
-                    Contrato.estado == EstadoContrato.VIGENTE.value,
-                    or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
-                )
-                .order_by(Contrato.fecha_inicio.desc())
-                .first()
+            return cast(
+                Contrato | None,
+                (
+                    self.session.query(Contrato)
+                    .filter(
+                        Contrato.empleado_id == empleado_id,
+                        Contrato.estado == EstadoContrato.VIGENTE.value,
+                        or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
+                    )
+                    .order_by(Contrato.fecha_inicio.desc())
+                    .first()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo el contrato vigente del empleado {empleado_id}: {e}")
@@ -80,14 +90,17 @@ class ContratoRepository(BaseRepository[Contrato]):
         """Todos los contratos vigentes del sistema (solo estado VIGENTE)"""
         try:
             hoy = date.today()
-            return (
-                self.session.query(Contrato)
-                .filter(
-                    Contrato.estado == EstadoContrato.VIGENTE.value,
-                    or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
-                )
-                .order_by(Contrato.fecha_fin.is_(None), Contrato.fecha_fin)
-                .all()
+            return cast(
+                list[Contrato],
+                (
+                    self.session.query(Contrato)
+                    .filter(
+                        Contrato.estado == EstadoContrato.VIGENTE.value,
+                        or_(Contrato.fecha_fin.is_(None), Contrato.fecha_fin >= hoy),
+                    )
+                    .order_by(Contrato.fecha_fin.is_(None), Contrato.fecha_fin)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo contratos vigentes: {e}")
@@ -97,11 +110,14 @@ class ContratoRepository(BaseRepository[Contrato]):
         """Contratos en un estado concreto"""
         try:
             estado_val = estado.value if hasattr(estado, "value") else str(estado)
-            return (
-                self.session.query(Contrato)
-                .filter(Contrato.estado == estado_val)
-                .order_by(Contrato.fecha_inicio.desc())
-                .all()
+            return cast(
+                list[Contrato],
+                (
+                    self.session.query(Contrato)
+                    .filter(Contrato.estado == estado_val)
+                    .order_by(Contrato.fecha_inicio.desc())
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo contratos en estado {estado}: {e}")
@@ -117,20 +133,23 @@ class ContratoRepository(BaseRepository[Contrato]):
         try:
             hoy = date.today()
             limite = hoy + timedelta(days=max(0, int(dias)))
-            return (
-                self.session.query(Contrato)
-                .filter(
-                    # Solo el contrato que sigue siendo el vigente puede estar
-                    # "por vencer": un RENOVADO ya fue sustituido y un VENCIDO
-                    # ya expiró; incluirlos duplicaba avisos y, peor, el
-                    # mantenimiento de estados podía volver a marcarlos.
-                    Contrato.estado == EstadoContrato.VIGENTE.value,
-                    Contrato.fecha_fin.isnot(None),
-                    Contrato.fecha_fin >= hoy,
-                    Contrato.fecha_fin <= limite,
-                )
-                .order_by(Contrato.fecha_fin)
-                .all()
+            return cast(
+                list[Contrato],
+                (
+                    self.session.query(Contrato)
+                    .filter(
+                        # Solo el contrato que sigue siendo el vigente puede estar
+                        # "por vencer": un RENOVADO ya fue sustituido y un VENCIDO
+                        # ya expiró; incluirlos duplicaba avisos y, peor, el
+                        # mantenimiento de estados podía volver a marcarlos.
+                        Contrato.estado == EstadoContrato.VIGENTE.value,
+                        Contrato.fecha_fin.isnot(None),
+                        Contrato.fecha_fin >= hoy,
+                        Contrato.fecha_fin <= limite,
+                    )
+                    .order_by(Contrato.fecha_fin)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo contratos por vencer: {e}")
@@ -140,15 +159,18 @@ class ContratoRepository(BaseRepository[Contrato]):
         """Contratos cuya fecha de fin ya pasó y siguen sin terminarse"""
         try:
             referencia = hasta or date.today()
-            return (
-                self.session.query(Contrato)
-                .filter(
-                    Contrato.estado == EstadoContrato.VIGENTE.value,
-                    Contrato.fecha_fin.isnot(None),
-                    Contrato.fecha_fin < referencia,
-                )
-                .order_by(Contrato.fecha_fin)
-                .all()
+            return cast(
+                list[Contrato],
+                (
+                    self.session.query(Contrato)
+                    .filter(
+                        Contrato.estado == EstadoContrato.VIGENTE.value,
+                        Contrato.fecha_fin.isnot(None),
+                        Contrato.fecha_fin < referencia,
+                    )
+                    .order_by(Contrato.fecha_fin)
+                    .all()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo contratos vencidos: {e}")
@@ -157,11 +179,14 @@ class ContratoRepository(BaseRepository[Contrato]):
     def get_ultimo(self, empleado_id: int) -> Contrato | None:
         """Último contrato registrado para un empleado (para renovaciones)"""
         try:
-            return (
-                self.session.query(Contrato)
-                .filter(Contrato.empleado_id == empleado_id)
-                .order_by(Contrato.fecha_inicio.desc(), Contrato.id.desc())
-                .first()
+            return cast(
+                Contrato | None,
+                (
+                    self.session.query(Contrato)
+                    .filter(Contrato.empleado_id == empleado_id)
+                    .order_by(Contrato.fecha_inicio.desc(), Contrato.id.desc())
+                    .first()
+                ),
             )
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo el último contrato del empleado {empleado_id}: {e}")

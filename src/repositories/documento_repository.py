@@ -20,15 +20,21 @@ class DocumentoRepository(BaseRepository[Documento]):
 
     def get_by_empleado(self, empleado_id: int) -> list[Documento]:
         """Obtiene documentos de un empleado"""
-        return cast(list[Documento], self.session.query(Documento).filter(Documento.empleado_id == empleado_id).all())
+        return cast(
+            list[Documento],
+            self.session.query(Documento).filter(Documento.empleado_id == empleado_id).all(),
+        )
 
     def get_by_tipo(self, tipo: str | TipoDocumento) -> list[Documento]:
         """Obtiene documentos por tipo"""
         tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
-        return (
-            self.session.query(Documento)
-            .filter(or_(Documento.tipo_documento == tipo_val, Documento.tipo_documento == tipo))
-            .all()
+        return cast(
+            list[Documento],
+            (
+                self.session.query(Documento)
+                .filter(or_(Documento.tipo_documento == tipo_val, Documento.tipo_documento == tipo))
+                .all()
+            ),
         )
 
     def get_by_empleado_y_tipo(
@@ -36,59 +42,73 @@ class DocumentoRepository(BaseRepository[Documento]):
     ) -> list[Documento]:
         """Obtiene documentos de un empleado por tipo"""
         tipo_val = tipo.value if hasattr(tipo, "value") else str(tipo)
-        return (
-            self.session.query(Documento)
-            .filter(
-                and_(
-                    Documento.empleado_id == empleado_id,
-                    or_(Documento.tipo_documento == tipo_val, Documento.tipo_documento == tipo),
+        return cast(
+            list[Documento],
+            (
+                self.session.query(Documento)
+                .filter(
+                    and_(
+                        Documento.empleado_id == empleado_id,
+                        or_(Documento.tipo_documento == tipo_val, Documento.tipo_documento == tipo),
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def get_activos(self) -> list[Documento]:
         """Obtiene solo documentos activos"""
-        return self.session.query(Documento).filter(Documento.activo == 1).all()
+        return cast(
+            list[Documento], self.session.query(Documento).filter(Documento.activo == 1).all()
+        )
 
     def get_activos_by_empleado(self, empleado_id: int) -> list[Documento]:
         """Obtiene documentos activos de un empleado"""
-        return (
-            self.session.query(Documento)
-            .filter(and_(Documento.empleado_id == empleado_id, Documento.activo == 1))
-            .all()
+        return cast(
+            list[Documento],
+            (
+                self.session.query(Documento)
+                .filter(and_(Documento.empleado_id == empleado_id, Documento.activo == 1))
+                .all()
+            ),
         )
 
     def get_vencidos(self) -> list[Documento]:
         """Obtiene documentos vencidos"""
         hoy = date.today()
-        return (
-            self.session.query(Documento)
-            .filter(
-                and_(
-                    Documento.activo == 1,
-                    Documento.fecha_vencimiento.isnot(None),
-                    Documento.fecha_vencimiento < hoy,
+        return cast(
+            list[Documento],
+            (
+                self.session.query(Documento)
+                .filter(
+                    and_(
+                        Documento.activo == 1,
+                        Documento.fecha_vencimiento.isnot(None),
+                        Documento.fecha_vencimiento < hoy,
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def get_por_vencer(self, dias: int = 30) -> list[Documento]:
         """Obtiene documentos por vencer en X días"""
         hoy = date.today()
         fecha_limite = hoy + timedelta(days=dias)
-        return (
-            self.session.query(Documento)
-            .filter(
-                and_(
-                    Documento.activo == 1,
-                    Documento.fecha_vencimiento.isnot(None),
-                    Documento.fecha_vencimiento <= fecha_limite,
-                    Documento.fecha_vencimiento >= hoy,
+        return cast(
+            list[Documento],
+            (
+                self.session.query(Documento)
+                .filter(
+                    and_(
+                        Documento.activo == 1,
+                        Documento.fecha_vencimiento.isnot(None),
+                        Documento.fecha_vencimiento <= fecha_limite,
+                        Documento.fecha_vencimiento >= hoy,
+                    )
                 )
-            )
-            .all()
+                .all()
+            ),
         )
 
     def desactivar(self, id: int) -> bool:

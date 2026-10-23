@@ -13,6 +13,7 @@ journal, de modo que se comprueba el recorrido completo:
 
 import threading
 from datetime import datetime, timedelta
+from typing import cast
 
 import pytest
 
@@ -56,7 +57,7 @@ class Escenario:
 
     @property
     def nucleo(self) -> NucleoCentral:
-        return self.servidor.nucleo
+        return cast(NucleoCentral, self.servidor.nucleo)
 
     # -- ciclo de vida -------------------------------------------------
     def __enter__(self):

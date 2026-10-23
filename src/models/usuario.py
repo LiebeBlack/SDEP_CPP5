@@ -36,9 +36,7 @@ class Usuario(Base, BaseModel):
     # define la frontera de aislamiento: todas las consultas de esa cuenta se
     # limitan a las filas ligadas a esta cédula. Las cuentas administrativas
     # pueden no tenerla.
-    cedula: Mapped[str | None] = mapped_column(
-        String(20), unique=True, nullable=True, index=True
-    )
+    cedula: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
     rol: Mapped[RolUsuario] = mapped_column(
         SQLEnum(RolUsuario, values_callable=_enum_values),
         nullable=False,

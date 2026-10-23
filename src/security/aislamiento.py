@@ -63,9 +63,7 @@ class ErrorAislamiento(ValueError):
 # ----------------------------------------------------------------------
 def _cedula_sql(modelo):
     """Expresión SQL de la cédula sin puntos ni espacios, en mayúsculas."""
-    return func.upper(
-        func.replace(func.replace(modelo.cedula, ".", ""), " ", "")
-    )
+    return func.upper(func.replace(func.replace(modelo.cedula, ".", ""), " ", ""))
 
 
 def _criterio(entidad, contexto: ContextoSesion):
@@ -130,9 +128,7 @@ def _filtrar_consulta(state) -> None:
         criterio = _criterio(entidad, contexto)
         if criterio is None:
             continue
-        sentencia = sentencia.options(
-            with_loader_criteria(entidad, criterio, include_aliases=True)
-        )
+        sentencia = sentencia.options(with_loader_criteria(entidad, criterio, include_aliases=True))
     state.statement = sentencia
 
 
@@ -158,10 +154,7 @@ def _es_empleado_propio(obj, session: Session, contexto: ContextoSesion) -> bool
     if empleado_id is None:
         return False
     empleado = session.get(Empleado, empleado_id)
-    return bool(
-        empleado is not None
-        and normalizar_cedula(empleado.cedula) == contexto.cedula
-    )
+    return bool(empleado is not None and normalizar_cedula(empleado.cedula) == contexto.cedula)
 
 
 def puede_ver_objeto(obj, session: Session, contexto: ContextoSesion | None = None) -> bool:
@@ -270,25 +263,19 @@ def _verificar_escrituras(session: Session, _flush_context, _instances) -> None:
     for obj in list(session.new):
         if not hasattr(obj, "__table__"):
             continue
-        motivo = _motivo_escritura(
-            obj, session, contexto, es_nueva=True, es_baja=False
-        )
+        motivo = _motivo_escritura(obj, session, contexto, es_nueva=True, es_baja=False)
         if motivo:
             raise ErrorAislamiento(motivo)
     for obj in list(session.dirty):
         if not hasattr(obj, "__table__"):
             continue
-        motivo = _motivo_escritura(
-            obj, session, contexto, es_nueva=False, es_baja=False
-        )
+        motivo = _motivo_escritura(obj, session, contexto, es_nueva=False, es_baja=False)
         if motivo:
             raise ErrorAislamiento(motivo)
     for obj in list(session.deleted):
         if not hasattr(obj, "__table__"):
             continue
-        motivo = _motivo_escritura(
-            obj, session, contexto, es_nueva=False, es_baja=True
-        )
+        motivo = _motivo_escritura(obj, session, contexto, es_nueva=False, es_baja=True)
         if motivo:
             raise ErrorAislamiento(motivo)
 

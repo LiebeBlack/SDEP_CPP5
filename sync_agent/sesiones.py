@@ -148,9 +148,7 @@ class GestorSesiones:
                 try:
                     usuario = AuthService(sesion).autenticar(username or "", password or "")
                 except ValueError as repetido:
-                    raise ErrorSesion(
-                        str(repetido), codigo_de_credencial(str(repetido))
-                    ) from None
+                    raise ErrorSesion(str(repetido), codigo_de_credencial(str(repetido))) from None
             minimo_password = servicio.longitud_minima_password()
             token = secrets.token_urlsafe(LONGITUD_TOKEN)
             ahora = ahora_utc()

@@ -344,9 +344,7 @@ class NucleoCentral:
         el siguiente intento.
         """
         if not self.config.consolidacion_activa:
-            return self.aplicar_lote_heredado(
-                dispositivo, cuerpo, sesion_usuario=sesion_usuario
-            )
+            return self.aplicar_lote_heredado(dispositivo, cuerpo, sesion_usuario=sesion_usuario)
 
         operaciones = cuerpo.get("ops") or []
         if not isinstance(operaciones, list):
@@ -505,9 +503,7 @@ class NucleoCentral:
                 sesion, operacion, roles_cache, sesion_usuario=sesion_usuario
             )
             if not motivo_permiso:
-                motivo_permiso = self._autorizar_cedula(
-                    sesion, operacion, sesion_usuario
-                )
+                motivo_permiso = self._autorizar_cedula(sesion, operacion, sesion_usuario)
             if motivo_permiso:
                 rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
                 logger.info("Operación %s rechazada por permisos (%s)", op_id[:8], motivo_permiso)
@@ -664,9 +660,7 @@ class NucleoCentral:
                 )
             sesion.commit()
             self._epoch_cache = epoch
-            self._notificar(
-                {"tipo": "epoch", "epoch": epoch, "filas": len(filas)}
-            )
+            self._notificar({"tipo": "epoch", "epoch": epoch, "filas": len(filas)})
             logger.info(
                 "Ciclo %s consolidado: %s eventos, %s filas", epoch, len(eventos), len(filas)
             )
@@ -773,9 +767,7 @@ class NucleoCentral:
         romper su verificación, así que el teléfono usa ``/pull`` filtrado.
         """
         if sesion_usuario is not None and sesion_usuario.rol == "user":
-            raise ErrorPeticion(
-                "El teléfono debe sincronizar por /api/v1/pull", 403
-            )
+            raise ErrorPeticion("El teléfono debe sincronizar por /api/v1/pull", 403)
         desde = max(0, int(desde or 0))
         limite = max(1, min(int(limite or 1), 20))
         sesion = self._sesion()
@@ -1040,9 +1032,7 @@ class NucleoCentral:
                     sesion, operacion, roles_cache, sesion_usuario=sesion_usuario
                 )
                 if not motivo_permiso:
-                    motivo_permiso = self._autorizar_cedula(
-                        sesion, operacion, sesion_usuario
-                    )
+                    motivo_permiso = self._autorizar_cedula(sesion, operacion, sesion_usuario)
                 if motivo_permiso:
                     rechazadas.append({"op_id": op_id, "motivo": motivo_permiso})
                     logger.info(
@@ -1082,9 +1072,7 @@ class NucleoCentral:
                 aplicadas.append(op_id)
                 conflictos.extend(self._conflictos_json(resultado.conflictos))
             sesion.commit()
-            self._notificar(
-                {"tipo": "cambio", "epoch": self._epoch_cache, "filas": len(aplicadas)}
-            )
+            self._notificar({"tipo": "cambio", "epoch": self._epoch_cache, "filas": len(aplicadas)})
         except SQLAlchemyError:
             sesion.rollback()
             logger.error("No se pudo aplicar el lote recibido", exc_info=True)
@@ -1267,11 +1255,7 @@ class NucleoCentral:
         if tabla == "registros_moviles":
             from src.models import RegistroMovil
 
-            fila = (
-                sesion.query(RegistroMovil)
-                .filter(RegistroMovil.uuid_movil == fila_uuid)
-                .first()
-            )
+            fila = sesion.query(RegistroMovil).filter(RegistroMovil.uuid_movil == fila_uuid).first()
             return bool(fila is not None and (fila.usuario or "") == sesion_usuario.username)
         if tabla not in TABLAS_PROPIAS:
             return False
@@ -1282,8 +1266,7 @@ class NucleoCentral:
             return normalizar_cedula(fila.cedula) == sesion_usuario.cedula
         empleado = self._empleado_de(sesion, tabla, fila_uuid)
         return bool(
-            empleado is not None
-            and normalizar_cedula(empleado.cedula) == sesion_usuario.cedula
+            empleado is not None and normalizar_cedula(empleado.cedula) == sesion_usuario.cedula
         )
 
     @staticmethod
@@ -1975,17 +1958,13 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 limite = int((parametros.get("limite") or ["200"])[0] or 200)
                 self._responder_json(
                     200,
-                    self.nucleo.pull(
-                        dispositivo, cursor, limite, sesion_usuario=sesion_usuario
-                    ),
+                    self.nucleo.pull(dispositivo, cursor, limite, sesion_usuario=sesion_usuario),
                 )
                 return
 
             if ruta.path == RUTA_PUSH and metodo == "POST":
                 if dispositivo.es_movil and sesion_usuario is None:
-                    raise ErrorPeticion(
-                        "El teléfono debe iniciar sesión para enviar cambios", 401
-                    )
+                    raise ErrorPeticion("El teléfono debe iniciar sesión para enviar cambios", 401)
                 self._responder_json(
                     200,
                     self.nucleo.push(
@@ -2027,9 +2006,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 # como binario dentro de la acción.
                 es_subida = ruta.path.startswith(RUTA_ARCHIVOS + "/subir")
                 cuerpo = (
-                    {}
-                    if es_subida
-                    else (self._leer_json() if metodo in ("POST", "PUT") else {})
+                    {} if es_subida else (self._leer_json() if metodo in ("POST", "PUT") else {})
                 )
                 datos = self.nucleo.api_acciones(
                     sesion_usuario,
@@ -2097,9 +2074,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
         token = self._token_sesion()
         if not token:
             if exigir:
-                raise ErrorPeticion(
-                    "El teléfono debe iniciar sesión para acceder a los datos", 401
-                )
+                raise ErrorPeticion("El teléfono debe iniciar sesión para acceder a los datos", 401)
             return None
         sesion = self.nucleo.api.validar(token)
         if sesion.dispositivo_id and sesion.dispositivo_id != dispositivo.dispositivo_id:
@@ -2110,9 +2085,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
         """Mantiene una conexión SSE con latidos y avisos de consolidación."""
         buzon = self.nucleo.suscribir_eventos()
         if buzon is None:
-            self._responder_json(
-                503, {"error": "Demasiados oyentes en tiempo real; reintente"}
-            )
+            self._responder_json(503, {"error": "Demasiados oyentes en tiempo real; reintente"})
             return
         try:
             self.send_response(200)
@@ -2130,9 +2103,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 except queue.Empty:
                     self._escribir_sse(b": latido\n\n")
                 else:
-                    self._escribir_sse(
-                        f"event: cambio\ndata: {dumps(evento)}\n\n".encode("utf-8")
-                    )
+                    self._escribir_sse(f"event: cambio\ndata: {dumps(evento)}\n\n".encode("utf-8"))
         except (
             BrokenPipeError,
             ConnectionResetError,

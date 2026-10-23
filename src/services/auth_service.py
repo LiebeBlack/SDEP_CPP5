@@ -433,9 +433,7 @@ class AuthService:
         """Normaliza y valida la cédula según el rol de destino."""
         normalizada = normalizar_cedula(cedula)
         if rol == RolUsuario.USER.value and not normalizada:
-            raise ValueError(
-                "La cédula es obligatoria para una cuenta de trabajador (rol Usuario)"
-            )
+            raise ValueError("La cédula es obligatoria para una cuenta de trabajador (rol Usuario)")
         if not normalizada:
             return None
         if len(normalizada) > 20:

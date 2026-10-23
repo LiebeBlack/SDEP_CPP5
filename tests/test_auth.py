@@ -120,7 +120,7 @@ def test_cambiar_password_corta(session):
 def test_crear_usuario_duplicado(session):
     auth = AuthService(session)
     ensure_default_admin(session)
-    auth.crear_usuario("jperez", "clave123", "user", "Juan Pérez")
+    auth.crear_usuario("jperez", "clave123", "user", "Juan Pérez", cedula="12345678")
     with pytest.raises(ValueError):
         auth.crear_usuario("jperez", "clave123", "user")
 
@@ -148,7 +148,7 @@ def test_no_se_puede_degradar_la_propia_cuenta(session):
 def test_actualizar_rol_y_reset_password(session):
     auth = AuthService(session)
     ensure_default_admin(session)
-    creado = auth.crear_usuario("mrosa", "clave123", "user", "María Rosa")
+    creado = auth.crear_usuario("mrosa", "clave123", "user", "María Rosa", cedula="12345679")
 
     auth.actualizar_usuario(creado.id, {"rol": "manager", "password": "nuevaclave"})
     auth.session.expire_all()

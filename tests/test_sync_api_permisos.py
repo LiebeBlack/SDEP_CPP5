@@ -51,14 +51,14 @@ def _crear_cuentas(nucleo):
     sesion = nucleo.SessionFactory()
     try:
         servicio = AuthService(sesion)
-        for usuario, rol in (
-            ("admin", "admin"),
-            ("gestora", "manager"),
-            ("docente", "user"),
-            ("lector", "viewer"),
+        for usuario, rol, cedula in (
+            ("admin", "admin", None),
+            ("gestora", "manager", None),
+            ("docente", "user", "12345678"),
+            ("lector", "viewer", None),
         ):
             if servicio.usuario_por_username(usuario) is None:
-                servicio.crear_usuario(usuario, "Clave1234", rol, rol, debe_cambiar_password=False)
+                servicio.crear_usuario(usuario, "Clave1234", rol, rol, debe_cambiar_password=False, cedula=cedula)
     finally:
         sesion.close()
 

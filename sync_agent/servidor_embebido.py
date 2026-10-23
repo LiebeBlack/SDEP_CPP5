@@ -46,10 +46,10 @@ ESTADO_ERROR = "error"
 # Mismas cuentas que documenta README.md y que crea `iniciar_servidor.py`.
 # Se crean solo si faltan: una instalación existente conserva sus claves.
 USUARIOS_INICIALES = (
-    ("admin", "Admin1234", "admin", "Administrador del Sistema"),
-    ("manager", "Gestor1234", "manager", "Gestor Principal"),
-    ("user", "Usuario1234", "user", "Usuario Estándar"),
-    ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura"),
+    ("admin", "Admin1234", "admin", "Administrador del Sistema", None),
+    ("manager", "Gestor1234", "manager", "Gestor Principal", None),
+    ("user", "Usuario1234", "user", "Usuario Estándar", "12345678"),
+    ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura", None),
 )
 
 # Códigos de "dirección en uso" en Windows (WSAEADDRINUSE) y POSIX.
@@ -355,7 +355,7 @@ class ServidorEmbebido:
         try:
             servicio = AuthService(sesion)
             copiadas = ServidorEmbebido._copiar_usuarios_locales(sesion, servicio)
-            for username, password, rol, nombre_completo in USUARIOS_INICIALES:
+            for username, password, rol, nombre_completo, cedula in USUARIOS_INICIALES:
                 if servicio.usuario_por_username(username) is None:
                     servicio.crear_usuario(
                         username,
@@ -363,6 +363,7 @@ class ServidorEmbebido:
                         rol,
                         nombre_completo,
                         debe_cambiar_password=False,
+                        cedula=cedula,
                     )
                     logger.info("Cuenta inicial creada en el nodo central: %s", username)
             sesion.commit()

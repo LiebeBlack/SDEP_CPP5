@@ -32,9 +32,9 @@ from src.gui.theme import (
     RADIO_MEDIO,
     aplicar_modo_apariencia,
     configurar_fuentes_seguras,
+    enable_windows_dpi_awareness,
     estilo_boton_moderno,
     estilo_tarjeta_moderna,
-    enable_windows_dpi_awareness,
     setup_ui_raiz,
 )
 from src.models import Usuario

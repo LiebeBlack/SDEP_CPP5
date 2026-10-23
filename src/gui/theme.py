@@ -35,14 +35,14 @@ PALETA_OSCURA = {
     "borde": "#555555",
 }
 
-# Paleta clara (tema alternativo)
+# Paleta clara (tema alternativo) - contraste suficiente para legibilidad
 PALETA_CLARA = {
     "fondo": "#f3f4f6",
-    "panel": "#f8fafc",
+    "panel": "#f1f5f9",
     "panel_hover": "#e2e8f0",
     "campo": "#ffffff",
     "texto": "#111827",
-    "texto_suave": "#4b5563",
+    "texto_suave": "#64748b",
     "acento": "#1d4ed8",
     "borde": "#cbd5e1",
 }
@@ -50,6 +50,10 @@ PALETA_CLARA = {
 # Paleta activa (se muta en caliente al cambiar de tema, de modo que los
 # widgets creados después del cambio toman los colores nuevos)
 COLORES = dict(PALETA_OSCURA)
+
+# Familia de fuente segura para CustomTkinter (se resuelve en el primer
+# setup_ui_raiz; antes de eso se usa "Arial" como fallback).
+FUENTE_SEGURA: str = "Arial"
 
 
 def aplicar_modo_apariencia(modo: str = "Light") -> None:
@@ -150,6 +154,38 @@ def familia_fuente_tk(nombre: str = "TkDefaultFont", fallback: str = "Arial", ro
         return familia or fallback
     except Exception:
         return fallback
+
+
+def configurar_fuentes_seguras() -> str:
+    """
+    Devuelve una familia de fuente segura para CustomTkinter.
+
+    Resuelve la fuente del sistema en lugar de usar nombres compuestos
+    (como "Segoe UI") que en Tk 8.6 pueden disparar
+    "expected integer but got UI" al renderizar desplegables o entradas.
+    Con esta fuente se garantiza que el texto se muestre en cualquier
+    equipo sin errores de fuente de CustomTkinter.
+    """
+    global FUENTE_SEGURA
+    try:
+        import tkinter as tk
+
+        raiz = getattr(tk, "_default_root", None)
+        if raiz is None:
+            raiz = tk.Tk()
+            raiz.withdraw()
+        try:
+            fuente = familia_fuente_tk("TkDefaultFont", "Arial", raiz)
+            FUENTE_SEGURA = fuente
+        finally:
+            try:
+                raiz.destroy()
+            except Exception:
+                pass
+        return FUENTE_SEGURA
+    except Exception:
+        FUENTE_SEGURA = "Arial"
+        return "Arial"
 
 
 def habilitar_scroll_rueda(widget) -> None:
@@ -622,6 +658,7 @@ def setup_ui_raiz(root) -> None:
     callbacks (nunca congelar en silencio).
     """
     enable_windows_dpi_awareness()
+    configurar_fuentes_seguras()
     configure_ttk_styles(root)
     aplicar_escalado_customtkinter(root)
     habilitar_scroll_global(root)

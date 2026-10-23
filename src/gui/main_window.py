@@ -423,8 +423,9 @@ class MainWindow(ctk.CTk):
             text="☀️ Claro" if ctk.get_appearance_mode() == "Dark" else "🌙 Oscuro",
             width=95,
             height=35,
-            fg_color=COLORES["campo"],
+            fg_color=COLORES["acento"],
             hover_color=COLORES["panel_hover"],
+            text_color="white",
             command=self._toggle_apariencia,
         )
         self.apariencia_btn.pack(side="right", padx=3, pady=12)
@@ -435,8 +436,9 @@ class MainWindow(ctk.CTk):
             text="Ayuda",
             width=75,
             height=35,
-            fg_color=COLORES["campo"],
+            fg_color=COLORES["acento"],
             hover_color=COLORES["panel_hover"],
+            text_color="white",
             command=self._on_ayuda,
         )
         self.ayuda_btn.pack(side="right", padx=3, pady=12)
@@ -447,8 +449,9 @@ class MainWindow(ctk.CTk):
             text="Acerca de",
             width=85,
             height=35,
-            fg_color=COLORES["campo"],
+            fg_color=COLORES["acento"],
             hover_color=COLORES["panel_hover"],
+            text_color="white",
             command=self._on_acerca_de,
         )
         self.about_btn.pack(side="right", padx=3, pady=12)
@@ -459,8 +462,9 @@ class MainWindow(ctk.CTk):
             text="Cerrar Sesión",
             width=105,
             height=35,
-            fg_color=COLORES["campo"],
+            fg_color=COLORES["acento"],
             hover_color=COLORES["panel_hover"],
+            text_color="white",
             command=self._on_logout,
         )
         self.logout_btn.pack(side="right", padx=(3, 6), pady=12)
@@ -471,8 +475,9 @@ class MainWindow(ctk.CTk):
             text="Salir",
             width=65,
             height=35,
-            fg_color=COLORES["campo"],
+            fg_color=COLORES["acento"],
             hover_color=COLORES["panel_hover"],
+            text_color="white",
             command=self._on_exit,
         )
         self.exit_btn.pack(side="right", padx=3, pady=12)
@@ -1317,12 +1322,25 @@ class MainWindow(ctk.CTk):
             self.content_frame.configure(fg_color=COLORES["fondo"])
             # Botones de la cabecera (se recrean con la paleta nueva)
             self.apariencia_btn.configure(
-                fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"]
+                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                text_color="white",
             )
-            self.ayuda_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.about_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.logout_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
-            self.exit_btn.configure(fg_color=COLORES["campo"], hover_color=COLORES["panel_hover"])
+            self.ayuda_btn.configure(
+                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                text_color="white",
+            )
+            self.about_btn.configure(
+                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                text_color="white",
+            )
+            self.logout_btn.configure(
+                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                text_color="white",
+            )
+            self.exit_btn.configure(
+                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                text_color="white",
+            )
             # Los botones de módulos también siguen la paleta activa.
             for boton in self.sidebar_buttons.values():
                 boton.configure(

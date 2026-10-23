@@ -203,7 +203,7 @@ Type: dirifempty; Name: "{app}\logs"
 var
   EulaPage, PrivacyPage, TermsPage, ThirdPartyPage: TWizardPage;
   EulaAccepted, PrivacyAccepted, TermsAccepted, ThirdPartyAccepted: TNewCheckBox;
-  AllAccepted: Boolean = False;
+  AllAccepted: Boolean;
 
 procedure UpdateNextButton;
 var

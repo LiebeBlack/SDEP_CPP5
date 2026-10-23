@@ -32,6 +32,7 @@ from src.gui.theme import (
     RADIO_MEDIO,
     RADIO_GRANDE,
     aplicar_modo_apariencia,
+    configurar_fuentes_seguras,
     estilo_boton_moderno,
     estilo_campo_moderno,
     estilo_combo_moderno,
@@ -1307,6 +1308,7 @@ class MainWindow(ctk.CTk):
             modo_actual = ctk.get_appearance_mode()
             nuevo = "Light" if modo_actual == "Dark" else "Dark"
             aplicar_modo_apariencia(nuevo)
+            configurar_fuentes_seguras()
             puede_guardar_preferencia = self.tiene_permiso("config")
             if puede_guardar_preferencia:
                 self.config_service.establecer_valor("apariencia_modo", nuevo)

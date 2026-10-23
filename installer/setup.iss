@@ -109,6 +109,21 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
+; Documentos legales (RTF) de las páginas de licencia del asistente.
+; dontcopy: no se copian durante la instalación normal; el propio asistente
+; los extrae a {tmp} con ExtractTemporaryFile justo antes de mostrarlos (con
+; deleteafterinstall todavía no existirían al crearse las páginas).
+; Van al principio de la sección porque con SolidCompression extraer un
+; archivo obliga a descomprimir todo lo anterior.
+Source: "EULA_ES.rtf"; Flags: dontcopy noencryption
+Source: "EULA_EN.rtf"; Flags: dontcopy noencryption
+Source: "Privacy_ES.rtf"; Flags: dontcopy noencryption
+Source: "Privacy_EN.rtf"; Flags: dontcopy noencryption
+Source: "Terms_ES.rtf"; Flags: dontcopy noencryption
+Source: "Terms_EN.rtf"; Flags: dontcopy noencryption
+Source: "ThirdParty_ES.rtf"; Flags: dontcopy noencryption
+Source: "ThirdParty_EN.rtf"; Flags: dontcopy noencryption
+
 #if !FileExists("..\dist\" + MyDistDir + "\" + MyAppExeName)
   #pragma error "Falta el ejecutable principal compilado; genere primero el paquete con PyInstaller."
 #endif
@@ -137,15 +152,6 @@ Source: "..\tools\cert_04.cer"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #endif
 ; Actualizador automático
 Source: "..\dist_updater\SDEP_CPP5_AutoUpdater.exe"; DestDir: "{app}"; Flags: ignoreversion
-; Documentos legales (RTF) para las páginas de licencia del instalador
-Source: "EULA_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "EULA_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "Privacy_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "Privacy_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "Terms_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "Terms_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "ThirdParty_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "ThirdParty_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -203,23 +209,39 @@ Type: dirifempty; Name: "{app}\logs"
 var
   EulaPage, PrivacyPage, TermsPage, ThirdPartyPage: TWizardPage;
   EulaAccepted, PrivacyAccepted, TermsAccepted, ThirdPartyAccepted: TNewCheckBox;
-  AllAccepted: Boolean;
+  CurrentPageID: Integer;
 
-procedure UpdateNextButton(Sender: TObject);
-var
-  CanProceed: Boolean;
+// Indica si la página indicada puede darse por aceptada. Las páginas que no
+// son de aceptación (bienvenida, carpeta de destino, etc.) no bloquean.
+function PageAccepted(PageID: Integer): Boolean;
 begin
-  CanProceed := EulaAccepted.Checked and PrivacyAccepted.Checked and
-                TermsAccepted.Checked and ThirdPartyAccepted.Checked;
-  AllAccepted := CanProceed;
-  WizardForm.NextButton.Enabled := CanProceed;
+  if PageID = EulaPage.ID then Result := EulaAccepted.Checked
+  else if PageID = PrivacyPage.ID then Result := PrivacyAccepted.Checked
+  else if PageID = TermsPage.ID then Result := TermsAccepted.Checked
+  else if PageID = ThirdPartyPage.ID then Result := ThirdPartyAccepted.Checked
+  else Result := True;
 end;
 
-function CreateRichTextPage(const Title, SubTitle, RTFFile: String; var AcceptCheck: TNewCheckBox): TWizardPage;
+// El botón Siguiente solo se habilita cuando la casilla de la página ACTUAL
+// está marcada. Antes se exigían las cuatro a la vez y, como cada casilla vive
+// en una página distinta, el asistente quedaba bloqueado en la primera.
+procedure SyncNextButton;
+begin
+  WizardForm.NextButton.Enabled := PageAccepted(CurrentPageID);
+end;
+
+procedure UpdateNextButton(Sender: TObject);
+begin
+  SyncNextButton;
+end;
+
+function CreateRichTextPage(const Title, SubTitle, RTFFileName: String;
+  var AcceptCheck: TNewCheckBox): TWizardPage;
 var
   Page: TWizardPage;
   RichTextViewer: TRichEditViewer;
   AcceptBox: TNewCheckBox;
+  RTFData: AnsiString;
 begin
   Page := CreateCustomPage(wpWelcome, Title, SubTitle);
   RichTextViewer := TRichEditViewer.Create(Page);
@@ -229,7 +251,11 @@ begin
   RichTextViewer.Width := ScaleX(Page.SurfaceWidth - 60);
   RichTextViewer.Height := ScaleY(Page.SurfaceHeight - 90);
   RichTextViewer.Anchors := [akLeft, akTop, akRight, akBottom];
-  RichTextViewer.RTFText := RTFFile;
+  // El RTF viaja con dontcopy: se extrae a {tmp} al crear la página y se carga
+  // su contenido. Asignar la ruta a RTFText mostraba basura en el visor.
+  ExtractTemporaryFile(RTFFileName);
+  if LoadStringFromFile(ExpandConstant('{tmp}\' + RTFFileName), RTFData) then
+    RichTextViewer.RTFText := RTFData;
   RichTextViewer.ReadOnly := True;
 
   AcceptBox := TNewCheckBox.Create(Page);
@@ -247,33 +273,33 @@ begin
   Result := Page;
 end;
 
-function InitializeWizard: Boolean;
+// ActiveLanguage devuelve el Name declarado en [Languages] ('spanish' o
+// 'english'); WizardLanguageID no existe en Inno Setup.
+procedure InitializeWizard;
 var
   RTFFile: String;
 begin
-  Result := True;
-
-  if WizardLanguageID = 1034 then
+  if ActiveLanguage = 'spanish' then
   begin
-    RTFFile := ExpandConstant('{tmp}\EULA_ES.rtf');
+    RTFFile := 'EULA_ES.rtf';
     EulaPage := CreateRichTextPage(
       'Contrato de Licencia de Usuario Final (EULA)',
       'Lea atentamente el siguiente contrato antes de instalar el software.',
       RTFFile, EulaAccepted);
 
-    RTFFile := ExpandConstant('{tmp}\Privacy_ES.rtf');
+    RTFFile := 'Privacy_ES.rtf';
     PrivacyPage := CreateRichTextPage(
       'Política de Privacidad',
       'Lea la política de privacidad para entender cómo se tratan sus datos.',
       RTFFile, PrivacyAccepted);
 
-    RTFFile := ExpandConstant('{tmp}\Terms_ES.rtf');
+    RTFFile := 'Terms_ES.rtf';
     TermsPage := CreateRichTextPage(
       'Términos de Servicio',
       'Lea los términos de servicio que regulan el uso del software.',
       RTFFile, TermsAccepted);
 
-    RTFFile := ExpandConstant('{tmp}\ThirdParty_ES.rtf');
+    RTFFile := 'ThirdParty_ES.rtf';
     ThirdPartyPage := CreateRichTextPage(
       'Licencias de Terceros',
       'Lea las licencias de los componentes de código abierto incluidos.',
@@ -281,38 +307,43 @@ begin
   end
   else
   begin
-    RTFFile := ExpandConstant('{tmp}\EULA_EN.rtf');
+    RTFFile := 'EULA_EN.rtf';
     EulaPage := CreateRichTextPage(
       'End-User License Agreement (EULA)',
       'Please read the following agreement carefully before installing the software.',
       RTFFile, EulaAccepted);
 
-    RTFFile := ExpandConstant('{tmp}\Privacy_EN.rtf');
+    RTFFile := 'Privacy_EN.rtf';
     PrivacyPage := CreateRichTextPage(
       'Privacy Policy',
       'Read the privacy policy to understand how your data is handled.',
       RTFFile, PrivacyAccepted);
 
-    RTFFile := ExpandConstant('{tmp}\Terms_EN.rtf');
+    RTFFile := 'Terms_EN.rtf';
     TermsPage := CreateRichTextPage(
       'Terms of Service',
       'Read the terms of service that govern the use of the software.',
       RTFFile, TermsAccepted);
 
-    RTFFile := ExpandConstant('{tmp}\ThirdParty_EN.rtf');
+    RTFFile := 'ThirdParty_EN.rtf';
     ThirdPartyPage := CreateRichTextPage(
       'Third-Party Licenses',
       'Read the licenses of the open-source components included.',
       RTFFile, ThirdPartyAccepted);
   end;
 
-  WizardForm.NextButton.Enabled := False;
-  Result := True;
+  SyncNextButton;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  CurrentPageID := CurPageID;
+  SyncNextButton;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
-  Result := AllAccepted;
+  Result := PageAccepted(CurPageID);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

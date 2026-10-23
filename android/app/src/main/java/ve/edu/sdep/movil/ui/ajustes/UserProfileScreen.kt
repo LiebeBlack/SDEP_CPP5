@@ -65,7 +65,6 @@ fun UserProfileScreen(
 ) {
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
-    val actividad = contexto as? FragmentActivity
     val barra = remember { SnackbarHostState() }
 
     var dialogoEdicion by remember { mutableStateOf(false) }
@@ -210,7 +209,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = "${perfil.username} · ${perfil.rol.toUpperCase()}",
+                        text = "${perfil.username} · ${perfil.rol.uppercase()}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -222,7 +221,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
             Spacer(Modifier.height(12.dp))
 
             FilaPerfil("Cédula", if (perfil.cedula?.isNotBlank() == true) perfil.cedula else "Sin asignar")
-            FilaPerfil("Rol", perfil.rol.toUpperCase())
+            FilaPerfil("Rol", perfil.rol.uppercase())
             FilaPerfil("Estado", if (perfil.activo) "Activa" else "Inactiva")
             FilaPerfil(
                 "Contraseña",

@@ -289,7 +289,7 @@ class EmpleadoRepositorio @Inject constructor(
         if (datos.salarioBase < 0) return "El salario no puede ser negativo."
         if ((datos.peso ?: 0.0) < 0) return "El peso no puede ser negativo."
         if ((datos.altura ?: 0.0) < 0) return "La altura no puede ser negativa."
-        if (datos.email != null && datos.email!!.isNotBlank() && !datos.email!!.contains("@")) {
+        if (datos.email != null && datos.email.isNotBlank() && !datos.email.contains("@")) {
             return "El correo no parece válido."
         }
         return null

@@ -180,13 +180,13 @@ class TablaRepositorio @Inject constructor(
 
                 val nueva = Espejo.aplicar(tabla, base, JsonObject(campos))
                     ?: return@withTransaction Resultado.Fallo("La tabla no admite escritura.")
-                val filaUuid = id?.let { identidadDao.uuidDe(tabla, it) } ?: run {
-                    val nueva = UUID.randomUUID().toString()
-                    // Una fila llegada de un nodo antiguo puede no tener
-                    // identidad global: se le asigna antes de anunciar el cambio.
-                    if (id != null) identidadDao.vincular(IdentidadEntity(tabla, nueva, id))
-                    nueva
-                }
+                    val filaUuid = id?.let { identidadDao.uuidDe(tabla, it) } ?: run {
+                        val uuidNueva = UUID.randomUUID().toString()
+                        // Una fila llegada de un nodo antiguo puede no tener
+                        // identidad global: se le asigna antes de anunciar el cambio.
+                        if (id != null) identidadDao.vincular(IdentidadEntity(tabla, uuidNueva, id))
+                        uuidNueva
+                    }
 
                 aplicador.guardarFilaLocal(tabla, filaUuid, base, nueva)?.let { motivo ->
                     return@withTransaction Resultado.Fallo(
@@ -466,7 +466,7 @@ class TablaRepositorio @Inject constructor(
 
     /** Comprueba obligatorios, números, fechas, listas cerradas y claves foráneas */
     private fun validar(
-        tabla: String,
+        _tabla: String,
         columnas: List<ve.edu.sdep.movil.datos.local.ColumnaTabla>,
         datos: Map<String, String>,
     ): String? {

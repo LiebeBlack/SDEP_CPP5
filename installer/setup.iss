@@ -138,14 +138,14 @@ Source: "..\tools\cert_04.cer"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; Actualizador automático
 Source: "..\dist_updater\SDEP_CPP5_AutoUpdater.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Documentos legales (RTF) para las páginas de licencia del instalador
-Source: "installer\EULA_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\EULA_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\Privacy_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\Privacy_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\Terms_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\Terms_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\ThirdParty_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "installer\ThirdParty_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "EULA_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "EULA_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "Privacy_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "Privacy_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "Terms_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "Terms_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "ThirdParty_ES.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "ThirdParty_EN.rtf"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

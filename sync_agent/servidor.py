@@ -1112,7 +1112,7 @@ class NucleoCentral:
             # token del dispositivo (y en la revocación administrativa).
             return None
         if sesion_usuario is not None:
-            rol = sesion_usuario.rol
+            rol: str | None = sesion_usuario.rol
         else:
             if username not in roles_cache:
                 roles_cache[username] = self._rol_central(sesion, username)
@@ -1348,6 +1348,7 @@ class NucleoCentral:
                     break
                 for fila in filas:
                     ultimo = fila.seq
+                    assert sesion_usuario is not None
                     if self._fila_visible_para_trabajador(
                         sesion, fila.tabla, fila.fila_uuid, sesion_usuario
                     ):

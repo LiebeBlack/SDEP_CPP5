@@ -313,6 +313,61 @@ class ApiAcciones:
         self.gestor_sesiones.cambiar_password(token, nueva, actual)
         return {"correcto": True}
 
+    def perfil(self, token: str) -> dict:
+        """Perfil del usuario autenticado: nombre, rol, cédula y estado"""
+        valido = self.gestor_sesiones.validar(token)
+        db = self._sesion()
+        try:
+            from src.models import Usuario
+            usuario = db.query(Usuario).filter(Usuario.id == valido.usuario_id).first()
+            if not usuario:
+                raise ErrorApi("Usuario no encontrado", 404)
+            return {
+                "username": usuario.username,
+                "nombre_completo": usuario.nombre_completo or "",
+                "rol": usuario.rol_valor,
+                "cedula": usuario.cedula or "",
+                "activo": bool(usuario.activo),
+                "debe_cambiar_password": bool(usuario.debe_cambiar_password),
+                "usuario_id": usuario.id,
+            }
+        finally:
+            db.close()
+
+    def actualizar_perfil(self, token: str, cuerpo: dict) -> dict:
+        """Actualiza el propio perfil: nombre completo y cédula (solo propio)"""
+        valido = self.gestor_sesiones.validar(token)
+        from src.services.auth_service import AuthService
+
+        db = self._sesion()
+        try:
+            servicio = AuthService(db)
+            cuerpo_perfil = {}
+            if "nombre_completo" in cuerpo and cuerpo["nombre_completo"] is not None:
+                cuerpo_perfil["nombre_completo"] = str(cuerpo["nombre_completo"]).strip() or None
+            if "cedula" in cuerpo:
+                cuerpo_perfil["cedula"] = str(cuerpo["cedula"] or "") or None
+
+            actualizado = servicio.actualizar_usuario(
+                valido.usuario_id, cuerpo_perfil, usuario_actual=valido
+            )
+            _auditar(
+                valido.username,
+                _tipo_evento("DATA_UPDATE"),
+                "usuario",
+                valido.usuario_id,
+                {"campos": sorted(str(c) for c in cuerpo_perfil.keys()), "propio": True},
+            )
+            return {
+                "username": actualizado.username,
+                "nombre_completo": actualizado.nombre_completo or "",
+                "rol": actualizado.rol_valor,
+                "cedula": actualizado.cedula or "",
+                "activo": bool(actualizado.activo),
+            }
+        finally:
+            db.close()
+
     def validar(self, token: str | None) -> SesionValida:
         """Valida el token de sesión (lo usa el enrutador antes de cada acción)"""
         return self.gestor_sesiones.validar(token)

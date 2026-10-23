@@ -53,6 +53,15 @@ interface ApiAcciones {
     suspend fun cambiarPassword(@Body cuerpo: CambioPasswordDto): CorrectoDto
 
     // ------------------------------------------------------------------
+    // Perfil propio (usuario autenticado)
+    // ------------------------------------------------------------------
+    @GET("api/v1/auth/perfil")
+    suspend fun perfil(): PerfilDto
+
+    @PUT("api/v1/auth/perfil")
+    suspend fun actualizarPerfil(@Body cuerpo: ActualizarPerfilDto): PerfilDto
+
+    // ------------------------------------------------------------------
     // Consultas
     // ------------------------------------------------------------------
     @GET("api/v1/consultas/dashboard")

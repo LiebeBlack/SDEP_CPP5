@@ -304,6 +304,49 @@ class AutenticacionRepositorio @Inject constructor(
             }
         }
 
+    /** Obtiene el perfil del usuario autenticado desde el nodo central */
+    suspend fun obtenerPerfil(): Resultado<PerfilDto> = withContext(Dispatchers.IO) {
+        val sesion = sesionRepositorio.actual
+            ?: return@withContext Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
+        val config = configuracionRepositorio.cargar()
+        if (!config.completa) {
+            return@withContext Resultado.Fallo(
+                "Sin vinculación con el sistema de escritorio. Busque el equipo de nuevo.",
+            )
+        }
+        try {
+            val perfil = apiFactory.acciones(config, sesion.token).perfil()
+            Resultado.Exito(perfil)
+        } catch (error: Exception) {
+            Resultado.Fallo(
+                "No se pudo cargar el perfil: ${error.message ?: "error inesperado"}.",
+                error,
+            )
+        }
+    }
+
+    /** Actualiza el perfil propio (nombre y cédula) en el nodo central */
+    suspend fun actualizarPerfil(dto: ActualizarPerfilDto): Resultado<PerfilDto> =
+        withContext(Dispatchers.IO) {
+            val sesion = sesionRepositorio.actual
+                ?: return@withContext Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
+            val config = configuracionRepositorio.cargar()
+            if (!config.completa) {
+                return@withContext Resultado.Fallo(
+                    "Sin vinculación con el sistema de escritorio. Busque el equipo de nuevo.",
+                )
+            }
+            try {
+                val perfil = apiFactory.acciones(config, sesion.token).actualizarPerfil(dto)
+                Resultado.Exito(perfil)
+            } catch (error: Exception) {
+                Resultado.Fallo(
+                    "No se pudo actualizar el perfil: ${error.message ?: "error inesperado"}.",
+                    error,
+                )
+            }
+        }
+
     /** Cierra la sesión local y revoca el token en el nodo central */
     suspend fun cerrarSesion() {
         val sesion = sesionRepositorio.actual

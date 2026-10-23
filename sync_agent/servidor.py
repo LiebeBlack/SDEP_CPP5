@@ -1937,6 +1937,11 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 elif accion == "cambiar-password" and metodo == "POST":
                     datos = self.nucleo.api.cambiar_password(token, self._leer_json())
                     self._responder_json(200, datos)
+                elif accion == "perfil" and metodo == "GET":
+                    self._responder_json(200, self.nucleo.api.perfil(token))
+                elif accion == "perfil" and metodo == "PUT":
+                    datos = self.nucleo.api.actualizar_perfil(token, self._leer_json())
+                    self._responder_json(200, datos)
                 else:
                     self._responder_json(404, {"error": "recurso no encontrado"})
                 return

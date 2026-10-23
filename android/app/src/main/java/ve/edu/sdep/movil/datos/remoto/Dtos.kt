@@ -169,6 +169,25 @@ data class ListarUsuariosDto(val usuarios: List<UsuarioRemotoDto> = emptyList())
 @Serializable
 data class UsuarioRespuestaDto(val usuario: UsuarioRemotoDto? = null)
 
+/** Perfil del usuario autenticado: datos editables y de solo lectura */
+@Serializable
+data class PerfilDto(
+    val username: String = "",
+    val nombre_completo: String? = null,
+    val rol: String = "viewer",
+    val cedula: String? = null,
+    val activo: Boolean = false,
+    val debe_cambiar_password: Boolean = false,
+    val usuario_id: Int = 0,
+)
+
+/** Solicitud de actualización de perfil propio */
+@Serializable
+data class ActualizarPerfilDto(
+    val nombre_completo: String? = null,
+    val cedula: String? = null,
+)
+
 /** Documento generado en el servidor; se baja por el canal de binarios */
 @Serializable
 data class ArchivoDto(

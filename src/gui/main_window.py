@@ -27,8 +27,15 @@ from src.gui.frames import (
 )
 from src.gui.notas_frame import NotasFrame
 from src.gui.theme import (
+    BORDE_GRUESO,
     COLORES,
+    RADIO_MEDIO,
+    RADIO_GRANDE,
     aplicar_modo_apariencia,
+    estilo_boton_moderno,
+    estilo_campo_moderno,
+    estilo_combo_moderno,
+    estilo_tarjeta_moderna,
     enable_windows_dpi_awareness,
     setup_ui_raiz,
 )
@@ -351,13 +358,7 @@ class MainWindow(ctk.CTk):
                 font=ctk.CTkFont(size=13),
                 height=38,
                 anchor="w",
-                # Sin colores explícitos, CustomTkinter usaba el azul de su
-                # tema por defecto sobre la paleta verde institucional y el
-                # botón desentonaba en ambos modos. El acento se reserva para
-                # la acción principal; aquí el fondo es el del panel.
-                fg_color="transparent",
-                hover_color=COLORES["panel_hover"],
-                text_color=COLORES["texto"],
+                **estilo_boton_moderno("fantasma"),
                 command=lambda fn=frame_name: self._show_frame(fn),
             )
             btn.pack(pady=2, padx=10, fill="x")
@@ -405,8 +406,15 @@ class MainWindow(ctk.CTk):
         self.main_container = ctk.CTkFrame(self, corner_radius=0, fg_color=COLORES["fondo"])
         self.main_container.pack(side="right", fill="both", expand=True)
 
-        self.header = ctk.CTkFrame(self.main_container, height=60, fg_color=COLORES["panel"])
-        self.header.pack(side="top", fill="x")
+        self.header = ctk.CTkFrame(
+            self.main_container,
+            height=60,
+            fg_color=COLORES["panel"],
+            corner_radius=RADIO_MEDIO,
+            border_width=BORDE_GRUESO,
+            border_color=COLORES["borde"],
+        )
+        self.header.pack(side="top", fill="x", padx=10, pady=(10, 5))
         self.header.pack_propagate(False)
 
         self.frame_title = ctk.CTkLabel(
@@ -482,14 +490,24 @@ class MainWindow(ctk.CTk):
         )
         self.exit_btn.pack(side="right", padx=3, pady=12)
 
-        self.content_frame = ctk.CTkFrame(self.main_container, fg_color=COLORES["fondo"])
+        self.content_frame = ctk.CTkFrame(
+            self.main_container,
+            **estilo_tarjeta_moderna(),
+        )
         self.content_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)
 
     def _create_status_bar(self):
         from datetime import datetime
 
-        self.status_bar = ctk.CTkFrame(self.main_container, height=30, fg_color=COLORES["panel"])
-        self.status_bar.pack(side="bottom", fill="x")
+        self.status_bar = ctk.CTkFrame(
+            self.main_container,
+            height=30,
+            fg_color=COLORES["panel"],
+            corner_radius=RADIO_MEDIO,
+            border_width=BORDE_GRUESO,
+            border_color=COLORES["borde"],
+        )
+        self.status_bar.pack(side="bottom", fill="x", padx=10, pady=(5, 10))
         self.status_bar.pack_propagate(False)
 
         self.status_label = ctk.CTkLabel(
@@ -1314,31 +1332,40 @@ class MainWindow(ctk.CTk):
                 self.user_label.configure(text_color=COLORES["texto_suave"])
             self.version_label.configure(text_color=COLORES["texto_suave"])
             self.main_container.configure(fg_color=COLORES["fondo"])
-            self.header.configure(fg_color=COLORES["panel"])
+            self.header.configure(
+                fg_color=COLORES["panel"],
+                border_color=COLORES["borde"],
+            )
             self.frame_title.configure(text_color=COLORES["texto"])
-            self.status_bar.configure(fg_color=COLORES["panel"])
+            self.status_bar.configure(
+                fg_color=COLORES["panel"],
+                border_color=COLORES["borde"],
+            )
             self.status_label.configure(text_color=COLORES["texto_suave"])
             self.datetime_label.configure(text_color=COLORES["texto_suave"])
-            self.content_frame.configure(fg_color=COLORES["fondo"])
+            self.content_frame.configure(
+                fg_color=COLORES["panel"],
+                border_color=COLORES["borde"],
+            )
             # Botones de la cabecera (se recrean con la paleta nueva)
             self.apariencia_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.ayuda_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.about_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.logout_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             self.exit_btn.configure(
-                fg_color=COLORES["acento"], hover_color=COLORES["panel_hover"],
+                fg_color=COLORES["acento"], hover_color=COLORES["acento_hover"],
                 text_color="white",
             )
             # Los botones de módulos también siguen la paleta activa.

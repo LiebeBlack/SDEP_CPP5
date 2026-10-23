@@ -23,33 +23,53 @@ except Exception:  # pragma: no cover
 _DPI_CONFIGURADO = False
 _DPI_INTENTADO = False
 
-# Paleta oscura (tema por defecto)
+# Paleta oscura (tema por defecto) - profundidad, no plana
 PALETA_OSCURA = {
-    "fondo": "#1a1a1a",
-    "panel": "#2b2b2b",
-    "panel_hover": "#3a3a3a",
-    "campo": "#3c3c3c",
-    "texto": "white",
-    "texto_suave": "#cccccc",
-    "acento": "#1f538d",
-    "borde": "#555555",
+    "fondo": "#0f172a",        # azul muy oscuro (slate-900)
+    "panel": "#1e293b",        # slate-800 (tarjetas, paneles)
+    "panel_hover": "#334155",  # slate-700 (hover)
+    "campo": "#334155",        # slate-700 (campos de entrada)
+    "campo_fondo": "#1e293b",  # slate-800 (fondo de campos)
+    "texto": "#f8fafc",        # slate-50 (texto principal)
+    "texto_suave": "#94a3b8",  # slate-400 (texto secundario)
+    "acento": "#3b82f6",       # blue-500 (acento Windows 11)
+    "acento_hover": "#60a5fa", # blue-400 (acento hover)
+    "borde": "#475569",        # slate-600 (bordes sutiles)
+    "sombra": "#000000",       # sombra (simulada con capas)
+    "exito": "#10b981",        # emerald-500
+    "advertencia": "#f59e0b",  # amber-500
+    "error": "#ef4444",        # red-500
 }
 
-# Paleta clara (tema alternativo) - contraste suficiente para legibilidad
+# Paleta clara (tema alternativo) - estilo Windows 11 claro
 PALETA_CLARA = {
-    "fondo": "#f3f4f6",
-    "panel": "#f1f5f9",
-    "panel_hover": "#e2e8f0",
-    "campo": "#ffffff",
-    "texto": "#111827",
-    "texto_suave": "#64748b",
-    "acento": "#1d4ed8",
-    "borde": "#cbd5e1",
+    "fondo": "#f8fafc",        # slate-50
+    "panel": "#ffffff",        # blanco puro (tarjetas elevadas)
+    "panel_hover": "#f1f5f9",  # slate-100 (hover)
+    "campo": "#ffffff",        # blanco (campos de entrada)
+    "campo_fondo": "#ffffff",  # blanco (fondo de campos)
+    "texto": "#0f172a",        # slate-900 (texto principal)
+    "texto_suave": "#64748b",  # slate-500 (texto secundario)
+    "acento": "#2563eb",       # blue-600 (acento Windows 11)
+    "acento_hover": "#3b82f6", # blue-500 (acento hover)
+    "borde": "#cbd5e1",        # slate-200 (bordes sutiles)
+    "sombra": "#000000",       # sombra (simulada con capas)
+    "exito": "#059669",        # emerald-600
+    "advertencia": "#d97706",  # amber-600
+    "error": "#dc2626",        # red-600
 }
 
 # Paleta activa (se muta en caliente al cambiar de tema, de modo que los
 # widgets creados después del cambio toman los colores nuevos)
 COLORES = dict(PALETA_OSCURA)
+
+# Radio de esquinas redondeadas (estilo Windows 11: 8-12px)
+RADIO_PEQUEÑO = 6
+RADIO_MEDIO = 10
+RADIO_GRANDE = 14
+
+# Grosor de borde sutil (no plano, con definición)
+BORDE_GRUESO = 1
 
 # Familia de fuente segura para CustomTkinter (se resuelve en el primer
 # setup_ui_raiz; antes de eso se usa "Arial" como fallback).
@@ -664,3 +684,87 @@ def setup_ui_raiz(root) -> None:
     habilitar_scroll_global(root)
     silenciar_errores_fondo(root)
     configurar_report_callback_exception(root)
+
+
+def estilo_tarjeta_moderna() -> dict:
+    """
+    Devuelve los kwargs de estilo para una tarjeta moderna (Windows 11):
+
+    - Esquinas redondeadas (RADIO_GRANDE)
+    - Fondo de panel (elevado sobre el fondo principal)
+    - Borde sutil (BORDE_GRUESO con COLORES["borde"])
+    - Sin relieve plano: la elevación se sugiere con color y borde, no con sombra
+      pesada (CustomTkinter no soporta sombras reales).
+    """
+    return {
+        "corner_radius": RADIO_GRANDE,
+        "fg_color": COLORES["panel"],
+        "border_width": BORDE_GRUESO,
+        "border_color": COLORES["borde"],
+    }
+
+
+def estilo_boton_moderno(variante: str = "primario") -> dict:
+    """
+    Devuelve los kwargs de estilo para un botón moderno (Windows 11):
+
+    Variantes:
+      - "primario": fondo acento, texto blanco, hover acento_hover
+      - "secundario": fondo transparente, borde acento, texto acento
+      - "fantasma": fondo transparente, sin borde, texto suave, hover panel_hover
+    """
+    base = {
+        "corner_radius": RADIO_MEDIO,
+        "height": 36,
+        "border_width": 0,
+    }
+    if variante == "primario":
+        base.update(
+            fg_color=COLORES["acento"],
+            hover_color=COLORES["acento_hover"],
+            text_color="white",
+            border_color=COLORES["acento"],
+        )
+    elif variante == "secundario":
+        base.update(
+            fg_color="transparent",
+            hover_color=COLORES["panel_hover"],
+            text_color=COLORES["texto"],
+            border_color=COLORES["borde"],
+            border_width=1,
+        )
+    else:  # fantasma
+        base.update(
+            fg_color="transparent",
+            hover_color=COLORES["panel_hover"],
+            text_color=COLORES["texto_suave"],
+        )
+    return base
+
+
+def estilo_campo_moderno() -> dict:
+    """
+    Devuelve los kwargs de estilo para un campo de entrada moderno.
+    """
+    return {
+        "corner_radius": RADIO_MEDIO,
+        "fg_color": COLORES["campo_fondo"],
+        "border_color": COLORES["borde"],
+        "border_width": 1,
+        "text_color": COLORES["texto"],
+    }
+
+
+def estilo_combo_moderno() -> dict:
+    """
+    Devuelve los kwargs de estilo para un combobox moderno.
+    """
+    return {
+        "corner_radius": RADIO_MEDIO,
+        "fg_color": COLORES["campo_fondo"],
+        "border_color": COLORES["borde"],
+        "border_width": 1,
+        "text_color": COLORES["texto"],
+        "button_color": COLORES["acento"],
+        "button_hover_color": COLORES["acento_hover"],
+    }

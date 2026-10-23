@@ -337,6 +337,7 @@ class ApiAcciones:
     def actualizar_perfil(self, token: str, cuerpo: dict) -> dict:
         """Actualiza el propio perfil: nombre completo y cédula (solo propio)"""
         valido = self.gestor_sesiones.validar(token)
+        from src.models import Usuario
         from src.services.auth_service import AuthService
 
         db = self._sesion()
@@ -348,8 +349,9 @@ class ApiAcciones:
             if "cedula" in cuerpo:
                 cuerpo_perfil["cedula"] = str(cuerpo["cedula"] or "") or None
 
+            actor = db.query(Usuario).filter(Usuario.id == valido.usuario_id).first()
             actualizado = servicio.actualizar_usuario(
-                valido.usuario_id, cuerpo_perfil, usuario_actual=valido
+                valido.usuario_id, cuerpo_perfil, usuario_actual=actor
             )
             _auditar(
                 valido.username,

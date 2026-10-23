@@ -16,6 +16,7 @@ import ve.edu.sdep.movil.dominio.modelo.Modulo
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.ajustes.PantallaAjustes
+import ve.edu.sdep.movil.ui.ajustes.UserProfileScreen
 import ve.edu.sdep.movil.ui.conflictos.PantallaConflictos
 import ve.edu.sdep.movil.ui.empleados.PantallaEmpleado
 import ve.edu.sdep.movil.ui.formulario.PantallaFormulario
@@ -221,6 +222,13 @@ private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
                 alVolver = { navegador.popBackStack() },
                 alCerrarSesion = alSalir,
                 alVerConflictos = { navegador.navigate(Rutas.CONFLICTOS) },
+                alEditarPerfil = { navegador.navigate(Rutas.PERFIL) },
+            )
+        }
+
+        composable(Rutas.PERFIL) {
+            UserProfileScreen(
+                alVolver = { navegador.popBackStack() },
             )
         }
 
@@ -243,4 +251,5 @@ private object Rutas {
     const val TABLA = "tabla"
     const val FORMULARIO = "formulario"
     const val EMPLEADO = "empleado"
+    const val PERFIL = "perfil"
 }

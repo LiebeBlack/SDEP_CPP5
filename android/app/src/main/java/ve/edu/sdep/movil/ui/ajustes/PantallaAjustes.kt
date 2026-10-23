@@ -73,6 +73,7 @@ fun PantallaAjustes(
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     alVerConflictos: () -> Unit,
+    alEditarPerfil: () -> Unit,
     vistaModelo: AjustesViewModel = hiltViewModel(),
 ) {
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
@@ -275,6 +276,15 @@ private fun TarjetaCuenta(
                 Icon(Icons.Filled.Lock, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Cambiar contraseña")
+            }
+
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = alEditarPerfil,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+            ) {
+                Text("Editar perfil")
             }
 
             Spacer(Modifier.height(8.dp))

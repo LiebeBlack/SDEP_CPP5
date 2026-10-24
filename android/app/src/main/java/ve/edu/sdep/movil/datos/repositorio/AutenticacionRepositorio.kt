@@ -137,10 +137,8 @@ class AutenticacionRepositorio @Inject constructor(
         // El espejo pertenece a una sola persona. Si entra otra cuenta, se
         // envía lo pendiente de la anterior y se borra antes de descargar lo
         // nuevo; si no se puede enviar, se rechaza el cambio.
-        when (val cambio = sincronizacion.prepararCambioDeUsuario(sesion.usuario)) {
-            is Resultado.Exito -> Unit
-            is Resultado.Fallo -> return@withContext cambio
-        }
+        val cambio = prepararEspejo(sesion.usuario)
+        if (cambio is Resultado.Fallo) return@withContext cambio
         guardarCaché(sesion)
         sesionRepositorio.iniciar(sesion)
         if (activarBiometria) activarBiometria(sesion)
@@ -180,10 +178,8 @@ class AutenticacionRepositorio @Inject constructor(
                 debeCambiarPassword = info.debeCambiarPassword,
                 minLongitudPassword = info.passwordMinLongitud.coerceAtLeast(1),
             )
-            when (val cambio = sincronizacion.prepararCambioDeUsuario(sesion.usuario)) {
-                is Resultado.Exito -> Unit
-                is Resultado.Fallo -> return@withContext cambio
-            }
+            val cambio = prepararEspejo(sesion.usuario)
+            if (cambio is Resultado.Fallo) return@withContext cambio
             boveda.guardarSesionToken(par.token)
             guardarCaché(sesion)
             sesionRepositorio.iniciar(sesion)
@@ -369,6 +365,23 @@ class AutenticacionRepositorio @Inject constructor(
     // ------------------------------------------------------------------
     // Interno
     // ------------------------------------------------------------------
+
+    /**
+     * Prepara el espejo local para la cuenta que acaba de entrar.
+     *
+     * El cambio de usuario borra el espejo anterior y puede tocar una base
+     * bloqueada por el trabajador de sincronización. Ese fallo debe volver como
+     * un mensaje de la pantalla, no escapar de la corrutina y dejar el botón de
+     * ingreso girando para siempre.
+     */
+    private suspend fun prepararEspejo(usuario: String): Resultado<Unit> = try {
+        sincronizacion.prepararCambioDeUsuario(usuario)
+    } catch (error: Exception) {
+        Resultado.Fallo(
+            "No se pudo preparar el almacenamiento local. Cierre otras tareas y reintente.",
+            error,
+        )
+    }
 
     /** Guarda el caché de sesión que permite el reabrir sin red */
     private suspend fun guardarCaché(sesion: Sesion) {

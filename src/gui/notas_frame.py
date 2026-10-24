@@ -850,6 +850,9 @@ class NotaDialog(_DialogoBase):
         self.token = token
         self.grado = grado
         self.matriculas = matriculas
+        # Lista en el mismo orden que el combo: el índice es la identidad
+        # fiable (dos estudiantes sin cédula comparten etiqueta).
+        self._matriculas_validas = [m for m in matriculas if m.estudiante is not None]
         self.nota = nota
         self._create_widgets()
         self._preparar_modal()
@@ -880,9 +883,9 @@ class NotaDialog(_DialogoBase):
                 width=340,
                 values=[
                     f"{m.estudiante.cedula or 's/c'} - {m.estudiante.nombre_completo}"
-                    for m in self.matriculas
-                    if m.estudiante is not None
+                    for m in self._matriculas_validas
                 ],
+                state="readonly",
             )
             self.estudiante_combo.grid(row=fila, column=1, sticky="w", pady=6)
             fila += 1
@@ -953,16 +956,10 @@ class NotaDialog(_DialogoBase):
 
     def _estudiante_id(self) -> int | None:
         """Identificador del estudiante elegido"""
-        etiqueta = self.estudiante_combo.get().strip()
-        for matricula in self.matriculas:
-            if matricula.estudiante is None:
-                continue
-            if (
-                f"{matricula.estudiante.cedula or 's/c'} - {matricula.estudiante.nombre_completo}"
-                == etiqueta
-            ):
-                return int(matricula.estudiante_id)
-        return None
+        indice = _indice_seleccion_combo(self.estudiante_combo)
+        if indice is None or indice >= len(self._matriculas_validas):
+            return None
+        return int(self._matriculas_validas[indice].estudiante_id)
 
     def _guardar(self) -> None:
         """Registra o corrige la nota con las reglas del servicio"""
@@ -1248,9 +1245,7 @@ class BoletinDialog(ctk.CTkToplevel):
         grado = datos.get("grado") or {}
         if grado:
             lineas.append(f"Grado: {grado.get('nombre', '-')}")
-        lineas.append(
-            f"Periodo: {periodo.get('nombre', '-')} ({periodo.get('estado', '-')})"
-        )
+        lineas.append(f"Periodo: {periodo.get('nombre', '-')} ({periodo.get('estado', '-')})")
         lineas.append("-" * 52)
         notas = datos.get("notas") or []
         if notas:

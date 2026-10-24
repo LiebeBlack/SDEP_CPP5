@@ -417,13 +417,9 @@ class EstudiantesFrame(ctk.CTkFrame):
             if nivel != TODOS:
                 nivel_valor = nivel.lower()
                 estudiantes = [e for e in estudiantes if str(e.nivel_valor) == nivel_valor]
-            if termino:
-                estudiantes = [
-                    e
-                    for e in estudiantes
-                    if termino in (e.nombre_completo or "").lower()
-                    or termino in (e.cedula or "").lower()
-                ]
+            # El texto ya lo aplicó el servicio (búsqueda por nombre o cédula,
+            # con su propia normalización); repetirlo aquí con una comparación
+            # literal descartaría coincidencias válidas con acentos.
             if solo_activos:
                 estudiantes = [e for e in estudiantes if e.activo]
         except Exception as e:

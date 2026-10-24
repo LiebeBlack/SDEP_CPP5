@@ -40,7 +40,7 @@ from src.repositories import (
     IncidenciaRepository,
 )
 from src.utils.audit_logger import AuditEventType, get_audit_logger
-from src.utils.helpers import parse_date
+from src.utils.helpers import parse_date, parse_date_estricto
 
 logger = logging.getLogger(__name__)
 
@@ -171,9 +171,15 @@ class ContratoService:
         if not contrato:
             raise ValueError("Contrato no encontrado")
 
-        for campo_fecha in ("fecha_inicio", "fecha_fin", "fecha_terminacion"):
+        for campo_fecha, etiqueta in (
+            ("fecha_inicio", "Fecha de inicio"),
+            ("fecha_fin", "Fecha de fin"),
+            ("fecha_terminacion", "Fecha de terminación"),
+        ):
             if campo_fecha in datos and isinstance(datos[campo_fecha], str):
-                datos[campo_fecha] = parse_date(datos[campo_fecha])
+                # Un texto ilegible lanza ValueError: antes se convertía en
+                # None y la edición borraba la fecha sin avisar.
+                datos[campo_fecha] = parse_date_estricto(datos[campo_fecha], etiqueta)
 
         if "numero" in datos and datos["numero"] and datos["numero"] != contrato.numero:
             if self.repository.get_by_numero(str(datos["numero"])) is not None:
@@ -326,9 +332,18 @@ class ContratoService:
 
         egreso = fecha_terminacion or date.today()
         if isinstance(egreso, str):
-            egreso = parse_date(egreso) or date.today()
+            # Un texto ilegible no debe terminar el contrato "hoy" en silencio.
+            egreso = parse_date_estricto(egreso, "Fecha de terminación") or date.today()
 
         finiquito = self.calcular_liquidacion(contrato.empleado_id, motivo, egreso)
+
+        # Valores previos: si la liquidación no se puede registrar, el
+        # contrato se restaura. Dejarlo terminado y sin liquidación dejaba
+        # al empleado sin contrato y sin pago, sin forma de reintentar.
+        estado_anterior = contrato.estado
+        fecha_terminacion_anterior = contrato.fecha_terminacion
+        motivo_anterior = contrato.motivo_terminacion
+        liquidacion_anterior = contrato.liquidacion_monto
 
         contrato.estado = EstadoContrato.TERMINADO
         contrato.fecha_terminacion = egreso
@@ -338,9 +353,24 @@ class ContratoService:
 
         pago = None
         if generar_liquidacion and finiquito.neto > 0:
-            pago = self._registrar_pago_liquidacion(
-                empleado, contrato, finiquito, egreso, metodo_pago
-            )
+            try:
+                pago = self._registrar_pago_liquidacion(
+                    empleado, contrato, finiquito, egreso, metodo_pago
+                )
+            except Exception:
+                contrato.estado = estado_anterior
+                contrato.fecha_terminacion = fecha_terminacion_anterior
+                contrato.motivo_terminacion = motivo_anterior
+                contrato.liquidacion_monto = liquidacion_anterior
+                try:
+                    self.repository.update(contrato)
+                except SQLAlchemyError:
+                    logger.error(
+                        "No se pudo restaurar el contrato %s tras fallar la liquidación",
+                        contrato.numero,
+                        exc_info=True,
+                    )
+                raise
 
         self._auditar(
             contrato, "terminar_contrato", AuditEventType.DATA_UPDATE, usuario=registrado_por
@@ -570,6 +600,17 @@ class ContratoService:
         fecha_fin = datos.get("fecha_fin")
         if isinstance(fecha_fin, str):
             fecha_fin = parse_date(fecha_fin)
+        # Un texto no vacío que no parsea no puede pasar como "sin fecha":
+        # un contrato indefinido con la fecha de fin mal tecleada se guardaba
+        # como indefinido y un inicio ilegible arrancaba "hoy" en silencio.
+        for etiqueta, valor in (
+            ("inicio", datos.get("fecha_inicio")),
+            ("fin", datos.get("fecha_fin")),
+        ):
+            if isinstance(valor, str) and valor.strip() and parse_date(valor) is None:
+                errores.append(
+                    f"La fecha de {etiqueta} no tiene un formato válido (dd/mm/aaaa)"
+                )
         if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
             errores.append("La fecha de fin no puede ser anterior a la de inicio")
 

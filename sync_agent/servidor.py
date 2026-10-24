@@ -1978,9 +1978,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 # para leer el nodo: ``pull`` devolvería el log global y
                 # ``epochs`` el manifiesto completo. La comprobación se hace
                 # una sola vez aquí, antes de cualquier canal de datos.
-                raise ErrorPeticion(
-                    "El teléfono debe iniciar sesión para acceder a los datos", 401
-                )
+                raise ErrorPeticion("El teléfono debe iniciar sesión para acceder a los datos", 401)
 
             if ruta.path == RUTA_PULL and metodo == "GET":
                 parametros = parse_qs(ruta.query)

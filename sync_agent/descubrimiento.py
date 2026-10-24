@@ -51,10 +51,15 @@ class DifusorDescubrimiento:
         puerto_http: int,
         puerto: int = PUERTO_DESCUBRIMIENTO,
         nombre: str | None = None,
+        interfaz: str = "",
     ):
         self.puerto_http = int(puerto_http)
         self.puerto = int(puerto)
         self.nombre = (nombre or "").strip()
+        # Interfaz de escucha: cadena vacía = todas las interfaces (comportamiento
+        # original).  Pasar "127.0.0.1" para restringir a localhost o la IP de
+        # la LAN deseada para mayor seguridad.
+        self.interfaz = interfaz
         self._socket: socket.socket | None = None
         self._hilo: threading.Thread | None = None
         self._detener = threading.Event()
@@ -77,7 +82,7 @@ class DifusorDescubrimiento:
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
             else:
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind(("0.0.0.0", self.puerto))
+            sock.bind((self.interfaz, self.puerto))
             sock.settimeout(0.5)
             self._socket = sock
         except OSError as error:

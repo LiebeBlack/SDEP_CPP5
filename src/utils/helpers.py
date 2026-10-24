@@ -574,13 +574,13 @@ def ensure_directory_exists(directory_path: str) -> bool:
         Path(directory_path).mkdir(parents=True, exist_ok=True)
         return True
     except PermissionError as e:
-        logger.error("Error de permisos creando directorio %s: %s", directory_path, e)
+        logger.error("Error de permisos creando directorio: %s", type(e).__name__)
         return False
     except OSError as e:
-        logger.error("Error del sistema creando directorio %s: %s", directory_path, e)
+        logger.error("Error del sistema creando directorio: %s", type(e).__name__)
         return False
     except Exception as e:
-        logger.error("Error inesperado creando directorio %s: %s", directory_path, e)
+        logger.error("Error inesperado creando directorio: %s", type(e).__name__)
         return False
 
 

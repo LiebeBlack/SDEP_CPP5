@@ -209,8 +209,10 @@ def configurar_fuentes_seguras() -> str:
                     raiz.destroy()
                 finally:
                     # Sin esto, tkinter conserva una raíz destruida como
-                    # _default_root y las ventanas siguientes fallan.
-                    tk._default_root = None
+                    # _default_root y las ventanas siguientes fallan. Se usa
+                    # setattr porque el atributo es privado del módulo y no
+                    # figura en los stubs de tipos.
+                    setattr(tk, "_default_root", None)
         return FUENTE_SEGURA
     except Exception:
         FUENTE_SEGURA = "Arial"

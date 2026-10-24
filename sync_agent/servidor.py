@@ -2243,16 +2243,10 @@ class ServidorSync(ThreadingHTTPServer):
         # Forzar TLS >= 1.2 y deshabilitar versiones obsoletas
         contexto.minimum_version = ssl.TLSVersion.TLSv1_2
         contexto.maximum_version = ssl.TLSVersion.MAXIMUM_SUPPORTED
-        contexto.options |= (
-            ssl.OP_NO_SSLv2
-            | ssl.OP_NO_SSLv3
-            | ssl.OP_NO_TLSv1
-            | ssl.OP_NO_TLSv1_1
-        )
+        contexto.options |= ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
         # Solo cifrados modernos (AEAD)
         contexto.set_ciphers(
-            "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20"
-            ":!aNULL:!MD5:!DSS:!RC4"
+            "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20" ":!aNULL:!MD5:!DSS:!RC4"
         )
         contexto.load_cert_chain(certfile=certificado, keyfile=clave)
         self.socket = contexto.wrap_socket(self.socket, server_side=True)

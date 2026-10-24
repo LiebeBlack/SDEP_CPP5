@@ -283,6 +283,7 @@ class SecurityValidator:
                 # Verificación segura con timing constante; el hash almacenado
                 # sigue siendo SHA-256 pero la comparación usa compare_digest.
                 import warnings
+
                 warnings.warn(
                     "Hash legado SHA-256 detectado; re-hashear con PBKDF2",
                     DeprecationWarning,

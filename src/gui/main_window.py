@@ -1199,7 +1199,13 @@ class MainWindow(ctk.CTk):
         if frame is None:
             return
         # 1. Atributos directos conocidos de búsqueda o filtro
-        for attr in ("search_entry", "busqueda_entry", "filtro_entry", "estado_combo", "empleado_combo"):
+        for attr in (
+            "search_entry",
+            "busqueda_entry",
+            "filtro_entry",
+            "estado_combo",
+            "empleado_combo",
+        ):
             widget = getattr(frame, attr, None)
             if widget is not None and hasattr(widget, "focus_set"):
                 try:

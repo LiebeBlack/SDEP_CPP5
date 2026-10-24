@@ -238,12 +238,16 @@ def parse_currency(monto_str: str) -> float | None:
         float: Valor numérico o None si hay error
     """
     try:
-        # Eliminar símbolos de moneda y espacios
+        # Eliminar símbolos de moneda y espacios. Antes se quitaba la coma
+        # sin mirar el punto, de modo que "1.234,56" se convertía en
+        # 1.23456 (mil veces menor).
         cleaned = (
-            monto_str.replace("$", "").replace("€", "").replace("£", "").replace(",", "").strip()
+            monto_str.replace("$", "").replace("€", "").replace("£", "").strip()
         )
-        return float(cleaned)
-    except (ValueError, TypeError):
+        if not cleaned:
+            return None
+        return float(_normalizar_numero(cleaned))
+    except (AttributeError, ValueError, TypeError):
         return None
 
 

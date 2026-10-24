@@ -147,14 +147,18 @@ def _normalizar_numero(texto: str) -> str:
 
     Acepta el formato local (``1.234,56``) y el anglosajón (``1234.56``),
     además del símbolo de moneda y espacios. Con ambos separadores
-    presentes se asume que el punto separa los miles y la coma los
-    decimales, que es lo que teclea el usuario de la aplicación.
+    presentes, el que aparece más a la derecha es el decimal y el otro
+    separa los miles, de modo que ``"1,234.50"`` (que es lo que produce
+    ``format_currency``) y ``"1.234,50"`` se leen igual.
     """
     limpio = texto.replace(" ", "").replace("\u00a0", "").strip()
     for simbolo in ("$", "€", "£"):
         limpio = limpio.replace(simbolo, "")
     if "," in limpio and "." in limpio:
-        limpio = limpio.replace(".", "").replace(",", ".")
+        if limpio.rfind(",") > limpio.rfind("."):
+            limpio = limpio.replace(".", "").replace(",", ".")
+        else:
+            limpio = limpio.replace(",", "")
     else:
         limpio = limpio.replace(",", ".")
     return limpio

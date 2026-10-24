@@ -31,7 +31,7 @@
     const toastEl = document.getElementById('toast-msg');
     const docsGrid = document.getElementById('docs-grid');
     const catalogFilterInput = document.getElementById('catalog-filter-input');
-    const catalogTabs = document.querySelectorAll('.catalog-tab');
+    const catalogTabsContainer = document.getElementById('catalog-tabs');
 
     // --- 1. Theme Controller ---
     function initTheme() {
@@ -267,14 +267,15 @@
 
         const query = searchQuery.trim().toLowerCase();
         const filteredDocs = docsData.filter(doc => {
-            const matchesCat = filterCategory === 'all' ||
-                (filterCategory === 'tesis' && doc.category === 'Tesis Académica') ||
-                (filterCategory === 'tecnica' && doc.category === 'Documentación Técnica');
+            // El filtro usa la categoría real del documento, de modo que
+            // cualquier categoría nueva del bundle aparece sin tocar el código.
+            const matchesCat = filterCategory === 'all' || doc.category === filterCategory;
 
             const matchesQuery = !query ||
-                doc.title.toLowerCase().includes(query) ||
-                doc.subtitle.toLowerCase().includes(query) ||
-                (doc.badge && doc.badge.toLowerCase().includes(query));
+                (doc.title || '').toLowerCase().includes(query) ||
+                (doc.subtitle || '').toLowerCase().includes(query) ||
+                (doc.category || '').toLowerCase().includes(query) ||
+                (doc.badge || '').toLowerCase().includes(query);
 
             return matchesCat && matchesQuery;
         });
@@ -326,6 +327,7 @@
         const doc = docsData.find(d => d.id === docId);
         if (!doc) {
             console.error(`Document with ID '${docId}' not found.`);
+            showToast(`No existe el documento «${docId}» en el catálogo`);
             return;
         }
 
@@ -354,6 +356,9 @@
         // Render Markdown content once per document load
         if (!isRefresh) {
             if (typeof marked !== 'undefined') {
+                // Los anclas se reinician por documento: dos capítulos pueden
+                // repetir el mismo título de sección sin colisionar entre sí.
+                window.SDEP_SLUG_COUNTS = {};
                 configureMarkedRenderer();
                 markdownRenderTarget.innerHTML = marked.parse(doc.content);
             } else {
@@ -378,6 +383,7 @@
                 }
             });
 
+            bindHeadingAnchors();
             generateTableOfContents();
             populateReaderSidebar();
             updateReaderNavigation(doc);
@@ -390,7 +396,9 @@
 
         // Update URL Hash only on first open or explicit navigation
         if (!isRefresh) {
-            window.location.hash = `doc=${doc.id}`;
+            window.location.hash = targetHeadingId
+                ? `doc=${doc.id}#${targetHeadingId}`
+                : `doc=${doc.id}`;
         }
 
         // Reset scroll position or jump to target heading
@@ -404,11 +412,6 @@
         }
 
         updateReadingProgress();
-
-        // Fetch live document only on first open, not on every navigation inside the reader
-        if (!isRefresh) {
-            fetchLiveDocument(doc);
-        }
     }
 
     function setSyncBadgeStatus(isLive, labelText) {
@@ -416,7 +419,7 @@
         const text = document.getElementById('reader-sync-text');
         if (!badge || !text) return;
         badge.className = `sync-badge ${isLive ? 'live' : 'local'}`;
-        text.textContent = labelText || (isLive ? 'GitHub En Vivo' : 'Sincronizado');
+        text.textContent = labelText || (isLive ? 'GitHub En Vivo' : 'Corpus local');
     }
 
     function setReaderMetaForDoc(doc, categoryOverride, badgeOverride) {
@@ -445,7 +448,7 @@
         // Only allow GitHub raw content from the official SDEP repository
         if (clean.includes('github.com') && clean.includes('/blob/')) {
             // Restrict to LiebeBlack SDEP_CPP5 repository only
-            if (clean.includes('LiebeBlack/SDEP_CPP5') || clean.includes('github.com/LiebeBlack')) {
+            if (clean.includes('LiebeBlack/SDEP_CPP5')) {
                 clean = clean.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
             } else {
                 showToast('URL no permitida: solo se cargan documentos del repositorio oficial');
@@ -455,58 +458,9 @@
         return clean;
     }
 
-    function fetchLiveDocument(doc) {
-        const contentUrl = `./content/${doc.filename}`;
-        const rawGhUrl = `https://raw.githubusercontent.com/LiebeBlack/SDEP_CPP5/main/${doc.filename}`;
-
-        // Attempt same-origin first (GitHub Pages or local web server).
-        // Keep status changes minimal: only report when the source is clearly live or clearly unavailable.
-        fetch(contentUrl)
-            .then(res => {
-                if (res.ok) return res.text();
-                return fetch(rawGhUrl).then(r => r.ok ? r.text() : Promise.reject('GitHub raw not available'));
-            })
-            .then(remoteMarkdown => {
-                if (!remoteMarkdown || remoteMarkdown.trim().length <= 50 || currentDocId !== doc.id) {
-                    return;
-                }
-
-                if (remoteMarkdown !== doc.content) {
-                    doc.content = remoteMarkdown;
-                    if (typeof marked !== 'undefined') {
-                        configureMarkedRenderer();
-                        markdownRenderTarget.innerHTML = marked.parse(doc.content);
-                        if (typeof Prism !== 'undefined') {
-                            Prism.highlightAllUnder(markdownRenderTarget);
-                        }
-                        markdownRenderTarget.querySelectorAll('.code-btn-copy').forEach(btn => {
-                            if (!btn.dataset.readerBound) {
-                                btn.dataset.readerBound = '1';
-                                btn.addEventListener('click', (e) => {
-                                    e.stopPropagation();
-                                    const codeText = decodeURIComponent(btn.getAttribute('data-code') || '');
-                                    copyTextToClipboard(codeText, 'Código copiado al portapapeles');
-                                });
-                            }
-                        });
-                        generateTableOfContents();
-                    }
-                }
-
-                setSyncBadgeStatus(true, 'GitHub En Vivo (main)');
-            })
-            .catch(() => {
-                // Quiet fallback: only show local status if it differs from the current one.
-                const badge = document.getElementById('reader-sync-badge');
-                const text = document.getElementById('reader-sync-text');
-                const isAlreadyLocal =
-                    badge && badge.classList.contains('local') &&
-                    text && text.textContent === 'Copia Local';
-                if (!isAlreadyLocal) {
-                    setSyncBadgeStatus(false, 'Copia Local');
-                }
-            });
-    }
+    // El corpus se sirve desde docs_data.js: no hay sondeo de red al abrir un
+    // documento, de modo que el portal funciona igual con file:// y sin conexión.
+    // La carga desde GitHub queda solo en la acción explícita del usuario.
 
     function loadCustomMarkdownFromUrl(rawOrBlobUrl) {
         if (!rawOrBlobUrl) return;
@@ -551,6 +505,7 @@
                 currentDocId = customDoc.id;
                 if (typeof marked !== 'undefined') {
                     configureMarkedRenderer();
+                    window.SDEP_SLUG_COUNTS = {};
                     markdownRenderTarget.innerHTML = marked.parse(customDoc.content);
                     if (typeof Prism !== 'undefined') {
                         Prism.highlightAllUnder(markdownRenderTarget);
@@ -565,6 +520,7 @@
                             });
                         }
                     });
+                    bindHeadingAnchors();
                     generateTableOfContents();
                 } else {
                     markdownRenderTarget.innerHTML = `<pre>${escapeHtml(customDoc.content)}</pre>`;
@@ -595,8 +551,48 @@
         currentDocId = null;
 
         if (window.location.hash.startsWith('#doc=')) {
-            history.pushState('', document.title, window.location.pathname + window.location.search);
+            try {
+                history.replaceState(
+                    null,
+                    document.title,
+                    window.location.pathname + window.location.search
+                );
+            } catch (err) {
+                // Algunos navegadores restringen history en file://; el lector sigue funcionando.
+            }
         }
+    }
+
+    // Un ancla de encabezado debe conservar el documento abierto en la URL:
+    // #doc=<id>#<ancla>, no solo #<ancla>. Así el enlace se puede compartir y
+    // recargar sin perder el documento.
+    function bindHeadingAnchors() {
+        markdownRenderTarget.querySelectorAll('.header-anchor').forEach(anchor => {
+            if (anchor.dataset.bound) return;
+            anchor.dataset.bound = '1';
+            anchor.addEventListener('click', (e) => {
+                e.preventDefault();
+                const slug = (anchor.getAttribute('href') || '').replace(/^#/, '');
+                if (!slug) return;
+
+                const target = document.getElementById(slug);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                if (currentDocId) {
+                    try {
+                        history.replaceState(
+                            null,
+                            document.title,
+                            `${window.location.pathname}${window.location.search}#doc=${currentDocId}#${slug}`
+                        );
+                    } catch (err) {
+                        // Los anclas funcionan igual aunque el navegador no permita reescribir la URL.
+                    }
+                }
+            });
+        });
     }
 
     function generateTableOfContents() {
@@ -638,7 +634,13 @@
         readerSidebarNav.innerHTML = '';
 
         const query = filterText.trim().toLowerCase();
-        const categories = ['Tesis Académica', 'Documentación Técnica'];
+        // Categorías derivadas del corpus, en orden de aparición.
+        const categories = [];
+        docsData.forEach(d => {
+            if (d.category && !categories.includes(d.category)) {
+                categories.push(d.category);
+            }
+        });
 
         categories.forEach(cat => {
             const catDocs = docsData.filter(d => d.category === cat && (!query || d.title.toLowerCase().includes(query) || d.subtitle.toLowerCase().includes(query)));
@@ -674,6 +676,14 @@
         const nextTitle = document.getElementById('nav-next-title');
 
         const currentIndex = docsData.findIndex(d => d.id === currentDoc.id);
+
+        // Un documento cargado por URL no pertenece al corpus del catálogo:
+        // no tiene anterior ni siguiente dentro de la navegación del lector.
+        if (currentIndex === -1) {
+            prevBtn.style.visibility = 'hidden';
+            nextBtn.style.visibility = 'hidden';
+            return;
+        }
 
         if (currentIndex > 0) {
             const prevDoc = docsData[currentIndex - 1];
@@ -780,7 +790,7 @@
 
         if (!q) {
             // Default: show top featured documents
-            matches = docsData.slice(0, 8);
+            matches = docsData.slice(0, 8).map(doc => ({ doc, snippet: doc.subtitle }));
         } else {
             docsData.forEach(doc => {
                 let score = 0;
@@ -792,9 +802,14 @@
                 if (titleNorm.includes(q)) score += 10;
                 if (subtitleNorm.includes(q)) score += 5;
 
-                const bodyIndex = doc.content.indexOf(q);
-                // Also try without diacritics normalization for body search
-                const bodyIndexNorm = doc.content.normalize('NFD').replace(/\u0300-\u036f/g, '').indexOf(q);
+                // Búsqueda en cuerpo sin distinguir mayúsculas ni acentos.
+                // El corpus normalizado se cachea para no recorrer los 21
+                // documentos en cada pulsación del buscador.
+                if (!doc._searchIndex) {
+                    doc._searchIndex = normalize(doc.content);
+                }
+                const bodyIndex = doc.content.toLowerCase().indexOf(q);
+                const bodyIndexNorm = doc._searchIndex.indexOf(q);
                 if (bodyIndex !== -1) {
                     score += 2;
                     const start = Math.max(0, bodyIndex - 40);
@@ -815,7 +830,6 @@
             });
 
             matches.sort((a, b) => b.score - a.score);
-            matches = matches.map(m => m.doc);
         }
 
         renderPaletteResults(matches, q);
@@ -834,7 +848,11 @@
             return;
         }
 
-        docs.forEach((doc, idx) => {
+        docs.forEach((entry, idx) => {
+            const doc = entry.doc || entry;
+            const snippet = entry.snippet || doc.subtitle;
+            const fragmento = snippet.length > 160 ? `${snippet.slice(0, 160).trim()}…` : snippet;
+
             const item = document.createElement('div');
             item.className = `palette-item ${idx === selectedPaletteIndex ? 'selected' : ''}`;
             item.innerHTML = `
@@ -842,7 +860,7 @@
                     <span class="palette-item-title">${doc.icon ? doc.icon + ' ' : ''}${doc.title}</span>
                     <span class="palette-item-badge">${doc.badge}</span>
                 </div>
-                <div class="palette-item-snippet">${doc.subtitle}</div>
+                <div class="palette-item-snippet">${escapeHtml(fragmento)}</div>
             `;
 
             item.addEventListener('click', () => {
@@ -965,14 +983,77 @@
     // --- 9. Catalog Tabs & Filter Input ---
     let currentCatalogCategory = 'all';
 
-    catalogTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            catalogTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            currentCatalogCategory = tab.getAttribute('data-filter');
+    // Las pestañas se construyen desde el corpus: etiquetas y recuentos no se
+    // quedan obsoletos cuando el bundle se regenera con más documentos.
+    function buildCatalogTabs() {
+        if (!catalogTabsContainer) return;
+
+        const categorias = [];
+        docsData.forEach(doc => {
+            if (doc.category && !categorias.includes(doc.category)) {
+                categorias.push(doc.category);
+            }
+        });
+
+        const iconos = {
+            'Tesis Académica': '🎓',
+            'Documentación Técnica': '💻'
+        };
+
+        const tabs = [
+            { valor: 'all', texto: 'Todos', icono: '📚', total: docsData.length }
+        ];
+        categorias.forEach(cat => {
+            tabs.push({
+                valor: cat,
+                texto: cat,
+                icono: iconos[cat] || '📄',
+                total: docsData.filter(d => d.category === cat).length
+            });
+        });
+
+        catalogTabsContainer.innerHTML = '';
+        tabs.forEach(tab => {
+            const btn = document.createElement('button');
+            const activo = tab.valor === currentCatalogCategory;
+            btn.type = 'button';
+            btn.className = `catalog-tab${activo ? ' active' : ''}`;
+            btn.setAttribute('role', 'tab');
+            btn.setAttribute('data-filter', tab.valor);
+            btn.setAttribute('aria-selected', activo ? 'true' : 'false');
+            btn.textContent = `${tab.icono} ${tab.texto} (${tab.total})`;
+            catalogTabsContainer.appendChild(btn);
+        });
+
+        // Métricas del portal calculadas desde el corpus, no escritas a mano.
+        const statDocs = document.getElementById('stat-docs');
+        if (statDocs) statDocs.textContent = String(docsData.length);
+
+        const statDocsSub = document.getElementById('stat-docs-sub');
+        if (statDocsSub) {
+            const tesis = docsData.filter(d => d.category === 'Tesis Académica').length;
+            const tecnica = docsData.filter(d => d.category === 'Documentación Técnica').length;
+            statDocsSub.textContent = `${tesis} de la tesis y ${tecnica} técnicos`;
+        }
+
+        const heroDocs = document.getElementById('hero-doc-count');
+        if (heroDocs) heroDocs.textContent = String(docsData.length);
+    }
+
+    if (catalogTabsContainer) {
+        catalogTabsContainer.addEventListener('click', (e) => {
+            const tab = e.target.closest('.catalog-tab');
+            if (!tab) return;
+
+            currentCatalogCategory = tab.getAttribute('data-filter') || 'all';
+            catalogTabsContainer.querySelectorAll('.catalog-tab').forEach(t => {
+                const activo = t === tab;
+                t.classList.toggle('active', activo);
+                t.setAttribute('aria-selected', activo ? 'true' : 'false');
+            });
             renderCatalogCards(currentCatalogCategory, catalogFilterInput ? catalogFilterInput.value : '');
         });
-    });
+    }
 
     if (catalogFilterInput) {
         catalogFilterInput.addEventListener('input', (e) => {
@@ -1071,9 +1152,19 @@
                 }
             }
             // Update URL to standardized format using replaceState
-            const newHash = currentDocId ? `#doc=${currentDocId}` : '';
+            const newHash = currentDocId
+                ? `#doc=${currentDocId}${targetHeading ? `#${targetHeading}` : ''}`
+                : '';
             if (newHash && window.location.hash !== newHash) {
-                history.replaceState(null, document.title, window.location.pathname + window.location.search + '#' + newHash);
+                try {
+                    history.replaceState(
+                        null,
+                        document.title,
+                        window.location.pathname + window.location.search + newHash
+                    );
+                } catch (err) {
+                    // La URL es cosmética: si el navegador la rechaza, no se pierde la lectura.
+                }
             }
             return;
         }
@@ -1098,6 +1189,7 @@
     // --- 11. Initial Boot ---
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
+        buildCatalogTabs();
         renderCatalogCards('all');
         checkHashRoute();
 

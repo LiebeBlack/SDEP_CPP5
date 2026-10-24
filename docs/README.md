@@ -1,6 +1,16 @@
-# Plataforma de Documentación Web SDEP
+# Portal de Documentación SDEP
 
-Plataforma web moderna, seria, elegante y ultra-minimalista para el **Sistema de Gestión de Personal y Nómina (SDEP)**. Incorpora un visor interactivo de Markdown integrado directamente en el navegador, catálogo centralizado de 21 documentos técnicos y académicos, buscador instantáneo (`Ctrl+K`) y soporte 100% offline.
+Portal estático del **Sistema de Gestión de Personal y Nómina (SDEP)**. Reúne el corpus de la tesis, la documentación técnica y los informes académicos en una sola página, con lector de Markdown integrado, catálogo filtrable y búsqueda instantánea (`Ctrl+K`). No necesita servidor, conexión ni compilación: se abre desde el sistema de archivos.
+
+## Contenido publicado
+
+| Bloque | Documentos | Cómo se consulta |
+| :--- | ---: | :--- |
+| Tesis académica | 14 | Lector integrado, texto completo en `docs_data.js` |
+| Documentación técnica | 7 | Lector integrado, texto completo en `docs_data.js` |
+| Informes académicos | 4 | Enlace al Markdown del repositorio |
+
+Los 21 documentos del lector viven en `docs_data.js`, que genera `tools/generate_docs_bundle.py`. Los cuatro informes de `informes_academicos/` son entregables independientes de la carrera de Informática; se enlazan a su archivo porque su texto no forma parte del bundle. Para leerlos dentro de la página habría que añadirlos al manifiesto del generador y regenerar el bundle.
 
 ---
 
@@ -15,16 +25,25 @@ Plataforma web moderna, seria, elegante y ultra-minimalista para el **Sistema de
   - Encabezados con anclas y enlaces directos compartibles.
 - **Tabla de Contenidos Dinámica (TOC)**: Extracción automática de encabezados (`H2`, `H3`) con *Scrollspy* para indicar visualmente la sección activa.
 - **Métricas de Lectura**: Cálculo automático de tiempo estimado de lectura (WPM) y conteo de palabras por documento.
-- **Buscador Instantáneo & Paleta de Comandos (`Ctrl+K` / `⌘K`)**: Búsqueda en tiempo real sobre títulos, resúmenes y cuerpo completo de los 21 documentos con fragmentos destacados.
+- **Buscador Instantáneo & Paleta de Comandos (`Ctrl+K` / `⌘K`)**: Búsqueda en tiempo real sobre títulos, resúmenes y cuerpo completo de los 21 documentos, sin distinguir mayúsculas ni acentos.
 - **Diseño Ultra-Minimalista**:
   - Tema claro y tema oscuro profundo (*Slate/Zinc*) con persistencia en `localStorage`.
-  - Tipografía cuidada basada en *Inter* y *JetBrains Mono*.
+  - Tipografía del sistema, sin fuentes externas ni peticiones a terceros.
   - Cabecera flotante con *backdrop-filter* (efecto cristal translúcido).
   - Totalmente adaptable a dispositivos móviles, tablets y monitores ultrawide.
   - Soporte de impresión y exportación a PDF limpia (`@media print`).
 - **Funcionamiento 100% Autónomo y Offline**:
-  - No depende de servidores locales ni presenta bloqueos de CORS al abrirse directamente mediante el protocolo `file://`.
-  - Bibliotecas de terceros empaquetadas localmente en `docs/vendor/`.
+  - No depende de servidores locales ni presenta bloqueos de CORS al abrirse mediante el protocolo `file://`.
+  - Bibliotecas de terceros empaquetadas localmente en `docs/vendor/`; la tipografía es la del sistema.
+  - Al abrir un documento no se consulta la red: el Markdown se renderiza desde `docs_data.js`.
+
+---
+
+## 🧭 Estructura de la Página
+
+La portada se organiza en seis bloques: **Inicio** (presentación y métricas), **Software** (nueve módulos), **Arquitectura** (cinco capas), **Documentos** (catálogo con pestañas y buscador), **Informes** (cuatro informes académicos) e **Inicio Rápido**.
+
+Las pestañas del catálogo y sus recuentos se calculan desde `docs_data.js`; el contador de documentos de la portada también. Ninguna cifra de documentos está escrita a mano, de modo que el portal no se queda desfasado al regenerar el bundle.
 
 ---
 
@@ -74,11 +93,14 @@ El visor soporta enrutamiento por hash. Puedes compartir o acceder directamente 
 
 ```
 docs/
-├── index.html              # Estructura HTML de la plataforma y del visor web
+├── index.html              # Portada, catálogo, sección de informes y lector
 ├── styles.css              # Sistema de diseño, temas claro/oscuro y estilos Markdown
-├── script.js               # Motor de renderizado Markdown, TOC, scrollspy y buscador
-├── docs_data.js            # Corpus centralizado con los 21 documentos precompilados
-├── content/                # Copias Markdown servidas al lector web
+├── script.js               # Tema, catálogo, lector, TOC, scrollspy, búsqueda y enrutado
+├── docs_data.js            # Corpus centralizado con los 21 documentos (generado)
+├── manifest.json           # Metadatos de instalación como aplicación web
+├── robots.txt              # Indexación
+├── sitemap.xml             # Mapa del sitio
+├── content/                # Copias Markdown de referencia del corpus
 ├── README.md               # Esta documentación
 └── vendor/                 # Dependencias JavaScript locales (100% offline)
     ├── marked.min.js       # Parser de Markdown de alto rendimiento
@@ -106,14 +128,23 @@ Este script:
 3. Calcula el conteo de palabras y minutos de lectura estimados.
 4. Genera el bundle optimizado `docs/docs_data.js`.
 
-Cada documento del catálogo se mantiene duplicado en `docs/content/` porque el
-lector intenta primero esa copia local (`./content/<archivo>`) y solo recurre a
-GitHub cuando no la encuentra. Para comprobar que el catálogo y sus copias
-están íntegros y sincronizados:
+Cada documento del catálogo se mantiene duplicado en `docs/content/` como copia de
+referencia. El lector no consulta la red al abrir un documento: renderiza el texto
+incluido en el bundle, de modo que la página funciona igual con `file://` y sin conexión.
+Para comprobar que el catálogo y sus copias están íntegros y sincronizados:
 
 ```bash
 python tools/verify_docs.py
 ```
+
+---
+
+## 🗂️ Informes Académicos
+
+Los cuatro informes de `informes_academicos/` (contabilidad, socio crítico, proyecto y
+redes de computadoras) no forman parte del bundle del lector: se enlazan a su Markdown en
+el repositorio y aparecen tanto en la sección **Informes** de la portada como en el pie de
+página. Su texto completo se consulta en GitHub o en el propio archivo del repositorio.
 
 ---
 

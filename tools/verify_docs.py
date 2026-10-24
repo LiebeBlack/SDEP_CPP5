@@ -19,9 +19,8 @@ def expected_document_count() -> int:
 def check_content_mirrors() -> None:
     """Verifica que cada documento tenga copia idéntica en docs/content/.
 
-    El lector web intenta primero la copia local (./content/<archivo>) y solo
-    recurre a GitHub cuando no la encuentra; una copia desincronizada mostraría
-    contenido obsoleto al abrir el portal sin conexión.
+    El lector renderiza el texto embebido en docs_data.js, pero las copias de
+    docs/content/ se conservan como referencia y deben coincidir con el original.
     """
     print("\nVerificando copias sincronizadas en docs/content/...")
     content_root = DOCS_DIR / "content"

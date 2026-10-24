@@ -134,7 +134,9 @@ def crear_usuarios_por_defecto(config: dict) -> None:
         nucleo.cerrar()
 
 
-def crear_dispositivo_por_defecto(config: dict, nombre: str = "Computadora Principal") -> tuple[str, str]:
+def crear_dispositivo_por_defecto(
+    config: dict, nombre: str = "Computadora Principal"
+) -> tuple[str, str]:
     """Crea un dispositivo por defecto para conexión local"""
     from sync_agent.servidor import NucleoCentral, ServidorConfig
 
@@ -188,7 +190,9 @@ def iniciar_servidor(config: dict) -> None:
     logger.info("=" * 60)
     logger.info("URLS PARA CONEXIÓN DESDE OTROS DISPOSITIVOS:")
     logger.info(f"  Desde esta computadora: {protocolo}://127.0.0.1:{config['puerto']}")
-    logger.info(f"  Desde otros dispositivos en la red: {protocolo}://{ip_local}:{config['puerto']}")
+    logger.info(
+        f"  Desde otros dispositivos en la red: {protocolo}://{ip_local}:{config['puerto']}"
+    )
     logger.info("=" * 60)
     logger.info("IMPORTANTE: Para conectar desde Android u otros equipos,")
     logger.info(f"use la URL: {protocolo}://{ip_local}:{config['puerto']}")
@@ -257,7 +261,9 @@ def main():
     if not args.solo_inicializar:
         iniciar_servidor(config)
     else:
-        logger.info("Inicialización completada. Use --sin-solo-inicializar para iniciar el servidor.")
+        logger.info(
+            "Inicialización completada. Use --sin-solo-inicializar para iniciar el servidor."
+        )
 
 
 if __name__ == "__main__":

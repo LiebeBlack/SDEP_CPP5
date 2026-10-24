@@ -100,7 +100,11 @@ def main():
     print("=" * 60)
     print(f"IP local: {ip_local or 'No detectada'}")
     print(f"URL para esta PC: http://127.0.0.1:8765")
-    print(f"URL para Android/otros PCs: http://{ip_local}:8765" if ip_local else "URL para Android: No disponible")
+    print(
+        f"URL para Android/otros PCs: http://{ip_local}:8765"
+        if ip_local
+        else "URL para Android: No disponible"
+    )
     print("=" * 60)
 
     if puerto_en_uso and conexion_local and conexion_ip:

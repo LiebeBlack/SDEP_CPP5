@@ -608,9 +608,7 @@ class ContratoService:
             ("fin", datos.get("fecha_fin")),
         ):
             if isinstance(valor, str) and valor.strip() and parse_date(valor) is None:
-                errores.append(
-                    f"La fecha de {etiqueta} no tiene un formato válido (dd/mm/aaaa)"
-                )
+                errores.append(f"La fecha de {etiqueta} no tiene un formato válido (dd/mm/aaaa)")
         if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
             errores.append("La fecha de fin no puede ser anterior a la de inicio")
 

@@ -792,9 +792,7 @@ class EmpleadosFrame(ctk.CTkFrame):
             # fallo ni siquiera quedaba en el log: el usuario no sabía qué
             # había pasado y la fila era seleccionable (doble clic roto).
             logger.exception("No se pudieron cargar los empleados")
-            messagebox.showerror(
-                "Empleados", f"No se pudieron cargar los empleados:\n{error}"
-            )
+            messagebox.showerror("Empleados", f"No se pudieron cargar los empleados:\n{error}")
             return
         self._update_tree(empleados)
 
@@ -3087,9 +3085,7 @@ class IncidenciaDialog(ctk.CTkToplevel):
             datos = {
                 "empleado_id": self.empleado_id,
                 "tipo_incidencia": self.tipo_combo.get(),
-                "fecha_inicio": self._parse_date(
-                    self.fecha_inicio_entry.get(), "Fecha de inicio"
-                ),
+                "fecha_inicio": self._parse_date(self.fecha_inicio_entry.get(), "Fecha de inicio"),
                 "fecha_fin": self._parse_date(self.fecha_fin_entry.get(), "Fecha de fin"),
                 "motivo": self.motivo_text.get("1.0", "end").strip(),
                 "descripcion": self.descripcion_text.get("1.0", "end").strip(),
@@ -5429,9 +5425,7 @@ class PagoDialog(ctk.CTkToplevel):
                 "periodo_inicio": parse_date_estricto(
                     self.periodo_inicio_entry.get(), "Inicio del periodo"
                 ),
-                "periodo_fin": parse_date_estricto(
-                    self.periodo_fin_entry.get(), "Fin del periodo"
-                ),
+                "periodo_fin": parse_date_estricto(self.periodo_fin_entry.get(), "Fin del periodo"),
                 "salario_base": self._parse_float(self.salario_entry.get(), "Salario base"),
                 "bonificaciones": self._parse_float(
                     self.bonificaciones_entry.get(), "Bonificaciones"

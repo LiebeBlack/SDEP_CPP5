@@ -136,6 +136,8 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             container, show="*", fg_color=COLORES["campo"], text_color=COLORES["texto"]
         )
         self.confirm_pass.pack(fill="x", padx=5, pady=(2, 6))
+        self.new_pass.bind("<Return>", lambda _e: self._on_save())
+        self.confirm_pass.bind("<Return>", lambda _e: self._on_save())
 
         ctk.CTkLabel(
             container,

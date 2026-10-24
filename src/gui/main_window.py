@@ -1109,13 +1109,15 @@ class MainWindow(ctk.CTk):
         propias acciones y su cierre con Esc.
         """
         self.bind("<F5>", lambda e: self._atajo_refrescar())
+        self.bind("<F1>", lambda e: self._on_ayuda())
         self.bind("<Control-n>", lambda e: self._atajo_nuevo())
+        self.bind("<Control-N>", lambda e: self._atajo_nuevo())
         self.bind("<Control-f>", lambda e: self._enfocar_busqueda())
+        self.bind("<Control-F>", lambda e: self._enfocar_busqueda())
         self.bind("<Control-s>", lambda e: self._atajo_guardar())
+        self.bind("<Control-S>", lambda e: self._atajo_guardar())
         self.bind("<Escape>", lambda e: self._atajo_escape())
-        # Navegación directa a cada módulo con Ctrl+1..N, en el mismo orden
-        # que MODULOS. La numeración se deriva de la propia lista para que
-        # las teclas y los módulos no puedan desincronizarse.
+        # Navegación directa a cada módulo con Ctrl+1..N y teclado numérico Ctrl+KP_1..N
         for indice, (frame_name, _titulo, _icono) in enumerate(MODULOS, start=1):
             if indice > 9:
                 logger.warning(
@@ -1126,6 +1128,10 @@ class MainWindow(ctk.CTk):
                 break
             self.bind(
                 f"<Control-Key-{indice}>",
+                lambda e, fn=frame_name: self._show_frame(fn),
+            )
+            self.bind(
+                f"<Control-KP_{indice}>",
                 lambda e, fn=frame_name: self._show_frame(fn),
             )
 
@@ -1192,17 +1198,39 @@ class MainWindow(ctk.CTk):
         frame = self.current_frame
         if frame is None:
             return
-        entrada = getattr(frame, "search_entry", None)
-        if entrada is not None and entrada.winfo_exists():
-            entrada.focus_set()
-            self.status_label.configure(text="Búsqueda (Ctrl+F)")
-            return
-        # Sin campo de búsqueda propio: enfocar el primer selector (combobox)
-        for hijo in frame.winfo_children():
-            if isinstance(hijo, ttk.Combobox):
-                hijo.focus_set()
-                self.status_label.configure(text="Filtro (Ctrl+F)")
-                return
+        # 1. Atributos directos conocidos de búsqueda o filtro
+        for attr in ("search_entry", "busqueda_entry", "filtro_entry", "estado_combo", "empleado_combo"):
+            widget = getattr(frame, attr, None)
+            if widget is not None and hasattr(widget, "focus_set"):
+                try:
+                    if widget.winfo_exists():
+                        widget.focus_set()
+                        self.status_label.configure(text="Búsqueda / Filtro (Ctrl+F)")
+                        return
+                except Exception:
+                    pass
+
+        # 2. Búsqueda recursiva del primer control de entrada o combo interactivo
+        def _buscar_control(w):
+            if isinstance(w, (ctk.CTkEntry, ctk.CTkComboBox, ttk.Combobox, tk.Entry)):
+                try:
+                    if w.winfo_exists() and w.winfo_ismapped():
+                        return w
+                except Exception:
+                    return w
+            for child in w.winfo_children():
+                encontrado = _buscar_control(child)
+                if encontrado is not None:
+                    return encontrado
+            return None
+
+        control = _buscar_control(frame)
+        if control is not None:
+            try:
+                control.focus_set()
+                self.status_label.configure(text="Búsqueda / Filtro (Ctrl+F)")
+            except Exception:
+                pass
 
     def _atajo_escape(self):
         """Esc en la ventana principal: limpia la selección de la tabla activa"""

@@ -540,6 +540,7 @@ class ContratoDialog(ctk.CTkToplevel):
         self.geometry("560x620")
         self.resizable(False, False)
         self.transient(parent)
+        self.bind("<Escape>", lambda _e: self.destroy())
 
         self._create_widgets()
         self._actualizar_resumen()
@@ -769,6 +770,7 @@ class RenovacionDialog(ctk.CTkToplevel):
         self.geometry("460x320")
         self.resizable(False, False)
         self.transient(parent)
+        self.bind("<Escape>", lambda _e: self.destroy())
 
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.pack(fill="both", expand=True, padx=20, pady=16)
@@ -873,6 +875,7 @@ class TerminacionDialog(ctk.CTkToplevel):
         self.geometry("540x520")
         self.resizable(False, False)
         self.transient(parent)
+        self.bind("<Escape>", lambda _e: self.destroy())
 
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.pack(fill="both", expand=True, padx=20, pady=16)

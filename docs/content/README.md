@@ -6,6 +6,23 @@ Sistema completo para la gestión de personal y nómina de instituciones educati
 
 Este sistema proporciona una solución integral para la administración de recursos humanos en instituciones educativas, permitiendo gestionar empleados, documentos, incidencias, permisos y nóminas de manera eficiente y organizada.
 
+## 📚 Documentación
+
+| Punto de entrada | Contenido |
+| :--- | :--- |
+| [Portal web](docs/index.html) | Lector de la tesis y la documentación técnica, catálogo y buscador |
+| [Informes académicos](informes_academicos/README.md) | Contabilidad, socio crítico, proyecto y redes de computadoras |
+| [Documentación técnica](DOCUMENTACION_TECNICA.md) | Arquitectura, instalación, operación y mantenimiento |
+| [Guía de usuario](GUIA_USUARIO.md) | Manual operativo del sistema |
+| [Tesis](TESIS/INDICE_GENERAL.md) | Índice del compendio académico y sus anexos |
+| [Guía del servidor local](GUIA_SERVIDOR_LOCAL.md) | Sincronización, cuentas, firewall y diagnóstico |
+| [Checklist de producción](CHECKLIST_PRODUCCION.md) | Instalación y validación en equipos reales |
+| [Notas de desarrollo](NOTAS_DESARROLLO.md) | Bitácora técnica y decisiones de diseño |
+| [Guía de contribución](CONTRIBUTING.md) | Convenciones, pruebas y flujo de trabajo |
+
+El portal también se abre sin conexión: `start docs/index.html` (Windows),
+`open docs/index.html` (macOS) o `xdg-open docs/index.html` (Linux).
+
 ## 🚀 Características
 
 ### Gestión de Personal

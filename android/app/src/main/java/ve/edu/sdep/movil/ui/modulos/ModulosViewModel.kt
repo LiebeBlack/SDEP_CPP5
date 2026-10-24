@@ -29,6 +29,9 @@ import ve.edu.sdep.movil.datos.local.entidad.NotaFinalEntity
 import ve.edu.sdep.movil.datos.local.entidad.PagoEntity
 import ve.edu.sdep.movil.datos.local.entidad.PeriodoAcademicoEntity
 import ve.edu.sdep.movil.datos.local.entidad.ConfiguracionEntity
+import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
+import ve.edu.sdep.movil.dominio.modelo.Sesion
+import ve.edu.sdep.movil.dominio.modelo.normalizarCedula
 import javax.inject.Inject
 
 /**
@@ -57,6 +60,7 @@ class ModulosViewModel @Inject constructor(
     matriculaDao: MatriculaDao,
     notaFinalDao: NotaFinalDao,
     configuracionDao: ConfiguracionDao,
+    sesionRepositorio: SesionRepositorio,
 ) : ViewModel() {
 
     private data class GrupoPersonal(
@@ -105,8 +109,12 @@ class ModulosViewModel @Inject constructor(
         GrupoAcademico(periodos, grados, matriculas, notas, configuraciones)
     }
 
-    val catalogo: StateFlow<Catalogo> = combine(personal, laboral, academico) {
-            personas, trabajo, academia ->
+    val catalogo: StateFlow<Catalogo> = combine(
+        personal,
+        laboral,
+        academico,
+        sesionRepositorio.sesion
+    ) { personas, trabajo, academia, sesion ->
         Catalogo(
             Datos(
                 empleados = personas.empleados,
@@ -120,11 +128,45 @@ class ModulosViewModel @Inject constructor(
                 matriculas = academia.matriculas,
                 notas = academia.notas,
                 configuraciones = academia.configuraciones,
-            ),
+            ).visiblePara(sesion),
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = Catalogo(Datos()),
     )
+
+    /**
+     * Recorta el espejo a la frontera de la sesión.
+     *
+     * Las pantallas de consulta leen Room directamente (no pasan por
+     * [TablaRepositorio]), así que el filtro de cédula tiene que aplicarse aquí
+     * también. Sin él, una cuenta de trabajador podía ver en la lista todos los
+     * empleados, documentos e incidencias del equipo aunque las escrituras ya
+     * estuvieran restringidas. Los módulos institucionales (académico, nómina y
+     * contratos) no se ofrecen al trabajador y aquí tampoco se exponen.
+     */
+    private fun Datos.visiblePara(sesion: Sesion?): Datos {
+        if (sesion?.esTrabajador != true) return this
+        val cedula = sesion.cedulaNormalizada
+        val propios: List<EmpleadoEntity> = if (cedula.isBlank()) {
+            emptyList()
+        } else {
+            empleados.filter { normalizarCedula(it.cedula) == cedula }
+        }
+        val idsPropios = propios.map { it.id }.toSet()
+        return copy(
+            empleados = propios,
+            documentos = documentos.filter { it.empleadoId in idsPropios },
+            incidencias = incidencias.filter { it.empleadoId in idsPropios },
+            contratos = emptyList(),
+            pagos = emptyList(),
+            estudiantes = emptyList(),
+            periodos = emptyList(),
+            grados = emptyList(),
+            matriculas = emptyList(),
+            notas = emptyList(),
+            configuraciones = emptyList(),
+        )
+    }
 }

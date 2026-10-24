@@ -293,8 +293,11 @@ class AutenticacionRepositorio @Inject constructor(
                     error,
                 )
             } catch (error: IOException) {
+                // El cambio no se encola: se ejecuta en el nodo central, que es
+                // la única autoridad de credenciales. Prometer una aplicación
+                // diferida dejaría al usuario creyendo que la clave cambió.
                 Resultado.Fallo(
-                    "Sin conexión con el nodo central. El cambio se aplicará cuando haya red.",
+                    "Sin conexión con el nodo central. Reintente el cambio cuando haya red.",
                     error,
                     reintentable = true,
                 )

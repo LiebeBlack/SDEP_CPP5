@@ -183,29 +183,48 @@ class LoginViewModel @Inject constructor(
                 activarBiometria = activarBiometria,
             )
 
-            // Un fallo de red con una vinculación vieja suele significar que el
-            // escritorio cambió de IP. Se renueva la vinculación y se reintenta
-            // una sola vez, sin mostrar formularios.
+            // Un corte de red aislado no justifica recorrer otra vez toda la
+            // red: se reintenta una vez contra la dirección que acaba de
+            // responder. Solo si el segundo intento también falla se renueva
+            // la vinculación (el escritorio pudo cambiar de IP), sin mostrar
+            // formularios ni perder lo que el usuario escribió.
             if (resultado is Resultado.Fallo && resultado.reintentable) {
-                val renovada = conector.revincular()
-                if (renovada is Resultado.Exito) {
+                if (resultado.causa is java.io.IOException) {
                     resultado = autenticacion.entrar(
                         usuario = actual.usuario,
                         contrasena = actual.contrasena,
                         activarBiometria = activarBiometria,
                     )
                 }
+                if (resultado is Resultado.Fallo && resultado.reintentable) {
+                    val renovada = conector.revincular()
+                    if (renovada is Resultado.Exito) {
+                        resultado = autenticacion.entrar(
+                            usuario = actual.usuario,
+                            contrasena = actual.contrasena,
+                            activarBiometria = activarBiometria,
+                        )
+                    }
+                }
             }
 
             when (resultado) {
-                is Resultado.Exito -> _estado.update {
-                    it.copy(
-                        ocupado = false,
-                        conectando = false,
-                        contrasena = "",
-                        error = null,
-                        biometriaGuardada = activarBiometria || it.biometriaGuardada,
-                    )
+                is Resultado.Exito -> {
+                    // El indicador refleja la bóveda, no la intención del
+                    // formulario: si el Keystore no pudo guardar la huella,
+                    // no se debe ofrecer un desbloqueo que no existe.
+                    val biometria = withContext(Dispatchers.IO) {
+                        autenticacion.hayCredencialBiometrica()
+                    }
+                    _estado.update {
+                        it.copy(
+                            ocupado = false,
+                            conectando = false,
+                            contrasena = "",
+                            error = null,
+                            biometriaGuardada = biometria,
+                        )
+                    }
                 }
 
                 is Resultado.Fallo -> _estado.update {
@@ -234,16 +253,32 @@ class LoginViewModel @Inject constructor(
 
             var resultado = autenticacion.entrarConBiometria()
             if (resultado is Resultado.Fallo && resultado.reintentable) {
-                val renovada = conector.revincular()
-                if (renovada is Resultado.Exito) {
+                // Mismo criterio que el ingreso con contraseña: primero un
+                // reintento directo y solo después el reemparejamiento.
+                if (resultado.causa is java.io.IOException) {
                     resultado = autenticacion.entrarConBiometria()
+                }
+                if (resultado is Resultado.Fallo && resultado.reintentable) {
+                    val renovada = conector.revincular()
+                    if (renovada is Resultado.Exito) {
+                        resultado = autenticacion.entrarConBiometria()
+                    }
                 }
             }
 
             when (resultado) {
                 is Resultado.Exito -> _estado.update { it.copy(ocupado = false) }
-                is Resultado.Fallo -> _estado.update {
-                    it.copy(ocupado = false, error = resultado.mensaje, biometriaGuardada = false)
+                is Resultado.Fallo -> {
+                    val biometria = withContext(Dispatchers.IO) {
+                        autenticacion.hayCredencialBiometrica()
+                    }
+                    _estado.update {
+                        it.copy(
+                            ocupado = false,
+                            error = resultado.mensaje,
+                            biometriaGuardada = biometria,
+                        )
+                    }
                 }
             }
         }

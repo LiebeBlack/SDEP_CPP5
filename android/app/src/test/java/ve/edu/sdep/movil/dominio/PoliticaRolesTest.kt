@@ -39,16 +39,25 @@ class PoliticaRolesTest {
     }
 
     @Test
-    fun `el usuario y el lector solo consultan`() {
-        for (rol in listOf(Rol.USER, Rol.VIEWER)) {
-            assertTrue(PoliticaRoles.tiene(rol, Permiso.CONSULTAR))
-            assertFalse(PoliticaRoles.tiene(rol, Permiso.CREAR))
-            assertFalse(PoliticaRoles.tiene(rol, Permiso.EDITAR))
-            assertFalse(PoliticaRoles.tiene(rol, Permiso.ELIMINAR))
-            assertFalse(PoliticaRoles.tiene(rol, Permiso.CONFIGURAR))
-            assertFalse(PoliticaRoles.puedeEditar(rol))
-            assertFalse(PoliticaRoles.puedeCrear(rol))
-        }
+    fun `el usuario completa su propia ficha y el lector solo consulta`() {
+        // CREAR y EDITAR del WORKER son «own»: TablaRepositorio fuerza la
+        // cédula de la sesión y el nodo central aplica la misma frontera.
+        assertTrue(PoliticaRoles.tiene(Rol.USER, Permiso.CONSULTAR))
+        assertTrue(PoliticaRoles.tiene(Rol.USER, Permiso.CREAR))
+        assertTrue(PoliticaRoles.tiene(Rol.USER, Permiso.EDITAR))
+        assertFalse(PoliticaRoles.tiene(Rol.USER, Permiso.ELIMINAR))
+        assertFalse(PoliticaRoles.tiene(Rol.USER, Permiso.CONFIGURAR))
+        assertFalse(PoliticaRoles.tiene(Rol.USER, Permiso.RESPALDAR))
+        assertTrue(PoliticaRoles.puedeEditar(Rol.USER))
+        assertTrue(PoliticaRoles.puedeCrear(Rol.USER))
+
+        assertTrue(PoliticaRoles.tiene(Rol.VIEWER, Permiso.CONSULTAR))
+        assertFalse(PoliticaRoles.tiene(Rol.VIEWER, Permiso.CREAR))
+        assertFalse(PoliticaRoles.tiene(Rol.VIEWER, Permiso.EDITAR))
+        assertFalse(PoliticaRoles.tiene(Rol.VIEWER, Permiso.ELIMINAR))
+        assertFalse(PoliticaRoles.tiene(Rol.VIEWER, Permiso.CONFIGURAR))
+        assertFalse(PoliticaRoles.puedeEditar(Rol.VIEWER))
+        assertFalse(PoliticaRoles.puedeCrear(Rol.VIEWER))
     }
 
     @Test

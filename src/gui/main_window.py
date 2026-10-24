@@ -38,6 +38,7 @@ from src.gui.theme import (
     setup_ui_raiz,
 )
 from src.models import Usuario
+from src.security.contexto import establecer, limpiar
 from src.services.configuracion_service import ConfiguracionService
 from src.services.documento_service import DocumentoService
 from src.services.empleado_service import EmpleadoService
@@ -249,7 +250,17 @@ class MainWindow(ctk.CTk):
         if self.current_user is None:
             logger.warning("Permiso %r denegado: no hay sesión activa", permiso)
             return False
-        return PermissionChecker.has_permission(self.current_user.rol_valor, permiso)
+        rol = self.current_user.rol_valor
+        # El WORKER no tiene ``create``/``update`` globales: su escritura se
+        # limita a su propia cédula y el backend la autoriza con
+        # ``create_own``/``update_own``. La interfaz preguntaba solo por el
+        # permiso global, de modo que ocultaba los botones de su propia ficha
+        # y de sus documentos e incidencias aunque el aislamiento sí permitía
+        # la operación. Se traduce únicamente para este rol; los permisos
+        # globales del backend no cambian.
+        if rol == "user" and permiso in ("create", "update"):
+            return PermissionChecker.has_permission(rol, f"{permiso}_own")
+        return PermissionChecker.has_permission(rol, permiso)
 
     def puede_ver_modulo(self, modulo: str) -> bool:
         """¿El usuario actual puede acceder a un módulo?"""
@@ -281,7 +292,17 @@ class MainWindow(ctk.CTk):
             raise
 
     def _inicializar_sesion(self, username: str | None = None) -> None:
-        """(Re)crea la sesión de la ventana y sus servicios asociados."""
+        """(Re)crea la sesión de la ventana y sus servicios asociados.
+
+        Después de cargar la cuenta se activa el contexto de aislamiento: una
+        cuenta con rol ``user`` (WORKER) solo puede leer y escribir las filas
+        de su propia cédula. Sin este paso, el filtro de SQLAlchemy existía
+        pero nunca se aplicaba en el escritorio y la cuenta personal veía toda
+        la base institucional.
+        """
+        # Una sesión anterior pudo dejar su contexto en este hilo: se limpia
+        # antes de consultar la cuenta para no heredar una identidad ajena.
+        limpiar()
         session = db_config.new_session()
         try:
             current_user = (
@@ -305,6 +326,20 @@ class MainWindow(ctk.CTk):
         self.pago_service = pago_service
         self.config_service = config_service
         self.current_user = current_user
+
+        # Frontera de acceso del WORKER. Para admin, manager y viewer el
+        # contexto no restringe filas; se establece igual para que cualquier
+        # consulta posterior tenga una identidad explícita y no la de un
+        # inicio de sesión anterior.
+        if current_user is not None:
+            establecer(
+                current_user.id,
+                current_user.username,
+                current_user.rol_valor,
+                current_user.cedula,
+            )
+        else:
+            limpiar()
 
     # ------------------------------------------------------------------
     # Interfaz
@@ -1554,6 +1589,12 @@ class MainWindow(ctk.CTk):
             self.destroy()
 
     def _cleanup(self):
+        # El contexto de identidad se desactiva antes de revocar tokens y de
+        # cerrar la ventana. Al cerrar sesión se vuelve al login en el mismo
+        # hilo: si el contexto del WORKER siguiera activo, la siguiente cuenta
+        # quedaría filtrada por la cédula anterior y podría no encontrarse a
+        # sí misma en la tabla de usuarios.
+        limpiar()
         # El respaldo periódico también se cancela aquí: _cleanup corre al
         # salir y al cerrar sesión, y tras un cierre de sesión la aplicación
         # crea otra ventana mientras esta deja de existir (una tarea
@@ -1738,6 +1779,14 @@ class MainWindow(ctk.CTk):
             "Respaldo automático",
             "No se pudo crear la copia de seguridad.\n" "Revise el registro para más detalles.",
         )
+
+    def destroy(self) -> None:
+        """Cierra la ventana sin dejar activo el contexto de aislamiento"""
+        try:
+            limpiar()
+        except Exception:
+            logger.debug("No se pudo limpiar el contexto de sesión", exc_info=True)
+        super().destroy()
 
     def run(self) -> str:
         """Ejecuta la ventana y devuelve 'logout' o 'exit' al cerrarse"""

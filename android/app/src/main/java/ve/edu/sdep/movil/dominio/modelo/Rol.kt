@@ -33,7 +33,7 @@ enum class Rol(val valor: String, val etiqueta: String, val descripcion: String)
     USER(
         valor = "user",
         etiqueta = "Usuario",
-        descripcion = "Consulta, registra estudiantes y califica; sin nómina ni contratos",
+        descripcion = "Completa su propia ficha y registra sus documentos e incidencias; sin nómina ni contratos",
     ),
     VIEWER(
         valor = "viewer",

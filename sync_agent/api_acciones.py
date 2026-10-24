@@ -23,6 +23,7 @@ acción (create/read/update/delete/report/config). La comprobación es
 from __future__ import annotations
 
 import logging
+import shutil
 import tempfile
 from datetime import date
 from decimal import Decimal
@@ -336,10 +337,26 @@ class ApiAcciones:
             db.close()
 
     def actualizar_perfil(self, token: str, cuerpo: dict) -> dict:
-        """Actualiza el propio perfil: nombre completo y cédula (solo propio)"""
+        """Actualiza el propio perfil (nombre completo; cédula solo admin)
+
+        La cédula es la frontera de aislamiento de todas las consultas del rol
+        ``user``. Si la propia cuenta pudiera cambiarla, un trabajador podría
+        apuntar a la cédula de otra persona y leer o escribir su legajo: la
+        actualización de ese campo queda reservada al administrador, que ya
+        administra las cuentas desde el escritorio.
+        """
         valido = self.gestor_sesiones.validar(token)
         from src.models import Usuario
+        from src.security.contexto import normalizar_cedula
         from src.services.auth_service import AuthService
+
+        if "cedula" in cuerpo and valido.rol != "admin":
+            solicitada = normalizar_cedula(cuerpo.get("cedula"))
+            if solicitada != normalizar_cedula(valido.cedula):
+                raise ErrorApi(
+                    "La cédula solo puede modificarla un administrador",
+                    403,
+                )
 
         db = self._sesion()
         try:
@@ -910,6 +927,13 @@ class ApiAcciones:
             contenido = Path(ruta).read_bytes()
         except OSError:
             raise ErrorApi("No se pudo leer el archivo generado", 500) from None
+        finally:
+            # El PDF/Excel vive en una carpeta temporal propia: una vez
+            # leído, se elimina. Antes cada descarga dejaba una carpeta con
+            # documentos personales en el directorio temporal del sistema.
+            carpeta = Path(ruta).parent
+            if carpeta.name.startswith("sdep_movil_"):
+                shutil.rmtree(carpeta, ignore_errors=True)
         if not contenido:
             raise ErrorApi("El archivo generado está vacío", 500)
         hash_archivo = hash_bytes(contenido)
@@ -1100,6 +1124,11 @@ class ApiAcciones:
             else:
                 raise ErrorApi(f"Tipo de archivo desconocido: «{tipo}»", 404)
             return destino, nombre
+        except Exception:
+            # Si la generación falla, la carpeta temporal no se devuelve a
+            # nadie: se borra aquí en lugar de quedar huérfana.
+            shutil.rmtree(temporal, ignore_errors=True)
+            raise
         finally:
             db.close()
 
@@ -1228,7 +1257,14 @@ class ApiAcciones:
 
     @staticmethod
     def _exportar(carpeta: str, nombre: str, filas) -> tuple[str, str]:
-        """Exporta una lista de modelos a Excel con el exportador del escritorio"""
+        """Exporta una lista de modelos a Excel con el exportador del escritorio
+
+        ``exportar_archivo`` recibe diccionarios (los encabezados son sus
+        claves), no modelos ORM. Antes se le pasaba la lista de entidades y la
+        exportación fallaba con ``AttributeError`` al pedir ``keys()``: las
+        cuatro hojas de Excel del móvil respondían 500. ``serializar`` aplica
+        ``to_dict`` y convierte fechas y Decimal a tipos de celda.
+        """
         from src.utils.exporter import exportar_archivo
 
         destino = str(Path(carpeta) / nombre)

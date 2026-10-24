@@ -414,12 +414,13 @@ class PermissionChecker:
         "contratos": ("admin", "manager"),
         "nomina": ("admin", "manager"),
         "configuracion": ("admin",),
-        # El legajo académico y las notas pertenecen al ámbito institucional,
-        # pero el escritorio permite al rol ``user`` (trabajador) consultar
-        # sus propios legajos académicos y notas. El aislamiento por cédula
-        # filtra luego las filas que no le pertenecen.
-        "estudiantes": ("admin", "manager", "user", "viewer"),
-        "notas": ("admin", "manager", "user"),
+        # El legajo académico y las notas son un subdominio institucional.
+        # El rol ``user`` (WORKER) no tiene un vínculo de propiedad con un
+        # estudiante ni con la asignación docente, y el aislamiento por cédula
+        # lo deniega por defecto: ofrecerle el módulo solo mostraría tablas
+        # vacías. La política coincide con la del teléfono (PoliticaRoles).
+        "estudiantes": ("admin", "manager", "viewer"),
+        "notas": ("admin", "manager"),
     }
 
     @classmethod

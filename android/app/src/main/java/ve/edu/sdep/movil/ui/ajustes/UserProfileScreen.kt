@@ -203,7 +203,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (perfil.nombre_completo?.isNotBlank() == true) perfil.nombre_completo else "Sin nombre",
+                        text = perfil.nombre_completo?.takeIf { it.isNotBlank() } ?: "Sin nombre",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
@@ -218,7 +218,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            FilaPerfil("Cédula", if (perfil.cedula?.isNotBlank() == true) perfil.cedula else "Sin asignar")
+            FilaPerfil("Cédula", perfil.cedula?.takeIf { it.isNotBlank() } ?: "Sin asignar")
             FilaPerfil("Rol", perfil.rol.uppercase())
             FilaPerfil("Estado", if (perfil.activo) "Activa" else "Inactiva")
             FilaPerfil(
@@ -273,7 +273,7 @@ private fun TarjetaPerfil(perfil: PerfilDto?) {
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "La cédula es obligatoria para su rol de trabajador. " +
-                                "Complete su perfil para poder usar todas las funciones.",
+                                "Consulte al administrador para que la asigne.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
@@ -319,14 +319,19 @@ private fun DialogoEdicionPerfil(
     alGuardar: () -> Unit,
     alCancelar: () -> Unit,
 ) {
+    // La cédula identifica el legajo del trabajador y es la frontera de
+    // aislamiento de sus datos. El servidor rechaza el cambio si no es
+    // administrador; aquí se refleja la misma regla para no ofrecer un campo
+    // que la operación va a denegar.
+    val puedeEditarCedula = perfil?.rol == "admin"
     AlertDialog(
         onDismissRequest = { alCancelar() },
         title = { Text("Editar perfil") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "Complete sus datos personales. La cédula es obligatoria para " +
-                        "usuarios con rol de trabajador.",
+                    text = "Actualice sus datos personales. La cédula solo puede " +
+                        "cambiarla un administrador.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -343,12 +348,15 @@ private fun DialogoEdicionPerfil(
                 OutlinedTextField(
                     value = cedula,
                     onValueChange = alCambiarCedula,
+                    enabled = puedeEditarCedula,
                     label = { Text("Cédula") },
                     supportingText = {
-                        if (perfil?.rol == "user") {
-                            Text("Obligatorio para trabajadores")
-                        } else {
-                            Text("Opcional")
+                        when {
+                            !puedeEditarCedula ->
+                                Text("Solo un administrador puede cambiarla")
+
+                            perfil?.rol == "user" -> Text("Obligatorio para trabajadores")
+                            else -> Text("Opcional")
                         }
                     },
                     singleLine = true,

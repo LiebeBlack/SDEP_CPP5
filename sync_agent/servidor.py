@@ -1210,9 +1210,25 @@ class NucleoCentral:
         payload = self._payload(operacion)
 
         if tabla == "registros_moviles":
+            from src.models import RegistroMovil
+
             usuario = str(payload.get("usuario") or "").strip()
             if usuario and usuario != sesion_usuario.username:
                 return "fuera_de_su_usuario"
+            if not usuario:
+                # Una edición parcial puede omitir ``usuario``: se resuelve
+                # por la fila existente. En un alta nueva, en cambio, el
+                # dueño es obligatorio; si no, el registro quedaría sin
+                # dueño y el WORKER perdería acceso a su propia captura.
+                existente = (
+                    sesion.query(RegistroMovil)
+                    .filter(RegistroMovil.uuid_movil == fila_uuid)
+                    .first()
+                )
+                if existente is None:
+                    return "falta_usuario"
+                if (existente.usuario or "") != sesion_usuario.username:
+                    return "fuera_de_su_usuario"
             return None
 
         if tabla not in TABLAS_PROPIAS:
@@ -1957,6 +1973,14 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 return
 
             sesion_usuario = self._sesion_opcional(dispositivo, exigir=False)
+            if dispositivo.es_movil and sesion_usuario is None:
+                # Sin la sesión de la persona, el token del puesto no alcanza
+                # para leer el nodo: ``pull`` devolvería el log global y
+                # ``epochs`` el manifiesto completo. La comprobación se hace
+                # una sola vez aquí, antes de cualquier canal de datos.
+                raise ErrorPeticion(
+                    "El teléfono debe iniciar sesión para acceder a los datos", 401
+                )
 
             if ruta.path == RUTA_PULL and metodo == "GET":
                 parametros = parse_qs(ruta.query)
@@ -2008,6 +2032,16 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 (RUTA_CONSULTAS + "/", RUTA_ADMIN + "/", RUTA_ACCIONES + "/", RUTA_ARCHIVOS + "/")
             ):
                 sesion_usuario = self.nucleo.api.validar(self._token_sesion())
+                # La sesión emitida para un teléfono queda atada al equipo que
+                # la abrió. Sin esta comprobación, el token de una persona
+                # podía presentarse desde otro puesto ya emparejado y leer sus
+                # datos con la identidad de la primera.
+                if (
+                    dispositivo.es_movil
+                    and sesion_usuario.dispositivo_id
+                    and sesion_usuario.dispositivo_id != dispositivo.dispositivo_id
+                ):
+                    raise ErrorPeticion("La sesión pertenece a otro equipo", 403)
                 # /archivos/subir trae bytes crudos, no JSON: su cuerpo se lee
                 # como binario dentro de la acción.
                 es_subida = ruta.path.startswith(RUTA_ARCHIVOS + "/subir")

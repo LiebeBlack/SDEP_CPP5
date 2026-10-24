@@ -354,9 +354,8 @@ class MainWindow(ctk.CTk):
                 self.sidebar,
                 text=f"{icono} {titulo}",
                 font=ctk.CTkFont(size=13),
-                height=38,
                 anchor="w",
-                **estilo_boton_moderno("fantasma"),
+                **estilo_boton_moderno("fantasma", height=38),
                 command=lambda fn=frame_name: self._show_frame(fn),
             )
             btn.pack(pady=2, padx=10, fill="x")

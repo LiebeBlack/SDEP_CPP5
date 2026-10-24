@@ -715,7 +715,7 @@ def estilo_tarjeta_moderna() -> dict:
     }
 
 
-def estilo_boton_moderno(variante: str = "primario") -> dict:
+def estilo_boton_moderno(variante: str = "primario", height: int | None = None) -> dict:
     """
     Devuelve los kwargs de estilo para un botón moderno (Windows 11):
 
@@ -726,9 +726,10 @@ def estilo_boton_moderno(variante: str = "primario") -> dict:
     """
     base: dict[str, object] = {
         "corner_radius": RADIO_MEDIO,
-        "height": 36,
         "border_width": 0,
     }
+    if height is not None:
+        base["height"] = height
     if variante == "primario":
         base.update(
             fg_color=COLORES["acento"],

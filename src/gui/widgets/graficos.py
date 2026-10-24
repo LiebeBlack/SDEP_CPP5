@@ -33,7 +33,9 @@ class GraficoBase(ctk.CTkFrame):
     """Base común de los gráficos: título, canvas y redibujado"""
 
     def __init__(self, parent, titulo: str, alto: int = 200, **kwargs):
-        super().__init__(parent, fg_color=COLORES["panel"], corner_radius=8, **kwargs)
+        kwargs.setdefault("fg_color", COLORES["panel"])
+        kwargs.setdefault("corner_radius", 8)
+        super().__init__(parent, **kwargs)
         self.titulo = titulo
         self.alto = alto
 
@@ -427,7 +429,9 @@ class TarjetaIndicador(ctk.CTkFrame):
         comando=None,
         **kwargs,
     ):
-        super().__init__(parent, fg_color=COLORES["campo"], corner_radius=8, **kwargs)
+        kwargs.setdefault("fg_color", COLORES["campo"])
+        kwargs.setdefault("corner_radius", 8)
+        super().__init__(parent, **kwargs)
         self.comando = comando
 
         if icono:

@@ -100,6 +100,10 @@ def _dialogo_win32(titulo: str, mensaje: str) -> bool:
     VENTANA (sin consola): sin un cuadro de diálogo visible, un fallo de
     arranque sería invisible y el programa parecería "cerrarse sin abrir".
     """
+    # ``ctypes.windll`` solo existe en Windows; comprobarlo antes mantiene el
+    # tipo correcto en los demás sistemas (y evita el error de mypy allí).
+    if sys.platform != "win32":
+        return False
     try:
         import ctypes
 

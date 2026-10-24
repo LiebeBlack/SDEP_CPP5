@@ -187,6 +187,7 @@ def configurar_fuentes_seguras() -> str:
     equipo sin errores de fuente de CustomTkinter.
     """
     global FUENTE_SEGURA
+    creada_aqui = False
     try:
         import tkinter as tk
 
@@ -194,14 +195,22 @@ def configurar_fuentes_seguras() -> str:
         if raiz is None:
             raiz = tk.Tk()
             raiz.withdraw()
+            creada_aqui = True
         try:
             fuente = familia_fuente_tk("TkDefaultFont", "Arial", raiz)
             FUENTE_SEGURA = fuente
         finally:
-            try:
-                raiz.destroy()
-            except Exception:
-                pass
+            # Solo se destruye la raíz temporal si la creó esta función: antes
+            # se destruía también la raíz del llamador, de modo que
+            # setup_ui_raiz() cerraba la propia ventana de login en cuanto
+            # terminaba de crearla ("application has been destroyed").
+            if creada_aqui:
+                try:
+                    raiz.destroy()
+                finally:
+                    # Sin esto, tkinter conserva una raíz destruida como
+                    # _default_root y las ventanas siguientes fallan.
+                    tk._default_root = None
         return FUENTE_SEGURA
     except Exception:
         FUENTE_SEGURA = "Arial"

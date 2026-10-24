@@ -16,10 +16,19 @@ from typing import TYPE_CHECKING, Any
 
 import customtkinter as ctk
 
-from src.gui.frames import _habilitar_orden_columnas, _seleccionar_fila_click
+from src.gui.frames import (
+    _habilitar_orden_columnas,
+    _indice_seleccion_combo,
+    _seleccionar_fila_click,
+)
 from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.models import Contrato, Empleado, EstadoContrato, TipoContrato
-from src.utils.helpers import format_currency, format_date, parse_date
+from src.utils.helpers import (
+    format_currency,
+    format_date,
+    parse_date,
+    parse_date_estricto,
+)
 
 if TYPE_CHECKING:
     from src.services import ContratoService
@@ -52,6 +61,9 @@ class ContratosFrame(ctk.CTkFrame):
         self.session = main_window.session
         self.servicio: ContratoService | None = self._crear_servicio()
         self._empleados: dict[int, Empleado] = {}
+        # Orden estable del selector: el índice del combo identifica al
+        # empleado sin depender de que su etiqueta sea única.
+        self._empleados_lista: list[Empleado] = []
         self.contratos: list[Contrato] = []
         self._create_widgets()
         self._cargar_empleados()
@@ -95,7 +107,11 @@ class ContratosFrame(ctk.CTkFrame):
             row=0, column=0, padx=(4, 4), pady=6, sticky="w"
         )
         self.estado_combo = ctk.CTkComboBox(
-            filtros, width=130, values=FILTROS_ESTADO, command=lambda _v: self._load_data()
+            filtros,
+            width=130,
+            values=FILTROS_ESTADO,
+            state="readonly",
+            command=lambda _v: self._load_data(),
         )
         self.estado_combo.grid(row=0, column=1, padx=(0, 12), pady=6, sticky="w")
         self.estado_combo.set("Vigentes")
@@ -104,7 +120,11 @@ class ContratosFrame(ctk.CTkFrame):
             row=0, column=2, padx=(4, 4), pady=6, sticky="w"
         )
         self.empleado_combo = ctk.CTkComboBox(
-            filtros, width=210, values=["Todos"], command=lambda _v: self._load_data()
+            filtros,
+            width=210,
+            values=["Todos"],
+            state="readonly",
+            command=lambda _v: self._load_data(),
         )
         self.empleado_combo.grid(row=0, column=3, padx=(0, 8), pady=6, sticky="w")
         self.empleado_combo.set("Todos")
@@ -241,6 +261,7 @@ class ContratosFrame(ctk.CTkFrame):
 
             empleados = EmpleadoRepository(self.session).get_activos()
             self._empleados = {int(empleado.id): empleado for empleado in empleados}
+            self._empleados_lista = list(empleados)
             valores = ["Todos"] + [
                 f"{empleado.cedula} - {empleado.nombre_completo}" for empleado in empleados
             ]
@@ -251,14 +272,10 @@ class ContratosFrame(ctk.CTkFrame):
 
     def _empleado_seleccionado(self) -> int | None:
         """Identificador del empleado elegido (None = todos)"""
-        seleccion = self.empleado_combo.get().strip()
-        if not seleccion or seleccion == "Todos":
+        indice = _indice_seleccion_combo(self.empleado_combo)
+        if indice is None or indice <= 0 or indice > len(self._empleados_lista):
             return None
-        cedula = seleccion.split(" - ", 1)[0].strip()
-        for identificador, empleado in self._empleados.items():
-            if str(getattr(empleado, "cedula", "")).strip() == cedula:
-                return identificador
-        return None
+        return int(self._empleados_lista[indice - 1].id)
 
     def _load_data(self) -> None:
         """Carga los contratos según el filtro seleccionado"""
@@ -515,6 +532,7 @@ class ContratoDialog(ctk.CTkToplevel):
         super().__init__(parent)
         self.main_window = main_window
         self.empleados = empleados
+        self._empleados_lista = list(empleados.values())
         self.servicio = servicio
         self.guardado = False
 
@@ -552,7 +570,9 @@ class ContratoDialog(ctk.CTkToplevel):
             f"{empleado.cedula} - {empleado.nombre_completo}"
             for empleado in self.empleados.values()
         ]
-        self.empleado_combo = ctk.CTkComboBox(contenedor, width=320, values=valores or ["-"])
+        self.empleado_combo = ctk.CTkComboBox(
+            contenedor, width=320, values=valores or ["-"], state="readonly"
+        )
         self.empleado_combo.grid(row=fila, column=1, sticky="w", pady=6)
         if valores:
             self.empleado_combo.set(valores[0])
@@ -561,7 +581,10 @@ class ContratoDialog(ctk.CTkToplevel):
 
         etiqueta("Tipo de contrato:", fila)
         self.tipo_combo = ctk.CTkComboBox(
-            contenedor, width=200, values=[tipo.value for tipo in TipoContrato]
+            contenedor,
+            width=200,
+            values=[tipo.value for tipo in TipoContrato],
+            state="readonly",
         )
         self.tipo_combo.grid(row=fila, column=1, sticky="w", pady=6)
         self.tipo_combo.set(TipoContrato.INDEFINIDO.value)
@@ -638,12 +661,10 @@ class ContratoDialog(ctk.CTkToplevel):
 
     def _empleado_seleccionado(self):
         """Empleado elegido en el formulario"""
-        seleccion = self.empleado_combo.get().strip()
-        cedula = seleccion.split(" - ", 1)[0].strip() if seleccion else ""
-        for empleado in self.empleados.values():
-            if str(getattr(empleado, "cedula", "")).strip() == cedula:
-                return empleado
-        return None
+        indice = _indice_seleccion_combo(self.empleado_combo)
+        if indice is None or indice >= len(self._empleados_lista):
+            return None
+        return self._empleados_lista[indice]
 
     def _actualizar_resumen(self) -> None:
         """Muestra el número de contrato calculado y las fechas efectivas"""
@@ -689,12 +710,11 @@ class ContratoDialog(ctk.CTkToplevel):
             messagebox.showwarning("Contratos", "Las horas semanales deben ser un número entero")
             return
 
-        fecha_inicio_texto = self.inicio_entry.get().strip()
-        fecha_inicio = parse_date(fecha_inicio_texto)
-        if fecha_inicio_texto and fecha_inicio is None:
-            messagebox.showwarning(
-                "Contratos", "La fecha de inicio no tiene un formato válido (dd/mm/aaaa)"
-            )
+        try:
+            fecha_inicio = parse_date_estricto(self.inicio_entry.get(), "Fecha de inicio")
+            fecha_fin = parse_date_estricto(self.fin_entry.get(), "Fecha de fin")
+        except ValueError as error:
+            messagebox.showwarning("Contratos", str(error))
             return
         fecha_inicio = fecha_inicio or date.today()
 
@@ -707,7 +727,7 @@ class ContratoDialog(ctk.CTkToplevel):
             "salario_pactado": salario,
             "horas_semanales": horas,
             "fecha_inicio": fecha_inicio,
-            "fecha_fin": parse_date(self.fin_entry.get().strip()),
+            "fecha_fin": fecha_fin,
             "renovacion_automatica": bool(self.renovacion_var.get()),
             "clausulas": self.clausulas_text.get("1.0", "end").strip() or None,
             "aprobado_por": getattr(
@@ -724,6 +744,10 @@ class ContratoDialog(ctk.CTkToplevel):
             self.servicio.crear_contrato(datos)
         except (ValueError, TypeError, AttributeError) as e:
             logger.error("No se pudo crear el contrato: %s", e)
+            messagebox.showerror("Contratos", f"No se pudo crear el contrato:\n{e}")
+            return
+        except Exception as e:  # BD bloqueada, restricción única…
+            logger.error("Error inesperado al crear el contrato: %s", e, exc_info=True)
             messagebox.showerror("Contratos", f"No se pudo crear el contrato:\n{e}")
             return
 
@@ -818,6 +842,10 @@ class RenovacionDialog(ctk.CTkToplevel):
             )
         except (ValueError, TypeError, AttributeError) as e:
             logger.error("No se pudo renovar el contrato: %s", e)
+            messagebox.showerror("Contratos", f"No se pudo renovar el contrato:\n{e}")
+            return
+        except Exception as e:  # BD bloqueada, estado inconsistente…
+            logger.error("Error inesperado al renovar el contrato: %s", e, exc_info=True)
             messagebox.showerror("Contratos", f"No se pudo renovar el contrato:\n{e}")
             return
         self.guardado = True
@@ -923,6 +951,10 @@ class TerminacionDialog(ctk.CTkToplevel):
             logger.error("No se pudo calcular el finiquito: %s", e)
             self.previa_label.configure(text=f"No se pudo calcular el finiquito: {e}")
             return None
+        except Exception as e:  # BD bloqueada, datos del contrato inconsistentes…
+            logger.error("Error inesperado al calcular el finiquito: %s", e, exc_info=True)
+            self.previa_label.configure(text=f"No se pudo calcular el finiquito: {e}")
+            return None
 
         self.previa_label.configure(
             text=(
@@ -969,6 +1001,10 @@ class TerminacionDialog(ctk.CTkToplevel):
             )
         except (ValueError, TypeError, AttributeError) as e:
             logger.error("No se pudo terminar el contrato: %s", e)
+            messagebox.showerror("Contratos", f"No se pudo terminar el contrato:\n{e}")
+            return
+        except Exception as e:  # BD bloqueada, liquidación ya registrada…
+            logger.error("Error inesperado al terminar el contrato: %s", e, exc_info=True)
             messagebox.showerror("Contratos", f"No se pudo terminar el contrato:\n{e}")
             return
         self.guardado = True

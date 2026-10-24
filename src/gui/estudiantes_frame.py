@@ -22,10 +22,14 @@ from typing import TYPE_CHECKING, Any
 
 import customtkinter as ctk
 
-from src.gui.frames import _habilitar_orden_columnas, _seleccionar_fila_click
+from src.gui.frames import (
+    _habilitar_orden_columnas,
+    _indice_seleccion_combo,
+    _seleccionar_fila_click,
+)
 from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.models import Estudiante, Genero, Grado, NivelEducativo, PeriodoAcademico
-from src.utils.helpers import format_date, parse_date
+from src.utils.helpers import format_date, parse_date_estricto
 
 if TYPE_CHECKING:
     from src.services import AcademicoService
@@ -121,6 +125,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             barra,
             width=130,
             values=[TODOS] + [_titulo_nivel(n) for n in NIVELES],
+            state="readonly",
             command=lambda _v: self._load_estudiantes(),
         )
         self.nivel_combo.grid(row=0, column=2, padx=(0, 8), pady=6, sticky="w")
@@ -133,6 +138,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             barra,
             width=110,
             values=["Activos", TODOS],
+            state="readonly",
             command=lambda _v: self._load_estudiantes(),
         )
         self.estado_combo.grid(row=0, column=4, padx=(0, 8), pady=6, sticky="w")
@@ -237,7 +243,11 @@ class EstudiantesFrame(ctk.CTkFrame):
             row=0, column=0, padx=(4, 4), pady=6, sticky="w"
         )
         self.periodo_combo = ctk.CTkComboBox(
-            barra, width=180, values=[TODOS], command=lambda _v: self._load_grados()
+            barra,
+            width=180,
+            values=[TODOS],
+            state="readonly",
+            command=lambda _v: self._load_grados(),
         )
         self.periodo_combo.grid(row=0, column=1, padx=(0, 12), pady=6, sticky="w")
         self.periodo_combo.set(TODOS)
@@ -388,7 +398,7 @@ class EstudiantesFrame(ctk.CTkFrame):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        termino = self.search_entry.get().strip()
+        termino = self.search_entry.get().strip().lower()
         nivel = self.nivel_combo.get().strip()
         solo_activos = self.estado_combo.get().strip() != TODOS
 
@@ -401,6 +411,19 @@ class EstudiantesFrame(ctk.CTkFrame):
                 estudiantes = self.servicio.listar_estudiantes_activos()
             else:
                 estudiantes = self.servicio.listar_estudiantes()
+            # Los tres filtros se combinan entre sí. Antes, escribir en el
+            # buscador ignoraba el nivel elegido (y al revés), de modo que la
+            # tabla mostraba resultados que el usuario creía filtrados.
+            if nivel != TODOS:
+                nivel_valor = nivel.lower()
+                estudiantes = [e for e in estudiantes if str(e.nivel_valor) == nivel_valor]
+            if termino:
+                estudiantes = [
+                    e
+                    for e in estudiantes
+                    if termino in (e.nombre_completo or "").lower()
+                    or termino in (e.cedula or "").lower()
+                ]
             if solo_activos:
                 estudiantes = [e for e in estudiantes if e.activo]
         except Exception as e:
@@ -584,13 +607,10 @@ class EstudiantesFrame(ctk.CTkFrame):
 
     def _periodo_seleccionado_id(self) -> int | None:
         """Periodo elegido en el filtro (None = todos)"""
-        nombre = self.periodo_combo.get().strip()
-        if not nombre or nombre == TODOS:
+        indice = _indice_seleccion_combo(self.periodo_combo)
+        if indice is None or indice <= 0 or indice > len(self._periodos):
             return None
-        for periodo in self._periodos:
-            if periodo.nombre == nombre:
-                return int(periodo.id)
-        return None
+        return int(self._periodos[indice - 1].id)
 
     def _load_grados(self) -> None:
         """Carga los grados del periodo elegido"""
@@ -778,7 +798,8 @@ class EstudiantesFrame(ctk.CTkFrame):
             matricula_id = int(seleccion[0])
         except (TypeError, ValueError):
             return
-        nombre = self.matriculas_tree.item(seleccion[0], "values")[0]
+        valores = self.matriculas_tree.item(seleccion[0], "values")
+        nombre = valores[0] if valores else "el estudiante"
         if not messagebox.askyesno(
             "Matrícula",
             f"¿Retirar a {nombre} del grado?\nLa matrícula queda en el historial.",
@@ -894,14 +915,20 @@ class EstudianteDialog(_DialogoBase):
 
         etiqueta("Género:")
         self.genero_combo = ctk.CTkComboBox(
-            contenedor, width=180, values=list(ETIQUETAS_GENERO.values())
+            contenedor,
+            width=180,
+            values=list(ETIQUETAS_GENERO.values()),
+            state="readonly",
         )
         self.genero_combo.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
 
         etiqueta("Nivel:")
         self.nivel_combo = ctk.CTkComboBox(
-            contenedor, width=180, values=[_titulo_nivel(n) for n in NIVELES]
+            contenedor,
+            width=180,
+            values=[_titulo_nivel(n) for n in NIVELES],
+            state="readonly",
         )
         self.nivel_combo.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
@@ -990,11 +1017,22 @@ class EstudianteDialog(_DialogoBase):
             messagebox.showerror("Estudiantes", "El servicio académico no está disponible")
             return
 
+        # La fecha se valida ANTES de armar los datos: si el texto no es una
+        # fecha, se avisa y no se guarda el estudiante sin fecha de nacimiento
+        # (ni se borra la que ya tenía al editar).
+        try:
+            fecha_nacimiento = parse_date_estricto(
+                self.nacimiento_entry.get(), "Fecha de nacimiento"
+            )
+        except ValueError as error:
+            self.error_label.configure(text=str(error))
+            return
+
         datos: dict[str, Any] = {
             "nombres": self.nombres_entry.get().strip(),
             "apellidos": self.apellidos_entry.get().strip(),
             "cedula": self.cedula_entry.get().strip(),
-            "fecha_nacimiento": parse_date(self.nacimiento_entry.get().strip()),
+            "fecha_nacimiento": fecha_nacimiento,
             "genero": self._genero_valor(),
             "nivel": self.nivel_combo.get().strip().lower(),
             "representante": self.representante_entry.get().strip(),
@@ -1049,14 +1087,20 @@ class GradoDialog(_DialogoBase):
 
         etiqueta("Periodo:")
         self.periodo_combo = ctk.CTkComboBox(
-            contenedor, width=220, values=[p.nombre for p in self.periodos] or ["-"]
+            contenedor,
+            width=220,
+            values=[p.nombre for p in self.periodos] or ["-"],
+            state="readonly",
         )
         self.periodo_combo.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
 
         etiqueta("Nivel:")
         self.nivel_combo = ctk.CTkComboBox(
-            contenedor, width=180, values=[_titulo_nivel(n) for n in NIVELES]
+            contenedor,
+            width=180,
+            values=[_titulo_nivel(n) for n in NIVELES],
+            state="readonly",
         )
         self.nivel_combo.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
@@ -1076,6 +1120,7 @@ class GradoDialog(_DialogoBase):
             contenedor,
             width=300,
             values=[SIN_ASIGNAR] + [texto for _id, texto in self.profesores],
+            state="readonly",
         )
         self.profesor_combo.grid(row=fila, column=1, sticky="w", pady=6)
         fila += 1
@@ -1129,13 +1174,10 @@ class GradoDialog(_DialogoBase):
 
     def _profesor_id(self) -> int | None:
         """Identificador del profesor elegido (None = sin asignar)"""
-        texto = self.profesor_combo.get().strip()
-        if not texto or texto == SIN_ASIGNAR:
+        indice = _indice_seleccion_combo(self.profesor_combo)
+        if indice is None or indice <= 0 or indice > len(self.profesores):
             return None
-        for profesor_id, etiqueta in self.profesores:
-            if etiqueta == texto:
-                return profesor_id
-        return None
+        return self.profesores[indice - 1][0]
 
     def _guardar(self) -> None:
         """Crea o actualiza el grado con las reglas del servicio"""
@@ -1187,6 +1229,7 @@ class ProfesorDialog(_DialogoBase):
             contenedor,
             width=380,
             values=[SIN_ASIGNAR] + [texto for _id, texto in self.profesores],
+            state="readonly",
         )
         self.profesor_combo.pack(anchor="w")
         if grado.profesor_id is not None:
@@ -1201,13 +1244,12 @@ class ProfesorDialog(_DialogoBase):
 
     def _guardar(self) -> None:
         """Fija el profesor elegido (None lo desasigna)"""
-        texto = self.profesor_combo.get().strip()
-        self.profesor_id = None
-        if texto and texto != SIN_ASIGNAR:
-            for profesor_id, etiqueta in self.profesores:
-                if etiqueta == texto:
-                    self.profesor_id = profesor_id
-                    break
+        indice = _indice_seleccion_combo(self.profesor_combo)
+        self.profesor_id = (
+            self.profesores[indice - 1][0]
+            if indice is not None and 0 < indice <= len(self.profesores)
+            else None
+        )
         self.guardado = True
         self.destroy()
 
@@ -1245,6 +1287,7 @@ class MatriculaDialog(_DialogoBase):
                 f"{estudiante.cedula or 's/c'} - {estudiante.nombre_completo}"
                 for estudiante in self.estudiantes
             ],
+            state="readonly",
         )
         self.estudiante_combo.grid(row=0, column=1, sticky="w", pady=6)
 
@@ -1252,7 +1295,10 @@ class MatriculaDialog(_DialogoBase):
             row=1, column=0, sticky="w", pady=6
         )
         self.grado_combo = ctk.CTkComboBox(
-            contenedor, width=380, values=[self._etiqueta_grado(g) for g in self.grados]
+            contenedor,
+            width=380,
+            values=[self._etiqueta_grado(g) for g in self.grados],
+            state="readonly",
         )
         self.grado_combo.grid(row=1, column=1, sticky="w", pady=6)
         if grado_actual is not None:
@@ -1278,21 +1324,18 @@ class MatriculaDialog(_DialogoBase):
 
     def _ids_seleccionados(self) -> tuple[int | None, int | None]:
         """Identificadores de estudiante y grado elegidos"""
-        etiqueta_estudiante = self.estudiante_combo.get().strip()
-        etiqueta_grado = self.grado_combo.get().strip()
-        estudiante_id = None
-        grado_id = None
-        for estudiante in self.estudiantes:
-            if (
-                f"{estudiante.cedula or 's/c'} - {estudiante.nombre_completo}"
-                == etiqueta_estudiante
-            ):
-                estudiante_id = int(estudiante.id)
-                break
-        for grado in self.grados:
-            if self._etiqueta_grado(grado) == etiqueta_grado:
-                grado_id = int(grado.id)
-                break
+        indice_estudiante = _indice_seleccion_combo(self.estudiante_combo)
+        indice_grado = _indice_seleccion_combo(self.grado_combo)
+        estudiante_id = (
+            int(self.estudiantes[indice_estudiante].id)
+            if indice_estudiante is not None and indice_estudiante < len(self.estudiantes)
+            else None
+        )
+        grado_id = (
+            int(self.grados[indice_grado].id)
+            if indice_grado is not None and indice_grado < len(self.grados)
+            else None
+        )
         return estudiante_id, grado_id
 
     def _guardar(self) -> None:

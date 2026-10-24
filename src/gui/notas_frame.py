@@ -24,10 +24,15 @@ from typing import TYPE_CHECKING, Any, cast
 import customtkinter as ctk
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.gui.frames import InfoDialog, _habilitar_orden_columnas, _seleccionar_fila_click
+from src.gui.frames import (
+    InfoDialog,
+    _habilitar_orden_columnas,
+    _indice_seleccion_combo,
+    _seleccionar_fila_click,
+)
 from src.gui.theme import COLORES, habilitar_scroll_rueda
 from src.models import Grado, Matricula, NotaFinal, PeriodoAcademico
-from src.utils.helpers import format_date, parse_date
+from src.utils.helpers import format_date, parse_date_estricto
 
 if TYPE_CHECKING:
     from src.services import NotaService
@@ -367,10 +372,10 @@ class NotasFrame(ctk.CTkFrame):
 
     def _periodo_seleccionado(self) -> PeriodoAcademico | None:
         """Periodo elegido en el selector de notas"""
-        nombre = self.periodo_combo.get().strip()
-        if not nombre or nombre == TODOS:
+        indice = _indice_seleccion_combo(self.periodo_combo)
+        if indice is None or indice <= 0 or indice > len(self._periodos):
             return None
-        return next((p for p in self._periodos if p.nombre == nombre), None)
+        return self._periodos[indice - 1]
 
     def _on_periodo_cambio(self) -> None:
         """Recarga los grados del periodo y sus notas"""
@@ -401,11 +406,16 @@ class NotasFrame(ctk.CTkFrame):
         self._load_notas()
 
     def _grado_seleccionado(self) -> Grado | None:
-        """Grado elegido en el selector de notas"""
-        nombre = self.grado_combo.get().strip()
-        if not nombre or nombre == "-":
+        """Grado elegido en el selector de notas
+
+        Se resuelve por posición: dos grados con el mismo ``nombre_completo``
+        (en periodos distintos) compartían etiqueta y siempre se elegía el
+        primero de la lista.
+        """
+        indice = _indice_seleccion_combo(self.grado_combo)
+        if indice is None or indice >= len(self._grados):
             return None
-        return next((g for g in self._grados if g.nombre_completo == nombre), None)
+        return self._grados[indice]
 
     def _load_data(self) -> None:
         """Recarga completa del módulo (periodos, grados y notas)"""
@@ -811,6 +821,7 @@ class _DialogoBase(ctk.CTkToplevel):
         self.geometry(geometria)
         self.resizable(False, False)
         self.transient(parent)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind("<Escape>", lambda _e: self.destroy())
 
     def _preparar_modal(self) -> None:
@@ -978,6 +989,10 @@ class NotaDialog(_DialogoBase):
         except (ValueError, TypeError, AttributeError) as e:
             self.error_label.configure(text=str(e))
             return
+        except Exception as e:  # BD bloqueada, restricción única, periodo cerrado…
+            logger.error("No se pudo guardar la nota: %s", e, exc_info=True)
+            self.error_label.configure(text=f"No se pudo guardar la nota: {e}")
+            return
         self.guardado = True
         self.destroy()
 
@@ -1066,10 +1081,20 @@ class PeriodoDialog(_DialogoBase):
         if self.servicio is None:
             messagebox.showerror("Periodos", "El servicio académico no está disponible")
             return
+        # El periodo se guarda con fechas válidas o no se guarda: antes, un
+        # texto como "31/02/2026" se convertía en None y el periodo quedaba
+        # sin fechas sin avisar.
+        try:
+            fecha_inicio = parse_date_estricto(self.inicio_entry.get(), "Fecha de inicio")
+            fecha_fin = parse_date_estricto(self.fin_entry.get(), "Fecha de fin")
+        except ValueError as error:
+            self.error_label.configure(text=str(error))
+            return
+
         datos: dict[str, Any] = {
             "nombre": self.nombre_entry.get().strip(),
-            "fecha_inicio": parse_date(self.inicio_entry.get().strip()),
-            "fecha_fin": parse_date(self.fin_entry.get().strip()),
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
             "observaciones": self.observaciones_text.get("1.0", "end").strip(),
         }
         try:
@@ -1180,6 +1205,7 @@ class BoletinDialog(ctk.CTkToplevel):
                 f"{m.estudiante.cedula or 's/c'} - {m.estudiante.nombre_completo}"
                 for m in self.matriculas
             ],
+            state="readonly",
         )
         self.estudiante_combo.grid(row=0, column=1, sticky="w", pady=6)
         ctk.CTkButton(contenedor, text="Ver boletín", width=120, command=self._mostrar).grid(
@@ -1192,14 +1218,10 @@ class BoletinDialog(ctk.CTkToplevel):
 
     def _estudiante_id(self) -> int | None:
         """Identificador del estudiante elegido"""
-        etiqueta = self.estudiante_combo.get().strip()
-        for matricula in self.matriculas:
-            if (
-                f"{matricula.estudiante.cedula or 's/c'} - {matricula.estudiante.nombre_completo}"
-                == etiqueta
-            ):
-                return int(matricula.estudiante_id)
-        return None
+        indice = _indice_seleccion_combo(self.estudiante_combo)
+        if indice is None or indice >= len(self.matriculas):
+            return None
+        return int(self.matriculas[indice].estudiante_id)
 
     def _mostrar(self) -> None:
         """Genera y muestra el texto del boletín"""
@@ -1213,31 +1235,40 @@ class BoletinDialog(ctk.CTkToplevel):
             messagebox.showerror("Boletín", f"No se pudo generar el boletín:\n{e}")
             return
 
+        estudiante = datos.get("estudiante") or {}
+        periodo = datos.get("periodo") or {}
+        nombre_estudiante = estudiante.get("nombre", "-")
         lineas = [
-            f"BOLETÍN DE CALIFICACIONES — {datos['periodo']['nombre']}",
+            f"BOLETÍN DE CALIFICACIONES — {periodo.get('nombre', '-')}",
             "=" * 52,
-            f"Estudiante: {datos['estudiante']['nombre']}",
-            f"Cédula: {datos['estudiante'].get('cedula') or 's/c'}",
-            f"Nivel: {datos['estudiante'].get('nivel', '-')}",
+            f"Estudiante: {nombre_estudiante}",
+            f"Cédula: {estudiante.get('cedula') or 's/c'}",
+            f"Nivel: {estudiante.get('nivel', '-')}",
         ]
-        grado = datos.get("grado")
+        grado = datos.get("grado") or {}
         if grado:
-            lineas.append(f"Grado: {grado['nombre']}")
-        lineas.append(f"Periodo: {datos['periodo']['nombre']} ({datos['periodo']['estado']})")
+            lineas.append(f"Grado: {grado.get('nombre', '-')}")
+        lineas.append(
+            f"Periodo: {periodo.get('nombre', '-')} ({periodo.get('estado', '-')})"
+        )
         lineas.append("-" * 52)
-        if datos["notas"]:
-            for nota in datos["notas"]:
-                lineas.append(f"  {nota['materia']:<30} {nota['calificacion']:>6.2f}")
+        notas = datos.get("notas") or []
+        if notas:
+            for nota in notas:
+                materia = str(nota.get("materia", "-"))
+                calificacion = float(nota.get("calificacion") or 0)
+                lineas.append(f"  {materia:<30} {calificacion:>6.2f}")
         else:
             lineas.append("  (sin notas registradas)")
         lineas.append("-" * 52)
         promedio = datos.get("promedio")
         lineas.append(f"Promedio: {promedio if promedio is not None else '-'}")
         lineas.append(
-            f"Escala: {datos['nota_minima']:g} a {datos['nota_maxima']:g} · "
-            f"Aprobatoria: {datos['nota_aprobatoria']:g}"
+            f"Escala: {float(datos.get('nota_minima') or 0):g} a "
+            f"{float(datos.get('nota_maxima') or 0):g} · "
+            f"Aprobatoria: {float(datos.get('nota_aprobatoria') or 0):g}"
         )
-        InfoDialog(self, f"Boletín — {datos['estudiante']['nombre']}", "\n".join(lineas))
+        InfoDialog(self, f"Boletín — {nombre_estudiante}", "\n".join(lineas))
 
 
 class ActaDialog(ctk.CTkToplevel):
@@ -1245,7 +1276,7 @@ class ActaDialog(ctk.CTkToplevel):
 
     def __init__(self, parent, datos: dict[str, Any]):
         super().__init__(parent)
-        grado = datos.get("grado", {})
+        grado = datos.get("grado") or {}
         self.title(f"Acta {grado.get('nombre', '')}".strip())
         self.geometry("900x540")
         self.transient(parent)
@@ -1255,7 +1286,7 @@ class ActaDialog(ctk.CTkToplevel):
             self,
             text=(
                 f"Acta final · {grado.get('nombre', '')} · "
-                f"{datos.get('periodo', {}).get('nombre', '')}"
+                f"{(datos.get('periodo') or {}).get('nombre', '')}"
             ),
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color=COLORES["texto"],
@@ -1317,7 +1348,8 @@ class ActaDialog(ctk.CTkToplevel):
 
         leyenda = (
             f"Profesor: {datos.get('profesor') or '-'} · "
-            f"Escala: {datos.get('nota_minima', 0):g} a {datos.get('nota_maxima', 0):g} · "
+            f"Escala: {float(datos.get('nota_minima') or 0):g} a "
+            f"{float(datos.get('nota_maxima') or 0):g} · "
             f"Aprobatoria: {aprobatoria:g}"
         )
         ctk.CTkLabel(

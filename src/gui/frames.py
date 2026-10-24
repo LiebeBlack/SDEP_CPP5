@@ -29,6 +29,9 @@ from src.utils.helpers import (
     format_date,
     mantener_ventana_al_frente,
     parse_date,
+    parse_date_estricto,
+    parse_float_estricto,
+    parse_int_estricto,
     ruta_a_uri,
 )
 from src.utils.pdf_generator import PDFGenerator
@@ -123,23 +126,61 @@ def _seleccionar_fila_click(tree, event) -> bool:
     return True
 
 
+def _indice_seleccion_combo(combo) -> int | None:
+    """
+    Índice del valor elegido en un combo, comparando por posición.
+
+    Los diálogos resolvían el registro seleccionado buscando la etiqueta
+    visible y quedándose con la primera coincidencia: dos estudiantes sin
+    cédula (ambos ``s/c - Nombre``) o dos grados con el mismo nombre en
+    periodos distintos hacían que la operación se aplicara al registro
+    equivocado. El índice es la única identidad fiable aquí.
+    """
+    try:
+        texto = combo.get().strip()
+        valores = list(combo.cget("values") or ())
+    except Exception:
+        logger.debug("No se pudo leer el combo de selección", exc_info=True)
+        return None
+    try:
+        return valores.index(texto)
+    except ValueError:
+        return None
+
+
 def _clave_orden(valor) -> tuple:
     """
     Clave de ordenación inteligente para un valor de celda.
 
-    Si el valor es numérico (cédulas, salarios, fechas numéricas) se
-    ordena como número; en caso contrario se ordena como texto sin
-    distinguir mayúsculas.
+    Las fechas se ordenan cronológicamente y los números por su valor real,
+    aceptando el formato local (``1.234,56``) y el decimal con punto
+    (``10.5``). Antes se eliminaban todos los puntos y comas, de modo que
+    "10.5" se comparaba como 105 (quedaba debajo de "9.8") y las fechas se
+    comparaban como texto ("01/02/2026" antes que "15/01/2026").
     """
     texto = str(valor or "").strip()
-    limpio = texto.replace("$", "").replace(",", "").replace(".", "").replace(" ", "")
-    if limpio and limpio.lstrip("-").isdigit():
-        try:
-            return (0, float(limpio))
-        except ValueError:
-            # Dígitos fuera del rango de float: se ordenan como texto
-            pass
-    return (1, texto.lower())
+    if not texto:
+        return (1, "")
+
+    fecha = parse_date(texto)
+    if fecha is not None:
+        return (0, fecha.toordinal())
+
+    limpio = texto.replace("$", "").replace("€", "").replace("£", "").replace(" ", "")
+    limpio = limpio.replace("\u00a0", "")
+    if "," in limpio and "." in limpio:
+        # 1.234,56 -> 1234.56 | 1,234.56 -> 1234.56
+        if limpio.rfind(",") > limpio.rfind("."):
+            limpio = limpio.replace(".", "").replace(",", ".")
+        else:
+            limpio = limpio.replace(",", "")
+    else:
+        limpio = limpio.replace(",", ".")
+    try:
+        return (0, float(limpio))
+    except (TypeError, ValueError, OverflowError):
+        # Texto no numérico: se ordena como texto sin distinguir mayúsculas
+        return (1, texto.lower())
 
 
 def _marcar_encabezado_orden(tree, columna, ascendente: bool) -> None:
@@ -594,8 +635,20 @@ class EmpleadosFrame(ctk.CTkFrame):
         super().__init__(parent)
         self.main_window = main_window
         self.current_empleado = None
+        # Temporizador del filtro de búsqueda (evita consultar en cada tecla).
+        self._search_timer: str | None = None
         self._create_widgets()
         self._load_empleados()
+
+    def destroy(self):
+        """Cancela el filtro pendiente antes de destruir el frame"""
+        if getattr(self, "_search_timer", None) is not None:
+            try:
+                self.after_cancel(self._search_timer)
+            except Exception:
+                logger.debug("temporizador de búsqueda no cancelable", exc_info=True)
+            self._search_timer = None
+        super().destroy()
 
     def _create_widgets(self):
         """Crea los widgets del frame de empleados"""
@@ -733,10 +786,17 @@ class EmpleadosFrame(ctk.CTkFrame):
     def _load_empleados(self):
         """Carga la lista de empleados (todos los activos)"""
         try:
-            self._update_tree(self.main_window.empleado_service.listar_empleados_activos())
-        except Exception:
-            # Mostrar error pero no bloquear la UI
-            self.tree.insert("", "end", values=("", "Error al cargar datos", "", "", "", ""))
+            empleados = self.main_window.empleado_service.listar_empleados_activos()
+        except Exception as error:
+            # Antes se insertaba una fila falsa "Error al cargar datos" y el
+            # fallo ni siquiera quedaba en el log: el usuario no sabía qué
+            # había pasado y la fila era seleccionable (doble clic roto).
+            logger.exception("No se pudieron cargar los empleados")
+            messagebox.showerror(
+                "Empleados", f"No se pudieron cargar los empleados:\n{error}"
+            )
+            return
+        self._update_tree(empleados)
 
     def _consultar_empleados_visibles(self) -> list[Empleado]:
         """Empleados que cumplen la búsqueda, el filtro de tipo y activos"""
@@ -761,7 +821,21 @@ class EmpleadosFrame(ctk.CTkFrame):
             self._load_empleados()
 
     def _on_search(self, event=None):
-        """Maneja el evento de búsqueda por nombre o cédula"""
+        """Agrupa las pulsaciones y filtra una sola vez tras una pausa breve
+
+        Cada tecla disparaba una consulta completa a la base: escribir
+        "contrato" eran ocho consultas y ocho reconstrucciones de la tabla.
+        """
+        if self._search_timer is not None:
+            try:
+                self.after_cancel(self._search_timer)
+            except Exception:
+                logger.debug("temporizador de búsqueda no cancelable", exc_info=True)
+        self._search_timer = self.after(250, self._aplicar_filtros_diferido)
+
+    def _aplicar_filtros_diferido(self) -> None:
+        """Aplica el filtro cuando el usuario deja de escribir"""
+        self._search_timer = None
         self._aplicar_filtros()
 
     def _on_filter(self, event=None):
@@ -1686,18 +1760,22 @@ class EmpleadoDialog(ctk.CTkToplevel):
             "nombres": self.nombres_entry.get(),
             "apellidos": self.apellidos_entry.get(),
             "cedula": self.cedula_entry.get(),
-            "fecha_nacimiento": self._parse_date(self.fecha_nacimiento_entry.get()),
+            "fecha_nacimiento": self._parse_date(
+                self.fecha_nacimiento_entry.get(), "Fecha de nacimiento"
+            ),
             "genero": self.genero_combo.get(),
             "estado_civil": self.estado_civil_combo.get(),
-            "peso": self._parse_float(self.peso_entry.get()),
-            "altura": self._parse_float(self.altura_entry.get()),
+            "peso": self._parse_float(self.peso_entry.get(), "Peso"),
+            "altura": self._parse_float(self.altura_entry.get(), "Altura"),
             "tipo_sangre": self.tipo_sangre_entry.get(),
             "nacionalidad": self.nacionalidad_entry.get(),
             "tipo_empleado": self.tipo_empleado_combo.get(),
             "cargo": self.cargo_entry.get(),
             "departamento": self.departamento_entry.get(),
-            "fecha_contratacion": self._parse_date(self.fecha_contratacion_entry.get()),
-            "salario_base": self._parse_float(self.salario_base_entry.get()),
+            "fecha_contratacion": self._parse_date(
+                self.fecha_contratacion_entry.get(), "Fecha de contratación"
+            ),
+            "salario_base": self._parse_float(self.salario_base_entry.get(), "Salario base"),
             "nivel_educativo": self.nivel_educativo_entry.get(),
             "especialidad": self.especialidad_entry.get(),
             "titulo_obtenido": self.titulo_obtenido_entry.get(),
@@ -1723,9 +1801,9 @@ class EmpleadoDialog(ctk.CTkToplevel):
             "hijos": self._get_text(self.hijos_text),
         }
 
-    def _parse_date(self, date_str: str) -> date | None:
-        """Parsea una fecha"""
-        return parse_date(date_str)
+    def _parse_date(self, date_str: str, etiqueta: str = "Fecha") -> date | None:
+        """Parsea una fecha y avisa si el texto no es válido"""
+        return parse_date_estricto(date_str, etiqueta)
 
     def _on_select_foto(self):
         """Selecciona una imagen para la foto de perfil"""
@@ -1759,12 +1837,9 @@ class EmpleadoDialog(ctk.CTkToplevel):
                 "Advertencia", f"El empleado se guardó pero no se pudo almacenar la foto: {e}"
             )
 
-    def _parse_float(self, value: str) -> float | None:
-        """Parsea un float"""
-        try:
-            return float(value) if value else None
-        except ValueError:
-            return None
+    def _parse_float(self, value: str, etiqueta: str = "Valor") -> float | None:
+        """Parsea un número y avisa si el texto no es válido"""
+        return parse_float_estricto(value, etiqueta)
 
     def _on_save(self):
         """Maneja el guardado del empleado"""
@@ -2407,8 +2482,12 @@ class DocumentoDialog(ctk.CTkToplevel):
                 "tipo_documento": self.tipo_combo.get(),
                 "titulo": self.titulo_entry.get(),
                 "descripcion": self.descripcion_text.get("1.0", "end").strip(),
-                "fecha_emision": self._parse_date(self.fecha_emision_entry.get()),
-                "fecha_vencimiento": self._parse_date(self.fecha_vencimiento_entry.get()),
+                "fecha_emision": self._parse_date(
+                    self.fecha_emision_entry.get(), "Fecha de emisión"
+                ),
+                "fecha_vencimiento": self._parse_date(
+                    self.fecha_vencimiento_entry.get(), "Fecha de vencimiento"
+                ),
                 "nombre_archivo": self.file_label.cget("text"),
             }
 
@@ -2441,11 +2520,9 @@ class DocumentoDialog(ctk.CTkToplevel):
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar documento: {str(e)}")
 
-    def _parse_date(self, date_str: str) -> date | None:
-        """Parsea una fecha"""
-        from src.utils.helpers import parse_date
-
-        return parse_date(date_str)
+    def _parse_date(self, date_str: str, etiqueta: str = "Fecha") -> date | None:
+        """Parsea una fecha y avisa si el texto no es válido"""
+        return parse_date_estricto(date_str, etiqueta)
 
     def _on_cancel(self):
         """Cancela la operación"""
@@ -3010,8 +3087,10 @@ class IncidenciaDialog(ctk.CTkToplevel):
             datos = {
                 "empleado_id": self.empleado_id,
                 "tipo_incidencia": self.tipo_combo.get(),
-                "fecha_inicio": self._parse_date(self.fecha_inicio_entry.get()),
-                "fecha_fin": self._parse_date(self.fecha_fin_entry.get()),
+                "fecha_inicio": self._parse_date(
+                    self.fecha_inicio_entry.get(), "Fecha de inicio"
+                ),
+                "fecha_fin": self._parse_date(self.fecha_fin_entry.get(), "Fecha de fin"),
                 "motivo": self.motivo_text.get("1.0", "end").strip(),
                 "descripcion": self.descripcion_text.get("1.0", "end").strip(),
             }
@@ -3051,11 +3130,9 @@ class IncidenciaDialog(ctk.CTkToplevel):
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar incidencia: {str(e)}")
 
-    def _parse_date(self, date_str: str) -> date | None:
-        """Parsea una fecha"""
-        from src.utils.helpers import parse_date
-
-        return parse_date(date_str)
+    def _parse_date(self, date_str: str, etiqueta: str = "Fecha") -> date | None:
+        """Parsea una fecha y avisa si el texto no es válido"""
+        return parse_date_estricto(date_str, etiqueta)
 
     def _on_cancel(self):
         """Cancela la operación"""
@@ -4735,57 +4812,54 @@ class ConfiguracionFrame(ctk.CTkFrame):
         if not _verificar_permiso_accion(self.main_window, "config", "modificar configuración"):
             return
         try:
-            # Configuración general
-            self.main_window.config_service.establecer_valor(
-                "nombre_institucion", self.nombre_institucion_entry.get()
-            )
-            self.main_window.config_service.establecer_valor("ruc", self.ruc_entry.get())
-            self.main_window.config_service.establecer_valor(
-                "direccion", self.direccion_entry.get()
-            )
-            self.main_window.config_service.establecer_valor("telefono", self.telefono_entry.get())
-            self.main_window.config_service.establecer_valor("email", self.email_entry.get())
-
-            # Configuración de nómina
-            self.main_window.config_service.establecer_valor(
-                "porcentaje_seguro", self._parse_float(self.porcentaje_seguro_entry.get())
-            )
-            self.main_window.config_service.establecer_valor(
-                "porcentaje_pension", self._parse_float(self.porcentaje_pension_entry.get())
-            )
-            self.main_window.config_service.establecer_valor(
-                "porcentaje_impuesto", self._parse_float(self.porcentaje_impuesto_entry.get())
-            )
-            self.main_window.config_service.establecer_valor(
-                "salario_minimo", self._parse_float(self.salario_minimo_entry.get())
-            )
-
-            # Configuración de RRHH
-            self.main_window.config_service.establecer_valor(
-                "dias_vacaciones_anual", self._parse_int(self.dias_vacaciones_entry.get())
-            )
-            self.main_window.config_service.establecer_valor(
-                "horas_laborales_semana", self._parse_int(self.horas_laborales_entry.get())
-            )
+            # Se validan TODOS los valores antes de escribir ninguno: antes,
+            # un porcentaje mal tecleado se guardaba como None y el resto de
+            # la configuración ya había cambiado (estado a medias).
+            valores = {
+                # Configuración general
+                "nombre_institucion": self.nombre_institucion_entry.get(),
+                "ruc": self.ruc_entry.get(),
+                "direccion": self.direccion_entry.get(),
+                "telefono": self.telefono_entry.get(),
+                "email": self.email_entry.get(),
+                # Configuración de nómina
+                "porcentaje_seguro": self._parse_float(
+                    self.porcentaje_seguro_entry.get(), "Porcentaje de seguro"
+                ),
+                "porcentaje_pension": self._parse_float(
+                    self.porcentaje_pension_entry.get(), "Porcentaje de pensión"
+                ),
+                "porcentaje_impuesto": self._parse_float(
+                    self.porcentaje_impuesto_entry.get(), "Porcentaje de impuesto"
+                ),
+                "salario_minimo": self._parse_float(
+                    self.salario_minimo_entry.get(), "Salario mínimo"
+                ),
+                # Configuración de RRHH
+                "dias_vacaciones_anual": self._parse_int(
+                    self.dias_vacaciones_entry.get(), "Días de vacaciones"
+                ),
+                "horas_laborales_semana": self._parse_int(
+                    self.horas_laborales_entry.get(), "Horas laborales semanales"
+                ),
+            }
+            for clave, valor in valores.items():
+                self.main_window.config_service.establecer_valor(clave, valor)
 
             messagebox.showinfo("Éxito", "Configuración guardada correctamente")
 
+        except ValueError as error:
+            messagebox.showerror("Valores no válidos", str(error))
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar configuración: {str(e)}")
 
-    def _parse_float(self, value: str) -> float | None:
-        """Parsea un float"""
-        try:
-            return float(value) if value else None
-        except ValueError:
-            return None
+    def _parse_float(self, value: str, etiqueta: str = "Valor") -> float | None:
+        """Parsea un número y avisa si el texto no es válido"""
+        return parse_float_estricto(value, etiqueta)
 
-    def _parse_int(self, value: str) -> int | None:
-        """Parsea un int"""
-        try:
-            return int(value) if value else None
-        except ValueError:
-            return None
+    def _parse_int(self, value: str, etiqueta: str = "Valor") -> int | None:
+        """Parsea un entero y avisa si el texto no es válido"""
+        return parse_int_estricto(value, etiqueta)
 
     # ------------------------------------------------------------------
     # Seguridad y respaldos
@@ -5352,13 +5426,21 @@ class PagoDialog(ctk.CTkToplevel):
                 "empleado_id": empleado_id,
                 "tipo_pago": tipo_valor,
                 "metodo_pago": self.metodo_combo.get(),
-                "periodo_inicio": parse_date(self.periodo_inicio_entry.get().strip()),
-                "periodo_fin": parse_date(self.periodo_fin_entry.get().strip()),
-                "salario_base": self._parse_float(self.salario_entry.get()),
-                "bonificaciones": self._parse_float(self.bonificaciones_entry.get()),
-                "horas_extra": self._parse_float(self.horas_extra_entry.get()),
-                "otras_deducciones": self._parse_float(self.otras_deducciones_entry.get()),
-                "descuentos": self._parse_float(self.descuentos_entry.get()),
+                "periodo_inicio": parse_date_estricto(
+                    self.periodo_inicio_entry.get(), "Inicio del periodo"
+                ),
+                "periodo_fin": parse_date_estricto(
+                    self.periodo_fin_entry.get(), "Fin del periodo"
+                ),
+                "salario_base": self._parse_float(self.salario_entry.get(), "Salario base"),
+                "bonificaciones": self._parse_float(
+                    self.bonificaciones_entry.get(), "Bonificaciones"
+                ),
+                "horas_extra": self._parse_float(self.horas_extra_entry.get(), "Horas extra"),
+                "otras_deducciones": self._parse_float(
+                    self.otras_deducciones_entry.get(), "Otras deducciones"
+                ),
+                "descuentos": self._parse_float(self.descuentos_entry.get(), "Descuentos"),
                 "pagado": 1 if self.pagado_var.get() else 0,
                 "observaciones": self.observaciones_text.get("1.0", "end").strip() or None,
             }
@@ -5382,11 +5464,10 @@ class PagoDialog(ctk.CTkToplevel):
         except Exception as e:
             messagebox.showerror("Error", f"Error al guardar pago: {str(e)}")
 
-    def _parse_float(self, value: str) -> float | None:
-        try:
-            return float(value) if value else 0.0
-        except ValueError:
-            return 0.0
+    def _parse_float(self, value: str, etiqueta: str = "Monto") -> float:
+        """Parsea un monto: vacío cuenta como 0, texto inválido avisa"""
+        numero = parse_float_estricto(value, etiqueta)
+        return 0.0 if numero is None else numero
 
 
 class UsuarioDialog(ctk.CTkToplevel):

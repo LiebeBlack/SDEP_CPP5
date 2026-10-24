@@ -118,6 +118,96 @@ def parse_date(fecha_str: str | date | datetime | None, formato: str = "%d/%m/%Y
     return None
 
 
+def parse_date_estricto(valor: object, etiqueta: str = "fecha") -> date | None:
+    """
+    Parsea una fecha de formulario y avisa cuando el texto no es válido.
+
+    A diferencia de ``parse_date`` (que devuelve ``None`` tanto para un
+    campo vacío como para "31/02/2026"), aquí el campo vacío sigue siendo
+    ``None`` —es opcional— pero un texto ilegible lanza ``ValueError`` con
+    un mensaje para el usuario. Así un error de tecleo nunca se guarda
+    como "sin fecha" ni borra la fecha que ya había.
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, (date, datetime)):
+        return valor.date() if isinstance(valor, datetime) else valor
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    fecha = parse_date(texto)
+    if fecha is None:
+        raise ValueError(f"{etiqueta}: «{texto}» no es una fecha válida (dd/mm/aaaa)")
+    return fecha
+
+
+def _normalizar_numero(texto: str) -> str:
+    """
+    Normaliza un número escrito por el usuario.
+
+    Acepta el formato local (``1.234,56``) y el anglosajón (``1234.56``),
+    además del símbolo de moneda y espacios. Con ambos separadores
+    presentes se asume que el punto separa los miles y la coma los
+    decimales, que es lo que teclea el usuario de la aplicación.
+    """
+    limpio = texto.replace(" ", "").replace("\u00a0", "").strip()
+    for simbolo in ("$", "€", "£"):
+        limpio = limpio.replace(simbolo, "")
+    if "," in limpio and "." in limpio:
+        limpio = limpio.replace(".", "").replace(",", ".")
+    else:
+        limpio = limpio.replace(",", ".")
+    return limpio
+
+
+def parse_float_estricto(valor: object, etiqueta: str = "valor") -> float | None:
+    """
+    Parsea un número decimal de formulario y avisa si no es válido.
+
+    Vacío -> ``None`` (campo opcional). Texto que no sea un número lanza
+    ``ValueError`` en lugar de devolver ``None`` y guardar el campo vacío
+    en silencio.
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, bool):
+        return float(valor)
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    try:
+        return float(_normalizar_numero(texto))
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError(f"{etiqueta}: «{texto}» no es un número válido") from error
+
+
+def parse_int_estricto(valor: object, etiqueta: str = "valor") -> int | None:
+    """
+    Parsea un número entero de formulario y avisa si no es válido.
+
+    Vacío -> ``None``. Un decimal con parte fraccionaria también se rechaza
+    (no se trunca en silencio).
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, bool):
+        return int(valor)
+    if isinstance(valor, int):
+        return valor
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    try:
+        numero = float(_normalizar_numero(texto))
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError(f"{etiqueta}: «{texto}» no es un número entero válido") from error
+    if not numero.is_integer():
+        raise ValueError(f"{etiqueta}: «{texto}» debe ser un número entero")
+    return int(numero)
+
+
 def format_currency(monto: float, simbolo: str = "$") -> str:
     """
     Formatea un monto como moneda

@@ -1419,7 +1419,24 @@ class MainWindow(ctk.CTk):
 
             frame_class = FRAME_CLASSES.get(frame_name)
             if frame_class is not None:
-                self.current_frame = frame_class(self.content_frame, self)
+                # Si el constructor del módulo falla a mitad, los widgets ya
+                # creados siguen colgados de content_frame y nunca se
+                # destruirían: cada intento dejaba un frame huérfano (y, en
+                # Notas, su token académico sin revocar).
+                hijos_previos = set(self.content_frame.winfo_children())
+                try:
+                    frame = frame_class(self.content_frame, self)
+                except Exception:
+                    for hijo in self.content_frame.winfo_children():
+                        if hijo not in hijos_previos:
+                            try:
+                                hijo.destroy()
+                            except Exception:
+                                logger.debug(
+                                    "No se pudo destruir el frame a medio crear", exc_info=True
+                                )
+                    raise
+                self.current_frame = frame
                 self.current_frame.pack(fill="both", expand=True)
             else:
                 self.current_frame = ctk.CTkFrame(self.content_frame)
@@ -1510,6 +1527,16 @@ class MainWindow(ctk.CTk):
         # programada viva fallaría contra la sesión de base de datos ya
         # cerrada).
         self._cancelar_respaldo_programado()
+        # El frame activo se destruye ANTES de cerrar la sesión: NotasFrame
+        # revoca su token académico en destroy() y necesita la sesión viva.
+        # El orden anterior (cerrar sesión y destruir después) hacía que la
+        # revocación fallara y dependiera del barrido global de tokens.
+        if self.current_frame is not None:
+            try:
+                self.current_frame.destroy()
+            except Exception:
+                logger.debug("No se pudo destruir el frame activo", exc_info=True)
+            self.current_frame = None
         for atributo in (
             "_clock_timer",
             "_eventos_poll_id",

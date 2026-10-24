@@ -275,9 +275,19 @@ class SecurityValidator:
                 derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
                 return secrets.compare_digest(derived.hex(), stored_hex)
 
-            # Hash legado: salt$sha256_hex
+            # Hash legado: salt$sha256_hex — verificación puente.
+            # Se mantiene solo para compatibilidad con hashes antiguos; los
+            # llamadores deben re-hashear con hash_password() tras éxito.
             if len(parts) == 2:
                 salt_str, hash_value = parts
+                # Verificación segura con timing constante; el hash almacenado
+                # sigue siendo SHA-256 pero la comparación usa compare_digest.
+                import warnings
+                warnings.warn(
+                    "Hash legado SHA-256 detectado; re-hashear con PBKDF2",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
                 computed = hashlib.sha256((password + salt_str).encode()).hexdigest()
                 return secrets.compare_digest(computed, hash_value)
         except (ValueError, TypeError):

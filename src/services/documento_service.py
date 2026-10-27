@@ -178,9 +178,7 @@ class DocumentoService:
             # Normalizar fechas si vienen en datos
             for f_campo in ("fecha_emision", "fecha_vencimiento"):
                 if f_campo in datos and datos[f_campo] is not None:
-                    datos[f_campo] = parse_date_estricto(
-                        datos[f_campo], f_campo.replace("_", " ")
-                    )
+                    datos[f_campo] = parse_date_estricto(datos[f_campo], f_campo.replace("_", " "))
 
             if "tipo_documento" in datos and hasattr(datos["tipo_documento"], "value"):
                 datos["tipo_documento"] = datos["tipo_documento"].value

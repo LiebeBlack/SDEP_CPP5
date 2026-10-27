@@ -207,9 +207,7 @@ class EmpleadoService:
         # Normalizar todas las fechas presentes, no solo las cadenas del formulario.
         for f_campo in ("fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"):
             if f_campo in datos:
-                datos[f_campo] = parse_date_estricto(
-                    datos[f_campo], f_campo.replace("_", " ")
-                )
+                datos[f_campo] = parse_date_estricto(datos[f_campo], f_campo.replace("_", " "))
 
         # Normalizar floats si vienen en datos. El salario base es un campo
         # obligatorio: un vacío o un valor no numérico falla con un mensaje
@@ -229,9 +227,7 @@ class EmpleadoService:
                         "El salario base debe ser un número finito mayor que cero"
                     ) from None
                 raise
-            if num_campo == "salario_base" and (
-                datos[num_campo] is None or datos[num_campo] <= 0
-            ):
+            if num_campo == "salario_base" and (datos[num_campo] is None or datos[num_campo] <= 0):
                 raise ValueError("El salario base debe ser un número finito mayor que cero")
 
         # Actualizar campos

@@ -26,7 +26,9 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import event, false, func, inspect as sa_inspect, select
+from sqlalchemy import event, false, func
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import select
 from sqlalchemy.orm import Session, with_loader_criteria
 
 from src.models import (
@@ -217,10 +219,7 @@ def _motivo_escritura(
                 "salario_base",
                 "activo",
             }
-            if any(
-                estado.attrs[campo].history.has_changes()
-                for campo in campos_protegidos
-            ):
+            if any(estado.attrs[campo].history.has_changes() for campo in campos_protegidos):
                 return "Solo un administrador puede modificar los datos laborales o de identidad."
         if not _es_empleado_propio(obj, session, contexto):
             return "No puede modificar la ficha de otra cédula."
@@ -261,9 +260,7 @@ def _motivo_escritura(
             "ultimo_login",
         }
         campos_modificados = {
-            atributo.key
-            for atributo in estado.attrs
-            if atributo.history.has_changes()
+            atributo.key for atributo in estado.attrs if atributo.history.has_changes()
         }
         if campos_modificados - campos_editables:
             return "No puede modificar el rol, la cédula ni el estado de su cuenta."

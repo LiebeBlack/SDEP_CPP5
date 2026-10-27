@@ -311,9 +311,7 @@ class DashboardFrame(ctk.CTkFrame):
         for title_text, key, icon, modulo in cards:
             card = self._create_stat_card(cards_container, title_text, icon, key, modulo)
             self._tarjetas_dashboard.append(card)
-        cards_container.bind(
-            "<Configure>", self._reorganizar_tarjetas_dashboard, add="+"
-        )
+        cards_container.bind("<Configure>", self._reorganizar_tarjetas_dashboard, add="+")
 
         # Indicadores analíticos y gráficos
         self._crear_indicadores(contenedor)
@@ -381,9 +379,7 @@ class DashboardFrame(ctk.CTkFrame):
                 **estilo_boton_moderno("secundario", height=42),
             )
             self._acciones_dashboard.append(btn)
-        actions_container.bind(
-            "<Configure>", self._reorganizar_acciones_dashboard, add="+"
-        )
+        actions_container.bind("<Configure>", self._reorganizar_acciones_dashboard, add="+")
 
     # ------------------------------------------------------------------
     # Indicadores y gráficos
@@ -480,9 +476,7 @@ class DashboardFrame(ctk.CTkFrame):
         self._columnas_indicadores = columnas
         contenedor = self._indicadores_dashboard[0].master
         for indice in range(3):
-            contenedor.grid_columnconfigure(
-                indice, weight=1 if indice < columnas else 0
-            )
+            contenedor.grid_columnconfigure(indice, weight=1 if indice < columnas else 0)
         for indice, tarjeta in enumerate(self._indicadores_dashboard):
             tarjeta.grid(
                 row=indice // columnas,
@@ -503,9 +497,7 @@ class DashboardFrame(ctk.CTkFrame):
         self._columnas_acciones = columnas
         contenedor = self._acciones_dashboard[0].master
         for indice in range(3):
-            contenedor.grid_columnconfigure(
-                indice, weight=1 if indice < columnas else 0
-            )
+            contenedor.grid_columnconfigure(indice, weight=1 if indice < columnas else 0)
         for indice, boton in enumerate(self._acciones_dashboard):
             boton.grid(
                 row=indice // columnas,
@@ -526,9 +518,7 @@ class DashboardFrame(ctk.CTkFrame):
         self._columnas_graficos = columnas
         contenedor = self._graficos_dashboard[0].master
         for indice in range(3):
-            contenedor.grid_columnconfigure(
-                indice, weight=1 if indice < columnas else 0
-            )
+            contenedor.grid_columnconfigure(indice, weight=1 if indice < columnas else 0)
         for indice, grafico in enumerate(self._graficos_dashboard):
             grafico.grid(
                 row=indice // columnas,
@@ -4010,9 +4000,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 logger.info("Pestaña de sincronización omitida: agente no instalado")
             else:
                 sync_tab = self.notebook.add("Sincronización")
-                self._create_sincronizacion_tab(
-                    sync_tab, INTERVALO_MINIMO, INTERVALO_MAXIMO
-                )
+                self._create_sincronizacion_tab(sync_tab, INTERVALO_MINIMO, INTERVALO_MAXIMO)
 
         # Pestaña de auditoría (solo administradores)
         if self.main_window.tiene_permiso("config"):
@@ -4358,9 +4346,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
     # ------------------------------------------------------------------
     # Sincronización con la intranet
     # ------------------------------------------------------------------
-    def _create_sincronizacion_tab(
-        self, parent, intervalo_minimo: int, intervalo_maximo: int
-    ):
+    def _create_sincronizacion_tab(self, parent, intervalo_minimo: int, intervalo_maximo: int):
         """Crea la pestaña del agente de sincronización bidireccional"""
         # Interruptor principal + estado
         cabecera = ctk.CTkFrame(parent, fg_color=COLORES["panel"])

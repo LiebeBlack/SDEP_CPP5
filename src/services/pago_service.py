@@ -327,9 +327,7 @@ class PagoService:
         # Normalizar fechas si vienen en datos
         for f_campo in ("periodo_inicio", "periodo_fin", "fecha_pago"):
             if f_campo in datos and isinstance(datos[f_campo], str):
-                datos[f_campo] = parse_date_estricto(
-                    datos[f_campo], f_campo.replace("_", " ")
-                )
+                datos[f_campo] = parse_date_estricto(datos[f_campo], f_campo.replace("_", " "))
 
         campos_calculo = {
             "salario_base",

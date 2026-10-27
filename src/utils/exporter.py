@@ -25,9 +25,7 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 def _proteger_texto_planilla(valor: str) -> str:
     """Evita que Excel interprete texto exportado como fórmula ejecutable."""
     inicio = valor.lstrip(" \t\r\n")
-    if valor.startswith(("\t", "\r", "\n")) or (
-        inicio and inicio[0] in ("=", "+", "-", "@")
-    ):
+    if valor.startswith(("\t", "\r", "\n")) or (inicio and inicio[0] in ("=", "+", "-", "@")):
         return "'" + valor
     return valor
 
@@ -70,8 +68,7 @@ def _encabezados(datos: Sequence[dict]) -> list[str]:
         raise ValueError("No hay datos para exportar")
     primera = datos[0]
     return [
-        _proteger_texto_planilla(_CONTROL_CHARS.sub(" ", str(clave)))
-        for clave in primera.keys()
+        _proteger_texto_planilla(_CONTROL_CHARS.sub(" ", str(clave))) for clave in primera.keys()
     ]
 
 

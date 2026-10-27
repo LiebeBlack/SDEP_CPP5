@@ -1450,9 +1450,7 @@ class MainWindow(ctk.CTk):
             try:
                 boton.configure(
                     fg_color=COLORES["acento"] if activo else "transparent",
-                    hover_color=(
-                        COLORES["acento_hover"] if activo else COLORES["panel_hover"]
-                    ),
+                    hover_color=(COLORES["acento_hover"] if activo else COLORES["panel_hover"]),
                     text_color="white" if activo else COLORES["texto"],
                 )
             except tk.TclError:

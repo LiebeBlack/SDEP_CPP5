@@ -12,6 +12,7 @@ Concentra las tres reglas del módulo académico:
 """
 
 import logging
+import math
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -70,8 +71,8 @@ class NotaService:
     def _config_float(self, clave: str, por_defecto: float) -> float:
         """Lee un parámetro numérico de configuración sin romperse"""
         try:
-            valor = ConfiguracionRepository(self.session).get_valor(clave, por_defecto)
-            return float(valor)
+            valor = float(ConfiguracionRepository(self.session).get_valor(clave, por_defecto))
+            return valor if math.isfinite(valor) else por_defecto
         except (SQLAlchemyError, TypeError, ValueError):
             logger.debug("No se pudo leer la configuración %s", clave, exc_info=True)
             return por_defecto
@@ -80,6 +81,10 @@ class NotaService:
         """Rango configurado de calificaciones (mínimo, máximo)"""
         minima = self._config_float("nota_minima", ESCALA_MINIMA_POR_DEFECTO)
         maxima = self._config_float("nota_maxima", ESCALA_MAXIMA_POR_DEFECTO)
+        if not math.isfinite(minima):
+            minima = ESCALA_MINIMA_POR_DEFECTO
+        if not math.isfinite(maxima):
+            maxima = ESCALA_MAXIMA_POR_DEFECTO
         if maxima <= minima:
             maxima = minima + 1.0
         return minima, maxima
@@ -391,6 +396,8 @@ class NotaService:
             calificacion = float(str(valor).replace(",", "."))
         except (TypeError, ValueError):
             raise ValueError("la calificación debe ser un número") from None
+        if not math.isfinite(calificacion):
+            raise ValueError("la calificación debe ser un número finito")
         minima, maxima = self.escala()
         if calificacion < minima or calificacion > maxima:
             raise ValueError(f"la calificación debe estar entre {minima:g} y {maxima:g}")

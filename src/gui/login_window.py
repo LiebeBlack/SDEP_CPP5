@@ -17,6 +17,8 @@ from src.gui.theme import (
     cancelar_after_pendientes,
     centrar_ventana,
     enable_windows_dpi_awareness,
+    estilo_boton_moderno,
+    estilo_campo_moderno,
     setup_ui_raiz,
 )
 from src.models import Usuario
@@ -254,7 +256,14 @@ class LoginWindow(ctk.CTk):
     # ------------------------------------------------------------------
     def _create_ui(self):
         # Panel izquierdo: marca
-        brand = ctk.CTkFrame(self, width=340, corner_radius=0, fg_color="#22334d")
+        brand = ctk.CTkFrame(
+            self,
+            width=340,
+            corner_radius=0,
+            fg_color=COLORES["panel"],
+            border_width=1,
+            border_color=COLORES["borde"],
+        )
         brand.pack(side="left", fill="y")
         brand.pack_propagate(False)
 
@@ -262,15 +271,15 @@ class LoginWindow(ctk.CTk):
             brand,
             text="SISTEMA DE GESTIÓN\nDE PERSONAL Y NÓMINA",
             font=ctk.CTkFont(size=22, weight="bold"),
-            text_color="white",
+            text_color=COLORES["texto"],
             justify="center",
-        ).pack(expand=True, padx=20)
+        ).pack(expand=True, padx=24)
 
         ctk.CTkLabel(
             brand,
             text="Instituciones Educativas",
             font=ctk.CTkFont(size=12),
-            text_color="#aabbdd",
+            text_color=COLORES["texto_suave"],
         ).pack(pady=(0, 30))
 
         # Panel derecho: formulario (colores de la paleta activa para que
@@ -292,9 +301,8 @@ class LoginWindow(ctk.CTk):
         self.username_entry = ctk.CTkEntry(
             inner,
             width=320,
-            height=38,
-            fg_color=COLORES["panel"],
-            text_color=COLORES["texto"],
+            height=40,
+            **estilo_campo_moderno(),
             placeholder_text="Nombre de usuario",
         )
         self.username_entry.pack(pady=(4, 12))
@@ -306,10 +314,9 @@ class LoginWindow(ctk.CTk):
         self.password_entry = ctk.CTkEntry(
             inner,
             width=320,
-            height=38,
+            height=40,
             show="*",
-            fg_color=COLORES["panel"],
-            text_color=COLORES["texto"],
+            **estilo_campo_moderno(),
             placeholder_text="Contraseña",
         )
         self.password_entry.pack(pady=(4, 16))
@@ -321,6 +328,7 @@ class LoginWindow(ctk.CTk):
             width=320,
             height=42,
             font=ctk.CTkFont(size=14, weight="bold"),
+            **estilo_boton_moderno("primario"),
             command=self._on_login,
         )
         login_btn.pack(pady=(4, 10))
@@ -345,8 +353,7 @@ class LoginWindow(ctk.CTk):
         try:
             session = db_config.get_session()
             try:
-                auth = AuthService(session)
-                admin = auth.usuario_por_username("admin")
+                admin = session.query(Usuario).filter(Usuario.username == "admin").first()
                 if admin is not None and admin.debe_cambiar_password:
                     if SecurityValidator.verify_password(
                         DEFAULT_ADMIN_PASSWORD, admin.password_hash

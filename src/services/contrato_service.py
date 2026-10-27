@@ -116,12 +116,8 @@ class ContratoService:
         if not empleado:
             raise ValueError("Empleado no encontrado")
 
-        fecha_inicio = datos.get("fecha_inicio")
-        if isinstance(fecha_inicio, str):
-            fecha_inicio = parse_date(fecha_inicio)
-        fecha_fin = datos.get("fecha_fin")
-        if isinstance(fecha_fin, str):
-            fecha_fin = parse_date(fecha_fin)
+        fecha_inicio = parse_date_estricto(datos.get("fecha_inicio"), "Fecha de inicio")
+        fecha_fin = parse_date_estricto(datos.get("fecha_fin"), "Fecha de fin")
 
         # Normalizar a valor de texto: si la interfaz entrega el miembro del
         # enum, ``str(miembro)`` produce "EstadoContrato.VIGENTE" y la
@@ -191,7 +187,10 @@ class ContratoService:
         if "estado" in datos and datos["estado"]:
             contrato.estado = EstadoContrato.coerce(datos["estado"])
         if "salario_pactado" in datos and datos["salario_pactado"] is not None:
-            contrato.salario_pactado = redondear(a_decimal(datos["salario_pactado"]))
+            salario = redondear(a_decimal(datos["salario_pactado"]))
+            if salario <= 0:
+                raise ValueError("El salario pactado debe ser mayor que cero")
+            contrato.salario_pactado = salario
 
         for campo in (
             "cargo",
@@ -208,8 +207,14 @@ class ContratoService:
             if campo in datos and datos[campo] is not None:
                 setattr(contrato, campo, datos[campo])
 
-        if "horas_semanales" in datos and datos["horas_semanales"]:
-            contrato.horas_semanales = int(datos["horas_semanales"])
+        if "horas_semanales" in datos and datos["horas_semanales"] is not None:
+            try:
+                horas = int(datos["horas_semanales"])
+            except (TypeError, ValueError, OverflowError):
+                raise ValueError("Las horas semanales deben ser un número entero") from None
+            if not 1 <= horas <= 60:
+                raise ValueError("Las horas semanales deben estar entre 1 y 60")
+            contrato.horas_semanales = horas
         if "renovacion_automatica" in datos:
             contrato.renovacion_automatica = 1 if datos["renovacion_automatica"] else 0
 
@@ -594,21 +599,16 @@ class ContratoService:
         if salario <= 0:
             errores.append("El salario pactado debe ser mayor que cero")
 
-        fecha_inicio = datos.get("fecha_inicio")
-        if isinstance(fecha_inicio, str):
-            fecha_inicio = parse_date(fecha_inicio)
-        fecha_fin = datos.get("fecha_fin")
-        if isinstance(fecha_fin, str):
-            fecha_fin = parse_date(fecha_fin)
-        # Un texto no vacío que no parsea no puede pasar como "sin fecha":
-        # un contrato indefinido con la fecha de fin mal tecleada se guardaba
-        # como indefinido y un inicio ilegible arrancaba "hoy" en silencio.
-        for etiqueta, valor in (
-            ("inicio", datos.get("fecha_inicio")),
-            ("fin", datos.get("fecha_fin")),
-        ):
-            if isinstance(valor, str) and valor.strip() and parse_date(valor) is None:
-                errores.append(f"La fecha de {etiqueta} no tiene un formato válido (dd/mm/aaaa)")
+        try:
+            fecha_inicio = parse_date_estricto(datos.get("fecha_inicio"), "Fecha de inicio")
+        except ValueError as error:
+            errores.append(str(error))
+            fecha_inicio = None
+        try:
+            fecha_fin = parse_date_estricto(datos.get("fecha_fin"), "Fecha de fin")
+        except ValueError as error:
+            errores.append(str(error))
+            fecha_fin = None
         if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
             errores.append("La fecha de fin no puede ser anterior a la de inicio")
 

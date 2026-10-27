@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import event, false, func, select
+from sqlalchemy import event, false, func, inspect as sa_inspect, select
 from sqlalchemy.orm import Session, with_loader_criteria
 
 from src.models import (
@@ -205,6 +205,23 @@ def _motivo_escritura(
     if isinstance(obj, Empleado):
         if es_baja:
             return "Solo un administrador puede dar de baja una ficha."
+        if not es_nueva:
+            estado = sa_inspect(obj)
+            campos_protegidos = {
+                "cedula",
+                "tipo_empleado",
+                "cargo",
+                "departamento",
+                "fecha_contratacion",
+                "fecha_terminacion",
+                "salario_base",
+                "activo",
+            }
+            if any(
+                estado.attrs[campo].history.has_changes()
+                for campo in campos_protegidos
+            ):
+                return "Solo un administrador puede modificar los datos laborales o de identidad."
         if not _es_empleado_propio(obj, session, contexto):
             return "No puede modificar la ficha de otra cédula."
         permiso = "create_own" if es_nueva else "update_own"
@@ -230,8 +247,26 @@ def _motivo_escritura(
         return None
 
     if isinstance(obj, Usuario):
-        if getattr(obj, "id", None) != contexto.usuario_id:
+        if es_nueva or getattr(obj, "id", None) != contexto.usuario_id:
             return "Solo puede modificar su propia cuenta."
+        estado = sa_inspect(obj)
+        campos_editables = {
+            "password_hash",
+            "password_historial",
+            "fecha_cambio_password",
+            "debe_cambiar_password",
+            "intentos_fallidos",
+            "bloqueado",
+            "bloqueado_hasta",
+            "ultimo_login",
+        }
+        campos_modificados = {
+            atributo.key
+            for atributo in estado.attrs
+            if atributo.history.has_changes()
+        }
+        if campos_modificados - campos_editables:
+            return "No puede modificar el rol, la cédula ni el estado de su cuenta."
         return None
 
     # Nómina, contratos, academia y configuración: el WORKER no escribe aquí.

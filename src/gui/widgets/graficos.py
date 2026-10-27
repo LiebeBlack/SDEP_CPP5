@@ -34,7 +34,9 @@ class GraficoBase(ctk.CTkFrame):
 
     def __init__(self, parent, titulo: str, alto: int = 200, **kwargs):
         kwargs.setdefault("fg_color", COLORES["panel"])
-        kwargs.setdefault("corner_radius", 8)
+        kwargs.setdefault("corner_radius", 14)
+        kwargs.setdefault("border_width", 1)
+        kwargs.setdefault("border_color", COLORES["borde"])
         super().__init__(parent, **kwargs)
         self.titulo = titulo
         self.alto = alto
@@ -430,7 +432,9 @@ class TarjetaIndicador(ctk.CTkFrame):
         **kwargs,
     ):
         kwargs.setdefault("fg_color", COLORES["campo"])
-        kwargs.setdefault("corner_radius", 8)
+        kwargs.setdefault("corner_radius", 14)
+        kwargs.setdefault("border_width", 1)
+        kwargs.setdefault("border_color", COLORES["borde"])
         super().__init__(parent, **kwargs)
         self.comando = comando
 

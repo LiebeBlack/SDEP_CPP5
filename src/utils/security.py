@@ -13,6 +13,7 @@ Este módulo proporciona:
 
 import hashlib
 import logging
+import math
 import re
 import secrets
 from pathlib import Path
@@ -148,8 +149,8 @@ class SecurityValidator:
         Returns:
             True si el tamaño es válido
         """
-        max_size = max_size or cls.MAX_FILE_SIZE
-        return 0 < file_size <= max_size
+        max_size = cls.MAX_FILE_SIZE if max_size is None else max_size
+        return type(file_size) is int and 0 < file_size <= max_size
 
     @classmethod
     def validate_numeric_range(
@@ -168,6 +169,8 @@ class SecurityValidator:
         """
         try:
             num_value = float(value)
+            if not math.isfinite(num_value):
+                return False
 
             if min_val is not None and num_value < min_val:
                 return False
@@ -175,7 +178,7 @@ class SecurityValidator:
                 return False
 
             return True
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, OverflowError):
             return False
 
     @classmethod
@@ -272,6 +275,13 @@ class SecurityValidator:
                 _, iterations_str, salt_hex, stored_hex = parts
                 iterations = int(iterations_str)
                 salt = bytes.fromhex(salt_hex)
+                # El hash viene de la base de datos y puede estar dañado o
+                # manipulado; acotar el costo evita una entrada que bloquee
+                # la interfaz durante una cantidad arbitraria de tiempo.
+                if not 1 <= iterations <= 2_000_000 or not 8 <= len(salt) <= 64:
+                    return False
+                if len(stored_hex) != 64:
+                    return False
                 derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
                 return secrets.compare_digest(derived.hex(), stored_hex)
 
@@ -343,7 +353,10 @@ class SecurityValidator:
                 if field_type == "string":
                     sanitized[field] = cls.sanitize_string(str(value))
                 elif field_type == "numeric":
-                    sanitized[field] = float(str(value).replace(",", "."))
+                    numero = float(str(value).replace(",", "."))
+                    if not math.isfinite(numero):
+                        raise ValueError("el número debe ser finito")
+                    sanitized[field] = numero
                 elif field_type == "email":
                     sanitized[field] = cls.sanitize_string(str(value)).lower()
                 elif field_type == "phone":

@@ -18,7 +18,11 @@ from tkinter import filedialog, messagebox, ttk
 
 import customtkinter as ctk
 
-from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.theme import (
+    COLORES,
+    estilo_boton_moderno,
+    habilitar_scroll_rueda,
+)
 from src.gui.widgets import GraficoBarras, GraficoDona, GraficoLinea, TarjetaIndicador
 from src.models import Empleado, EstadoIncidencia
 from src.services.auth_service import AuthService
@@ -272,18 +276,28 @@ class DashboardFrame(ctk.CTkFrame):
         # Título
         title = ctk.CTkLabel(
             contenedor,
-            text="Panel de Control",
+            text="Panel de control",
             font=ctk.CTkFont(size=24, weight="bold"),
             text_color=COLORES["texto"],
+            anchor="w",
         )
-        title.pack(pady=(16, 8))
+        title.pack(fill="x", padx=22, pady=(16, 8))
 
         # Contenedor de tarjetas
-        cards_container = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
+        cards_container = ctk.CTkFrame(
+            contenedor,
+            fg_color=COLORES["panel"],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORES["borde"],
+        )
         cards_container.pack(fill="x", padx=20, pady=6)
 
         # Tarjetas de estadísticas
         self.stats_cards = {}
+        self._stats_cards_container = cards_container
+        self._tarjetas_dashboard: list[ctk.CTkFrame] = []
+        self._columnas_tarjetas = 0
 
         cards = [
             ("Total Empleados", "empleados", "👥", "empleados"),
@@ -294,28 +308,40 @@ class DashboardFrame(ctk.CTkFrame):
         ]
         cards = [card for card in cards if self.main_window.puede_ver_modulo(card[3])]
 
-        for i, (title_text, key, icon, modulo) in enumerate(cards):
+        for title_text, key, icon, modulo in cards:
             card = self._create_stat_card(cards_container, title_text, icon, key, modulo)
-            columna = i % 3
-            fila = i // 3
-            card.grid(row=fila, column=columna, padx=8, pady=8, sticky="nsew")
-            cards_container.grid_columnconfigure(columna, weight=1, uniform="tarjetas")
+            self._tarjetas_dashboard.append(card)
+        cards_container.bind(
+            "<Configure>", self._reorganizar_tarjetas_dashboard, add="+"
+        )
 
         # Indicadores analíticos y gráficos
         self._crear_indicadores(contenedor)
         self._crear_graficos(contenedor)
 
         # Sección de acciones rápidas
-        actions_frame = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
+        actions_frame = ctk.CTkFrame(
+            contenedor,
+            fg_color=COLORES["panel"],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORES["borde"],
+        )
         actions_frame.pack(fill="x", padx=20, pady=(6, 16))
 
         actions_title = ctk.CTkLabel(
-            actions_frame, text="Acciones Rápidas", font=ctk.CTkFont(size=18, weight="bold")
+            actions_frame,
+            text="Acciones rápidas",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=COLORES["texto"],
+            anchor="w",
         )
-        actions_title.pack(pady=10)
+        actions_title.pack(fill="x", padx=18, pady=(14, 4))
 
-        actions_container = ctk.CTkFrame(actions_frame)
-        actions_container.pack(fill="x", padx=10, pady=10)
+        actions_container = ctk.CTkFrame(actions_frame, fg_color="transparent")
+        actions_container.pack(fill="x", padx=10, pady=(4, 12))
+        self._acciones_dashboard: list[ctk.CTkButton] = []
+        self._columnas_acciones = 0
 
         # Crear funciones separadas para evitar problemas de lambda
         def go_to_empleados():
@@ -347,17 +373,30 @@ class DashboardFrame(ctk.CTkFrame):
             if self.main_window.puede_ver_modulo(modulo)
         ]
 
-        for i, (text, command) in enumerate(acciones):
-            btn = ctk.CTkButton(actions_container, text=text, height=46, command=command)
-            btn.grid(row=(i // 3), column=(i % 3), padx=8, pady=8, sticky="nsew")
-            actions_container.grid_columnconfigure(i % 3, weight=1)
+        for text, command in acciones:
+            btn = ctk.CTkButton(
+                actions_container,
+                text=text,
+                command=command,
+                **estilo_boton_moderno("secundario", height=42),
+            )
+            self._acciones_dashboard.append(btn)
+        actions_container.bind(
+            "<Configure>", self._reorganizar_acciones_dashboard, add="+"
+        )
 
     # ------------------------------------------------------------------
     # Indicadores y gráficos
     # ------------------------------------------------------------------
     def _crear_indicadores(self, contenedor) -> None:
         """Crea la fila de indicadores clave (KPI)"""
-        marco = ctk.CTkFrame(contenedor, fg_color=COLORES["panel"])
+        marco = ctk.CTkFrame(
+            contenedor,
+            fg_color=COLORES["panel"],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORES["borde"],
+        )
         marco.pack(fill="x", padx=20, pady=6)
 
         self.indicadores: dict[str, TarjetaIndicador] = {}
@@ -367,21 +406,25 @@ class DashboardFrame(ctk.CTkFrame):
             ("dotacion", "Dotación activa", "👥", "empleados"),
         ]
         definiciones = [item for item in definiciones if self.main_window.puede_ver_modulo(item[3])]
-        for indice, (clave, titulo, icono, modulo) in enumerate(definiciones):
+        self._indicadores_dashboard: list[TarjetaIndicador] = []
+        self._columnas_indicadores = 0
+        for clave, titulo, icono, modulo in definiciones:
             tarjeta = TarjetaIndicador(
                 marco,
                 titulo=titulo,
                 icono=icono,
                 comando=lambda m=modulo: self._navegar(m),
             )
-            tarjeta.grid(row=0, column=indice, padx=8, pady=8, sticky="nsew")
-            marco.grid_columnconfigure(indice, weight=1)
             self.indicadores[clave] = tarjeta
+            self._indicadores_dashboard.append(tarjeta)
+        marco.bind("<Configure>", self._reorganizar_indicadores_dashboard, add="+")
 
     def _crear_graficos(self, contenedor) -> None:
         """Crea los gráficos analíticos dibujados sobre Canvas"""
         marco = ctk.CTkFrame(contenedor, fg_color="transparent")
         marco.pack(fill="x", padx=20, pady=6)
+        self._graficos_dashboard: list[ctk.CTkFrame] = []
+        self._columnas_graficos = 0
 
         self.grafico_departamentos = None
         self.grafico_contratos = None
@@ -396,15 +439,104 @@ class DashboardFrame(ctk.CTkFrame):
             ("contratos", "grafico_contratos", GraficoDona, "Contratos por tipo"),
             ("nomina", "grafico_egresos", GraficoLinea, "Egresos netos por mes"),
         ]
-        columna = 0
         for modulo, atributo, clase, titulo in graficos:
             if not self.main_window.puede_ver_modulo(modulo):
                 continue
             grafico = clase(marco, titulo=titulo, alto=210)
-            grafico.grid(row=0, column=columna, padx=6, pady=0, sticky="nsew")
             setattr(self, atributo, grafico)
-            marco.grid_columnconfigure(columna, weight=1)
-            columna += 1
+            self._graficos_dashboard.append(grafico)
+        marco.bind("<Configure>", self._reorganizar_graficos_dashboard, add="+")
+
+    def _reorganizar_tarjetas_dashboard(self, evento) -> None:
+        """Reparte los KPI en hasta tres columnas según el ancho disponible."""
+        cantidad = len(self._tarjetas_dashboard)
+        if cantidad == 0 or evento.width <= 1:
+            return
+        columnas = max(1, min(3, evento.width // 210, cantidad))
+        if columnas == self._columnas_tarjetas:
+            return
+        self._columnas_tarjetas = columnas
+        for indice in range(3):
+            self._stats_cards_container.grid_columnconfigure(
+                indice, weight=1 if indice < columnas else 0
+            )
+        for indice, tarjeta in enumerate(self._tarjetas_dashboard):
+            tarjeta.grid(
+                row=indice // columnas,
+                column=indice % columnas,
+                padx=8,
+                pady=8,
+                sticky="nsew",
+            )
+
+    def _reorganizar_indicadores_dashboard(self, evento) -> None:
+        """Ajusta las tarjetas KPI para pantallas estrechas."""
+        cantidad = len(self._indicadores_dashboard)
+        if cantidad == 0 or evento.width <= 1:
+            return
+        columnas = max(1, min(3, evento.width // 240, cantidad))
+        if columnas == self._columnas_indicadores:
+            return
+        self._columnas_indicadores = columnas
+        contenedor = self._indicadores_dashboard[0].master
+        for indice in range(3):
+            contenedor.grid_columnconfigure(
+                indice, weight=1 if indice < columnas else 0
+            )
+        for indice, tarjeta in enumerate(self._indicadores_dashboard):
+            tarjeta.grid(
+                row=indice // columnas,
+                column=indice % columnas,
+                padx=8,
+                pady=8,
+                sticky="nsew",
+            )
+
+    def _reorganizar_acciones_dashboard(self, evento) -> None:
+        """Distribuye accesos rápidos en columnas según el ancho del panel."""
+        cantidad = len(self._acciones_dashboard)
+        if cantidad == 0 or evento.width <= 1:
+            return
+        columnas = max(1, min(3, evento.width // 230, cantidad))
+        if columnas == self._columnas_acciones:
+            return
+        self._columnas_acciones = columnas
+        contenedor = self._acciones_dashboard[0].master
+        for indice in range(3):
+            contenedor.grid_columnconfigure(
+                indice, weight=1 if indice < columnas else 0
+            )
+        for indice, boton in enumerate(self._acciones_dashboard):
+            boton.grid(
+                row=indice // columnas,
+                column=indice % columnas,
+                padx=6,
+                pady=6,
+                sticky="ew",
+            )
+
+    def _reorganizar_graficos_dashboard(self, evento) -> None:
+        """Refluye las gráficas para conservar un ancho legible en ventanas pequeñas."""
+        cantidad = len(self._graficos_dashboard)
+        if cantidad == 0 or evento.width <= 1:
+            return
+        columnas = max(1, min(3, evento.width // 300, cantidad))
+        if columnas == self._columnas_graficos:
+            return
+        self._columnas_graficos = columnas
+        contenedor = self._graficos_dashboard[0].master
+        for indice in range(3):
+            contenedor.grid_columnconfigure(
+                indice, weight=1 if indice < columnas else 0
+            )
+        for indice, grafico in enumerate(self._graficos_dashboard):
+            grafico.grid(
+                row=indice // columnas,
+                column=indice % columnas,
+                padx=6,
+                pady=6,
+                sticky="nsew",
+            )
 
     def _navegar(self, modulo: str) -> None:
         """Navega a un módulo si el rol lo permite"""
@@ -420,7 +552,14 @@ class DashboardFrame(ctk.CTkFrame):
         self, parent, title: str, icon: str, key: str, modulo: str = ""
     ) -> ctk.CTkFrame:
         """Crea una tarjeta de estadística (clic navega al módulo indicado)"""
-        card = ctk.CTkFrame(parent, height=170, fg_color=COLORES["campo"], corner_radius=8)
+        card = ctk.CTkFrame(
+            parent,
+            height=148,
+            fg_color=COLORES["campo"],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORES["borde"],
+        )
         card.pack_propagate(False)
 
         if modulo:
@@ -437,14 +576,14 @@ class DashboardFrame(ctk.CTkFrame):
             card.bind("<Button-1>", _navegar)
             card.configure(cursor="hand2")
 
-        icon_label = ctk.CTkLabel(card, text=icon, font=ctk.CTkFont(size=40))
+        icon_label = ctk.CTkLabel(card, text=icon, font=ctk.CTkFont(size=32))
         icon_label.pack(pady=(8, 2))
         if modulo:
             icon_label.bind("<Button-1>", _navegar)
             icon_label.configure(cursor="hand2")
 
         value_label = ctk.CTkLabel(
-            card, text="0", font=ctk.CTkFont(size=28, weight="bold"), text_color=COLORES["texto"]
+            card, text="0", font=ctk.CTkFont(size=26, weight="bold"), text_color=COLORES["texto"]
         )
         value_label.pack(pady=2)
         if modulo:
@@ -3862,9 +4001,18 @@ class ConfiguracionFrame(ctk.CTkFrame):
         # Pestaña de sincronización con la intranet (admin): los parámetros
         # del agente son POR EQUIPO (dirección, token e identidad propios) y
         # por eso no se guardan en la tabla de configuración replicada.
+        # El agente es opcional; si no está instalado, la pantalla general de
+        # configuración debe seguir disponible para el resto de ajustes.
         if self.main_window.tiene_permiso("config"):
-            sync_tab = self.notebook.add("Sincronización")
-            self._create_sincronizacion_tab(sync_tab)
+            try:
+                from sync_agent.config import INTERVALO_MAXIMO, INTERVALO_MINIMO
+            except ImportError:
+                logger.info("Pestaña de sincronización omitida: agente no instalado")
+            else:
+                sync_tab = self.notebook.add("Sincronización")
+                self._create_sincronizacion_tab(
+                    sync_tab, INTERVALO_MINIMO, INTERVALO_MAXIMO
+                )
 
         # Pestaña de auditoría (solo administradores)
         if self.main_window.tiene_permiso("config"):
@@ -4210,10 +4358,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
     # ------------------------------------------------------------------
     # Sincronización con la intranet
     # ------------------------------------------------------------------
-    def _create_sincronizacion_tab(self, parent):
+    def _create_sincronizacion_tab(
+        self, parent, intervalo_minimo: int, intervalo_maximo: int
+    ):
         """Crea la pestaña del agente de sincronización bidireccional"""
-        from sync_agent.config import INTERVALO_MAXIMO, INTERVALO_MINIMO
-
         # Interruptor principal + estado
         cabecera = ctk.CTkFrame(parent, fg_color=COLORES["panel"])
         cabecera.pack(fill="x", padx=10, pady=(10, 5))
@@ -4279,7 +4427,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
         self.sync_intervalo_entry.grid(row=3, column=1, padx=5, pady=6, sticky="w")
         ctk.CTkLabel(
             parametros,
-            text=f"({INTERVALO_MINIMO} a {INTERVALO_MAXIMO})",
+            text=f"({intervalo_minimo} a {intervalo_maximo})",
             text_color=COLORES["texto_suave"],
         ).grid(row=3, column=2, padx=5, pady=6, sticky="w")
 

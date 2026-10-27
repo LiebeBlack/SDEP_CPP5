@@ -368,7 +368,14 @@ class MainWindow(ctk.CTk):
                 ", ".join(sin_declarar),
             )
 
-        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color=COLORES["panel"])
+        self.sidebar = ctk.CTkFrame(
+            self,
+            width=250,
+            corner_radius=0,
+            fg_color=COLORES["panel"],
+            border_width=1,
+            border_color=COLORES["borde"],
+        )
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
@@ -377,8 +384,10 @@ class MainWindow(ctk.CTk):
             text="SISTEMA DE GESTIÓN\nDE PERSONAL",
             font=ctk.CTkFont(size=16, weight="bold"),
             text_color=COLORES["texto"],
+            justify="left",
+            anchor="w",
         )
-        self.title_label.pack(pady=(20, 25), padx=20)
+        self.title_label.pack(fill="x", pady=(22, 22), padx=18)
 
         # Solo los módulos permitidos para el rol del usuario
         for frame_name, titulo, icono in MODULOS:
@@ -462,10 +471,7 @@ class MainWindow(ctk.CTk):
             self.header,
             text="☀️ Claro" if ctk.get_appearance_mode() == "Dark" else "🌙 Oscuro",
             width=95,
-            height=35,
-            fg_color=COLORES["acento"],
-            hover_color=COLORES["panel_hover"],
-            text_color="white",
+            **estilo_boton_moderno("secundario", height=35),
             command=self._toggle_apariencia,
         )
         self.apariencia_btn.pack(side="right", padx=3, pady=12)
@@ -475,10 +481,7 @@ class MainWindow(ctk.CTk):
             self.header,
             text="Ayuda",
             width=75,
-            height=35,
-            fg_color=COLORES["acento"],
-            hover_color=COLORES["panel_hover"],
-            text_color="white",
+            **estilo_boton_moderno("secundario", height=35),
             command=self._on_ayuda,
         )
         self.ayuda_btn.pack(side="right", padx=3, pady=12)
@@ -488,10 +491,7 @@ class MainWindow(ctk.CTk):
             self.header,
             text="Acerca de",
             width=85,
-            height=35,
-            fg_color=COLORES["acento"],
-            hover_color=COLORES["panel_hover"],
-            text_color="white",
+            **estilo_boton_moderno("secundario", height=35),
             command=self._on_acerca_de,
         )
         self.about_btn.pack(side="right", padx=3, pady=12)
@@ -499,12 +499,9 @@ class MainWindow(ctk.CTk):
         # Cerrar sesión
         self.logout_btn = ctk.CTkButton(
             self.header,
-            text="Cerrar Sesión",
+            text="Cerrar sesión",
             width=105,
-            height=35,
-            fg_color=COLORES["acento"],
-            hover_color=COLORES["panel_hover"],
-            text_color="white",
+            **estilo_boton_moderno("secundario", height=35),
             command=self._on_logout,
         )
         self.logout_btn.pack(side="right", padx=(3, 6), pady=12)
@@ -514,10 +511,7 @@ class MainWindow(ctk.CTk):
             self.header,
             text="Salir",
             width=65,
-            height=35,
-            fg_color=COLORES["acento"],
-            hover_color=COLORES["panel_hover"],
-            text_color="white",
+            **estilo_boton_moderno("destructivo", height=35),
             command=self._on_exit,
         )
         self.exit_btn.pack(side="right", padx=3, pady=12)
@@ -573,8 +567,8 @@ class MainWindow(ctk.CTk):
             self.status_bar,
             text="Sincronizar ahora",
             width=120,
-            height=22,
             font=ctk.CTkFont(size=10),
+            **estilo_boton_moderno("secundario", height=22),
             command=self._on_sincronizar_ahora,
         )
         if self.tiene_permiso("config"):
@@ -1410,35 +1404,30 @@ class MainWindow(ctk.CTk):
             )
             self.status_label.configure(text_color=COLORES["texto_suave"])
             self.datetime_label.configure(text_color=COLORES["texto_suave"])
+            self.sync_btn.configure(
+                fg_color="transparent",
+                hover_color=COLORES["panel_hover"],
+                text_color=COLORES["texto"],
+                border_color=COLORES["borde"],
+            )
+            self._pintar_estado_sincronizacion()
             self.content_frame.configure(
                 fg_color=COLORES["panel"],
                 border_color=COLORES["borde"],
             )
             # Botones de la cabecera (se recrean con la paleta nueva)
-            self.apariencia_btn.configure(
-                fg_color=COLORES["acento"],
-                hover_color=COLORES["acento_hover"],
-                text_color="white",
-            )
-            self.ayuda_btn.configure(
-                fg_color=COLORES["acento"],
-                hover_color=COLORES["acento_hover"],
-                text_color="white",
-            )
-            self.about_btn.configure(
-                fg_color=COLORES["acento"],
-                hover_color=COLORES["acento_hover"],
-                text_color="white",
-            )
-            self.logout_btn.configure(
-                fg_color=COLORES["acento"],
-                hover_color=COLORES["acento_hover"],
-                text_color="white",
-            )
+            for boton in (self.apariencia_btn, self.ayuda_btn, self.about_btn, self.logout_btn):
+                boton.configure(
+                    fg_color="transparent",
+                    hover_color=COLORES["panel_hover"],
+                    text_color=COLORES["texto"],
+                    border_color=COLORES["borde"],
+                )
             self.exit_btn.configure(
-                fg_color=COLORES["acento"],
-                hover_color=COLORES["acento_hover"],
+                fg_color=COLORES["error"],
+                hover_color=COLORES["error_hover"],
                 text_color="white",
+                border_color=COLORES["error"],
             )
             # Los botones de módulos también siguen la paleta activa.
             for boton in self.sidebar_buttons.values():
@@ -1447,12 +1436,28 @@ class MainWindow(ctk.CTk):
                     hover_color=COLORES["panel_hover"],
                     text_color=COLORES["texto"],
                 )
+            self._actualizar_navegacion_activa()
         except Exception:
             logger.debug("operación de interfaz ignorada", exc_info=True)
 
     # ------------------------------------------------------------------
     # Navegación
     # ------------------------------------------------------------------
+    def _actualizar_navegacion_activa(self) -> None:
+        """Resalta el módulo visible y restaura los demás al estilo neutro."""
+        for nombre, boton in self.sidebar_buttons.items():
+            activo = nombre == self.current_frame_name
+            try:
+                boton.configure(
+                    fg_color=COLORES["acento"] if activo else "transparent",
+                    hover_color=(
+                        COLORES["acento_hover"] if activo else COLORES["panel_hover"]
+                    ),
+                    text_color="white" if activo else COLORES["texto"],
+                )
+            except tk.TclError:
+                logger.debug("No se pudo actualizar el botón de navegación %s", nombre)
+
     def show_frame(self, frame_name: str, **kwargs):
         """Muestra un frame y aplica parámetros de selección si el frame lo soporta"""
         if not self.puede_ver_modulo(frame_name):
@@ -1475,6 +1480,7 @@ class MainWindow(ctk.CTk):
                 return
 
             self.current_frame_name = frame_name
+            self._actualizar_navegacion_activa()
 
             # Destruir el frame actual
             if self.current_frame is not None:

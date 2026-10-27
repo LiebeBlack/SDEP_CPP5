@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from src.models import RolUsuario, Usuario
 from src.repositories import UsuarioRepository
-from src.security.contexto import normalizar_cedula
+from src.security.contexto import actual, normalizar_cedula
 from src.utils.audit_logger import AuditEventType, get_audit_logger
 from src.utils.security import SecurityValidator
 
@@ -98,7 +98,10 @@ class AuthService:
                 f"Usuario o contraseña incorrectos. " f"Intentos restantes: {restantes}"
             )
 
-        # Éxito: resetear contadores y registrar acceso
+        # Éxito: migrar hashes heredados a PBKDF2 antes de retirar el formato
+        # legado, y registrar el acceso en la misma confirmación.
+        if not usuario.password_hash.startswith("pbkdf2$"):
+            usuario.password_hash = SecurityValidator.hash_password(password)
         self.marcar_cambio_obligatorio_si_caducada(usuario)
         usuario.intentos_fallidos = 0
         usuario.ultimo_login = self._now()
@@ -126,6 +129,13 @@ class AuthService:
             ValueError: Si la contraseña actual es incorrecta o la
                 nueva no cumple los requisitos
         """
+        contexto = actual()
+        if (
+            contexto is not None
+            and contexto.rol != RolUsuario.ADMIN.value
+            and contexto.usuario_id != usuario.id
+        ):
+            raise PermissionError("Solo puede cambiar la contraseña de su propia cuenta")
         if actual_password is None and not usuario.debe_cambiar_password:
             raise ValueError("Debe ingresar la contraseña actual")
         if actual_password is not None:
@@ -152,6 +162,14 @@ class AuthService:
         usuario.debe_cambiar_password = 0
         usuario.intentos_fallidos = 0
         usuario.bloqueado_hasta = None
+        # La rotación de contraseña invalida las sesiones que aún tengan un
+        # token académico; ambos cambios se confirman en una sola transacción.
+        from src.models import TokenSesion
+
+        self.session.query(TokenSesion).filter(
+            TokenSesion.usuario_id == usuario.id,
+            TokenSesion.revocado_en.is_(None),
+        ).update({"revocado_en": self._now()}, synchronize_session=False)
         self._commit()
         self._audit_exitoso(
             AuditEventType.DATA_UPDATE,
@@ -173,12 +191,27 @@ class AuthService:
         debe_cambiar_password: bool = True,
         cedula: str | None = None,
     ) -> Usuario:
-        """Crea un nuevo usuario de sistema.
+        """Crea un usuario de sistema; operación reservada a administración."""
+        self._exigir_administrador()
+        return self._crear_usuario(
+            username=username,
+            password=password,
+            rol=rol,
+            nombre_completo=nombre_completo,
+            debe_cambiar_password=debe_cambiar_password,
+            cedula=cedula,
+        )
 
-        El rol ``user`` es el WORKER y exige cédula: es la clave con la que se
-        aislarán todas sus consultas. Las cuentas administrativas pueden no
-        tenerla.
-        """
+    def _crear_usuario(
+        self,
+        username: str,
+        password: str,
+        rol: str,
+        nombre_completo: str = "",
+        debe_cambiar_password: bool = True,
+        cedula: str | None = None,
+    ) -> Usuario:
+        """Crea una cuenta tras validar sus credenciales e identidad."""
         username = (username or "").strip()
         if not username:
             raise ValueError("El nombre de usuario es requerido")
@@ -223,6 +256,7 @@ class AuthService:
         Impide desactivar o degradar a la propia cuenta administradora
         para evitar quedarse sin acceso.
         """
+        self._exigir_administrador()
         usuario = self.repository.get_by_id(usuario_id)
         if not usuario:
             raise ValueError("Usuario no encontrado")
@@ -290,6 +324,16 @@ class AuthService:
             usuario.bloqueado = 0
             usuario.bloqueado_hasta = None
 
+        if nuevo_activo == 0 or nueva_password:
+            # La revocación y el cambio de cuenta/credenciales pertenecen a
+            # una sola transacción: si no se revocan los tokens, tampoco se
+            # confirma la operación de seguridad.
+            from src.models import TokenSesion
+
+            self.session.query(TokenSesion).filter(
+                TokenSesion.usuario_id == usuario.id,
+                TokenSesion.revocado_en.is_(None),
+            ).update({"revocado_en": self._now()}, synchronize_session=False)
         self._commit()
         self._audit_exitoso(
             AuditEventType.DATA_UPDATE,
@@ -301,6 +345,7 @@ class AuthService:
 
     def listar_usuarios(self) -> list[Usuario]:
         """Lista todos los usuarios del sistema"""
+        self._exigir_administrador()
         return self.repository.get_all()
 
     def listar_roles(self) -> list[str]:
@@ -406,6 +451,7 @@ class AuthService:
 
     def desbloquear_usuario(self, usuario_id: int) -> Usuario:
         """Levanta el bloqueo de una cuenta (acción de administrador)"""
+        self._exigir_administrador()
         usuario = self.repository.get_by_id(usuario_id)
         if not usuario:
             raise ValueError("Usuario no encontrado")
@@ -422,10 +468,26 @@ class AuthService:
         return usuario
 
     def usuario_por_id(self, usuario_id: int) -> Usuario | None:
+        self._exigir_administrador(requerir_contexto=True)
         return self.repository.get_by_id(usuario_id)
 
     def usuario_por_username(self, username: str) -> Usuario | None:
+        self._exigir_administrador(requerir_contexto=True)
         return self.repository.get_by_username(username)
+
+    @staticmethod
+    def _exigir_administrador(*, requerir_contexto: bool = False) -> None:
+        """Deniega administración a una sesión activa que no sea administradora."""
+        contexto = actual()
+        if contexto is None:
+            if requerir_contexto:
+                raise PermissionError(
+                    "Se requiere una sesión de administrador para consultar cuentas"
+                )
+            # Arranque interno inicial (sin sesión) puede crear la primera cuenta.
+            return
+        if contexto.rol != RolUsuario.ADMIN.value:
+            raise PermissionError("Solo un administrador puede gestionar cuentas")
 
     def _validar_cedula(
         self, rol: str, cedula: str | None, excluir_id: int | None = None
@@ -503,7 +565,7 @@ def ensure_default_admin(session: Session) -> Usuario | None:
     """
     service = AuthService(session)
     if service.repository.count_activos() == 0 and service.repository.count() == 0:
-        return service.crear_usuario(
+        return service._crear_usuario(
             username=DEFAULT_ADMIN_USERNAME,
             password=DEFAULT_ADMIN_PASSWORD,
             rol=RolUsuario.ADMIN.value,

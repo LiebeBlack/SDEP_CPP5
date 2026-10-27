@@ -21,6 +21,17 @@ from src.utils.helpers import ensure_directory_exists, format_date
 # Caracteres de control ilegales en celdas XLSX (todo menos tab/CR/LF)
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
+
+def _proteger_texto_planilla(valor: str) -> str:
+    """Evita que Excel interprete texto exportado como fórmula ejecutable."""
+    inicio = valor.lstrip(" \t\r\n")
+    if valor.startswith(("\t", "\r", "\n")) or (
+        inicio and inicio[0] in ("=", "+", "-", "@")
+    ):
+        return "'" + valor
+    return valor
+
+
 # openpyxl se importa en el nivel superior (aunque opcional) para que
 # PyInstaller lo incluya en el ejecutable empaquetado.
 try:
@@ -44,10 +55,12 @@ def _valor_plano(valor):
     if isinstance(valor, float):
         return round(valor, 2)
     if hasattr(valor, "value"):  # Enums
-        return valor.value
+        valor = valor.value
     if isinstance(valor, str):
-        # openpyxl rechaza caracteres de control dentro de las celdas
-        return _CONTROL_CHARS.sub(" ", valor)
+        # openpyxl rechaza caracteres de control dentro de las celdas; además,
+        # Excel puede ejecutar texto que comience como una fórmula.
+        limpio = _CONTROL_CHARS.sub(" ", valor)
+        return _proteger_texto_planilla(limpio)
     return valor
 
 
@@ -56,7 +69,10 @@ def _encabezados(datos: Sequence[dict]) -> list[str]:
     if not datos:
         raise ValueError("No hay datos para exportar")
     primera = datos[0]
-    return [str(clave) for clave in primera.keys()]
+    return [
+        _proteger_texto_planilla(_CONTROL_CHARS.sub(" ", str(clave)))
+        for clave in primera.keys()
+    ]
 
 
 def _filas_normalizadas(datos: Sequence[dict]) -> list[list]:
@@ -153,7 +169,7 @@ def escribir_xlsx(datos: Sequence[dict], ruta: str, hoja: str = "Datos") -> str:
 
     libro = Workbook()
     pagina = libro.active
-    pagina.title = hoja[:31] or "Datos"
+    pagina.title = _nombre_hoja_valido(hoja, 1)
 
     pagina.append(encabezados)
     for fila in filas:
@@ -185,8 +201,16 @@ def escribir_xlsx_multihoja(hojas: Mapping[str, Sequence[dict]], ruta: str) -> s
 
     contenidos: dict[str, Sequence[dict]] = {}
     for indice, (nombre, filas) in enumerate(hojas.items(), start=1):
-        if filas:
-            contenidos[_nombre_hoja_valido(nombre, indice)] = filas
+        if not filas:
+            continue
+        nombre_base = _nombre_hoja_valido(nombre, indice)
+        nombre_unico = nombre_base
+        sufijo = 1
+        while nombre_unico in contenidos:
+            marca = f"_{sufijo}"
+            nombre_unico = f"{nombre_base[:31 - len(marca)]}{marca}"
+            sufijo += 1
+        contenidos[nombre_unico] = filas
     if not contenidos:
         raise ValueError("No hay datos para exportar")
 

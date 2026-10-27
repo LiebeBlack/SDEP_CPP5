@@ -7,6 +7,7 @@ el sistema para formateo, validación y manipulación de datos.
 """
 
 import logging
+import math
 import os
 import subprocess
 import sys
@@ -176,15 +177,16 @@ def parse_float_estricto(valor: object, etiqueta: str = "valor") -> float | None
         return None
     if isinstance(valor, bool):
         return float(valor)
-    if isinstance(valor, (int, float)):
-        return float(valor)
     texto = str(valor).strip()
     if not texto:
         return None
     try:
-        return float(_normalizar_numero(texto))
+        numero = float(_normalizar_numero(texto))
     except (TypeError, ValueError, OverflowError) as error:
         raise ValueError(f"{etiqueta}: «{texto}» no es un número válido") from error
+    if not math.isfinite(numero):
+        raise ValueError(f"{etiqueta}: el valor debe ser un número finito")
+    return numero
 
 
 def parse_int_estricto(valor: object, etiqueta: str = "valor") -> int | None:

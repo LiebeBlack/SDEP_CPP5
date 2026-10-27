@@ -10,6 +10,7 @@ de vencimientos.
 import logging
 import os
 import uuid
+from pathlib import Path
 from typing import cast
 
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ from src.config import settings
 from src.models import Documento
 from src.repositories import DocumentoRepository
 from src.utils.helpers import ruta_dentro_de
+from src.utils.security import SecurityValidator
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +56,27 @@ class DocumentoService:
 
     def crear_documento(self, datos: dict, archivo_binario: bytes | None = None) -> Documento:
         """Crea un nuevo documento"""
-        from src.utils.helpers import parse_date
+        from src.utils.helpers import parse_date_estricto
 
         datos = dict(datos)
+        if archivo_binario is not None:
+            archivo_binario = self._normalizar_contenido(archivo_binario)
+        errores = self.validar_datos_documento(datos)
+        if errores:
+            raise ValueError("; ".join(errores))
+        if archivo_binario is not None:
+            self._validar_archivo(
+                nombre_archivo=str(datos.get("nombre_archivo") or ""),
+                contenido=archivo_binario,
+            )
         # Normalizar fechas
         fecha_emision = datos.get("fecha_emision")
-        if isinstance(fecha_emision, str):
-            fecha_emision = parse_date(fecha_emision)
+        if fecha_emision is not None:
+            fecha_emision = parse_date_estricto(fecha_emision, "Fecha de emisión")
 
         fecha_vencimiento = datos.get("fecha_vencimiento")
-        if isinstance(fecha_vencimiento, str):
-            fecha_vencimiento = parse_date(fecha_vencimiento)
+        if fecha_vencimiento is not None:
+            fecha_vencimiento = parse_date_estricto(fecha_vencimiento, "Fecha de vencimiento")
 
         tipo_doc = datos.get("tipo_documento")
         if tipo_doc is not None and hasattr(tipo_doc, "value"):
@@ -73,7 +85,7 @@ class DocumentoService:
         nombre_archivo = datos.get("nombre_archivo", "documento.pdf")
 
         # Generar nombre único para el archivo
-        if archivo_binario:
+        if archivo_binario is not None:
             extension = self._obtener_extension(nombre_archivo)
             nombre_unico = f"{uuid.uuid4().hex}{extension}"
             ruta_completa = settings.get_document_path(nombre_unico)
@@ -126,22 +138,27 @@ class DocumentoService:
         self, documento_id: int, datos: dict, archivo_binario: bytes | None = None
     ) -> Documento:
         """Actualiza un documento existente"""
-        from src.utils.helpers import parse_date
+        from src.utils.helpers import parse_date_estricto
 
         documento = self.repository.get_by_id(documento_id)
         if not documento:
             raise ValueError("Documento no encontrado")
 
         datos = dict(datos)
+        if archivo_binario is not None:
+            archivo_binario = self._normalizar_contenido(archivo_binario)
         ruta_anterior = documento.ruta_archivo
         ruta_nueva = None
 
         # Guardar el reemplazo primero; el archivo actual se conserva hasta
         # confirmar que el registro apunta correctamente al nuevo archivo.
-        if archivo_binario:
-            extension = self._obtener_extension(
-                datos.get("nombre_archivo", documento.nombre_archivo)
+        if archivo_binario is not None:
+            nombre_original = datos.get("nombre_archivo", documento.nombre_archivo)
+            self._validar_archivo(
+                nombre_archivo=str(nombre_original or ""),
+                contenido=archivo_binario,
             )
+            extension = self._obtener_extension(nombre_original)
             nombre_unico = f"{uuid.uuid4().hex}{extension}"
             ruta_nueva = settings.get_document_path(nombre_unico)
 
@@ -159,9 +176,11 @@ class DocumentoService:
 
         try:
             # Normalizar fechas si vienen en datos
-            for f_campo in ["fecha_emision", "fecha_vencimiento"]:
-                if f_campo in datos and isinstance(datos[f_campo], str):
-                    datos[f_campo] = parse_date(datos[f_campo])
+            for f_campo in ("fecha_emision", "fecha_vencimiento"):
+                if f_campo in datos and datos[f_campo] is not None:
+                    datos[f_campo] = parse_date_estricto(
+                        datos[f_campo], f_campo.replace("_", " ")
+                    )
 
             if "tipo_documento" in datos and hasattr(datos["tipo_documento"], "value"):
                 datos["tipo_documento"] = datos["tipo_documento"].value
@@ -269,11 +288,31 @@ class DocumentoService:
             "por_tipo": self.repository.get_estadisticas_por_tipo(),
         }
 
+    @staticmethod
+    def _normalizar_contenido(contenido: bytes | bytearray | memoryview) -> bytes:
+        """Normaliza a bytes y rechaza cuerpos con tipo no válido."""
+        if not isinstance(contenido, (bytes, bytearray, memoryview)):
+            raise ValueError("El contenido del archivo debe ser binario")
+        return bytes(contenido)
+
+    @staticmethod
+    def _validar_archivo(nombre_archivo: str, contenido: bytes) -> None:
+        """Valida tamaño y extensión del adjunto antes de escribirlo en disco/DB."""
+        extensiones = (
+            SecurityValidator.ALLOWED_IMAGE_EXTENSIONS
+            | SecurityValidator.ALLOWED_DOCUMENT_EXTENSIONS
+        )
+        extension = Path(nombre_archivo).suffix.lower()
+        if extension not in extensiones:
+            raise ValueError(f"Extensión de archivo no permitida: {extension or '(sin extensión)'}")
+        if not SecurityValidator.validate_file_size(len(contenido)):
+            raise ValueError("El archivo debe tener contenido y no superar 50 MB")
+        if not SecurityValidator.validate_filename(Path(nombre_archivo).name):
+            raise ValueError("El nombre del archivo contiene caracteres no permitidos")
+
     def _obtener_extension(self, nombre_archivo: str) -> str:
         """Obtiene la extensión de un archivo"""
-        if "." in nombre_archivo:
-            return nombre_archivo[nombre_archivo.rfind(".") :]
-        return ""
+        return Path(nombre_archivo).suffix.lower()
 
     def validar_datos_documento(self, datos: dict) -> list[str]:
         """Valida los datos de un documento"""

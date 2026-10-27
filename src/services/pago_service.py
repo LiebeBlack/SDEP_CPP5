@@ -30,7 +30,7 @@ from src.repositories import (
     EmpleadoRepository,
     PagoRepository,
 )
-from src.utils.helpers import parse_date
+from src.utils.helpers import parse_date_estricto, parse_float_estricto
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,9 @@ class PagoService:
         progresiva de ISR. Las deducciones capturadas explícitamente para
         un pago concreto siempre tienen prioridad sobre el cálculo.
         """
+        errores = self.validar_datos_pago(datos)
+        if errores:
+            raise ValueError("; ".join(errores))
         periodo_inicio, periodo_fin, fecha_pago = self._normalizar_fechas_pago(datos)
 
         salario_base = round(float(datos["salario_base"]), 2)
@@ -289,16 +292,16 @@ class PagoService:
     def _normalizar_fechas_pago(datos: dict) -> tuple[date | None, date | None, date]:
         """Resuelve periodo de inicio/fin y fecha de pago (hoy por defecto)"""
         periodo_inicio = datos["periodo_inicio"]
-        if isinstance(periodo_inicio, str):
-            periodo_inicio = parse_date(periodo_inicio)
+        if periodo_inicio is not None:
+            periodo_inicio = parse_date_estricto(periodo_inicio, "Periodo de inicio")
 
         periodo_fin = datos["periodo_fin"]
-        if isinstance(periodo_fin, str):
-            periodo_fin = parse_date(periodo_fin)
+        if periodo_fin is not None:
+            periodo_fin = parse_date_estricto(periodo_fin, "Periodo de fin")
 
         fecha_pago = datos.get("fecha_pago")
-        if isinstance(fecha_pago, str):
-            fecha_pago = parse_date(fecha_pago) or date.today()
+        if fecha_pago is not None:
+            fecha_pago = parse_date_estricto(fecha_pago, "Fecha de pago") or date.today()
         elif not fecha_pago:
             fecha_pago = date.today()
 
@@ -317,11 +320,16 @@ class PagoService:
             raise ValueError("Pago no encontrado")
 
         datos = dict(datos)
+        errores_importes = self._errores_importes(datos)
+        if errores_importes:
+            raise ValueError("; ".join(errores_importes))
 
         # Normalizar fechas si vienen en datos
-        for f_campo in ["periodo_inicio", "periodo_fin", "fecha_pago"]:
+        for f_campo in ("periodo_inicio", "periodo_fin", "fecha_pago"):
             if f_campo in datos and isinstance(datos[f_campo], str):
-                datos[f_campo] = parse_date(datos[f_campo])
+                datos[f_campo] = parse_date_estricto(
+                    datos[f_campo], f_campo.replace("_", " ")
+                )
 
         campos_calculo = {
             "salario_base",
@@ -561,12 +569,10 @@ class PagoService:
             periodo_inicio: Inicio del período
             periodo_fin: Fin del período
         """
-        from src.utils.helpers import parse_date
-
         if isinstance(periodo_inicio, str):
-            periodo_inicio = parse_date(periodo_inicio)
+            periodo_inicio = parse_date_estricto(periodo_inicio, "Periodo de inicio")
         if isinstance(periodo_fin, str):
-            periodo_fin = parse_date(periodo_fin)
+            periodo_fin = parse_date_estricto(periodo_fin, "Periodo de fin")
 
         if not periodo_inicio or not periodo_fin:
             raise ValueError("Fechas de período inválidas o requeridas")
@@ -625,12 +631,10 @@ class PagoService:
 
     def generar_nominas_periodo(self, periodo_inicio: date, periodo_fin: date) -> list[Pago]:
         """Genera nóminas para todos los empleados activos en un periodo"""
-        from src.utils.helpers import parse_date
-
         if isinstance(periodo_inicio, str):
-            periodo_inicio = parse_date(periodo_inicio)
+            periodo_inicio = parse_date_estricto(periodo_inicio, "Periodo de inicio")
         if isinstance(periodo_fin, str):
-            periodo_fin = parse_date(periodo_fin)
+            periodo_fin = parse_date_estricto(periodo_fin, "Periodo de fin")
 
         if not periodo_inicio or not periodo_fin:
             return []
@@ -684,11 +688,43 @@ class PagoService:
             "promedio_neto": round(total_neto / len(pagos), 2) if pagos else 0.0,
         }
 
+    @staticmethod
+    def _errores_importes(datos: dict) -> list[str]:
+        """Rechaza importes no numéricos y no finitos en todos los flujos."""
+        campos_importe = (
+            "salario_base",
+            "bonificaciones",
+            "horas_extra",
+            "horas_extra_diurnas",
+            "horas_extra_nocturnas",
+            "horas_extra_feriadas",
+            "descuentos",
+            "deduccion_seguro",
+            "deduccion_pension",
+            "deduccion_impuesto",
+            "otras_deducciones",
+            "aguinaldo",
+            "bono_vacacional",
+            "monto_bruto",
+            "monto_neto",
+            "base_gravable",
+            "aporte_seguro_patronal",
+            "aporte_pension_patronal",
+        )
+        errores: list[str] = []
+        for campo in campos_importe:
+            valor = datos.get(campo)
+            if campo not in datos or valor is None or str(valor).strip() == "":
+                continue
+            try:
+                parse_float_estricto(valor, campo.replace("_", " "))
+            except ValueError as error:
+                errores.append(str(error))
+        return errores
+
     def validar_datos_pago(self, datos: dict) -> list[str]:
         """Valida los datos de un pago"""
-        from src.utils.helpers import parse_date
-
-        errores = []
+        errores = self._errores_importes(datos)
 
         # Validaciones requeridas
         campos_requeridos = [
@@ -703,27 +739,46 @@ class PagoService:
                 errores.append(f"El campo {campo} es requerido")
 
         # Validaciones específicas
-        if "periodo_inicio" in datos and "periodo_fin" in datos:
-            p_ini = (
-                datos["periodo_inicio"]
-                if isinstance(datos["periodo_inicio"], date)
-                else parse_date(str(datos["periodo_inicio"]))
-            )
-            p_fin = (
-                datos["periodo_fin"]
-                if isinstance(datos["periodo_fin"], date)
-                else parse_date(str(datos["periodo_fin"]))
-            )
-            if p_ini and p_fin and p_fin < p_ini:
+        fechas: dict[str, date | None] = {}
+        for campo in ("periodo_inicio", "periodo_fin"):
+            valor = datos.get(campo)
+            try:
+                fecha = parse_date_estricto(valor, campo.replace("_", " "))
+            except ValueError as error:
+                errores.append(str(error))
+                fecha = None
+            fechas[campo] = fecha
+        if fechas["periodo_inicio"] and fechas["periodo_fin"]:
+            if fechas["periodo_fin"] < fechas["periodo_inicio"]:
                 errores.append("La fecha fin debe ser posterior a la fecha inicio")
+
+        try:
+            empleado_id = int(datos.get("empleado_id"))
+            if empleado_id <= 0:
+                errores.append("El ID de empleado debe ser positivo")
+        except (ValueError, TypeError, OverflowError):
+            if datos.get("empleado_id") not in (None, ""):
+                errores.append("El ID de empleado debe ser un número entero válido")
+
+        tipo_pago = datos.get("tipo_pago")
+        if hasattr(tipo_pago, "value"):
+            tipo_pago = tipo_pago.value
+        if tipo_pago and tipo_pago not in TipoPago.values():
+            errores.append("El tipo de pago no es válido")
+
+        metodo_pago = datos.get("metodo_pago")
+        if hasattr(metodo_pago, "value"):
+            metodo_pago = metodo_pago.value
+        if metodo_pago and metodo_pago not in MetodoPago.values():
+            errores.append("El método de pago no es válido")
 
         if "salario_base" in datos:
             try:
-                salario = float(datos["salario_base"])
-                if salario <= 0:
-                    errores.append("El salario base debe ser mayor a 0")
-            except (ValueError, TypeError):
-                errores.append("El salario base debe ser un número válido")
+                salario = parse_float_estricto(datos["salario_base"], "Salario base")
+                if salario is not None and salario <= 0:
+                    errores.append("El salario base debe ser un número finito mayor a 0")
+            except ValueError as error:
+                errores.append(str(error))
 
         # Días del prorrateo: solo se validan cuando el pago se prorratea,
         # para no rechazar los pagos que no usan días (la mayoría).

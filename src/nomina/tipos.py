@@ -7,6 +7,7 @@ inmutables que entran y salen del motor, lo que hace que cada cálculo sea
 predecible y verificable de forma aislada.
 """
 
+import math
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -33,13 +34,13 @@ def a_decimal(valor: Any, por_defecto: Decimal = CERO) -> Decimal:
     if valor is None or valor == "":
         return por_defecto
     if isinstance(valor, Decimal):
-        return valor
+        return valor if valor.is_finite() else por_defecto
     if isinstance(valor, bool):
         return Decimal(int(valor))
     if isinstance(valor, int):
         return Decimal(valor)
     if isinstance(valor, float):
-        return Decimal(str(valor))
+        return Decimal(str(valor)) if math.isfinite(valor) else por_defecto
     try:
         texto = str(valor).strip().replace(" ", "")
         # Formato internacional "1,234.56" o local "1.234,56"
@@ -51,7 +52,8 @@ def a_decimal(valor: Any, por_defecto: Decimal = CERO) -> Decimal:
             )
         else:
             texto = texto.replace(",", ".")
-        return Decimal(texto)
+        decimal = Decimal(texto)
+        return decimal if decimal.is_finite() else por_defecto
     except (ArithmeticError, ValueError):
         return por_defecto
 

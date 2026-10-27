@@ -39,6 +39,7 @@ PALETA_OSCURA = {
     "exito": "#10b981",  # emerald-500
     "advertencia": "#f59e0b",  # amber-500
     "error": "#ef4444",  # red-500
+    "error_hover": "#f87171",  # red-400
 }
 
 # Paleta clara (tema alternativo) - estilo Windows 11 claro
@@ -57,6 +58,7 @@ PALETA_CLARA = {
     "exito": "#059669",  # emerald-600
     "advertencia": "#d97706",  # amber-600
     "error": "#dc2626",  # red-600
+    "error_hover": "#b91c1c",  # red-700
 }
 
 # Paleta activa (se muta en caliente al cambiar de tema, de modo que los
@@ -435,18 +437,20 @@ def configure_ttk_styles(root=None) -> None:
             background=COLORES["panel"],
             foreground=COLORES["texto"],
             fieldbackground=COLORES["panel"],
-            rowheight=28,
+            rowheight=32,
             borderwidth=0,
+            relief="flat",
         )
         if _fuente_tabla is not None:
             style.configure("Treeview", font=_fuente_tabla)
 
         style.configure(
             "Treeview.Heading",
-            background=COLORES["campo"],
+            background=COLORES["panel_hover"],
             foreground=COLORES["texto"],
             relief="flat",
             borderwidth=0,
+            padding=(10, 8),
         )
         if _fuente_encabezado is not None:
             style.configure("Treeview.Heading", font=_fuente_encabezado)
@@ -595,11 +599,13 @@ def centrar_ventana(ventana, ancho: int, alto: int) -> None:
     """Centra una ventana en la pantalla (respetando la resolución real)"""
     try:
         ventana.update_idletasks()
-        pantalla_ancho = ventana.winfo_screenwidth()
-        pantalla_alto = ventana.winfo_screenheight()
-        x = max(0, (pantalla_ancho - ancho) // 2)
-        y = max(0, (pantalla_alto - alto) // 2)
-        ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
+        pantalla_ancho = max(1, int(ventana.winfo_screenwidth()))
+        pantalla_alto = max(1, int(ventana.winfo_screenheight()))
+        ancho_visible = min(max(1, int(ancho)), pantalla_ancho)
+        alto_visible = min(max(1, int(alto)), pantalla_alto)
+        x = max(0, (pantalla_ancho - ancho_visible) // 2)
+        y = max(0, (pantalla_alto - alto_visible) // 2)
+        ventana.geometry(f"{ancho_visible}x{alto_visible}+{x}+{y}")
     except Exception:
         ventana.geometry(f"{ancho}x{alto}")
 
@@ -721,7 +727,7 @@ def estilo_boton_moderno(variante: str = "primario", height: int | None = None) 
 
     Variantes:
       - "primario": fondo acento, texto blanco, hover acento_hover
-      - "secundario": fondo transparente, borde acento, texto acento
+      - "secundario": fondo transparente, borde sutil y texto principal
       - "fantasma": fondo transparente, sin borde, texto suave, hover panel_hover
     """
     base: dict[str, object] = {
@@ -744,6 +750,13 @@ def estilo_boton_moderno(variante: str = "primario", height: int | None = None) 
             text_color=COLORES["texto"],
             border_color=COLORES["borde"],
             border_width=1,
+        )
+    elif variante == "destructivo":
+        base.update(
+            fg_color=COLORES["error"],
+            hover_color=COLORES["error_hover"],
+            text_color="white",
+            border_color=COLORES["error"],
         )
     else:  # fantasma
         base.update(

@@ -8,6 +8,7 @@ estadísticas.
 """
 
 import logging
+import math
 from datetime import date
 from typing import Any
 
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from src.models import Empleado, TipoEmpleado
 from src.repositories import EmpleadoRepository
-from src.utils.helpers import parse_date
+from src.utils.helpers import parse_date_estricto, parse_float_estricto
 
 logger = logging.getLogger(__name__)
 
@@ -25,29 +26,20 @@ def _a_float_o_none(valor: Any) -> float | None:
     if valor is None or str(valor).strip() == "":
         return None
     try:
-        return float(valor)
-    except (ValueError, TypeError):
+        numero = float(valor)
+    except (ValueError, TypeError, OverflowError):
         return None
+    return numero if math.isfinite(numero) else None
 
 
 def _fecha_normalizada(valor: object) -> date | None:
-    """Acepta date o cadena y devuelve date; None si no representa fecha"""
-    if valor is None:
-        return None
-    if isinstance(valor, str):
-        return parse_date(valor)
-    if isinstance(valor, date):
-        return valor
-    return None
+    """Normaliza una fecha opcional y rechaza cualquier entrada inválida."""
+    return parse_date_estricto(valor, "Fecha")
 
 
 def _fecha_o_hoy(valor: object) -> date:
-    """Acepta date o cadena; cadenas no parseables y vacíos caen a hoy"""
-    if isinstance(valor, str):
-        return parse_date(valor) or date.today()
-    if isinstance(valor, date):
-        return valor
-    return date.today()
+    """Usa hoy solo para un campo vacío y rechaza fechas inválidas."""
+    return parse_date_estricto(valor, "Fecha de contratación") or date.today()
 
 
 class EmpleadoService:
@@ -106,8 +98,8 @@ class EmpleadoService:
             raise ValueError("Ya existe un empleado con esta cédula")
 
         salario = _a_float_o_none(datos.get("salario_base"))
-        if salario is None:
-            raise ValueError("El salario base es requerido y debe ser numérico")
+        if salario is None or salario <= 0:
+            raise ValueError("El salario base debe ser un número finito mayor que cero")
 
         empleado = self._construir_empleado(
             datos,
@@ -189,8 +181,6 @@ class EmpleadoService:
         Raises:
             ValueError: Si el empleado no existe o hay conflicto de cédula
         """
-        from src.utils.helpers import parse_date
-
         empleado = self.repository.get_by_id(empleado_id)
         if not empleado:
             raise ValueError("Empleado no encontrado")
@@ -214,10 +204,12 @@ class EmpleadoService:
                         raise ValueError("Ya existe un empleado con esta cédula")
                     datos["cedula"] = nueva_cedula
 
-        # Normalizar fechas si vienen en datos
-        for f_campo in ["fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"]:
-            if f_campo in datos and isinstance(datos[f_campo], str):
-                datos[f_campo] = parse_date(datos[f_campo])
+        # Normalizar todas las fechas presentes, no solo las cadenas del formulario.
+        for f_campo in ("fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"):
+            if f_campo in datos:
+                datos[f_campo] = parse_date_estricto(
+                    datos[f_campo], f_campo.replace("_", " ")
+                )
 
         # Normalizar floats si vienen en datos. El salario base es un campo
         # obligatorio: un vacío o un valor no numérico falla con un mensaje
@@ -229,16 +221,18 @@ class EmpleadoService:
             if num_campo not in datos or datos[num_campo] is None:
                 continue
             try:
-                datos[num_campo] = (
-                    float(datos[num_campo]) if str(datos[num_campo]).strip() != "" else None
-                )
-            except (ValueError, TypeError):
+                numero = parse_float_estricto(datos[num_campo], num_campo.replace("_", " "))
+                datos[num_campo] = numero
+            except ValueError:
                 if num_campo == "salario_base":
-                    raise ValueError("El salario base es requerido y debe ser numérico") from None
-                datos[num_campo] = None
-                logger.warning("Campo numérico inválido en %s: se descarta", num_campo)
-            if num_campo == "salario_base" and datos[num_campo] is None:
-                raise ValueError("El salario base es requerido y debe ser numérico")
+                    raise ValueError(
+                        "El salario base debe ser un número finito mayor que cero"
+                    ) from None
+                raise
+            if num_campo == "salario_base" and (
+                datos[num_campo] is None or datos[num_campo] <= 0
+            ):
+                raise ValueError("El salario base debe ser un número finito mayor que cero")
 
         # Actualizar campos
         for campo, valor in datos.items():
@@ -353,9 +347,9 @@ class EmpleadoService:
         if "salario_base" in datos:
             try:
                 salario = float(datos["salario_base"])
-                if salario <= 0:
-                    errores.append("El salario base debe ser mayor a 0")
-            except (ValueError, TypeError):
+                if not math.isfinite(salario) or salario <= 0:
+                    errores.append("El salario base debe ser un número finito mayor a 0")
+            except (ValueError, TypeError, OverflowError):
                 errores.append("El salario base debe ser un número válido")
 
         if "email" in datos and datos["email"]:

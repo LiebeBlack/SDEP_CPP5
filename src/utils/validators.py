@@ -1,4 +1,5 @@
 import logging
+import math
 import re
 from datetime import date
 from typing import Any
@@ -43,16 +44,28 @@ class Validator:
 
     @staticmethod
     def validate_range(value: float, min_value: float, max_value: float, field_name: str) -> None:
-        """Valida el rango de un número"""
-        if value < min_value or value > max_value:
+        """Valida que un número finito esté dentro del rango solicitado"""
+        try:
+            numero = float(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise ValidationError(f"El campo '{field_name}' debe ser un número finito") from error
+        if not math.isfinite(numero):
+            raise ValidationError(f"El campo '{field_name}' debe ser un número finito")
+        if numero < min_value or numero > max_value:
             raise ValidationError(
                 f"El campo '{field_name}' debe estar entre {min_value} y {max_value}"
             )
 
     @staticmethod
     def validate_positive(value: float, field_name: str) -> None:
-        """Valida que un número sea positivo"""
-        if value <= 0:
+        """Valida que un número finito sea positivo"""
+        try:
+            numero = float(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise ValidationError(f"El campo '{field_name}' debe ser un número finito") from error
+        if not math.isfinite(numero):
+            raise ValidationError(f"El campo '{field_name}' debe ser un número finito")
+        if numero <= 0:
             raise ValidationError(f"El campo '{field_name}' debe ser mayor a 0")
 
 

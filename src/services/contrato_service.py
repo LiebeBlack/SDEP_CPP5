@@ -40,7 +40,6 @@ from src.repositories import (
     IncidenciaRepository,
 )
 from src.utils.audit_logger import AuditEventType, get_audit_logger
-from src.utils.helpers import parse_date, parse_date_estricto
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +115,6 @@ class ContratoService:
         if not empleado:
             raise ValueError("Empleado no encontrado")
 
-        fecha_inicio = parse_date_estricto(datos.get("fecha_inicio"), "Fecha de inicio")
-        fecha_fin = parse_date_estricto(datos.get("fecha_fin"), "Fecha de fin")
 
         # Normalizar a valor de texto: si la interfaz entrega el miembro del
         # enum, ``str(miembro)`` produce "EstadoContrato.VIGENTE" y la
@@ -175,7 +172,6 @@ class ContratoService:
             if campo_fecha in datos and isinstance(datos[campo_fecha], str):
                 # Un texto ilegible lanza ValueError: antes se convertía en
                 # None y la edición borraba la fecha sin avisar.
-                datos[campo_fecha] = parse_date_estricto(datos[campo_fecha], etiqueta)
 
         if "numero" in datos and datos["numero"] and datos["numero"] != contrato.numero:
             if self.repository.get_by_numero(str(datos["numero"])) is not None:
@@ -338,7 +334,6 @@ class ContratoService:
         egreso = fecha_terminacion or date.today()
         if isinstance(egreso, str):
             # Un texto ilegible no debe terminar el contrato "hoy" en silencio.
-            egreso = parse_date_estricto(egreso, "Fecha de terminación") or date.today()
 
         finiquito = self.calcular_liquidacion(contrato.empleado_id, motivo, egreso)
 
@@ -600,12 +595,10 @@ class ContratoService:
             errores.append("El salario pactado debe ser mayor que cero")
 
         try:
-            fecha_inicio = parse_date_estricto(datos.get("fecha_inicio"), "Fecha de inicio")
         except ValueError as error:
             errores.append(str(error))
             fecha_inicio = None
         try:
-            fecha_fin = parse_date_estricto(datos.get("fecha_fin"), "Fecha de fin")
         except ValueError as error:
             errores.append(str(error))
             fecha_fin = None

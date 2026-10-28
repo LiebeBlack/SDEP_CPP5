@@ -10,6 +10,7 @@ para el cálculo de días trabajados.
 import logging
 from datetime import date
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import MetodoPago, Pago, TipoPago
@@ -185,7 +186,7 @@ class PagoService:
             bonificaciones=bonificaciones,
             horas_extra=monto_horas_extra,
             salario_base=salario_periodo,
-            dias_laborados=dias_laborados,
+            dias_laborados=dias_trabajados,
             dias_periodo=dias_periodo,
             prorrateado=prorrateado,
             deduccion_seguro=deduccion_seguro,

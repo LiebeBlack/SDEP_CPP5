@@ -428,12 +428,11 @@ class PermissionChecker:
         "nomina": ("admin", "manager"),
         "configuracion": ("admin",),
         # El legajo académico y las notas son un subdominio institucional.
-        # El rol ``user`` (WORKER) no tiene un vínculo de propiedad con un
-        # estudiante ni con la asignación docente, y el aislamiento por cédula
-        # lo deniega por defecto: ofrecerle el módulo solo mostraría tablas
-        # vacías. La política coincide con la del teléfono (PoliticaRoles).
-        "estudiantes": ("admin", "manager", "viewer"),
-        "notas": ("admin", "manager"),
+        # El rol ``user`` (docente/worker) consulta notas de sus grados y el
+        # subdominio académico; la escritura de notas se guarda al token
+        # académico y al aislamiento por cédula.
+        "estudiantes": ("admin", "manager", "user", "viewer"),
+        "notas": ("admin", "manager", "user"),
     }
 
     @classmethod

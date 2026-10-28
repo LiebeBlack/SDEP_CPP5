@@ -358,10 +358,6 @@ class ContratoService:
 
         if anterior.fecha_fin is None:
             raise ValueError("No se puede renovar un contrato indefinido sin fecha de vencimiento")
-        if anterior.fecha_fin < date.today():
-            raise ValueError(
-                "No se puede renovar un contrato que ya venció; registre un contrato nuevo"
-            )
         inicio = anterior.fecha_fin + timedelta(days=1)
         if nueva_fecha_fin < inicio:
             raise ValueError("La nueva fecha de fin debe ser posterior al inicio de la renovación")
@@ -770,14 +766,8 @@ class ContratoService:
                 estado = None
         else:
             estado = None
-        if estado is not None:
-            if estado == EstadoContrato.TERMINADO:
-                if not fecha_terminacion:
-                    errores.append("La fecha de terminación es requerida para cerrar el contrato")
-                if not str(datos.get("motivo_terminacion") or "").strip():
-                    errores.append("El motivo de terminación es requerido para cerrar el contrato")
-            elif fecha_terminacion:
-                errores.append("Solo los contratos terminados pueden tener fecha de terminación")
+        if estado is not None and estado != EstadoContrato.TERMINADO and fecha_terminacion:
+            errores.append("Solo los contratos terminados pueden tener fecha de terminación")
 
         if "numero" in datos and datos["numero"] is not None:
             numero_dato = str(datos["numero"]).strip()

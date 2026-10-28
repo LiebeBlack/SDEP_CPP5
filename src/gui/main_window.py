@@ -1240,7 +1240,7 @@ class MainWindow(ctk.CTk):
                 try:
                     if widget.winfo_exists():
                         widget.focus_set()
-                        self.status_label.configure(text="Búsqueda / Filtro (Ctrl+F)")
+                        self.status_label.configure(text="Búsqueda (Ctrl+F)")
                         return
                 except Exception:
                     pass

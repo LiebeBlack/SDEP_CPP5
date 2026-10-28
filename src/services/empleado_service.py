@@ -223,18 +223,20 @@ class EmpleadoService:
                 raise ValueError("El nombre y los apellidos son requeridos")
 
         # Si se actualiza la cédula, verificar que no exista. Una cédula
-        # vacía se descarta aquí: antes el guard la ignoraba y el bucle
+        # vacía se descarta: antes el guard la ignoraba y el bucle
         # genérico de más abajo la asignaba, dejando al empleado sin cédula.
         if "cedula" in datos:
-            if not str(datos["cedula"] or "").strip():
-                raise ValueError("La cédula es requerida")
-            nueva_cedula = str(datos["cedula"]).strip()
-            if len(nueva_cedula) > 20 or not any(caracter.isdigit() for caracter in nueva_cedula):
-                raise ValueError("La cédula debe contener dígitos y no superar 20 caracteres")
-            if nueva_cedula != empleado.cedula:
-                if self.repository.get_by_cedula(nueva_cedula):
-                    raise ValueError("Ya existe un empleado con esta cédula")
-                datos["cedula"] = nueva_cedula
+            nueva_cedula = str(datos["cedula"] or "").strip()
+            if not nueva_cedula:
+                # Una cédula vacía en el formulario se ignora: no se asigna ni se borra.
+                datos.pop("cedula", None)
+            else:
+                if len(nueva_cedula) > 20 or not any(caracter.isdigit() for caracter in nueva_cedula):
+                    raise ValueError("La cédula debe contener dígitos y no superar 20 caracteres")
+                if nueva_cedula != empleado.cedula:
+                    if self.repository.get_by_cedula(nueva_cedula):
+                        raise ValueError("Ya existe un empleado con esta cédula")
+                    datos["cedula"] = nueva_cedula
 
         # Normalizar todas las fechas presentes, no solo las cadenas del formulario.
         for f_campo in ("fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"):

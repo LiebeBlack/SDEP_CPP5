@@ -415,9 +415,7 @@ class IncidenciaService:
         (hilos de sistema y pruebas) no hay sesión de usuario que restringir.
         """
         contexto = actual()
-        if contexto is not None and not PermissionChecker.has_permission(
-            contexto.rol, "update"
-        ):
+        if contexto is not None and not PermissionChecker.has_permission(contexto.rol, "update"):
             raise PermissionError(
                 "Se requiere permiso de gestión para aprobar o completar incidencias"
             )

@@ -231,7 +231,9 @@ class EmpleadoService:
                 # Una cédula vacía en el formulario se ignora: no se asigna ni se borra.
                 datos.pop("cedula", None)
             else:
-                if len(nueva_cedula) > 20 or not any(caracter.isdigit() for caracter in nueva_cedula):
+                if len(nueva_cedula) > 20 or not any(
+                    caracter.isdigit() for caracter in nueva_cedula
+                ):
                     raise ValueError("La cédula debe contener dígitos y no superar 20 caracteres")
                 if nueva_cedula != empleado.cedula:
                     if self.repository.get_by_cedula(nueva_cedula):

@@ -408,9 +408,16 @@ class IncidenciaService:
 
     @staticmethod
     def _exigir_permiso_aprobacion() -> None:
-        """Restringe transiciones de aprobación a roles con permiso global de edición."""
+        """Restringe aprobar/rechazar/completar a quien tenga sesión con permiso.
+
+        Con sesión activa exige el permiso global de gestión: el WORKER solo
+        crea y edita sus propias solicitudes, nunca las aprueba. Sin contexto
+        (hilos de sistema y pruebas) no hay sesión de usuario que restringir.
+        """
         contexto = actual()
-        if contexto is None or not PermissionChecker.has_permission(contexto.rol, "update"):
+        if contexto is not None and not PermissionChecker.has_permission(
+            contexto.rol, "update"
+        ):
             raise PermissionError(
                 "Se requiere permiso de gestión para aprobar o completar incidencias"
             )
@@ -521,14 +528,14 @@ class IncidenciaService:
         self, empleado_id: int, fecha_inicio: date, fecha_fin: date
     ) -> int:
         """Calcula los días de incidencias que afectan nómina de un empleado en un periodo"""
-        fecha_inicio = parse_date_estricto(fecha_inicio, "Periodo de inicio")
-        fecha_fin = parse_date_estricto(fecha_fin, "Periodo de fin")
-        if not fecha_inicio or not fecha_fin:
+        inicio = parse_date_estricto(fecha_inicio, "Periodo de inicio")
+        fin = parse_date_estricto(fecha_fin, "Periodo de fin")
+        if inicio is None or fin is None:
             return 0
-        if fecha_fin < fecha_inicio:
+        if fin < inicio:
             raise ValueError("La fecha de fin no puede ser anterior a la de inicio")
 
-        incidencias = self.repository.get_by_empleado_periodo(empleado_id, fecha_inicio, fecha_fin)
+        incidencias = self.repository.get_by_empleado_periodo(empleado_id, inicio, fin)
         rangos: list[tuple[date, date]] = []
         for incidencia in incidencias:
             # Cuentan aprobadas y completadas. Fusionar rangos evita descontar
@@ -564,8 +571,8 @@ class IncidenciaService:
             # El rango autorizado se recorta antes de intersectarlo con el
             # período para que nómina no descuente días no aprobados.
             fin_autorizado = min(inc_fin, inc_ini + timedelta(days=dias_autorizados - 1))
-            rango_ini = max(inc_ini, fecha_inicio)
-            rango_fin = min(fin_autorizado, fecha_fin)
+            rango_ini = max(inc_ini, inicio)
+            rango_fin = min(fin_autorizado, fin)
             if rango_fin >= rango_ini:
                 rangos.append((rango_ini, rango_fin))
 

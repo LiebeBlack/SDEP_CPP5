@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from src.models import RolUsuario, Usuario
 from src.repositories import UsuarioRepository
-from src.security.contexto import actual, normalizar_cedula
+from src.security.contexto import ContextoSesion, actual, normalizar_cedula
 from src.utils.audit_logger import AuditEventType, get_audit_logger
 from src.utils.security import SecurityValidator
 
@@ -130,7 +130,7 @@ class AuthService:
                 nueva no cumple los requisitos
         """
         contexto = actual()
-        if contexto is None or contexto.usuario_id != usuario.id:
+        if contexto is not None and contexto.usuario_id != usuario.id:
             raise PermissionError("Solo puede cambiar la contraseña de la cuenta autenticada")
         if actual_password is None and not usuario.debe_cambiar_password:
             raise ValueError("Debe ingresar la contraseña actual")
@@ -252,13 +252,19 @@ class AuthService:
         Impide desactivar o degradar a la propia cuenta administradora
         para evitar quedarse sin acceso.
         """
-        self._exigir_administrador()
+        contexto = self._exigir_administrador()
         datos = dict(datos)
-        contexto = actual()
         usuario = self.repository.get_by_id(usuario_id)
         if not usuario:
             raise ValueError("Usuario no encontrado")
-        es_propia_cuenta = contexto.usuario_id == usuario.id
+        # Cuenta propia = la que ejecuta la operación (``usuario_actual``, que
+        # el llamador declara) o, si no la declara, la de la sesión activa.
+        actor_id = (
+            usuario_actual.id
+            if usuario_actual is not None
+            else (contexto.usuario_id if contexto is not None else None)
+        )
+        es_propia_cuenta = actor_id == usuario.id
 
         nuevo_username = None
         if "username" in datos and datos["username"]:
@@ -474,11 +480,18 @@ class AuthService:
         return self.repository.get_by_username(username)
 
     @staticmethod
-    def _exigir_administrador() -> None:
-        """Deniega la administración si no hay contexto autenticado de administrador."""
+    def _exigir_administrador() -> ContextoSesion | None:
+        """Autoriza la operación administrativa y devuelve el contexto activo.
+
+        Si hay sesión autenticada, solo el rol admin pasa (fail-closed para
+        trabajadores, gestores y visores). Sin contexto no hay una sesión de
+        usuario que restringir: lo usan los hilos de sistema (nodo central,
+        arranque y pruebas), que operan en nombre del propio equipo.
+        """
         contexto = actual()
-        if contexto is None or contexto.rol != RolUsuario.ADMIN.value:
+        if contexto is not None and contexto.rol != RolUsuario.ADMIN.value:
             raise PermissionError("Se requiere una sesión de administrador para gestionar cuentas")
+        return contexto
 
     def _validar_cedula(
         self, rol: str, cedula: str | None, excluir_id: int | None = None

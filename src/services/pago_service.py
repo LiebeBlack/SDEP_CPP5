@@ -926,15 +926,11 @@ class PagoService:
         except ValueError as error:
             errores.append(str(error))
 
-        tipo_pago = datos.get("tipo_pago")
-        if hasattr(tipo_pago, "value"):
-            tipo_pago = tipo_pago.value
+        tipo_pago = getattr(datos.get("tipo_pago"), "value", datos.get("tipo_pago"))
         if tipo_pago and tipo_pago not in TipoPago.values():
             errores.append("El tipo de pago no es válido")
 
-        metodo_pago = datos.get("metodo_pago")
-        if hasattr(metodo_pago, "value"):
-            metodo_pago = metodo_pago.value
+        metodo_pago = getattr(datos.get("metodo_pago"), "value", datos.get("metodo_pago"))
         if metodo_pago and metodo_pago not in MetodoPago.values():
             errores.append("El método de pago no es válido")
 

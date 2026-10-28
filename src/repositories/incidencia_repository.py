@@ -156,7 +156,10 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
                 if not str(aprobado_por or "").strip():
                     logger.warning("No se aprueba la incidencia %s: falta responsable", id)
                     return False
-                if dias_aprobados is not None and not 1 <= dias_aprobados <= incidencia.dias_solicitados:
+                if (
+                    dias_aprobados is not None
+                    and not 1 <= dias_aprobados <= incidencia.dias_solicitados
+                ):
                     logger.warning("No se aprueba la incidencia %s: días fuera de rango", id)
                     return False
                 incidencia.estado = EstadoIncidencia.APROBADO.value

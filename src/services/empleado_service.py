@@ -281,7 +281,11 @@ class EmpleadoService:
                 raise
             if num_campo == "salario_base" and (datos[num_campo] is None or datos[num_campo] <= 0):
                 raise ValueError("El salario base debe ser un número finito mayor que cero")
-            if num_campo in {"peso", "altura"} and datos[num_campo] is not None and datos[num_campo] <= 0:
+            if (
+                num_campo in {"peso", "altura"}
+                and datos[num_campo] is not None
+                and datos[num_campo] <= 0
+            ):
                 raise ValueError(f"{num_campo.capitalize()} debe ser mayor que cero")
 
         if "tipo_empleado" in datos and datos["tipo_empleado"]:

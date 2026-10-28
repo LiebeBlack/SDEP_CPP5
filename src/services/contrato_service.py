@@ -119,18 +119,13 @@ class ContratoService:
             raise ValueError("Empleado no encontrado")
 
         fecha_inicio = (
-            parse_date_estricto(datos.get("fecha_inicio"), "Fecha de inicio")
-            or date.today()
+            parse_date_estricto(datos.get("fecha_inicio"), "Fecha de inicio") or date.today()
         )
         fecha_fin = parse_date_estricto(datos.get("fecha_fin"), "Fecha de fin")
-        salario_pactado = parse_float_estricto(
-            datos.get("salario_pactado"), "Salario pactado"
-        )
+        salario_pactado = parse_float_estricto(datos.get("salario_pactado"), "Salario pactado")
         if salario_pactado is None or salario_pactado <= 0:
             raise ValueError("El salario pactado debe ser mayor que cero")
-        horas_semanales = parse_int_estricto(
-            datos.get("horas_semanales", 40), "Horas semanales"
-        )
+        horas_semanales = parse_int_estricto(datos.get("horas_semanales", 40), "Horas semanales")
         if horas_semanales is None:
             horas_semanales = 40
         if not 1 <= horas_semanales <= 60:
@@ -215,15 +210,11 @@ class ContratoService:
         except (TypeError, ValueError):
             raise ValueError("El tipo de contrato no es válido") from None
         if tipo_valor != TipoContrato.INDEFINIDO.value and fecha_fin is None:
-            raise ValueError(
-                "Los contratos temporales, por obra o pasantía requieren fecha de fin"
-            )
+            raise ValueError("Los contratos temporales, por obra o pasantía requieren fecha de fin")
 
         empleado_id_solicitado = datos.get("empleado_id", contrato.empleado_id)
         try:
-            empleado_id_solicitado = parse_int_estricto(
-                empleado_id_solicitado, "ID de empleado"
-            )
+            empleado_id_solicitado = parse_int_estricto(empleado_id_solicitado, "ID de empleado")
         except ValueError as error:
             raise ValueError(str(error)) from None
         if empleado_id_solicitado != contrato.empleado_id:
@@ -239,18 +230,20 @@ class ContratoService:
         if estado_valor == EstadoContrato.VIGENTE.value:
             vigente = self.repository.get_vigente(contrato.empleado_id)
             if vigente is not None and vigente.id != contrato.id:
-                raise ValueError(
-                    f"El empleado ya tiene otro contrato vigente ({vigente.numero})"
-                )
+                raise ValueError(f"El empleado ya tiene otro contrato vigente ({vigente.numero})")
             if fecha_fin is not None and fecha_fin < date.today():
-                raise ValueError("No se puede marcar como vigente un contrato cuya fecha de fin ya pasó")
+                raise ValueError(
+                    "No se puede marcar como vigente un contrato cuya fecha de fin ya pasó"
+                )
         fecha_terminacion = datos.get("fecha_terminacion", contrato.fecha_terminacion)
         motivo_terminacion = datos.get("motivo_terminacion", contrato.motivo_terminacion)
         if fecha_terminacion is not None:
             if fecha_terminacion < fecha_inicio:
                 raise ValueError("La fecha de terminación no puede ser anterior al inicio")
             if fecha_fin is not None and fecha_terminacion > fecha_fin:
-                raise ValueError("La fecha de terminación no puede ser posterior al fin del contrato")
+                raise ValueError(
+                    "La fecha de terminación no puede ser posterior al fin del contrato"
+                )
         if fecha_fin is not None and fecha_inicio > fecha_fin:
             raise ValueError("La fecha de fin no puede ser anterior a la fecha de inicio")
         if estado_valor == EstadoContrato.TERMINADO.value:
@@ -366,7 +359,9 @@ class ContratoService:
         if anterior.fecha_fin is None:
             raise ValueError("No se puede renovar un contrato indefinido sin fecha de vencimiento")
         if anterior.fecha_fin < date.today():
-            raise ValueError("No se puede renovar un contrato que ya venció; registre un contrato nuevo")
+            raise ValueError(
+                "No se puede renovar un contrato que ya venció; registre un contrato nuevo"
+            )
         inicio = anterior.fecha_fin + timedelta(days=1)
         if nueva_fecha_fin < inicio:
             raise ValueError("La nueva fecha de fin debe ser posterior al inicio de la renovación")
@@ -468,10 +463,7 @@ class ContratoService:
             raise ValueError("La fecha de terminación no puede ser anterior al inicio del contrato")
         if contrato.fecha_fin is not None and egreso > contrato.fecha_fin:
             raise ValueError("La fecha de terminación no puede ser posterior al fin del contrato")
-        if (
-            contrato.fecha_terminacion is not None
-            and contrato.fecha_terminacion != egreso
-        ):
+        if contrato.fecha_terminacion is not None and contrato.fecha_terminacion != egreso:
             raise ValueError("El contrato ya tiene una terminación registrada con otra fecha")
 
         finiquito = self.calcular_liquidacion(contrato.empleado_id, motivo, egreso)

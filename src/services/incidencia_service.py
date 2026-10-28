@@ -182,7 +182,9 @@ class IncidenciaService:
             "documento_soporte_binario",
         ):
             if campo_protegido in datos:
-                raise ValueError(f"El campo {campo_protegido} solo se modifica mediante su flujo autorizado")
+                raise ValueError(
+                    f"El campo {campo_protegido} solo se modifica mediante su flujo autorizado"
+                )
         if "empleado_id" in datos:
             try:
                 empleado_id_solicitado = int(datos.pop("empleado_id"))
@@ -244,7 +246,9 @@ class IncidenciaService:
             estado_solicitado = getattr(datos["estado"], "value", datos["estado"])
             estado_existente = getattr(incidencia.estado, "value", incidencia.estado)
             if estado_solicitado != estado_existente:
-                raise ValueError("El estado solo se modifica mediante aprobar o rechazar la incidencia")
+                raise ValueError(
+                    "El estado solo se modifica mediante aprobar o rechazar la incidencia"
+                )
             datos.pop("estado")
         for campo_protegido in (
             "dias_aprobados",
@@ -265,14 +269,10 @@ class IncidenciaService:
             )
             fecha_fin_cambiada = "fecha_fin" in datos and datos["fecha_fin"] != incidencia.fecha_fin
             nomina_cambiada = (
-                "afecta_nominas" in datos
-                and datos["afecta_nominas"] != incidencia.afecta_nominas
+                "afecta_nominas" in datos and datos["afecta_nominas"] != incidencia.afecta_nominas
             )
             tipo_actual = self._normalizar_tipo(incidencia.tipo_incidencia)
-            tipo_cambiado = (
-                "tipo_incidencia" in datos
-                and datos["tipo_incidencia"] != tipo_actual
-            )
+            tipo_cambiado = "tipo_incidencia" in datos and datos["tipo_incidencia"] != tipo_actual
             if fecha_inicio_cambiada or fecha_fin_cambiada or nomina_cambiada or tipo_cambiado:
                 raise ValueError(
                     "No se pueden cambiar fechas, tipo ni impacto financiero de una "
@@ -297,7 +297,9 @@ class IncidenciaService:
                 raise ValueError("El soporte debe ser un archivo binario")
             archivo_soporte = bytes(archivo_soporte)
             nombre_soporte = str(
-                datos.get("documento_soporte_nombre") or incidencia.documento_soporte_nombre or "soporte.pdf"
+                datos.get("documento_soporte_nombre")
+                or incidencia.documento_soporte_nombre
+                or "soporte.pdf"
             )
             self._validar_archivo_soporte(nombre_soporte, archivo_soporte)
             extension = self._obtener_extension(nombre_soporte)
@@ -409,7 +411,9 @@ class IncidenciaService:
         """Restringe transiciones de aprobación a roles con permiso global de edición."""
         contexto = actual()
         if contexto is None or not PermissionChecker.has_permission(contexto.rol, "update"):
-            raise PermissionError("Se requiere permiso de gestión para aprobar o completar incidencias")
+            raise PermissionError(
+                "Se requiere permiso de gestión para aprobar o completar incidencias"
+            )
 
     def aprobar_incidencia(
         self,
@@ -448,7 +452,9 @@ class IncidenciaService:
             incidencia_id, aprobado_por, comentarios, dias_aprobados
         )
         if not actualizado:
-            raise ValueError("No se pudo aprobar: la incidencia cambió de estado o no pudo guardarse")
+            raise ValueError(
+                "No se pudo aprobar: la incidencia cambió de estado o no pudo guardarse"
+            )
         return True
 
     def rechazar_incidencia(
@@ -469,7 +475,9 @@ class IncidenciaService:
         comentarios = self._normalizar_comentarios_aprobacion(comentarios)
         actualizado = self.repository.rechazar(incidencia_id, rechazado_por, comentarios)
         if not actualizado:
-            raise ValueError("No se pudo rechazar: la incidencia cambió de estado o no pudo guardarse")
+            raise ValueError(
+                "No se pudo rechazar: la incidencia cambió de estado o no pudo guardarse"
+            )
         return True
 
     def completar_incidencia(self, incidencia_id: int) -> bool:
@@ -481,7 +489,9 @@ class IncidenciaService:
         if incidencia.estado != EstadoIncidencia.APROBADO.value:
             raise ValueError("Solo se pueden completar incidencias aprobadas")
         if not self.repository.completar(incidencia_id):
-            raise ValueError("No se pudo completar: la incidencia cambió de estado o no pudo guardarse")
+            raise ValueError(
+                "No se pudo completar: la incidencia cambió de estado o no pudo guardarse"
+            )
         return True
 
     def obtener_soporte(self, incidencia_id: int) -> bytes | None:
@@ -530,9 +540,7 @@ class IncidenciaService:
             ):
                 continue
 
-            inc_ini = parse_date_estricto(
-                incidencia.fecha_inicio, "Fecha de inicio de incidencia"
-            )
+            inc_ini = parse_date_estricto(incidencia.fecha_inicio, "Fecha de inicio de incidencia")
             inc_fin = parse_date_estricto(incidencia.fecha_fin, "Fecha de fin de incidencia")
             if inc_ini is None or inc_fin is None:
                 raise ValueError("Una incidencia aprobada no tiene un rango de fechas válido")
@@ -647,9 +655,7 @@ class IncidenciaService:
         ]
         for campo in campos_requeridos:
             valor = datos.get(campo)
-            falta_valor = valor is None or (
-                isinstance(valor, str) and not valor.strip()
-            )
+            falta_valor = valor is None or (isinstance(valor, str) and not valor.strip())
             if campo not in datos or falta_valor:
                 errores.append(f"El campo {campo} es requerido")
 

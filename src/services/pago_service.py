@@ -405,9 +405,7 @@ class PagoService:
 
         for campo_dia in ("dias_trabajados", "dias_periodo"):
             if campo_dia in datos:
-                datos[campo_dia] = parse_int_estricto(
-                    datos[campo_dia], campo_dia.replace("_", " ")
-                )
+                datos[campo_dia] = parse_int_estricto(datos[campo_dia], campo_dia.replace("_", " "))
                 if datos[campo_dia] is None:
                     raise ValueError(f"{campo_dia.replace('_', ' ').capitalize()} es requerido")
 

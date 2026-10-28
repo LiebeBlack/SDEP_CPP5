@@ -274,10 +274,7 @@ class AuthService:
         if "rol" in datos and datos["rol"]:
             if datos["rol"] not in RolUsuario.values():
                 raise ValueError("Rol inválido")
-            if (
-                es_propia_cuenta
-                and datos["rol"] != RolUsuario.ADMIN.value
-            ):
+            if es_propia_cuenta and datos["rol"] != RolUsuario.ADMIN.value:
                 raise ValueError("No puede degradar su propia cuenta de administrador")
             rol_final = str(datos["rol"])
 

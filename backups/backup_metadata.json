@@ -8,7 +8,9 @@
     "checksum": "1fc2c0a1c8b5b879b8bbbc1e118bd17965fcbf0f2caba114392a668e1942bb28",
     "compressed": true,
     "version": 2,
-    "original_db_checksum": "fad25891f4b8140e8425293061c284bb50acbfba390d1a6345ea7a14096c91f3"
+    "original_db_checksum": "fad25891f4b8140e8425293061c284bb50acbfba390d1a6345ea7a14096c91f3",
+    "exists": true,
+    "age_days": 9
   },
   "auto_shutdown": {
     "name": "auto_shutdown",
@@ -19,7 +21,9 @@
     "checksum": "9c81b70bf2131ba51bde255cafdc92d6b27021c7195d95d2f8784a95ea66b049",
     "compressed": true,
     "version": 2,
-    "original_db_checksum": "bc0c064f49dd1f1a0aee03bf822f3ef302ec5e6c3f0bd4b4a9bb75013557aa36"
+    "original_db_checksum": "bc0c064f49dd1f1a0aee03bf822f3ef302ec5e6c3f0bd4b4a9bb75013557aa36",
+    "exists": true,
+    "age_days": 9
   },
   "test_security": {
     "name": "test_security",
@@ -30,6 +34,30 @@
     "checksum": "9b754e4268f670bbc563d0259ccd2e589a801b4fb005681c39250d05faae6c5c",
     "compressed": true,
     "version": 2,
-    "original_db_checksum": "106f7e83d136a184c9f139e4c15b4c6043b29e7e5d0c403778c9830781dc8ab2"
+    "original_db_checksum": "106f7e83d136a184c9f139e4c15b4c6043b29e7e5d0c403778c9830781dc8ab2",
+    "exists": true,
+    "age_days": 9
+  },
+  "initial_setup_20261028_015911_138300": {
+    "name": "initial_setup_20261028_015911_138300",
+    "filename": "initial_setup_20261028_015911_138300.db.gz",
+    "path": "initial_setup_20261028_015911_138300.db.gz",
+    "timestamp": "20261028_015911",
+    "size_bytes": 10978,
+    "checksum": "207c48f67a41e2cac463226f413ecc8d3bd24bc5082e1275fa7b154f9a561484",
+    "compressed": true,
+    "version": 2,
+    "exists": true,
+    "age_days": 0
+  },
+  "auto_shutdown_20261028_015937_866894": {
+    "name": "auto_shutdown_20261028_015937_866894",
+    "filename": "auto_shutdown_20261028_015937_866894.db.gz",
+    "path": "auto_shutdown_20261028_015937_866894.db.gz",
+    "timestamp": "20261028_015937",
+    "size_bytes": 16087,
+    "checksum": "ce64ad672712e6cd5d664a50b1da34612fa11c55fecd5118f7823a8aa0a5d70b",
+    "compressed": true,
+    "version": 2
   }
 }

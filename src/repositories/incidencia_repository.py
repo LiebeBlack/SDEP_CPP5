@@ -150,6 +150,15 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
         try:
             incidencia = self.get_by_id(id)
             if incidencia:
+                if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
+                    logger.warning("No se aprueba la incidencia %s: no está pendiente", id)
+                    return False
+                if not str(aprobado_por or "").strip():
+                    logger.warning("No se aprueba la incidencia %s: falta responsable", id)
+                    return False
+                if dias_aprobados is not None and not 1 <= dias_aprobados <= incidencia.dias_solicitados:
+                    logger.warning("No se aprueba la incidencia %s: días fuera de rango", id)
+                    return False
                 incidencia.estado = EstadoIncidencia.APROBADO.value
                 incidencia.aprobado_por = aprobado_por
                 incidencia.fecha_aprobacion = date.today()
@@ -171,6 +180,12 @@ class IncidenciaRepository(BaseRepository[Incidencia]):
         try:
             incidencia = self.get_by_id(id)
             if incidencia:
+                if incidencia.estado != EstadoIncidencia.PENDIENTE.value:
+                    logger.warning("No se rechaza la incidencia %s: no está pendiente", id)
+                    return False
+                if not str(rechazado_por or "").strip():
+                    logger.warning("No se rechaza la incidencia %s: falta responsable", id)
+                    return False
                 incidencia.estado = EstadoIncidencia.RECHAZADO.value
                 incidencia.aprobado_por = rechazado_por
                 incidencia.fecha_aprobacion = date.today()

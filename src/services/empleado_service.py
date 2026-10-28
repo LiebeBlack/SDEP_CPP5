@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from src.models import Empleado, TipoEmpleado
+from src.models import Empleado, EstadoCivil, Genero, TipoEmpleado
 from src.repositories import EmpleadoRepository
 from src.utils.helpers import parse_date_estricto, parse_float_estricto
 
@@ -80,6 +80,9 @@ class EmpleadoService:
         cedula = str(datos.get("cedula", "")).strip()
         if not cedula:
             raise ValueError("La cédula es requerida")
+        if len(cedula) > 20 or not any(caracter.isdigit() for caracter in cedula):
+            raise ValueError("La cédula debe contener dígitos y no superar 20 caracteres")
+        datos = dict(datos)
 
         # Los campos obligatorios se validan también aquí, no solo en el
         # formulario: cualquier llamada directa al servicio (importaciones,
@@ -97,9 +100,37 @@ class EmpleadoService:
         if self.repository.get_by_cedula(cedula):
             raise ValueError("Ya existe un empleado con esta cédula")
 
-        salario = _a_float_o_none(datos.get("salario_base"))
+        try:
+            salario = parse_float_estricto(datos.get("salario_base"), "Salario base")
+        except ValueError:
+            raise ValueError("El salario base debe ser un número finito mayor que cero") from None
         if salario is None or salario <= 0:
             raise ValueError("El salario base debe ser un número finito mayor que cero")
+
+        for campo in ("peso", "altura"):
+            valor = datos.get(campo)
+            if valor is None or str(valor).strip() == "":
+                datos[campo] = None
+                continue
+            numero = parse_float_estricto(valor, campo.capitalize())
+            if numero is None or numero <= 0:
+                raise ValueError(f"{campo.capitalize()} debe ser un número mayor que cero")
+            datos[campo] = numero
+
+        try:
+            tipo_empleado = TipoEmpleado.coerce(datos["tipo_empleado"])
+        except (TypeError, ValueError):
+            raise ValueError("El tipo de empleado no es válido") from None
+        datos = dict(datos)
+        datos["tipo_empleado"] = tipo_empleado
+        for campo, enum_tipo in (("genero", Genero), ("estado_civil", EstadoCivil)):
+            valor = datos.get(campo)
+            if valor is None or str(valor).strip() == "":
+                continue
+            try:
+                datos[campo] = enum_tipo.coerce(valor)
+            except (TypeError, ValueError):
+                raise ValueError(f"El valor de {campo.replace('_', ' ')} no es válido") from None
 
         empleado = self._construir_empleado(
             datos,
@@ -196,18 +227,34 @@ class EmpleadoService:
         # genérico de más abajo la asignaba, dejando al empleado sin cédula.
         if "cedula" in datos:
             if not str(datos["cedula"] or "").strip():
-                datos.pop("cedula")
-            else:
-                nueva_cedula = str(datos["cedula"]).strip()
-                if nueva_cedula != empleado.cedula:
-                    if self.repository.get_by_cedula(nueva_cedula):
-                        raise ValueError("Ya existe un empleado con esta cédula")
-                    datos["cedula"] = nueva_cedula
+                raise ValueError("La cédula es requerida")
+            nueva_cedula = str(datos["cedula"]).strip()
+            if len(nueva_cedula) > 20 or not any(caracter.isdigit() for caracter in nueva_cedula):
+                raise ValueError("La cédula debe contener dígitos y no superar 20 caracteres")
+            if nueva_cedula != empleado.cedula:
+                if self.repository.get_by_cedula(nueva_cedula):
+                    raise ValueError("Ya existe un empleado con esta cédula")
+                datos["cedula"] = nueva_cedula
 
         # Normalizar todas las fechas presentes, no solo las cadenas del formulario.
         for f_campo in ("fecha_nacimiento", "fecha_contratacion", "fecha_terminacion"):
             if f_campo in datos:
                 datos[f_campo] = parse_date_estricto(datos[f_campo], f_campo.replace("_", " "))
+        fecha_nacimiento = datos.get("fecha_nacimiento", empleado.fecha_nacimiento)
+        fecha_contratacion = datos.get("fecha_contratacion", empleado.fecha_contratacion)
+        fecha_terminacion = datos.get("fecha_terminacion", empleado.fecha_terminacion)
+        if (
+            fecha_nacimiento is not None
+            and fecha_contratacion is not None
+            and fecha_nacimiento >= fecha_contratacion
+        ):
+            raise ValueError("La fecha de nacimiento debe ser anterior a la fecha de contratación")
+        if (
+            fecha_terminacion is not None
+            and fecha_contratacion is not None
+            and fecha_terminacion < fecha_contratacion
+        ):
+            raise ValueError("La fecha de terminación no puede ser anterior a la contratación")
 
         # Normalizar floats si vienen en datos. El salario base es un campo
         # obligatorio: un vacío o un valor no numérico falla con un mensaje
@@ -216,7 +263,12 @@ class EmpleadoService:
         # opcionales, la normalización no debe dejar texto dentro de una
         # columna numérica.
         for num_campo in ["salario_base", "peso", "altura"]:
-            if num_campo not in datos or datos[num_campo] is None:
+            if num_campo not in datos:
+                continue
+            if datos[num_campo] is None:
+                if num_campo == "salario_base":
+                    raise ValueError("El salario base debe ser un número finito mayor que cero")
+                datos[num_campo] = None
                 continue
             try:
                 numero = parse_float_estricto(datos[num_campo], num_campo.replace("_", " "))
@@ -229,6 +281,22 @@ class EmpleadoService:
                 raise
             if num_campo == "salario_base" and (datos[num_campo] is None or datos[num_campo] <= 0):
                 raise ValueError("El salario base debe ser un número finito mayor que cero")
+            if num_campo in {"peso", "altura"} and datos[num_campo] is not None and datos[num_campo] <= 0:
+                raise ValueError(f"{num_campo.capitalize()} debe ser mayor que cero")
+
+        if "tipo_empleado" in datos and datos["tipo_empleado"]:
+            try:
+                datos["tipo_empleado"] = TipoEmpleado.coerce(datos["tipo_empleado"])
+            except (TypeError, ValueError):
+                raise ValueError("El tipo de empleado no es válido") from None
+
+        for campo, enum_tipo in (("genero", Genero), ("estado_civil", EstadoCivil)):
+            if campo not in datos or datos[campo] is None or str(datos[campo]).strip() == "":
+                continue
+            try:
+                datos[campo] = enum_tipo.coerce(datos[campo])
+            except (TypeError, ValueError):
+                raise ValueError(f"El valor de {campo.replace('_', ' ')} no es válido") from None
 
         # Actualizar campos
         for campo, valor in datos.items():

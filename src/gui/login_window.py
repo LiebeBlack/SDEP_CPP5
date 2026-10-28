@@ -22,6 +22,7 @@ from src.gui.theme import (
     setup_ui_raiz,
 )
 from src.models import Usuario
+from src.security.contexto import establecer, limpiar
 from src.services.auth_service import (
     DEFAULT_ADMIN_PASSWORD,
     AuthService,
@@ -387,6 +388,12 @@ class LoginWindow(ctk.CTk):
                 self.password_entry.delete(0, tk.END)
                 return
 
+            # El cambio de contraseña pasa por la misma política de acceso
+            # que el resto de la aplicación. Se establece temporalmente la
+            # identidad autenticada para que AuthService acepte el cambio;
+            # el contexto se limpia en finally antes de crear MainWindow.
+            establecer(usuario.id, usuario.username, usuario.rol_valor, usuario.cedula)
+
             # Primer acceso o contraseña caducada: exigir una nueva antes
             # de abrir la ventana principal.
             # El propio diálogo gestiona su visibilidad (grab, foco) y se
@@ -430,6 +437,9 @@ class LoginWindow(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error", f"Error al iniciar sesión: {str(e)}")
         finally:
+            # El contexto del login solo autoriza el cambio de contraseña;
+            # MainWindow establece de nuevo el contexto de la sesión activa.
+            limpiar()
             # La sesión del login se cierra siempre: la ventana principal
             # abre su propia sesión (ver MainWindow) y mantener esta viva
             # retenía una conexión del pool durante toda la sesión de uso.

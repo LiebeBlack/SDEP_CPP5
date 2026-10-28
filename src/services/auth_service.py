@@ -130,12 +130,8 @@ class AuthService:
                 nueva no cumple los requisitos
         """
         contexto = actual()
-        if (
-            contexto is not None
-            and contexto.rol != RolUsuario.ADMIN.value
-            and contexto.usuario_id != usuario.id
-        ):
-            raise PermissionError("Solo puede cambiar la contraseña de su propia cuenta")
+        if contexto is None or contexto.usuario_id != usuario.id:
+            raise PermissionError("Solo puede cambiar la contraseña de la cuenta autenticada")
         if actual_password is None and not usuario.debe_cambiar_password:
             raise ValueError("Debe ingresar la contraseña actual")
         if actual_password is not None:
@@ -257,9 +253,12 @@ class AuthService:
         para evitar quedarse sin acceso.
         """
         self._exigir_administrador()
+        datos = dict(datos)
+        contexto = actual()
         usuario = self.repository.get_by_id(usuario_id)
         if not usuario:
             raise ValueError("Usuario no encontrado")
+        es_propia_cuenta = contexto.usuario_id == usuario.id
 
         nuevo_username = None
         if "username" in datos and datos["username"]:
@@ -276,8 +275,7 @@ class AuthService:
             if datos["rol"] not in RolUsuario.values():
                 raise ValueError("Rol inválido")
             if (
-                usuario_actual is not None
-                and usuario_actual.id == usuario.id
+                es_propia_cuenta
                 and datos["rol"] != RolUsuario.ADMIN.value
             ):
                 raise ValueError("No puede degradar su propia cuenta de administrador")
@@ -293,9 +291,12 @@ class AuthService:
 
         nuevo_activo = None
         if "activo" in datos and datos["activo"] is not None:
-            if usuario_actual is not None and usuario_actual.id == usuario.id:
+            if es_propia_cuenta:
                 raise ValueError("No puede desactivar su propia cuenta")
-            nuevo_activo = 1 if int(datos["activo"]) else 0
+            try:
+                nuevo_activo = 1 if int(datos["activo"]) else 0
+            except (TypeError, ValueError, OverflowError):
+                raise ValueError("El estado activo debe ser verdadero o falso") from None
 
         nueva_password = str(datos["password"]) if datos.get("password") else None
         if nueva_password:
@@ -468,26 +469,19 @@ class AuthService:
         return usuario
 
     def usuario_por_id(self, usuario_id: int) -> Usuario | None:
-        self._exigir_administrador(requerir_contexto=True)
+        self._exigir_administrador()
         return self.repository.get_by_id(usuario_id)
 
     def usuario_por_username(self, username: str) -> Usuario | None:
-        self._exigir_administrador(requerir_contexto=True)
+        self._exigir_administrador()
         return self.repository.get_by_username(username)
 
     @staticmethod
-    def _exigir_administrador(*, requerir_contexto: bool = False) -> None:
-        """Deniega administración a una sesión activa que no sea administradora."""
+    def _exigir_administrador() -> None:
+        """Deniega la administración si no hay contexto autenticado de administrador."""
         contexto = actual()
-        if contexto is None:
-            if requerir_contexto:
-                raise PermissionError(
-                    "Se requiere una sesión de administrador para consultar cuentas"
-                )
-            # Arranque interno inicial (sin sesión) puede crear la primera cuenta.
-            return
-        if contexto.rol != RolUsuario.ADMIN.value:
-            raise PermissionError("Solo un administrador puede gestionar cuentas")
+        if contexto is None or contexto.rol != RolUsuario.ADMIN.value:
+            raise PermissionError("Se requiere una sesión de administrador para gestionar cuentas")
 
     def _validar_cedula(
         self, rol: str, cedula: str | None, excluir_id: int | None = None

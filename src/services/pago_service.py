@@ -30,7 +30,7 @@ from src.repositories import (
     EmpleadoRepository,
     PagoRepository,
 )
-from src.utils.helpers import parse_date_estricto, parse_float_estricto
+from src.utils.helpers import parse_date_estricto, parse_float_estricto, parse_int_estricto
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +85,42 @@ class PagoService:
         errores = self.validar_datos_pago(datos)
         if errores:
             raise ValueError("; ".join(errores))
+        datos = self._normalizar_importes(datos)
         periodo_inicio, periodo_fin, fecha_pago = self._normalizar_fechas_pago(datos)
+        empleado_id_validado = parse_int_estricto(datos.get("empleado_id"), "ID de empleado")
+        if empleado_id_validado is None or empleado_id_validado <= 0:
+            raise ValueError("El ID de empleado debe ser un número entero positivo")
+        empleado = self.empleado_repository.get_by_id(empleado_id_validado)
+        if empleado is None:
+            raise ValueError("Empleado no encontrado")
+        tipo_pago = getattr(datos.get("tipo_pago"), "value", datos.get("tipo_pago"))
+        if tipo_pago not in TipoPago.values():
+            raise ValueError("El tipo de pago no es válido")
+        metodo_pago = getattr(
+            datos.get("metodo_pago", MetodoPago.TRANSFERENCIA.value),
+            "value",
+            datos.get("metodo_pago", MetodoPago.TRANSFERENCIA.value),
+        )
+        if metodo_pago not in MetodoPago.values():
+            raise ValueError("El método de pago no es válido")
+        datos["empleado_id"] = empleado_id_validado
+        datos["tipo_pago"] = tipo_pago
+        datos["metodo_pago"] = metodo_pago
+        if "pagado" in datos:
+            estado_pagado = datos["pagado"]
+            if isinstance(estado_pagado, bool):
+                datos["pagado"] = int(estado_pagado)
+            elif str(estado_pagado).strip() in {"0", "1"}:
+                datos["pagado"] = int(str(estado_pagado).strip())
+            else:
+                raise ValueError("El estado pagado debe ser verdadero o falso")
 
         salario_base = round(float(datos["salario_base"]), 2)
+        dias_trabajados, dias_periodo, prorrateado = self._prorrateo_de_datos(datos)
+        if dias_periodo <= 0:
+            raise ValueError("Los días del período deben ser mayores que cero")
+        if not 0 <= dias_trabajados <= dias_periodo:
+            raise ValueError("Los días trabajados deben estar entre 0 y los días del período")
         horas_extra_desglosadas = self._horas_extra(datos)
         resultado = self.calcular_con_motor(
             salario_base=salario_base,
@@ -98,7 +131,6 @@ class PagoService:
         # motor ya lo redujo a los días trabajados y es ese valor el que se
         # guarda (el mismo que usan las deducciones y el recálculo al editar).
         salario_periodo = round(float(resultado.salario_base), 2)
-        dias_laborados, dias_periodo, prorrateado = self._prorrateo_de_datos(datos)
 
         # El monto de horas extra capturado a mano manda cuando no se
         # clasificaron horas por tipo (comportamiento histórico).
@@ -185,7 +217,7 @@ class PagoService:
         """Parámetros de cálculo vigentes según la configuración del sistema"""
         try:
             return cargar_parametros_desde(self.config_repository.get_valor)
-        except (ValueError, TypeError):
+        except (SQLAlchemyError, ValueError, TypeError):
             logger.warning(
                 "No se pudieron leer los parámetros de nómina; se usan los valores por defecto",
                 exc_info=True,
@@ -218,9 +250,9 @@ class PagoService:
                 descuentos=a_decimal(datos.get("descuentos")),
                 aguinaldo=a_decimal(datos.get("aguinaldo")),
                 bono_vacacional=a_decimal(datos.get("bono_vacacional")),
-                dias_trabajados=int(datos.get("dias_trabajados") or 30),
-                dias_periodo=int(datos.get("dias_periodo") or 30),
-                prorratear=bool(datos.get("prorratear")),
+                dias_trabajados=self._entero_o_defecto(datos.get("dias_trabajados"), 30),
+                dias_periodo=self._entero_o_defecto(datos.get("dias_periodo"), 30),
+                prorratear=self._normalizar_bandera(datos.get("prorratear", False), "Prorratear"),
                 deducciones_manuales=self._deducciones_manuales(datos),
             ),
             self.parametros_nomina(),
@@ -249,6 +281,16 @@ class PagoService:
         }
 
     @staticmethod
+    def _entero_o_defecto(valor: object, por_defecto: int) -> int:
+        """Convierte a entero conservando el cero y usa defecto solo en vacío."""
+        if valor is None or str(valor).strip() == "":
+            return por_defecto
+        resultado = parse_int_estricto(valor, "Valor entero")
+        if resultado is None:
+            return por_defecto
+        return resultado
+
+    @staticmethod
     def _prorrateo_de_datos(datos: dict) -> tuple[int, int, bool]:
         """
         Días y bandera de prorrateo con los que se calcula un pago
@@ -259,10 +301,24 @@ class PagoService:
         idéntico al editar.
         """
         return (
-            int(datos.get("dias_trabajados") or 30),
-            int(datos.get("dias_periodo") or 30),
-            bool(datos.get("prorratear")),
+            PagoService._entero_o_defecto(datos.get("dias_trabajados"), 30),
+            PagoService._entero_o_defecto(datos.get("dias_periodo"), 30),
+            PagoService._normalizar_bandera(datos.get("prorratear", False), "Prorratear"),
         )
+
+    @staticmethod
+    def _normalizar_bandera(valor: object, etiqueta: str) -> bool:
+        """Interpreta banderas de formulario/API sin que "0" cuente como True."""
+        if isinstance(valor, bool):
+            return valor
+        if isinstance(valor, int) and valor in (0, 1):
+            return bool(valor)
+        texto = str(valor).strip().lower()
+        if texto in {"1", "true", "yes", "si", "sí"}:
+            return True
+        if texto in {"0", "false", "no", ""}:
+            return False
+        raise ValueError(f"{etiqueta} debe ser verdadero o falso")
 
     @staticmethod
     def _horas_extra(datos: dict) -> HorasExtra:
@@ -320,14 +376,57 @@ class PagoService:
             raise ValueError("Pago no encontrado")
 
         datos = dict(datos)
+        if "empleado_id" in datos:
+            empleado_id_solicitado = parse_int_estricto(datos["empleado_id"], "ID de empleado")
+            if empleado_id_solicitado != pago.empleado_id:
+                raise ValueError("No se puede reasignar un pago a otro empleado")
+            datos.pop("empleado_id")
+
         errores_importes = self._errores_importes(datos)
         if errores_importes:
             raise ValueError("; ".join(errores_importes))
+        datos = self._normalizar_importes(datos)
 
-        # Normalizar fechas si vienen en datos
+        # Normalizar fechas si vienen en datos y validar el rango final aunque
+        # el formulario haya enviado solo uno de los extremos.
         for f_campo in ("periodo_inicio", "periodo_fin", "fecha_pago"):
-            if f_campo in datos and isinstance(datos[f_campo], str):
-                datos[f_campo] = parse_date_estricto(datos[f_campo], f_campo.replace("_", " "))
+            if f_campo in datos:
+                fecha = parse_date_estricto(datos[f_campo], f_campo.replace("_", " "))
+                if fecha is None:
+                    raise ValueError(f"{f_campo.replace('_', ' ').capitalize()} es requerida")
+                datos[f_campo] = fecha
+        periodo_inicio_final = datos.get("periodo_inicio", pago.periodo_inicio)
+        periodo_fin_final = datos.get("periodo_fin", pago.periodo_fin)
+        if periodo_inicio_final is None or periodo_fin_final is None:
+            raise ValueError("Las fechas de inicio y fin del período son requeridas")
+        if periodo_fin_final < periodo_inicio_final:
+            raise ValueError("La fecha fin debe ser igual o posterior a la fecha inicio")
+
+        for campo_dia in ("dias_trabajados", "dias_periodo"):
+            if campo_dia in datos:
+                datos[campo_dia] = parse_int_estricto(
+                    datos[campo_dia], campo_dia.replace("_", " ")
+                )
+                if datos[campo_dia] is None:
+                    raise ValueError(f"{campo_dia.replace('_', ' ').capitalize()} es requerido")
+
+        if "prorratear" in datos:
+            datos["prorratear"] = self._normalizar_bandera(datos["prorratear"], "Prorratear")
+
+        if "salario_base" in datos:
+            salario_base = datos["salario_base"]
+            if salario_base is None or salario_base <= 0:
+                raise ValueError("El salario base debe ser un número finito mayor a 0")
+
+        if "dias_trabajados" in datos or "dias_periodo" in datos:
+            valor_dias = datos.get("dias_trabajados", pago.dias_laborados)
+            valor_periodo = datos.get("dias_periodo", pago.dias_periodo)
+            dias_trabajados_final = self._entero_o_defecto(valor_dias, 30)
+            dias_periodo_final = self._entero_o_defecto(valor_periodo, 30)
+            if dias_periodo_final <= 0:
+                raise ValueError("Los días del período deben ser mayores que cero")
+            if not 0 <= dias_trabajados_final <= dias_periodo_final:
+                raise ValueError("Los días trabajados deben estar entre 0 y los días del período")
 
         campos_calculo = {
             "salario_base",
@@ -357,8 +456,12 @@ class PagoService:
             and (not hasattr(pago, campo) or not _mismo_importe(getattr(pago, campo), datos[campo]))
             for campo in campos_calculo - {"prorratear"}
         )
-        if "prorratear" in datos and bool(datos["prorratear"]) != bool(pago.prorrateado):
-            recalcular = True
+        prorratear_actual = bool(pago.prorrateado)
+        if "prorratear" in datos:
+            prorratear_solicitado = self._normalizar_bandera(datos["prorratear"], "Prorratear")
+            datos["prorratear"] = prorratear_solicitado
+            if prorratear_solicitado != prorratear_actual:
+                recalcular = True
 
         if recalcular:
             campos_componentes = (
@@ -407,9 +510,15 @@ class PagoService:
             prorrateado: bool | None
             campos_prorrateo = {"dias_trabajados", "dias_periodo", "prorratear"}
             if campos_prorrateo & datos.keys():
-                dias_laborados = int(datos.get("dias_trabajados") or pago.dias_laborados or 30)
-                dias_periodo = int(datos.get("dias_periodo") or pago.dias_periodo or 30)
-                prorrateado = bool(datos.get("prorratear", pago.prorrateado))
+                valor_dias = datos.get("dias_trabajados", pago.dias_laborados)
+                valor_periodo = datos.get("dias_periodo", pago.dias_periodo)
+                dias_laborados = self._entero_o_defecto(valor_dias, 30)
+                dias_periodo = self._entero_o_defecto(valor_periodo, 30)
+                prorrateado = (
+                    self._normalizar_bandera(datos["prorratear"], "Prorratear")
+                    if "prorratear" in datos
+                    else bool(pago.prorrateado)
+                )
                 datos_calculo.update(
                     {
                         "dias_trabajados": dias_laborados,
@@ -430,7 +539,7 @@ class PagoService:
                 if prorrateado and dias_periodo and "salario_base" in datos:
                     datos_calculo.update(
                         {
-                            "dias_trabajados": dias_laborados or 30,
+                            "dias_trabajados": 30 if dias_laborados is None else dias_laborados,
                             "dias_periodo": dias_periodo,
                             "prorratear": True,
                         }
@@ -501,14 +610,33 @@ class PagoService:
                 datos["modalidad_calculo"] = pago.modalidad_calculo
                 datos["base_gravable"] = float(pago.base_gravable or 0)
 
-        if "tipo_pago" in datos and hasattr(datos["tipo_pago"], "value"):
-            datos["tipo_pago"] = datos["tipo_pago"].value
-        if "metodo_pago" in datos and hasattr(datos["metodo_pago"], "value"):
-            datos["metodo_pago"] = datos["metodo_pago"].value
+        if "tipo_pago" in datos:
+            tipo_pago = getattr(datos["tipo_pago"], "value", datos["tipo_pago"])
+            if tipo_pago not in TipoPago.values():
+                raise ValueError("El tipo de pago no es válido")
+            datos["tipo_pago"] = tipo_pago
+        if "metodo_pago" in datos:
+            metodo_pago = getattr(datos["metodo_pago"], "value", datos["metodo_pago"])
+            if metodo_pago not in MetodoPago.values():
+                raise ValueError("El método de pago no es válido")
+            datos["metodo_pago"] = metodo_pago
+        if "pagado" in datos:
+            estado_pagado = datos["pagado"]
+            if isinstance(estado_pagado, bool):
+                datos["pagado"] = int(estado_pagado)
+            elif str(estado_pagado).strip() in {"0", "1"}:
+                datos["pagado"] = int(str(estado_pagado).strip())
+            else:
+                raise ValueError("El estado pagado debe ser verdadero o falso")
 
         # Actualizar campos
+        # `dias_trabajados` es una propiedad de solo lectura derivada del
+        # período; para persistir el dato de prorrateo se guarda en
+        # `dias_laborados`, nunca se intenta asignar a la propiedad.
+        if "dias_trabajados" in datos:
+            datos.pop("dias_trabajados")
         for campo, valor in datos.items():
-            if hasattr(pago, campo) and campo not in ["empleado_id"]:
+            if hasattr(pago, campo) and campo not in {"empleado_id", "prorratear"}:
                 setattr(pago, campo, valor)
 
         return self.pago_repository.update(pago)
@@ -574,6 +702,8 @@ class PagoService:
 
         if not periodo_inicio or not periodo_fin:
             raise ValueError("Fechas de período inválidas o requeridas")
+        if periodo_fin < periodo_inicio:
+            raise ValueError("La fecha fin debe ser igual o posterior a la fecha inicio")
 
         empleado = self.empleado_repository.get_by_id(empleado_id)
         if not empleado:
@@ -635,7 +765,9 @@ class PagoService:
             periodo_fin = parse_date_estricto(periodo_fin, "Periodo de fin")
 
         if not periodo_inicio or not periodo_fin:
-            return []
+            raise ValueError("Fechas de período inválidas o requeridas")
+        if periodo_fin < periodo_inicio:
+            raise ValueError("La fecha fin debe ser igual o posterior a la fecha inicio")
 
         empleados_activos = self.empleado_repository.get_activos()
         pagos_generados = []
@@ -715,10 +847,45 @@ class PagoService:
             if campo not in datos or valor is None or str(valor).strip() == "":
                 continue
             try:
-                parse_float_estricto(valor, campo.replace("_", " "))
+                importe = parse_float_estricto(valor, campo.replace("_", " "))
+                if importe is not None and importe < 0:
+                    errores.append(f"{campo.replace('_', ' ').capitalize()} no puede ser negativo")
             except ValueError as error:
                 errores.append(str(error))
         return errores
+
+    @staticmethod
+    def _normalizar_importes(datos: dict) -> dict:
+        """Convierte todos los importes válidos al mismo float de dominio."""
+        campos_importe = (
+            "salario_base",
+            "bonificaciones",
+            "horas_extra",
+            "horas_extra_diurnas",
+            "horas_extra_nocturnas",
+            "horas_extra_feriadas",
+            "descuentos",
+            "deduccion_seguro",
+            "deduccion_pension",
+            "deduccion_impuesto",
+            "otras_deducciones",
+            "aguinaldo",
+            "bono_vacacional",
+            "monto_bruto",
+            "monto_neto",
+            "base_gravable",
+            "aporte_seguro_patronal",
+            "aporte_pension_patronal",
+        )
+        normalizados = dict(datos)
+        for campo in campos_importe:
+            if campo not in normalizados:
+                continue
+            valor = normalizados[campo]
+            if valor is None or str(valor).strip() == "":
+                continue
+            normalizados[campo] = parse_float_estricto(valor, campo.replace("_", " "))
+        return normalizados
 
     def validar_datos_pago(self, datos: dict) -> list[str]:
         """Valida los datos de un pago"""
@@ -749,14 +916,16 @@ class PagoService:
         if fechas["periodo_inicio"] and fechas["periodo_fin"]:
             if fechas["periodo_fin"] < fechas["periodo_inicio"]:
                 errores.append("La fecha fin debe ser posterior a la fecha inicio")
+        for campo in ("periodo_inicio", "periodo_fin"):
+            if campo in datos and fechas[campo] is None:
+                errores.append(f"El campo {campo.replace('_', ' ')} es requerido")
 
         try:
-            empleado_id = int(datos.get("empleado_id"))
-            if empleado_id <= 0:
+            empleado_id = parse_int_estricto(datos.get("empleado_id"), "ID de empleado")
+            if empleado_id is not None and empleado_id <= 0:
                 errores.append("El ID de empleado debe ser positivo")
-        except (ValueError, TypeError, OverflowError):
-            if datos.get("empleado_id") not in (None, ""):
-                errores.append("El ID de empleado debe ser un número entero válido")
+        except ValueError as error:
+            errores.append(str(error))
 
         tipo_pago = datos.get("tipo_pago")
         if hasattr(tipo_pago, "value"):
@@ -778,18 +947,28 @@ class PagoService:
             except ValueError as error:
                 errores.append(str(error))
 
+        if "fecha_pago" in datos:
+            try:
+                fecha_pago = parse_date_estricto(datos.get("fecha_pago"), "Fecha de pago")
+                if fecha_pago is None:
+                    errores.append("La fecha de pago es requerida")
+            except ValueError as error:
+                errores.append(str(error))
+
         # Días del prorrateo: solo se validan cuando el pago se prorratea,
         # para no rechazar los pagos que no usan días (la mayoría).
-        if datos.get("prorratear"):
+        if datos.get("prorratear") or "dias_trabajados" in datos or "dias_periodo" in datos:
             try:
-                dias_trabajados = int(datos.get("dias_trabajados") or 0)
-                dias_periodo = int(datos.get("dias_periodo") or 0)
-            except (ValueError, TypeError):
-                errores.append("Los días del período deben ser números enteros")
+                dias_trabajados = parse_int_estricto(
+                    datos.get("dias_trabajados", 30), "Días trabajados"
+                )
+                dias_periodo = parse_int_estricto(datos.get("dias_periodo", 30), "Días del período")
+            except ValueError as error:
+                errores.append(str(error))
             else:
-                if dias_periodo <= 0:
+                if dias_periodo is None or dias_periodo <= 0:
                     errores.append("Los días del período deben ser mayores que cero")
-                elif dias_trabajados < 0 or dias_trabajados > dias_periodo:
+                elif dias_trabajados is None or not 0 <= dias_trabajados <= dias_periodo:
                     errores.append("Los días trabajados deben estar entre 0 y los días del período")
 
         return errores

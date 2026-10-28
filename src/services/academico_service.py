@@ -34,7 +34,7 @@ from src.repositories import (
 )
 from src.services.token_sesion_service import TokenSesionService
 from src.utils.audit_logger import AuditEventType, get_audit_logger
-from src.utils.helpers import parse_date, utcnow
+from src.utils.helpers import parse_date_estricto, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +51,9 @@ _CAMPOS_TEXTO_ESTUDIANTE = (
 )
 
 
-def _fecha(valor: object) -> date | None:
-    """Acepta date o cadena y devuelve date; None si no representa fecha"""
-    if valor is None:
-        return None
-    if isinstance(valor, str):
-        return parse_date(valor) if valor.strip() else None
-    if isinstance(valor, date):
-        return valor
-    return None
+def _fecha(valor: object, etiqueta: str = "Fecha") -> date | None:
+    """Normaliza una fecha opcional y rechaza cadenas no válidas."""
+    return parse_date_estricto(valor, etiqueta)
 
 
 def _texto(valor: object) -> str | None:
@@ -113,7 +107,7 @@ class AcademicoService:
             nombres=nombres,
             apellidos=apellidos,
             cedula=cedula,
-            fecha_nacimiento=_fecha(datos.get("fecha_nacimiento")),
+            fecha_nacimiento=_fecha(datos.get("fecha_nacimiento"), "Fecha de nacimiento"),
             genero=self._genero(datos.get("genero")),
             nivel=self._nivel(datos.get("nivel")),
             representante=_texto(datos.get("representante")),
@@ -157,7 +151,9 @@ class AcademicoService:
         if "genero" in datos:
             estudiante.genero = self._genero(datos.get("genero"))
         if "fecha_nacimiento" in datos:
-            estudiante.fecha_nacimiento = _fecha(datos.get("fecha_nacimiento"))
+            estudiante.fecha_nacimiento = _fecha(
+                datos.get("fecha_nacimiento"), "Fecha de nacimiento"
+            )
         for campo in _CAMPOS_TEXTO_ESTUDIANTE:
             if campo in datos and campo not in ("nombres", "apellidos"):
                 setattr(estudiante, campo, _texto(datos.get(campo)))
@@ -220,8 +216,10 @@ class AcademicoService:
         if self.periodos.get_by_nombre(nombre):
             raise ValueError("Ya existe un periodo con ese nombre")
 
-        inicio = _fecha(datos.get("fecha_inicio"))
-        fin = _fecha(datos.get("fecha_fin"))
+        inicio = _fecha(datos.get("fecha_inicio"), "Fecha de inicio")
+        fin = _fecha(datos.get("fecha_fin"), "Fecha de fin")
+        if (inicio is None) != (fin is None):
+            raise ValueError("El periodo debe tener fecha de inicio y fecha de fin, o ambas vacías")
         if inicio and fin and fin < inicio:
             raise ValueError("La fecha de fin no puede ser anterior a la de inicio")
 
@@ -256,9 +254,17 @@ class AcademicoService:
             periodo.nombre = nombre
 
         inicio = (
-            _fecha(datos.get("fecha_inicio")) if "fecha_inicio" in datos else periodo.fecha_inicio
+            _fecha(datos.get("fecha_inicio"), "Fecha de inicio")
+            if "fecha_inicio" in datos
+            else periodo.fecha_inicio
         )
-        fin = _fecha(datos.get("fecha_fin")) if "fecha_fin" in datos else periodo.fecha_fin
+        fin = (
+            _fecha(datos.get("fecha_fin"), "Fecha de fin")
+            if "fecha_fin" in datos
+            else periodo.fecha_fin
+        )
+        if (inicio is None) != (fin is None):
+            raise ValueError("El periodo debe tener fecha de inicio y fecha de fin, o ambas vacías")
         if inicio and fin and fin < inicio:
             raise ValueError("La fecha de fin no puede ser anterior a la de inicio")
         periodo.fecha_inicio = inicio

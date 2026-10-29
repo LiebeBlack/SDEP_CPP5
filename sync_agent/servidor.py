@@ -2175,8 +2175,10 @@ class ManejadorSync(BaseHTTPRequestHandler):
         if longitud <= 0:
             return b""
         subida_pdf = urlparse(self.path).path.startswith(RUTA_ARCHIVOS + "/subir")
-        limite = 8 * 1024 * 1024 if subida_pdf else max(
-            self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob
+        limite = (
+            8 * 1024 * 1024
+            if subida_pdf
+            else max(self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob)
         )
         if longitud > limite:
             self.close_connection = True

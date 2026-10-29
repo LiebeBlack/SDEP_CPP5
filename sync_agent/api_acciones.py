@@ -35,6 +35,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sync_agent.comun import hash_bytes
 from sync_agent.sesiones import ErrorSesion, GestorSesiones, SesionValida
 
+# Importado aquí para uso en múltiples métodos
+from src.security.contexto import normalizar_cedula
+
 if TYPE_CHECKING:
     from sync_agent.servidor import NucleoCentral
 
@@ -347,7 +350,6 @@ class ApiAcciones:
         """
         valido = self.gestor_sesiones.validar(token)
         from src.models import Usuario
-        from src.security.contexto import normalizar_cedula
         from src.services.auth_service import AuthService
 
         if "cedula" in cuerpo and valido.rol != "admin":

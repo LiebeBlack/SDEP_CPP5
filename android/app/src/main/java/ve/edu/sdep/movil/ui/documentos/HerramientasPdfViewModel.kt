@@ -41,6 +41,7 @@ data class EstadoHerramientasPdf(
     val markdown: String = PLANTILLAS_CONSTANCIA.first().second,
     val pdf: PdfListo? = null,
     val cargando: Boolean = false,
+    val cargandoEmpleados: Boolean = false,
     val mensaje: String? = null,
 )
 
@@ -50,17 +51,42 @@ class HerramientasPdfViewModel @Inject constructor(
 ) : ViewModel() {
     private val _estado = MutableStateFlow(EstadoHerramientasPdf())
     val estado: StateFlow<EstadoHerramientasPdf> = _estado.asStateFlow()
+    private var solicitudEmpleados = 0
 
-    private fun cargarEmpleados(cedula: String?, esTrabajador: Boolean) = viewModelScope.launch {
-        val empleados = if (esTrabajador) {
-            repositorio.empleadoVisiblePorCedula(cedula.orEmpty())?.let(::listOf).orEmpty()
-        } else {
-            repositorio.empleadosVisibles()
+    private fun cargarEmpleados(cedula: String?, esTrabajador: Boolean) {
+        val solicitud = ++solicitudEmpleados
+        _estado.update {
+            it.copy(
+                empleados = emptyList(), empleadoId = null, pdf = null,
+                cargandoEmpleados = true, mensaje = null,
+            )
         }
-        _estado.update { actual ->
-            actual.copy(empleados = empleados, empleadoId = actual.empleadoId?.takeIf { id ->
-                empleados.any { it.id == id }
-            } ?: empleados.firstOrNull()?.id)
+        viewModelScope.launch {
+            val empleados = try {
+                if (esTrabajador) {
+                    repositorio.empleadoVisiblePorCedula(cedula.orEmpty())?.let(::listOf).orEmpty()
+                } else {
+                    repositorio.empleadosVisibles()
+                }
+            } catch (cancelacion: CancellationException) {
+                throw cancelacion
+            } catch (error: Exception) {
+                if (solicitud == solicitudEmpleados) {
+                    _estado.update {
+                        it.copy(cargandoEmpleados = false, mensaje = error.message ?: "No se pudieron cargar los empleados.")
+                    }
+                }
+                return@launch
+            }
+            if (solicitud != solicitudEmpleados) return@launch
+            _estado.update { actual ->
+                actual.copy(
+                    empleados = empleados,
+                    empleadoId = actual.empleadoId?.takeIf { id -> empleados.any { it.id == id } }
+                        ?: empleados.firstOrNull()?.id,
+                    cargandoEmpleados = false,
+                )
+            }
         }
     }
 
@@ -102,6 +128,10 @@ class HerramientasPdfViewModel @Inject constructor(
     }
 
     fun limpiarPdf() = _estado.update { it.copy(pdf = null) }
+
+    fun errorSeleccionArchivo(mensaje: String) {
+        _estado.update { it.copy(mensaje = mensaje) }
+    }
 
     private fun empleadoSeleccionado(): Long? = _estado.value.empleadoId
 

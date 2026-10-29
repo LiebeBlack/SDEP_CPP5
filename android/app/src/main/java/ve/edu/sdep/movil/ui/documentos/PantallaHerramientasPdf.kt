@@ -36,12 +36,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.dominio.modelo.Permiso
@@ -68,6 +73,7 @@ fun PantallaHerramientasPdf(
 ) {
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    val alcance = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var empleadoExpandido by rememberSaveable { mutableStateOf(false) }
     var plantillaExpandida by rememberSaveable { mutableStateOf(false) }
@@ -96,15 +102,29 @@ fun PantallaHerramientasPdf(
             },
         )
     }
-    val puedeVerFicha = sesion.puedeAbrir(ve.edu.sdep.movil.dominio.modelo.Modulo.EMPLEADOS) &&
-        sesion.puede(Permiso.REPORTAR)
+    val puedeVerFicha = puedeEmitir
     val selectorMarkdown = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) cargarMarkdown(contexto, uri) { markdown -> vistaModelo.cambiarMarkdown(markdown) }
+        if (uri != null) alcance.launch {
+            try {
+                vistaModelo.cambiarMarkdown(withContext(Dispatchers.IO) { cargarMarkdown(contexto, uri) })
+            } catch (cancelacion: CancellationException) {
+                throw cancelacion
+            } catch (error: Exception) {
+                vistaModelo.errorSeleccionArchivo(error.message ?: "No se pudo leer la plantilla")
+            }
+        }
     }
     val selectorPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) cargarPdf(contexto, uri) { nombre, contenido ->
-            if (tituloSubida.isBlank()) tituloSubida = nombre.substringBeforeLast('.')
-            vistaModelo.subir(nombre, tituloSubida, contenido)
+        if (uri != null) alcance.launch {
+            try {
+                val (nombre, contenido) = withContext(Dispatchers.IO) { cargarPdf(contexto, uri) }
+                if (tituloSubida.isBlank()) tituloSubida = nombre.substringBeforeLast('.')
+                vistaModelo.subir(nombre, tituloSubida.ifBlank { nombre.substringBeforeLast('.') }, contenido)
+            } catch (cancelacion: CancellationException) {
+                throw cancelacion
+            } catch (error: Exception) {
+                vistaModelo.errorSeleccionArchivo(error.message ?: "No se pudo leer el PDF")
+            }
         }
     }
     LaunchedEffect(sesion.usuario, sesion.rol, sesion.cedula) {
@@ -145,7 +165,7 @@ fun PantallaHerramientasPdf(
                     }
                 }
             }
-            if (estado.cargando) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (estado.cargando || estado.cargandoEmpleados) LinearProgressIndicator(Modifier.fillMaxWidth())
             val secciones = listOfNotNull(
                 if (puedeUsarPlantilla) "constancia" to "Constancias" else null,
                 if (puedeAdjuntar || puedeVerFicha || sesion.esTrabajador) "legajo" to "Legajo" else null,
@@ -173,13 +193,14 @@ fun PantallaHerramientasPdf(
                 onExpandedChange = { empleadoExpandido = it },
             ) {
                 OutlinedTextField(
-                    value = estado.empleados.firstOrNull { it.id == estado.empleadoId }?.let {
-                        "${it.nombreCompleto} · ${it.cedula}"
-                    } ?: "Sin empleados sincronizados",
+                value = estado.empleados.firstOrNull { it.id == estado.empleadoId }?.let {
+                    "${it.nombreCompleto} · ${it.cedula}"
+                } ?: if (estado.cargandoEmpleados) "Cargando empleados…" else "Sin empleados sincronizados",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Empleado del legajo") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(empleadoExpandido) },
+                    enabled = !estado.cargandoEmpleados && estado.empleados.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                 )
                 ExposedDropdownMenu(expanded = empleadoExpandido, onDismissRequest = { empleadoExpandido = false }) {
@@ -280,9 +301,9 @@ fun PantallaHerramientasPdf(
                         enabled = !estado.cargando && estado.empleadoId != null,
                         onClick = { vistaModelo.ficha() },
                     ) { Text("Generar ficha del empleado") }
-                    if (sesion.esTrabajador && estado.empleadoId == null && !estado.cargando) {
+                    if (sesion.esTrabajador && estado.empleadoId == null && !estado.cargandoEmpleados) {
                         Text(
-                            "No encontramos su ficha sincronizada. Sincronice los datos y vuelva a intentar.",
+                            estado.mensaje ?: "No encontramos su ficha sincronizada. Sincronice los datos y vuelva a intentar.",
                             color = MaterialTheme.colorScheme.tertiary,
                         )
                     }
@@ -321,7 +342,7 @@ fun PantallaHerramientasPdf(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedTextField(
                                     value = periodoInicio,
                                     onValueChange = { periodoInicio = it.take(10) },
@@ -335,7 +356,7 @@ fun PantallaHerramientasPdf(
                                             }.isSuccess
                                         ) Text("Fecha inválida; use AAAA-MM-DD")
                                     },
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
                                 )
                                 OutlinedTextField(
@@ -354,7 +375,7 @@ fun PantallaHerramientasPdf(
                                             Text("La fecha final debe ser igual o posterior a la inicial")
                                         }
                                     },
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
                                 )
                             }
@@ -372,7 +393,6 @@ fun PantallaHerramientasPdf(
                 }
             }
 
-            if (estado.cargando) LinearProgressIndicator(Modifier.fillMaxWidth())
             estado.pdf?.let { pdf ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -389,12 +409,16 @@ fun PantallaHerramientasPdf(
                         ) {
                             OutlinedButton(
                                 modifier = Modifier.weight(1f),
-                                onClick = { compartirPdf(contexto, pdf.nombre, pdf.contenido, compartir = false) },
+                                onClick = {
+                                    alcance.launch { compartirPdf(contexto, pdf.nombre, pdf.contenido, compartir = false) }
+                                },
                             ) { Text("Abrir / imprimir") }
                             if (sesion.puede(Permiso.CREAR) || sesion.puede(Permiso.REPORTAR)) {
                                 OutlinedButton(
                                     modifier = Modifier.weight(1f),
-                                    onClick = { compartirPdf(contexto, pdf.nombre, pdf.contenido, compartir = true) },
+                                    onClick = {
+                                        alcance.launch { compartirPdf(contexto, pdf.nombre, pdf.contenido, compartir = true) }
+                                    },
                                 ) { Text("Compartir") }
                             }
                         }
@@ -407,8 +431,7 @@ fun PantallaHerramientasPdf(
     }
 }
 
-private fun cargarMarkdown(contexto: Context, uri: Uri, alListo: (String) -> Unit) {
-    runCatching {
+private fun cargarMarkdown(contexto: Context, uri: Uri): String {
         val nombre = contexto.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
             .orEmpty()
@@ -428,14 +451,10 @@ private fun cargarMarkdown(contexto: Context, uri: Uri, alListo: (String) -> Uni
         } ?: error("No se pudo leer la plantilla Markdown.")
         require(texto.isNotBlank()) { "La plantilla Markdown está vacía." }
         require(texto.toByteArray(Charsets.UTF_8).size <= 65_536) { "La plantilla Markdown supera 64 KB." }
-        alListo(texto)
-    }.onFailure { error ->
-        if (error is Exception) android.widget.Toast.makeText(contexto, error.message ?: "No se pudo leer la plantilla", android.widget.Toast.LENGTH_LONG).show()
-    }
+    return texto
 }
 
-private fun cargarPdf(contexto: Context, uri: Uri, alListo: (String, ByteArray) -> Unit) {
-    runCatching {
+private fun cargarPdf(contexto: Context, uri: Uri): Pair<String, ByteArray> {
         val nombre = contexto.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
             ?.substringAfterLast('/')?.substringAfterLast('\\')
@@ -460,14 +479,11 @@ private fun cargarPdf(contexto: Context, uri: Uri, alListo: (String, ByteArray) 
         require(bytes.size >= 5 && bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
             "El contenido seleccionado no parece un PDF válido."
         }
-        alListo(nombre, bytes)
-    }.onFailure { error ->
-        if (error is Exception) android.widget.Toast.makeText(contexto, error.message ?: "No se pudo leer el PDF", android.widget.Toast.LENGTH_LONG).show()
-    }
+    return nombre to bytes
 }
 
-private fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, compartir: Boolean) {
-    runCatching {
+private suspend fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, compartir: Boolean) {
+    try {
         require(bytes.size >= 5 && bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
             "El archivo no contiene un PDF válido."
         }
@@ -476,10 +492,11 @@ private fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, co
             .take(120)
             .takeIf { it.endsWith(".pdf", ignoreCase = true) }
             ?: "documento.pdf"
-
-        val archivo = File(contexto.cacheDir, "documentos/$nombreSeguro").apply {
-            parentFile?.mkdirs()
-            writeBytes(bytes)
+        val archivo = withContext(Dispatchers.IO) {
+            File(contexto.cacheDir, "documentos/$nombreSeguro").apply {
+                parentFile?.mkdirs()
+                writeBytes(bytes)
+            }
         }
         val uri = FileProvider.getUriForFile(contexto, "${contexto.packageName}.archivos", archivo)
         val intent = if (compartir) {
@@ -491,7 +508,13 @@ private fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, co
         } else Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf")
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         contexto.startActivity(Intent.createChooser(intent, if (compartir) "Compartir PDF" else "Abrir o imprimir PDF"))
-    }.onFailure {
-        android.widget.Toast.makeText(contexto, "Instale un visor PDF para abrir el archivo.", android.widget.Toast.LENGTH_LONG).show()
+    } catch (cancelacion: CancellationException) {
+        throw cancelacion
+    } catch (error: Exception) {
+        android.widget.Toast.makeText(
+            contexto,
+            error.message ?: "No se pudo preparar el PDF. Compruebe que hay una aplicación compatible instalada.",
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
     }
 }

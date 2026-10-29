@@ -80,7 +80,11 @@ class DocumentosRepositorio @Inject constructor(
         if (personalizada && plantilla.toByteArray(Charsets.UTF_8).size > MAX_PLANTILLA) {
             error("La plantilla Markdown supera 64 KB.")
         }
-        val nombre = "constancia_${empleado.cedula}.pdf"
+        val sufijoSeguro = (empleado.cedula.ifBlank { empleado.id.toString() })
+            .filter { it.isLetterOrDigit() || it in "-_" }
+            .take(80)
+            .ifBlank { empleado.id.toString() }
+        val nombre = "constancia_$sufijoSeguro.pdf"
         val archivo = api.generarPdf(
             if (personalizada) "constancia_plantilla" else "constancia_trabajo",
             buildJsonObject {
@@ -88,14 +92,19 @@ class DocumentosRepositorio @Inject constructor(
                 put("nombre_completo", empleado.nombreCompleto)
                 if (personalizada) {
                     put("plantilla_markdown", plantilla)
-                    put("titulo_documento", titulo.uppercase())
+                    put("titulo_documento", titulo.filterNot { it.isISOControl() }.trim().take(120).uppercase().ifBlank { "CONSTANCIA DE TRABAJO" })
                 }
             },
         )
         val bytes = leerPdfLimitado(api.descargar(archivo.hash))
         verificarPdf(bytes, archivo.hash)
-        archivar(sesion, empleado.id, archivo.nombre ?: nombre, titulo.take(200), archivo.hash, bytes)
-        PdfListo(archivo.nombre ?: nombre, bytes, archivado = true)
+        val nombreSeguro = archivo.nombre?.substringAfterLast('/')?.substringAfterLast('\\')
+            ?.filter { it.isLetterOrDigit() || it in "._- " }
+            ?.take(120)
+            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
+            ?: nombre
+        archivar(sesion, empleado.id, nombreSeguro, titulo.filterNot { it.isISOControl() }.trim().take(200).ifBlank { "Constancia de trabajo" }, archivo.hash, bytes)
+        PdfListo(nombreSeguro, bytes, archivado = true)
     }
 
     suspend fun fichaPdf(empleadoId: Long): Resultado<PdfListo> = conectado { sesion, api ->
@@ -221,10 +230,9 @@ class DocumentosRepositorio @Inject constructor(
     ) {
         val empleadoUuid = identidadDao.uuidDe("empleados", empleadoId)
             ?: error("La ficha debe sincronizarse antes de archivar documentos.")
-        val puedeGuardarPropio = sesion.esTrabajador &&
-            empleadoDao.buscarPorId(empleadoId)?.cedula?.let { normalizarCedula(it) == sesion.cedulaNormalizada } == true &&
-            sesion.puede(Permiso.CREAR) && sesion.puedeAbrir(Modulo.DOCUMENTOS)
-        val puedeGuardarGestion = sesion.puedeAbrir(Modulo.DOCUMENTOS) &&
+        val puedeGuardarPropio =                sesion.esTrabajador && empleadoDao.buscarPorId(empleadoId)?.cedula?.let { normalizarCedula(it) == sesion.cedulaNormalizada } == true &&
+                sesion.puede(Permiso.CREAR) && sesion.puedeAbrir(Modulo.DOCUMENTOS)
+        val puedeGuardarGestion = !sesion.esTrabajador && sesion.puedeAbrir(Modulo.DOCUMENTOS) &&
             (sesion.puede(Permiso.CREAR) || sesion.puede(Permiso.REPORTAR))
         require(puedeGuardarPropio || puedeGuardarGestion) {
             "Su rol no puede guardar archivos en el legajo."

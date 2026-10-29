@@ -1047,7 +1047,9 @@ class ApiAcciones:
                 if getattr(empleado, "activo", 1) != 1:
                     raise ErrorApi("Solo se emiten constancias a personal activo", 403)
                 sufijo = str(empleado.cedula or empleado.id).replace("/", "-").replace("\\", "-")
-                sufijo = "".join(caracter for caracter in sufijo if caracter.isalnum() or caracter in "-_.")
+                sufijo = "".join(
+                    caracter for caracter in sufijo if caracter.isalnum() or caracter in "-_."
+                )
                 nombre = f"constancia_{sufijo or empleado.id}.pdf"
                 destino = str(Path(temporal) / nombre)
                 plantilla = cuerpo.get("plantilla_markdown")

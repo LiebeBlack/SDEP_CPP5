@@ -106,7 +106,10 @@ class HerramientasPdfViewModel @Inject constructor(
         _estado.update { it.copy(plantillaIndice = indice, markdown = plantilla.second, mensaje = null) }
     }
 
-    fun cambiarMarkdown(texto: String) = _estado.update { it.copy(markdown = texto, mensaje = null) }
+    fun cambiarMarkdown(texto: String) {
+        if (texto.toByteArray(Charsets.UTF_8).size > 65_536) return
+        _estado.update { it.copy(plantillaIndice = -1, markdown = texto, mensaje = null) }
+    }
 
     fun constancia(
         personalizada: Boolean,
@@ -148,7 +151,15 @@ class HerramientasPdfViewModel @Inject constructor(
         claveSesion = nuevaClave
         accionJob?.cancel()
         accionJob = null
-        _estado.update { it.copy(cargando = false, pdf = null, mensaje = null) }
+        _estado.update {
+            it.copy(
+                cargando = false,
+                pdf = null,
+                mensaje = null,
+                plantillaIndice = 0,
+                markdown = PLANTILLAS_CONSTANCIA.first().second,
+            )
+        }
         cargarEmpleados(cedula, esTrabajador)
     }
 

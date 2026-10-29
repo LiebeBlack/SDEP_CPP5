@@ -84,12 +84,11 @@ fun PantallaHerramientasPdf(
     var periodoFin by rememberSaveable { mutableStateOf(java.time.LocalDate.now().toString()) }
     var tituloSubida by rememberSaveable { mutableStateOf("") }
     var nombreDocumento by rememberSaveable { mutableStateOf("Constancia de trabajo") }
-    val periodoValido = remember(periodoInicio, periodoFin) {
-        runCatching {
-            val desde = java.time.LocalDate.parse(periodoInicio)
-            val hasta = java.time.LocalDate.parse(periodoFin)
-            desde.toString() == periodoInicio && hasta.toString() == periodoFin && !hasta.isBefore(desde)
-        }.getOrDefault(false)
+    val fechaInicioValida = remember(periodoInicio) { fechaIsoValida(periodoInicio) }
+    val fechaFinValida = remember(periodoFin) { fechaIsoValida(periodoFin) }
+    val periodoValido = remember(periodoInicio, periodoFin, fechaInicioValida, fechaFinValida) {
+        fechaInicioValida && fechaFinValida &&
+            !java.time.LocalDate.parse(periodoFin).isBefore(java.time.LocalDate.parse(periodoInicio))
     }
     val puedeEmitir = sesion.puedeAbrir(ve.edu.sdep.movil.dominio.modelo.Modulo.EMPLEADOS) &&
         sesion.puede(Permiso.REPORTAR)
@@ -115,6 +114,8 @@ fun PantallaHerramientasPdf(
             } catch (error: Exception) {
                 vistaModelo.errorSeleccionArchivo(error.message ?: "No se pudo leer la plantilla")
             }
+        } else {
+            vistaModelo.errorSeleccionArchivo("No se seleccionó una plantilla Markdown.")
         }
     }
     val selectorPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -128,6 +129,8 @@ fun PantallaHerramientasPdf(
             } catch (error: Exception) {
                 vistaModelo.errorSeleccionArchivo(error.message ?: "No se pudo leer el PDF")
             }
+        } else {
+            vistaModelo.errorSeleccionArchivo("No se seleccionó ningún PDF.")
         }
     }
     LaunchedEffect(sesion.usuario, sesion.rol, sesion.cedula) {
@@ -140,8 +143,13 @@ fun PantallaHerramientasPdf(
     LaunchedEffect(estado.mensaje) {
         estado.mensaje?.let { snackbar.showSnackbar(it) }
     }
-    LaunchedEffect(sesion.usuario) {
-        if (sesion.esTrabajador) seccionActiva = "constancia"
+    LaunchedEffect(sesion.usuario, sesion.rol) {
+        seccionActiva = when {
+            puedeUsarPlantilla -> "constancia"
+            puedeAdjuntar || puedeVerFicha || sesion.esTrabajador -> "legajo"
+            accionesPdf.any { sesion.puedeAbrir(it.modulo) && sesion.puede(Permiso.REPORTAR) } -> "reportes"
+            else -> ""
+        }
     }
 
     Scaffold(
@@ -164,7 +172,7 @@ fun PantallaHerramientasPdf(
                         "Emite constancias laborales, genera reportes y organiza los PDF del legajo.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                            if (sesion.esTrabajador) {
+                    if (sesion.esTrabajador) {
                         Text("Acceso personal · ${sesion.nombre}", style = MaterialTheme.typography.labelLarge)
                     } else {
                         Text("Sesión: ${sesion.etiquetaRol}", style = MaterialTheme.typography.labelLarge)
@@ -375,14 +383,11 @@ fun PantallaHerramientasPdf(
                                     value = periodoInicio,
                                     onValueChange = { periodoInicio = it.take(10) },
                                     label = { Text("Desde · AAAA-MM-DD") },
-                                    isError = periodoInicio.isNotBlank() && !runCatching {
-                                        java.time.LocalDate.parse(periodoInicio)
-                                    }.isSuccess,
+                                    isError = periodoInicio.isNotBlank() && !fechaInicioValida,
                                     supportingText = {
-                                        if (periodoInicio.isNotBlank() && !runCatching {
-                                                java.time.LocalDate.parse(periodoInicio)
-                                            }.isSuccess
-                                        ) Text("Fecha inválida; use AAAA-MM-DD")
+                                        if (periodoInicio.isNotBlank() && !fechaInicioValida) {
+                                            Text("Fecha inválida; use AAAA-MM-DD")
+                                        }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
@@ -391,15 +396,12 @@ fun PantallaHerramientasPdf(
                                     value = periodoFin,
                                     onValueChange = { periodoFin = it.take(10) },
                                     label = { Text("Hasta · AAAA-MM-DD") },
-                                    isError = periodoFin.isNotBlank() && !runCatching {
-                                        java.time.LocalDate.parse(periodoFin)
-                                    }.isSuccess,
+                                    isError = periodoFin.isNotBlank() && !fechaFinValida ||
+                                        fechaInicioValida && fechaFinValida && !periodoValido,
                                     supportingText = {
-                                        if (periodoFin.isNotBlank() && !runCatching {
-                                                java.time.LocalDate.parse(periodoFin)
-                                            }.isSuccess
-                                        ) Text("Fecha inválida; use AAAA-MM-DD")
-                                        else if (periodoValido.not() && periodoInicio.isNotBlank() && periodoFin.isNotBlank()) {
+                                        if (periodoFin.isNotBlank() && !fechaFinValida) {
+                                            Text("Fecha inválida; use AAAA-MM-DD")
+                                        } else if (fechaInicioValida && fechaFinValida && !periodoValido) {
                                             Text("La fecha final debe ser igual o posterior a la inicial")
                                         }
                                     },
@@ -460,6 +462,10 @@ fun PantallaHerramientasPdf(
         }
     }
 }
+
+private fun fechaIsoValida(texto: String): Boolean = runCatching {
+    java.time.LocalDate.parse(texto).toString() == texto
+}.getOrDefault(false)
 
 private fun cargarMarkdown(contexto: Context, uri: Uri): String {
     val nombre = contexto.contentResolver.query(

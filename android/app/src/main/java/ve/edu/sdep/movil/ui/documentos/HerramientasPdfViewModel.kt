@@ -51,12 +51,16 @@ class HerramientasPdfViewModel @Inject constructor(
     private val _estado = MutableStateFlow(EstadoHerramientasPdf())
     val estado: StateFlow<EstadoHerramientasPdf> = _estado.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            val empleados = repositorio.empleadosVisibles()
-            _estado.update { actual ->
-                actual.copy(empleados = empleados, empleadoId = actual.empleadoId ?: empleados.firstOrNull()?.id)
-            }
+    private fun cargarEmpleados(cedula: String?, esTrabajador: Boolean) = viewModelScope.launch {
+        val empleados = if (esTrabajador) {
+            repositorio.empleadoVisiblePorCedula(cedula.orEmpty())?.let(::listOf).orEmpty()
+        } else {
+            repositorio.empleadosVisibles()
+        }
+        _estado.update { actual ->
+            actual.copy(empleados = empleados, empleadoId = actual.empleadoId?.takeIf { id ->
+                empleados.any { it.id == id }
+            } ?: empleados.firstOrNull()?.id)
         }
     }
 
@@ -101,16 +105,8 @@ class HerramientasPdfViewModel @Inject constructor(
 
     private fun empleadoSeleccionado(): Long? = _estado.value.empleadoId
 
-    fun usarMiFicha(cedula: String) = viewModelScope.launch {
-        val empleado = repositorio.empleadoVisiblePorCedula(cedula)
-        _estado.update {
-            it.copy(
-                empleados = empleado?.let(::listOf).orEmpty(),
-                empleadoId = empleado?.id,
-                pdf = null,
-                mensaje = null,
-            )
-        }
+    fun actualizarSesion(cedula: String?, esTrabajador: Boolean) {
+        cargarEmpleados(cedula, esTrabajador)
     }
 
     private fun ejecutar(accion: suspend () -> Resultado<PdfListo>) {

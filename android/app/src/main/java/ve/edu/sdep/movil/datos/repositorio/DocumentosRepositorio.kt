@@ -50,9 +50,10 @@ class DocumentosRepositorio @Inject constructor(
     suspend fun empleadosVisibles(): List<ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity> {
         val sesion = sesionRepositorio.actual ?: return emptyList()
         if (!sesion.puedeAbrir(Modulo.EMPLEADOS)) return emptyList()
-        return empleadoDao.listarTodos().filter { it.activo == 1 &&
+        val filas = empleadoDao.listarTodos().filter { it.activo == 1 &&
             (!sesion.esTrabajador || normalizarCedula(it.cedula) == sesion.cedulaNormalizada)
         }
+        return if (sesion.esTrabajador) filas.take(1) else filas
     }
 
     suspend fun empleadoVisiblePorCedula(cedula: String): ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity? {
@@ -175,7 +176,11 @@ class DocumentosRepositorio @Inject constructor(
             "La ficha debe sincronizarse antes de subir documentos."
         }
         val nombreParaServidor = if (sesion.esTrabajador) {
-            "${sesion.cedulaNormalizada}_${nombre.filter { it.isLetterOrDigit() || it in "._- " }.take(110)}"
+            val prefijoCedula = sesion.cedulaNormalizada
+            require(prefijoCedula.isNotBlank() && prefijoCedula.all { it.isLetterOrDigit() || it in "-_" }) {
+                "La cédula de la sesión no tiene un formato válido."
+            }
+            "${prefijoCedula}_${nombre.filter { it.isLetterOrDigit() || it in "._- " }.take(110)}"
         } else nombre
         val archivo = api.subirArchivo(
             nombreParaServidor,
@@ -183,8 +188,9 @@ class DocumentosRepositorio @Inject constructor(
         )
         verificarPdf(contenido, archivo.hash)
         archivar(
-            sesion, empleado.id, archivo.nombre ?: nombre,
-            titulo.trim().take(200).ifBlank { nombre.substringBeforeLast('.') },
+            sesion, empleado.id, nombre,
+            titulo.filterNot { it.isISOControl() }.trim().take(200)
+                .ifBlank { nombre.substringBeforeLast('.') },
             archivo.hash, contenido,
         )
         PdfListo(archivo.nombre ?: nombre, contenido, archivado = true)

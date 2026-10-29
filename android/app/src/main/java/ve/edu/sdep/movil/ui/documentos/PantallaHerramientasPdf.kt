@@ -69,12 +69,19 @@ fun PantallaHerramientasPdf(
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
-    var empleadoExpandido by remember { mutableStateOf(false) }
-    var plantillaExpandida by remember { mutableStateOf(false) }
-    var tituloSubida by remember { mutableStateOf("") }
-    var nombreDocumento by remember { mutableStateOf("Constancia de trabajo") }
-    var periodoInicio by remember { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(1).toString()) }
-    var periodoFin by remember { mutableStateOf(java.time.LocalDate.now().toString()) }
+    var empleadoExpandido by rememberSaveable { mutableStateOf(false) }
+    var plantillaExpandida by rememberSaveable { mutableStateOf(false) }
+    var periodoInicio by rememberSaveable { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(1).toString()) }
+    var periodoFin by rememberSaveable { mutableStateOf(java.time.LocalDate.now().toString()) }
+    var tituloSubida by rememberSaveable { mutableStateOf("") }
+    var nombreDocumento by rememberSaveable { mutableStateOf("Constancia de trabajo") }
+    val periodoValido = remember(periodoInicio, periodoFin) {
+        runCatching {
+            val desde = java.time.LocalDate.parse(periodoInicio)
+            val hasta = java.time.LocalDate.parse(periodoFin)
+            !hasta.isBefore(desde)
+        }.getOrDefault(false)
+    }
     val puedeEmitir = sesion.puedeAbrir(ve.edu.sdep.movil.dominio.modelo.Modulo.EMPLEADOS) &&
         sesion.puede(Permiso.REPORTAR)
     val puedeAdjuntar = sesion.puedeAbrir(ve.edu.sdep.movil.dominio.modelo.Modulo.DOCUMENTOS) &&
@@ -100,10 +107,8 @@ fun PantallaHerramientasPdf(
             vistaModelo.subir(nombre, tituloSubida, contenido)
         }
     }
-    LaunchedEffect(sesion.cedula, sesion.esTrabajador) {
-        if (sesion.esTrabajador) vistaModelo.usarMiFicha(sesion.cedula.orEmpty())
-    }
-    LaunchedEffect(sesion.rol) {
+    LaunchedEffect(sesion.usuario, sesion.rol, sesion.cedula) {
+        vistaModelo.actualizarSesion(sesion.cedula, sesion.esTrabajador)
         if (!sesion.puede(Permiso.CREAR)) {
             vistaModelo.limpiarPdf()
             tituloSubida = ""
@@ -141,15 +146,15 @@ fun PantallaHerramientasPdf(
                 }
             }
             if (estado.cargando) LinearProgressIndicator(Modifier.fillMaxWidth())
+            val secciones = listOfNotNull(
+                if (puedeUsarPlantilla) "constancia" to "Constancias" else null,
+                if (puedeAdjuntar || puedeVerFicha || sesion.esTrabajador) "legajo" to "Legajo" else null,
+                if (accionesPdf.any { sesion.puedeAbrir(it.modulo) && sesion.puede(Permiso.REPORTAR) }) "reportes" to "Reportes" else null,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val secciones = listOfNotNull(
-                    if (puedeUsarPlantilla) "constancia" to "Constancias" else null,
-                    if (puedeAdjuntar || puedeVerFicha || sesion.esTrabajador) "legajo" to "Legajo" else null,
-                    if (accionesPdf.any { sesion.puedeAbrir(it.modulo) && sesion.puede(Permiso.REPORTAR) }) "reportes" to "Reportes" else null,
-                )
                 LaunchedEffect(secciones, seccionActiva) {
                     if (secciones.none { (clave, _) -> clave == seccionActiva }) {
                         seccionActiva = secciones.firstOrNull()?.first.orEmpty()
@@ -218,7 +223,11 @@ fun PantallaHerramientasPdf(
                     ) { Text("Importar plantilla Markdown (.md)") }
                     OutlinedTextField(
                         value = estado.markdown,
-                        onValueChange = vistaModelo::cambiarMarkdown,
+                        onValueChange = { texto ->
+                            if (texto.toByteArray(Charsets.UTF_8).size <= 65_536) {
+                                vistaModelo.cambiarMarkdown(texto)
+                            }
+                        },
                         label = { Text("Plantilla Markdown") },
                         supportingText = { Text("Campos: {{nombre}}, {{nombre_completo}}, {{cedula}}, {{cargo}}, {{departamento}}, {{salario}}, {{fecha_contratacion}}, {{fecha_emision}}, {{institucion}} · máximo 64 KB") },
                         minLines = 5,
@@ -255,7 +264,7 @@ fun PantallaHerramientasPdf(
                     )
                     if (puedeAdjuntar) OutlinedTextField(
                         value = tituloSubida,
-                        onValueChange = { tituloSubida = it },
+                        onValueChange = { tituloSubida = it.take(200) },
                         label = { Text("Título para el legajo") },
                         supportingText = { Text("Usa un nombre corto que ayude a encontrar el documento.") },
                         modifier = Modifier.fillMaxWidth(),
@@ -263,7 +272,7 @@ fun PantallaHerramientasPdf(
                     )
                     if (puedeAdjuntar) Button(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !estado.cargando && estado.empleadoId != null,
+                        enabled = !estado.cargando && estado.empleadoId != null && tituloSubida.isNotBlank(),
                         onClick = { selectorPdf.launch(arrayOf("application/pdf")) },
                     ) { Text("Seleccionar y adjuntar PDF · máximo 8 MB") }
                     if (puedeVerFicha) OutlinedButton(
@@ -315,15 +324,36 @@ fun PantallaHerramientasPdf(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedTextField(
                                     value = periodoInicio,
-                                    onValueChange = { periodoInicio = it },
+                                    onValueChange = { periodoInicio = it.take(10) },
                                     label = { Text("Desde · AAAA-MM-DD") },
+                                    isError = periodoInicio.isNotBlank() && !runCatching {
+                                        java.time.LocalDate.parse(periodoInicio)
+                                    }.isSuccess,
+                                    supportingText = {
+                                        if (periodoInicio.isNotBlank() && !runCatching {
+                                                java.time.LocalDate.parse(periodoInicio)
+                                            }.isSuccess
+                                        ) Text("Fecha inválida; use AAAA-MM-DD")
+                                    },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                 )
                                 OutlinedTextField(
                                     value = periodoFin,
-                                    onValueChange = { periodoFin = it },
+                                    onValueChange = { periodoFin = it.take(10) },
                                     label = { Text("Hasta · AAAA-MM-DD") },
+                                    isError = periodoFin.isNotBlank() && !runCatching {
+                                        java.time.LocalDate.parse(periodoFin)
+                                    }.isSuccess,
+                                    supportingText = {
+                                        if (periodoFin.isNotBlank() && !runCatching {
+                                                java.time.LocalDate.parse(periodoFin)
+                                            }.isSuccess
+                                        ) Text("Fecha inválida; use AAAA-MM-DD")
+                                        else if (periodoValido.not() && periodoInicio.isNotBlank() && periodoFin.isNotBlank()) {
+                                            Text("La fecha final debe ser igual o posterior a la inicial")
+                                        }
+                                    },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                 )
@@ -331,7 +361,7 @@ fun PantallaHerramientasPdf(
                         }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando,
+                            enabled = !estado.cargando && (accion.tipo != "planilla_nomina" || periodoValido),
                             onClick = {
                                 if (accion.tipo == "planilla_nomina") {
                                     vistaModelo.reporte(accion.tipo, periodoInicio, periodoFin)
@@ -397,6 +427,7 @@ private fun cargarMarkdown(contexto: Context, uri: Uri, alListo: (String) -> Uni
             salida.toByteArray().toString(Charsets.UTF_8)
         } ?: error("No se pudo leer la plantilla Markdown.")
         require(texto.isNotBlank()) { "La plantilla Markdown está vacía." }
+        require(texto.toByteArray(Charsets.UTF_8).size <= 65_536) { "La plantilla Markdown supera 64 KB." }
         alListo(texto)
     }.onFailure { error ->
         if (error is Exception) android.widget.Toast.makeText(contexto, error.message ?: "No se pudo leer la plantilla", android.widget.Toast.LENGTH_LONG).show()
@@ -408,6 +439,7 @@ private fun cargarPdf(contexto: Context, uri: Uri, alListo: (String, ByteArray) 
         val nombre = contexto.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
             ?.substringAfterLast('/')?.substringAfterLast('\\')
+            ?.takeIf { it.isNotBlank() }
             ?.take(160)
             ?: "documento.pdf"
         val max = 8L * 1024 * 1024

@@ -193,7 +193,10 @@ class PDFGenerator:
             Spacer(1, 0.2 * inch),
         ]
 
-        for linea in plantilla_markdown.splitlines():
+        lineas = plantilla_markdown.splitlines()
+        if len(lineas) > 600:
+            raise ValueError("La plantilla Markdown supera el máximo de 600 líneas")
+        for linea in lineas:
             linea_limpia = linea.strip()
             if linea_limpia.startswith("### "):
                 nivel_titulo = 3

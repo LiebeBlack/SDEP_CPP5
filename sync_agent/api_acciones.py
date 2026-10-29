@@ -169,16 +169,20 @@ def _fecha(cuerpo: dict, clave: str, requerida: Literal[False]) -> date | None: 
 
 
 def _fecha(cuerpo: dict, clave: str, requerida: bool = True) -> date | None:
-    """Extrae una fecha ISO (AAAA-MM-DD) del cuerpo de la petición"""
+    """Extrae una fecha ISO exacta (AAAA-MM-DD) del cuerpo de la petición."""
     crudo = cuerpo.get(clave)
     if crudo in (None, ""):
         if requerida:
             raise ErrorApi(f"Falta la fecha «{clave}» (formato AAAA-MM-DD)")
         return None
+    texto = str(crudo).strip()
     try:
-        return date.fromisoformat(str(crudo)[:10])
+        valor = date.fromisoformat(texto)
     except ValueError:
         raise ErrorApi(f"La fecha «{clave}» no es válida (use AAAA-MM-DD)") from None
+    if valor.isoformat() != texto:
+        raise ErrorApi(f"La fecha «{clave}» no es válida (use AAAA-MM-DD)")
+    return valor
 
 
 @overload
@@ -900,27 +904,32 @@ class ApiAcciones:
         from src.security.contexto import normalizar_cedula
 
         es_documento_propio = sesion.rol == "user"
+        nombre = str(nombre or "").strip()
         if es_documento_propio:
             exigir_permiso(sesion, "create_own", "documentos")
-            sufijo_cedula = f"{normalizar_cedula(sesion.cedula)}_"
-            if not sesion.cedula or not str(nombre).startswith(sufijo_cedula):
+            if not sesion.cedula:
+                raise ErrorApi("La cuenta no tiene una cédula asociada", 403)
+            prefijo_propio = f"{normalizar_cedula(sesion.cedula)}_"
+            if not nombre.startswith(prefijo_propio):
                 raise ErrorApi("Solo puede adjuntar documentos a su propia ficha", 403)
         else:
             exigir_permiso(sesion, "create", "documentos")
-        nombre = str(nombre or "").strip()
-        prefijo_propio = f"{normalizar_cedula(sesion.cedula)}_" if es_documento_propio else ""
+            prefijo_propio = ""
         nombre_archivo = nombre[len(prefijo_propio) :] if prefijo_propio else nombre
         if (
             not nombre_archivo
             or len(nombre) > 160
             or "/" in nombre
             or "\\" in nombre
+            or any(ord(caracter) < 32 for caracter in nombre)
             or not nombre_archivo.lower().endswith(".pdf")
             or not all(caracter.isalnum() or caracter in "._- " for caracter in nombre)
         ):
             raise ErrorApi("El nombre debe ser un archivo PDF válido", 400)
         if not contenido:
             raise ErrorApi("El archivo está vacío")
+        if len(contenido) < 5:
+            raise ErrorApi("El archivo debe ser un PDF válido", 400)
         if len(contenido) > 8 * 1024 * 1024:
             raise ErrorApi("El PDF supera el límite de 8 MB", 413)
         if not contenido.startswith(b"%PDF-"):
@@ -960,9 +969,11 @@ class ApiAcciones:
             if carpeta.name.startswith("sdep_movil_"):
                 shutil.rmtree(carpeta, ignore_errors=True)
         if not contenido:
-            raise ErrorApi("El archivo generado está vacío", 500)
-        if nombre.lower().endswith(".pdf"):
-            if len(contenido) > 8 * 1024 * 1024:
+            raise ErrorApi("El archivo generado está vacío", 500)            if nombre.lower().endswith(".pdf"):
+                if len(contenido) < 5:
+                    raise ErrorApi("El PDF generado está vacío o incompleto", 500)
+                if len(contenido) > 8 * 1024 * 1024:
+
                 raise ErrorApi("El PDF generado supera el límite de 8 MB", 413)
             if not contenido.startswith(b"%PDF-"):
                 raise ErrorApi("El generador no produjo un PDF válido", 500)
@@ -1035,7 +1046,8 @@ class ApiAcciones:
                     if getattr(empleado, "activo", 1) != 1:
                         raise ErrorApi("Solo se emiten constancias a personal activo", 403)
                 sufijo = str(empleado.cedula or empleado.id).replace("/", "-").replace("\\", "-")
-                nombre = f"constancia_{sufijo}.pdf"
+                sufijo = "".join(caracter for caracter in sufijo if caracter.isalnum() or caracter in "-_.")
+                nombre = f"constancia_{sufijo or empleado.id}.pdf"
                 destino = str(Path(temporal) / nombre)
                 plantilla = cuerpo.get("plantilla_markdown")
                 if tipo == "constancia_plantilla":
@@ -1046,6 +1058,12 @@ class ApiAcciones:
                     titulo_constancia = str(
                         cuerpo.get("titulo_documento") or "CONSTANCIA DE TRABAJO"
                     ).strip()
+                    if (
+                        not titulo_constancia
+                        or len(titulo_constancia) > 120
+                        or any(ord(caracter) < 32 for caracter in titulo_constancia)
+                    ):
+                        raise ErrorApi("El título del documento no es válido", 400)
                     self._ejecutar(
                         lambda: generador.generate_constancia_plantilla(
                             empleado,

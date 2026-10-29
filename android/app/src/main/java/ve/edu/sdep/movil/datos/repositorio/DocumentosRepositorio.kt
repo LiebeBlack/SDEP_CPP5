@@ -50,19 +50,20 @@ class DocumentosRepositorio @Inject constructor(
     suspend fun empleadosVisibles(): List<ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity> {
         val sesion = sesionRepositorio.actual ?: return emptyList()
         if (!sesion.puedeAbrir(Modulo.EMPLEADOS)) return emptyList()
-        val filas = empleadoDao.listarTodos().filter { it.activo == 1 &&
-            (!sesion.esTrabajador || normalizarCedula(it.cedula) == sesion.cedulaNormalizada)
+        if (sesion.esTrabajador) {
+            val cedula = sesion.cedulaNormalizada
+            if (cedula.isBlank()) return emptyList()
+            return empleadoDao.buscarActivoPorCedulaNormalizada(cedula)?.let(::listOf).orEmpty()
         }
-        return if (sesion.esTrabajador) filas.take(1) else filas
+        return empleadoDao.listarActivos()
     }
 
     suspend fun empleadoVisiblePorCedula(cedula: String): ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity? {
         val sesion = sesionRepositorio.actual ?: return null
         if (!sesion.esTrabajador || !sesion.puedeAbrir(Modulo.EMPLEADOS)) return null
-        return empleadoDao.listarTodos().firstOrNull {
-            it.activo == 1 && normalizarCedula(it.cedula) == sesion.cedulaNormalizada &&
-                normalizarCedula(it.cedula) == normalizarCedula(cedula)
-        }
+        val cedulaNormalizada = normalizarCedula(cedula)
+        if (cedulaNormalizada.isBlank() || cedulaNormalizada != sesion.cedulaNormalizada) return null
+        return empleadoDao.buscarActivoPorCedulaNormalizada(cedulaNormalizada)
     }
 
     suspend fun constancia(

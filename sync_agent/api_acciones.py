@@ -896,7 +896,7 @@ class ApiAcciones:
     def subir_archivo(
         self, sesion: SesionValida, nombre: str, contenido: bytes, dispositivo
     ) -> dict:
-        """Guarda un archivo en el almacén central (deduplicado por hash)"""
+        """Valida y guarda un PDF del legajo en el almacén central."""
         es_documento_propio = sesion.rol == "user"
         if es_documento_propio:
             from src.security.contexto import normalizar_cedula
@@ -907,11 +907,22 @@ class ApiAcciones:
                 raise ErrorApi("Solo puede adjuntar documentos a su propia ficha", 403)
         else:
             exigir_permiso(sesion, "create", "documentos")
+        nombre = str(nombre or "").strip()
+        if (
+            not nombre
+            or len(nombre) > 160
+            or "/" in nombre
+            or "\\" in nombre
+            or not nombre.lower().endswith(".pdf")
+            or not all(caracter.isalnum() or caracter in "._- " for caracter in nombre)
+        ):
+            raise ErrorApi("El nombre debe ser un archivo PDF válido", 400)
         if not contenido:
             raise ErrorApi("El archivo está vacío")
-        if es_documento_propio:
-            if len(contenido) > 8 * 1024 * 1024 or not contenido.startswith(b"%PDF-"):
-                raise ErrorApi("El archivo debe ser un PDF válido de hasta 8 MB", 413)
+        if len(contenido) > 8 * 1024 * 1024:
+            raise ErrorApi("El PDF supera el límite de 8 MB", 413)
+        if not contenido.startswith(b"%PDF-"):
+            raise ErrorApi("El archivo debe ser un PDF válido", 400)
         hash_archivo = hash_bytes(contenido)
         self.nucleo.guardar_blob(dispositivo, hash_archivo, contenido)
         _auditar(
@@ -948,6 +959,11 @@ class ApiAcciones:
                 shutil.rmtree(carpeta, ignore_errors=True)
         if not contenido:
             raise ErrorApi("El archivo generado está vacío", 500)
+        if nombre.lower().endswith(".pdf"):
+            if len(contenido) > 8 * 1024 * 1024:
+                raise ErrorApi("El PDF generado supera el límite de 8 MB", 413)
+            if not contenido.startswith(b"%PDF-"):
+                raise ErrorApi("El generador no produjo un PDF válido", 500)
         hash_archivo = hash_bytes(contenido)
         self.nucleo.guardar_blob(dispositivo, hash_archivo, contenido)
         _auditar(sesion.username, _tipo_evento("DATA_READ"), "reporte", detalles={"tipo": tipo})
@@ -993,6 +1009,7 @@ class ApiAcciones:
                 if es_constancia_propia:
                     from src.security.contexto import normalizar_cedula
 
+                    exigir_permiso(sesion, "create_own", "documentos")
                     if not sesion.cedula:
                         raise ErrorApi("La cuenta no tiene una cédula asociada", 403)
                     cedula_solicitada = str(cuerpo.get("cedula") or "").strip()
@@ -1080,6 +1097,8 @@ class ApiAcciones:
                 exigir_permiso(sesion, "report", "nomina")
                 desde = _fecha(cuerpo, "periodo_inicio")
                 hasta = _fecha(cuerpo, "periodo_fin")
+                if hasta < desde:
+                    raise ErrorApi("La fecha final no puede ser anterior a la inicial")
                 pagos = self._ejecutar(lambda: PagoService(db).listar_por_periodo(desde, hasta))
                 filas = self._filas_planilla(pagos, servicio_empleados)
                 destino = str(Path(temporal) / "planilla_nomina.pdf")
@@ -1163,6 +1182,8 @@ class ApiAcciones:
                 exigir_permiso(sesion, "report", "nomina")
                 desde = _fecha(cuerpo, "periodo_inicio")
                 hasta = _fecha(cuerpo, "periodo_fin")
+                if hasta < desde:
+                    raise ErrorApi("La fecha final no puede ser anterior a la inicial")
                 destino, nombre = self._exportar(
                     temporal, "nomina.xlsx", PagoService(db).listar_por_periodo(desde, hasta)
                 )

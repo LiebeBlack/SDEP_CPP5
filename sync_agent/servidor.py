@@ -2164,17 +2164,28 @@ class ManejadorSync(BaseHTTPRequestHandler):
     # Cuerpo y respuestas
     # ------------------------------------------------------------------
     def _leer_cuerpo(self) -> bytes:
-        """Lee el cuerpo completo con un límite previo de tamaño"""
+        """Lee un cuerpo HTTP acotado y evita reutilizar conexiones desincronizadas."""
+        if self.headers.get("Transfer-Encoding"):
+            self.close_connection = True
+            raise ErrorPeticion("No se admite Transfer-Encoding en esta petición")
         try:
             longitud = int(self.headers.get("Content-Length") or 0)
         except (TypeError, ValueError):
             raise ErrorPeticion("Cabecera Content-Length inválida") from None
         if longitud <= 0:
             return b""
-        limite = max(self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob)
+        subida_pdf = urlparse(self.path).path.startswith(RUTA_ARCHIVOS + "/subir")
+        limite = 8 * 1024 * 1024 if subida_pdf else max(
+            self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob
+        )
         if longitud > limite:
+            self.close_connection = True
             raise ErrorPeticion(f"El cuerpo supera el límite de {limite} bytes", 413)
-        return self.rfile.read(longitud)
+        contenido = self.rfile.read(longitud)
+        if len(contenido) != longitud:
+            self.close_connection = True
+            raise ErrorPeticion("El cuerpo de la petición llegó incompleto", 400)
+        return contenido
 
     def _leer_json(self) -> dict:
         """Interpreta el cuerpo como JSON del protocolo"""

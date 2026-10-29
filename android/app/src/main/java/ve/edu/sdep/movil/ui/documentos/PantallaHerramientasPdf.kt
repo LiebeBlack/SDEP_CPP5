@@ -150,8 +150,10 @@ fun PantallaHerramientasPdf(
                     if (puedeAdjuntar || puedeVerFicha || sesion.esTrabajador) "legajo" to "Legajo" else null,
                     if (accionesPdf.any { sesion.puedeAbrir(it.modulo) && sesion.puede(Permiso.REPORTAR) }) "reportes" to "Reportes" else null,
                 )
-                if (secciones.none { (clave, _) -> clave == seccionActiva }) {
-                    seccionActiva = secciones.firstOrNull()?.first.orEmpty()
+                LaunchedEffect(secciones, seccionActiva) {
+                    if (secciones.none { (clave, _) -> clave == seccionActiva }) {
+                        seccionActiva = secciones.firstOrNull()?.first.orEmpty()
+                    }
                 }
                 secciones.forEach { (clave, titulo) ->
                     if (seccionActiva == clave) {
@@ -228,11 +230,11 @@ fun PantallaHerramientasPdf(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && estado.empleadoId != null,
-                            onClick = { vistaModelo.constancia(personalizada = true, titulo = nombreDocumento) },
-                        ) { Text("Generar constancia de trabajo") }
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                        onClick = { vistaModelo.constancia(personalizada = true, titulo = nombreDocumento) },
+                    ) { Text("Generar ${nombreDocumento.lowercase()}") }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !estado.cargando && estado.empleadoId != null,
@@ -437,9 +439,11 @@ private fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, co
         require(bytes.size >= 5 && bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
             "El archivo no contiene un PDF válido."
         }
-        val nombreSeguro = nombre.substringAfterLast('/').substringAfterLast('\\')
-            .filter { it.isLetterOrDigit() || it in "._- " }
-            .take(120).ifBlank { "documento.pdf" }
+        val nombreSeguro = nombre.substringAfterLast('/').substringAfterLast('\\')                .filter { it.isLetterOrDigit() || it in "._- " }
+            .take(120)
+            .takeIf { it.endsWith(".pdf", ignoreCase = true) }
+            ?: "documento.pdf"
+
         val archivo = File(contexto.cacheDir, "documentos/$nombreSeguro").apply {
             parentFile?.mkdirs()
             writeBytes(bytes)

@@ -165,15 +165,15 @@ class PDFGenerator:
         config = self._get_configuracion()
         titulo_documento = str(titulo_documento or "CONSTANCIA DE TRABAJO").strip()[:120]
         valores = {
-            "nombre": empleado.nombre_completo,
-            "nombre_completo": empleado.nombre_completo,
-            "cedula": empleado.cedula,
-            "cargo": empleado.cargo,
-            "departamento": empleado.departamento,
+            "nombre": empleado.nombre_completo or "",
+            "nombre_completo": empleado.nombre_completo or "",
+            "cedula": empleado.cedula or "",
+            "cargo": empleado.cargo or "",
+            "departamento": empleado.departamento or "",
             "fecha_contratacion": format_date(empleado.fecha_contratacion),
             "salario": format_currency(empleado.salario_base),
             "fecha_emision": format_date(date.today()),
-            "institucion": config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+            "institucion": config.get("nombre_institucion") or "INSTITUCIÓN EDUCATIVA",
         }
         doc = SimpleDocTemplate(
             output_path,
@@ -185,7 +185,7 @@ class PDFGenerator:
         )
         story = [
             Paragraph(
-                escape(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA")),
+                escape(str(config.get("nombre_institucion") or "INSTITUCIÓN EDUCATIVA")),
                 self.styles["CustomTitle"],
             ),
             Paragraph(escape(str(titulo_documento)[:120]), self.styles["CustomSubtitle"]),
@@ -229,7 +229,7 @@ class PDFGenerator:
                     [
                         ["____________________________", ""],
                         ["Firma autorizada", "SELLO INSTITUCIONAL"],
-                        [config.get("nombre_institucion", "Institución"), "Fecha: ______________"],
+                        [escape(str(config.get("nombre_institucion", "Institución"))), "Fecha: ______________"],
                     ],
                     colWidths=[3 * inch, 3 * inch],
                     rowHeights=[0.28 * inch, 0.72 * inch, 0.28 * inch],
@@ -277,16 +277,22 @@ class PDFGenerator:
         # Encabezado institucional
         story.append(
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             )
         )
 
         if config.get("direccion"):
-            story.append(Paragraph(config["direccion"], self.styles["CustomFooter"]))
+            story.append(
+                Paragraph(escape(str(config["direccion"])), self.styles["CustomFooter"])
+            )
 
         if config.get("telefono"):
-            story.append(Paragraph(f"Teléfono: {config['telefono']}", self.styles["CustomFooter"]))
+            story.append(
+                Paragraph(
+                    f"Teléfono: {escape(str(config['telefono']))}", self.styles["CustomFooter"]
+                )
+            )
 
         story.append(Spacer(1, 0.5 * inch))
 
@@ -301,11 +307,14 @@ class PDFGenerator:
 
         story.append(Spacer(1, 0.3 * inch))
 
-        # Cuerpo de la constancia
+        # Escapar texto externo antes de insertarlo en el marcado de ReportLab.
+        nombre_institucion = escape(str(config.get("nombre_institucion", "Institución")))
+        nombre_empleado = escape(str(empleado.nombre_completo or ""))
+        cedula_empleado = escape(str(empleado.cedula or ""))
         cuerpo = f"""
-        Por medio de la presente, la {config.get('nombre_institucion', 'Institución')} 
-        certifica que el(la) Sr(a). <b>{empleado.nombre_completo}</b>, 
-        portador(a) de la cédula de identidad N° <b>{empleado.cedula}</b>, 
+        Por medio de la presente, la {nombre_institucion}
+        certifica que el(la) Sr(a). <b>{nombre_empleado}</b>,
+        portador(a) de la cédula de identidad N° <b>{cedula_empleado}</b>,
         labora en esta institución desde el día <b>{format_date(empleado.fecha_contratacion)}</b>.
         """
 
@@ -320,8 +329,8 @@ class PDFGenerator:
             else str(empleado.tipo_empleado).upper()
         )
         datos_cargo = f"""
-        Actualmente desempeña el cargo de <b>{empleado.cargo}</b> en el departamento de 
-        <b>{empleado.departamento}</b>, con una categoría de <b>{tipo_str}</b>.
+        Actualmente desempeña el cargo de <b>{escape(str(empleado.cargo or 'No especificado'))}</b> en el departamento de
+        <b>{escape(str(empleado.departamento or 'No especificado'))}</b>, con una categoría de <b>{escape(tipo_str)}</b>.
         """
 
         story.append(Paragraph(datos_cargo, self.styles["CustomBody"]))
@@ -330,7 +339,7 @@ class PDFGenerator:
 
         # Condiciones laborales
         condiciones = f"""
-        Devengando un salario mensual de <b>{format_currency(empleado.salario_base)}</b>.
+        Devengando un salario mensual de <b>{escape(format_currency(empleado.salario_base))}</b>.
         """
 
         story.append(Paragraph(condiciones, self.styles["CustomBody"]))
@@ -353,7 +362,7 @@ class PDFGenerator:
                 ["_________________________________", "_________________________________"],
                 ["Firma Autorizada", "Sello"],
                 ["", ""],
-                [config.get("nombre_institucion", "Institución"), ""],
+                [nombre_institucion, ""],
             ],
             colWidths=[3 * inch, 2 * inch],
         )

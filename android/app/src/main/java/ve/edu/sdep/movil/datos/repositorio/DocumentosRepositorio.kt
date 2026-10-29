@@ -90,7 +90,7 @@ class DocumentosRepositorio @Inject constructor(
                 }
             },
         )
-        val bytes = api.descargar(archivo.hash).use { it.bytes() }
+        val bytes = leerPdfLimitado(api.descargar(archivo.hash))
         verificarPdf(bytes, archivo.hash)
         archivar(sesion, empleado.id, archivo.nombre ?: nombre, titulo.take(200), archivo.hash, bytes)
         PdfListo(archivo.nombre ?: nombre, bytes, archivado = true)
@@ -103,7 +103,7 @@ class DocumentosRepositorio @Inject constructor(
             "ficha_empleado",
             buildJsonObject { put("cedula", empleado.cedula) },
         )
-        val bytes = api.descargar(archivo.hash).use { it.bytes() }
+        val bytes = leerPdfLimitado(api.descargar(archivo.hash))
         verificarPdf(bytes, archivo.hash)
         PdfListo(archivo.nombre ?: "ficha_${empleado.cedula}.pdf", bytes)
     }
@@ -144,7 +144,7 @@ class DocumentosRepositorio @Inject constructor(
                 }
             },
         )
-        val bytes = api.descargar(archivo.hash).use { it.bytes() }
+        val bytes = leerPdfLimitado(api.descargar(archivo.hash))
         verificarPdf(bytes, archivo.hash)
         PdfListo(archivo.nombre ?: "$tipo.pdf", bytes)
     }
@@ -313,6 +313,31 @@ class DocumentosRepositorio @Inject constructor(
         if (!sesion.puedeAbrir(Modulo.DOCUMENTOS) || !sesion.puede(Permiso.CREAR)) {
             error("Su rol no tiene permiso para adjuntar PDFs.")
         }
+    }
+
+    private fun leerPdfLimitado(cuerpo: okhttp3.ResponseBody): ByteArray = cuerpo.use { respuesta ->
+        val longitud = respuesta.contentLength()
+        require(longitud in 5L..MAX_PDF.toLong()) {
+            "El PDF está vacío, supera 8 MB o no informa su tamaño."
+        }
+        val bytes = ByteArray(longitud.toInt())
+        val entrada = respuesta.byteStream()
+        var posicion = 0
+        while (posicion < bytes.size) {
+            val leidos = entrada.read(bytes, posicion, minOf(32 * 1024, bytes.size - posicion))
+            if (leidos < 0) break
+            if (leidos == 0) {
+                val siguiente = entrada.read()
+                if (siguiente < 0) break
+                bytes[posicion++] = siguiente.toByte()
+            } else {
+                posicion += leidos
+            }
+        }
+        require(posicion == bytes.size && entrada.read() == -1) {
+            "El PDF recibido está incompleto o excede el tamaño informado."
+        }
+        bytes
     }
 
     private fun verificarPdf(bytes: ByteArray, hashEsperado: String) {

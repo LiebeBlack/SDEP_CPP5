@@ -60,7 +60,9 @@ class HerramientasPdfViewModel @Inject constructor(
         }
     }
 
-    fun seleccionarEmpleado(id: Long) = _estado.update { it.copy(empleadoId = id, mensaje = null) }
+    fun seleccionarEmpleado(id: Long) = _estado.update {
+        it.copy(empleadoId = id, pdf = null, mensaje = null)
+    }
 
     fun seleccionarPlantilla(indice: Int) {
         val plantilla = PLANTILLAS_CONSTANCIA.getOrNull(indice) ?: return
@@ -100,8 +102,15 @@ class HerramientasPdfViewModel @Inject constructor(
     private fun empleadoSeleccionado(): Long? = _estado.value.empleadoId
 
     fun usarMiFicha(cedula: String) = viewModelScope.launch {
-        val empleado = repositorio.empleadoVisiblePorCedula(cedula) ?: return@launch
-        _estado.update { it.copy(empleadoId = empleado.id) }
+        val empleado = repositorio.empleadoVisiblePorCedula(cedula)
+        _estado.update {
+            it.copy(
+                empleados = empleado?.let(::listOf).orEmpty(),
+                empleadoId = empleado?.id,
+                pdf = null,
+                mensaje = null,
+            )
+        }
     }
 
     private fun ejecutar(accion: suspend () -> Resultado<PdfListo>) {

@@ -117,8 +117,14 @@ interface EmpleadoDao {
     @Query("UPDATE empleados SET activo = 0 WHERE id = :id")
     suspend fun desactivar(id: Long)
 
-    @Query("SELECT * FROM empleados ORDER BY apellidos")
-    suspend fun listarTodos(): List<EmpleadoEntity>
+    @Query("SELECT * FROM empleados WHERE activo = 1 ORDER BY apellidos, nombres")
+    suspend fun listarActivos(): List<EmpleadoEntity>
+
+    @Query(
+        "SELECT * FROM empleados WHERE activo = 1 AND " +
+            "UPPER(REPLACE(REPLACE(cedula, '.', ''), ' ', '')) = :cedula LIMIT 1",
+    )
+    suspend fun buscarActivoPorCedulaNormalizada(cedula: String): EmpleadoEntity?
 }
 
 @Dao

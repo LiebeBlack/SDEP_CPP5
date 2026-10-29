@@ -167,7 +167,8 @@ fun PantallaHerramientasPdf(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Gestión documental", style = MaterialTheme.typography.headlineSmall)                    Text(
+                    Text("Gestión documental", style = MaterialTheme.typography.headlineSmall)
+                    Text(
                         "Emite constancias laborales, genera reportes y organiza los PDF del legajo.",
                         style = MaterialTheme.typography.bodyMedium,
                     )

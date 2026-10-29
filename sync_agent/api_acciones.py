@@ -911,7 +911,7 @@ class ApiAcciones:
             exigir_permiso(sesion, "create", "documentos")
         nombre = str(nombre or "").strip()
         prefijo_propio = f"{normalizar_cedula(sesion.cedula)}_" if es_documento_propio else ""
-        nombre_archivo = nombre[len(prefijo_propio):] if prefijo_propio else nombre
+        nombre_archivo = nombre[len(prefijo_propio) :] if prefijo_propio else nombre
         if (
             not nombre_archivo
             or len(nombre) > 160
@@ -1000,9 +1000,11 @@ class ApiAcciones:
                 empleado = (
                     servicio_empleados.obtener_empleado(empleado_id)
                     if empleado_id
-                    else servicio_empleados.obtener_empleado_por_cedula(str(cedula or "").strip())
-                    if cedula
-                    else None
+                    else (
+                        servicio_empleados.obtener_empleado_por_cedula(str(cedula or "").strip())
+                        if cedula
+                        else None
+                    )
                 )
                 if empleado is None:
                     raise ErrorApi("El empleado no existe", 404)
@@ -1043,7 +1045,9 @@ class ApiAcciones:
                         raise ErrorApi("Debe enviar una plantilla Markdown", 400)
                     if len(plantilla.encode("utf-8")) > 65_536:
                         raise ErrorApi("La plantilla Markdown no puede superar 64 KB", 413)
-                    titulo_constancia = str(cuerpo.get("titulo_documento") or "CONSTANCIA DE TRABAJO").strip()
+                    titulo_constancia = str(
+                        cuerpo.get("titulo_documento") or "CONSTANCIA DE TRABAJO"
+                    ).strip()
                     self._ejecutar(
                         lambda: generador.generate_constancia_plantilla(
                             empleado,
@@ -1053,9 +1057,7 @@ class ApiAcciones:
                         )
                     )
                 else:
-                    self._ejecutar(
-                        lambda: generador.generate_constancia_trabajo(empleado, destino)
-                    )
+                    self._ejecutar(lambda: generador.generate_constancia_trabajo(empleado, destino))
 
             elif tipo == "ficha_empleado":
                 exigir_permiso(sesion, "report", "empleados")

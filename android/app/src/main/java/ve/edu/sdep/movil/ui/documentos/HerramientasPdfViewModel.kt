@@ -7,6 +7,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity
@@ -52,6 +53,8 @@ class HerramientasPdfViewModel @Inject constructor(
     private val _estado = MutableStateFlow(EstadoHerramientasPdf())
     val estado: StateFlow<EstadoHerramientasPdf> = _estado.asStateFlow()
     private var solicitudEmpleados = 0
+    private var claveSesion: String? = null
+    private var accionJob: Job? = null
 
     private fun cargarEmpleados(cedula: String?, esTrabajador: Boolean) {
         val solicitud = ++solicitudEmpleados
@@ -135,14 +138,20 @@ class HerramientasPdfViewModel @Inject constructor(
 
     private fun empleadoSeleccionado(): Long? = _estado.value.empleadoId
 
-    fun actualizarSesion(cedula: String?, esTrabajador: Boolean) {
+    fun actualizarSesion(usuario: String, cedula: String?, esTrabajador: Boolean) {
+        val nuevaClave = "$usuario|${cedula.orEmpty()}|$esTrabajador"
+        if (nuevaClave == claveSesion) return
+        claveSesion = nuevaClave
+        accionJob?.cancel()
+        accionJob = null
+        _estado.update { it.copy(cargando = false, pdf = null, mensaje = null) }
         cargarEmpleados(cedula, esTrabajador)
     }
 
     private fun ejecutar(accion: suspend () -> Resultado<PdfListo>) {
         if (_estado.value.cargando) return
-        viewModelScope.launch {
-            _estado.update { it.copy(cargando = true, mensaje = null, pdf = null) }
+        _estado.update { it.copy(cargando = true, mensaje = null, pdf = null) }
+        accionJob = viewModelScope.launch {
             val resultado = try {
                 accion()
             } catch (cancelacion: CancellationException) {

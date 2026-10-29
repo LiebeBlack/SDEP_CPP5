@@ -1038,7 +1038,7 @@ class ApiAcciones:
                 cedula = str(cuerpo.get("cedula") or "").strip()
                 if nombre and nombre != empleado.nombre_completo:
                     raise ErrorApi("El nombre no coincide con la ficha del empleado", 400)
-                if cedula and cedula != empleado.cedula:
+                if cedula and normalizar_cedula(cedula) != normalizar_cedula(empleado.cedula):
                     raise ErrorApi("La cédula no coincide con la ficha del empleado", 400)
                 if es_constancia_propia:
                     if normalizar_cedula(empleado.cedula) != normalizar_cedula(sesion.cedula):

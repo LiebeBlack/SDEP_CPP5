@@ -2,6 +2,8 @@ package ve.edu.sdep.movil.datos.repositorio
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -97,8 +99,9 @@ class DocumentosRepositorio @Inject constructor(
                 }
             },
         )
-        val bytes = leerPdfLimitado(api.descargar(archivo.hash))
-        verificarPdf(bytes, archivo.hash)
+        val bytes = withContext(Dispatchers.IO) {
+            leerPdfLimitado(api.descargar(archivo.hash)).also { verificarPdf(it, archivo.hash) }
+        }
         val nombreSeguro = archivo.nombre?.substringAfterLast('/')?.substringAfterLast('\\')
             ?.filter { it.isLetterOrDigit() || it in "._- " }
             ?.take(120)
@@ -115,9 +118,10 @@ class DocumentosRepositorio @Inject constructor(
             "ficha_empleado",
             buildJsonObject { put("cedula", empleado.cedula) },
         )
-        val bytes = leerPdfLimitado(api.descargar(archivo.hash))
-        verificarPdf(bytes, archivo.hash)
-        PdfListo(archivo.nombre ?: "ficha_${empleado.cedula}.pdf", bytes)
+        val bytes = withContext(Dispatchers.IO) {
+            leerPdfLimitado(api.descargar(archivo.hash)).also { verificarPdf(it, archivo.hash) }
+        }
+        PdfListo(nombrePdfSeguro(archivo.nombre, "ficha_${empleado.cedula}.pdf"), bytes)
     }
 
     suspend fun reporte(
@@ -135,15 +139,14 @@ class DocumentosRepositorio @Inject constructor(
         }
         exigirReporte(sesion, modulo)
         if (tipo == "planilla_nomina") {
-            val desde = runCatching {
-                LocalDate.parse(periodoInicio ?: error("Indique la fecha inicial del período."))
-            }.getOrElse {
-                error("La fecha inicial debe usar AAAA-MM-DD.")
-            }
-            val hasta = runCatching {
-                LocalDate.parse(periodoFin ?: error("Indique la fecha final del período."))
-            }.getOrElse {
-                error("La fecha final debe usar AAAA-MM-DD.")
+            val desdeTexto = periodoInicio ?: error("Indique la fecha inicial del período.")
+            val hastaTexto = periodoFin ?: error("Indique la fecha final del período.")
+            val desde = runCatching { LocalDate.parse(desdeTexto) }
+                .getOrElse { error("La fecha inicial debe usar AAAA-MM-DD.") }
+            val hasta = runCatching { LocalDate.parse(hastaTexto) }
+                .getOrElse { error("La fecha final debe usar AAAA-MM-DD.") }
+            require(desde.toString() == desdeTexto && hasta.toString() == hastaTexto) {
+                "Las fechas deben tener el formato AAAA-MM-DD."
             }
             require(!hasta.isBefore(desde)) { "La fecha final no puede ser anterior a la inicial." }
         }
@@ -156,9 +159,10 @@ class DocumentosRepositorio @Inject constructor(
                 }
             },
         )
-        val bytes = leerPdfLimitado(api.descargar(archivo.hash))
-        verificarPdf(bytes, archivo.hash)
-        PdfListo(archivo.nombre ?: "$tipo.pdf", bytes)
+        val bytes = withContext(Dispatchers.IO) {
+            leerPdfLimitado(api.descargar(archivo.hash)).also { verificarPdf(it, archivo.hash) }
+        }
+        PdfListo(nombrePdfSeguro(archivo.nombre, "$tipo.pdf"), bytes)
     }
 
     suspend fun subirPdf(
@@ -177,10 +181,9 @@ class DocumentosRepositorio @Inject constructor(
             error("El archivo seleccionado no es un PDF válido.")
         }
         val nombre = nombreOriginal.substringAfterLast('/').substringAfterLast('\\')
+            .filter { it.isLetterOrDigit() || it in "._- " }
+            .take(120)
             .takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?.filter { it.isLetterOrDigit() || it in "._- " }
-            ?.take(120)
-            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
             ?: error("Seleccione un archivo PDF con nombre válido.")
         require(identidadDao.uuidDe("empleados", empleado.id) != null) {
             "La ficha debe sincronizarse antes de subir documentos."
@@ -190,20 +193,26 @@ class DocumentosRepositorio @Inject constructor(
             require(prefijoCedula.isNotBlank() && prefijoCedula.all { it.isLetterOrDigit() || it in "-_" }) {
                 "La cédula de la sesión no tiene un formato válido."
             }
-            "${prefijoCedula}_${nombre.filter { it.isLetterOrDigit() || it in "._- " }.take(110)}"
+            val nombreLimpio = nombre.filter { it.isLetterOrDigit() || it in "._- " }
+            val maximoBase = 160 - prefijoCedula.length - 1 - 4
+            require(maximoBase >= 1) {
+                "La cédula asociada no permite crear un nombre de archivo válido."
+            }
+            "${prefijoCedula}_${nombreLimpio.take(maximoBase).ifBlank { "documento" }}.pdf"
         } else nombre
         val archivo = api.subirArchivo(
             nombreParaServidor,
             contenido.toRequestBody("application/pdf".toMediaType()),
         )
-        verificarPdf(contenido, archivo.hash)
+        withContext(Dispatchers.Default) { verificarPdf(contenido, archivo.hash) }
+        val nombreSeguro = nombrePdfSeguro(archivo.nombre, nombre)
         archivar(
-            sesion, empleado.id, nombre,
+            sesion, empleado.id, nombreSeguro,
             titulo.filterNot { it.isISOControl() }.trim().take(200)
                 .ifBlank { nombre.substringBeforeLast('.') },
             archivo.hash, contenido,
         )
-        PdfListo(archivo.nombre ?: nombre, contenido, archivado = true)
+        PdfListo(nombreSeguro, contenido, archivado = true)
     }
 
     private suspend fun empleadoPropio(
@@ -355,6 +364,24 @@ class DocumentosRepositorio @Inject constructor(
         }
         bytes
     }
+
+    private fun nombrePdfSeguro(nombre: String?, alternativo: String): String =
+        nombre?.substringAfterLast('/')?.substringAfterLast('\\')
+            ?.filter { it.isLetterOrDigit() || it in "._- " }
+            ?.take(120)
+            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
+            ?: alternativo.filter { it.isLetterOrDigit() || it in "._- " }
+                .take(120).takeIf { it.endsWith(".pdf", ignoreCase = true) }
+            ?: "documento.pdf"
+
+    private fun nombrePdfSeguro(nombre: String?, alternativo: String): String =
+        nombre?.substringAfterLast('/')?.substringAfterLast('\\')
+            ?.filter { it.isLetterOrDigit() || it in "._- " }
+            ?.take(120)
+            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
+            ?: alternativo.filter { it.isLetterOrDigit() || it in "._- " }
+                .take(120).takeIf { it.endsWith(".pdf", ignoreCase = true) }
+            ?: "documento.pdf"
 
     private fun verificarPdf(bytes: ByteArray, hashEsperado: String) {
         require(bytes.size in 5..MAX_PDF) { "El PDF está vacío o supera 8 MB." }

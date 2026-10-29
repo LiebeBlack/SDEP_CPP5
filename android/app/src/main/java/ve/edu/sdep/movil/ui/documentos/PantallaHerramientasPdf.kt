@@ -230,11 +230,11 @@ fun PantallaHerramientasPdf(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
-                        onClick = { vistaModelo.constancia(personalizada = true, titulo = nombreDocumento) },
-                    ) { Text("Generar ${nombreDocumento.lowercase()}") }
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                            onClick = { vistaModelo.constancia(personalizada = true, titulo = nombreDocumento) },
+                        ) { Text("Generar ${nombreDocumento.lowercase()}") }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !estado.cargando && estado.empleadoId != null,
@@ -439,7 +439,8 @@ private fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, co
         require(bytes.size >= 5 && bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
             "El archivo no contiene un PDF válido."
         }
-        val nombreSeguro = nombre.substringAfterLast('/').substringAfterLast('\\')                .filter { it.isLetterOrDigit() || it in "._- " }
+        val nombreSeguro = nombre.substringAfterLast('/').substringAfterLast('\\')
+            .filter { it.isLetterOrDigit() || it in "._- " }
             .take(120)
             .takeIf { it.endsWith(".pdf", ignoreCase = true) }
             ?: "documento.pdf"

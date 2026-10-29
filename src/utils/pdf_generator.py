@@ -163,6 +163,7 @@ class PDFGenerator:
             raise ValueError("La plantilla Markdown no puede superar 64 KB")
 
         config = self._get_configuracion()
+        nombre_institucion = str(config.get("nombre_institucion") or "INSTITUCIÓN EDUCATIVA")
         titulo_documento = str(titulo_documento or "CONSTANCIA DE TRABAJO").strip()[:120]
         valores = {
             "nombre": empleado.nombre_completo or "",
@@ -173,7 +174,7 @@ class PDFGenerator:
             "fecha_contratacion": format_date(empleado.fecha_contratacion),
             "salario": format_currency(empleado.salario_base),
             "fecha_emision": format_date(date.today()),
-            "institucion": config.get("nombre_institucion") or "INSTITUCIÓN EDUCATIVA",
+            "institucion": nombre_institucion,
         }
         doc = SimpleDocTemplate(
             output_path,
@@ -185,7 +186,7 @@ class PDFGenerator:
         )
         story = [
             Paragraph(
-                escape(str(config.get("nombre_institucion") or "INSTITUCIÓN EDUCATIVA")),
+                escape(nombre_institucion),
                 self.styles["CustomTitle"],
             ),
             Paragraph(escape(str(titulo_documento)[:120]), self.styles["CustomSubtitle"]),
@@ -229,7 +230,7 @@ class PDFGenerator:
                     [
                         ["____________________________", ""],
                         ["Firma autorizada", "SELLO INSTITUCIONAL"],
-                        [escape(str(config.get("nombre_institucion", "Institución"))), "Fecha: ______________"],
+                        [escape(nombre_institucion), "Fecha: ______________"],
                     ],
                     colWidths=[3 * inch, 3 * inch],
                     rowHeights=[0.28 * inch, 0.72 * inch, 0.28 * inch],

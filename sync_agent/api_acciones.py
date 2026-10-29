@@ -897,10 +897,10 @@ class ApiAcciones:
         self, sesion: SesionValida, nombre: str, contenido: bytes, dispositivo
     ) -> dict:
         """Valida y guarda un PDF del legajo en el almacén central."""
+        from src.security.contexto import normalizar_cedula
+
         es_documento_propio = sesion.rol == "user"
         if es_documento_propio:
-            from src.security.contexto import normalizar_cedula
-
             exigir_permiso(sesion, "create_own", "documentos")
             sufijo_cedula = f"{normalizar_cedula(sesion.cedula)}_"
             if not sesion.cedula or not str(nombre).startswith(sufijo_cedula):
@@ -908,12 +908,14 @@ class ApiAcciones:
         else:
             exigir_permiso(sesion, "create", "documentos")
         nombre = str(nombre or "").strip()
+        prefijo_propio = f"{normalizar_cedula(sesion.cedula)}_" if es_documento_propio else ""
+        nombre_archivo = nombre[len(prefijo_propio):] if prefijo_propio else nombre
         if (
-            not nombre
+            not nombre_archivo
             or len(nombre) > 160
             or "/" in nombre
             or "\\" in nombre
-            or not nombre.lower().endswith(".pdf")
+            or not nombre_archivo.lower().endswith(".pdf")
             or not all(caracter.isalnum() or caracter in "._- " for caracter in nombre)
         ):
             raise ErrorApi("El nombre debe ser un archivo PDF válido", 400)
@@ -1007,8 +1009,6 @@ class ApiAcciones:
             if tipo in ("constancia_trabajo", "constancia_plantilla"):
                 es_constancia_propia = sesion.rol == "user"
                 if es_constancia_propia:
-                    from src.security.contexto import normalizar_cedula
-
                     exigir_permiso(sesion, "create_own", "documentos")
                     if not sesion.cedula:
                         raise ErrorApi("La cuenta no tiene una cédula asociada", 403)
@@ -1028,8 +1028,6 @@ class ApiAcciones:
                 if cedula and cedula != empleado.cedula:
                     raise ErrorApi("La cédula no coincide con la ficha del empleado", 400)
                 if es_constancia_propia:
-                    from src.security.contexto import normalizar_cedula
-
                     if normalizar_cedula(empleado.cedula) != normalizar_cedula(sesion.cedula):
                         raise ErrorApi("Solo puede emitir su propia constancia", 403)
                     if getattr(empleado, "activo", 1) != 1:

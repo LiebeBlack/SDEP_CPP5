@@ -68,7 +68,8 @@ class DocumentosRepositorio @Inject constructor(
         empleadoId: Long,
         plantilla: String,
         personalizada: Boolean,
-        titulo: String = "Constancia de trabajo",        ): Resultado<PdfListo> = conectado { sesion, api ->
+        titulo: String = "Constancia de trabajo",
+    ): Resultado<PdfListo> = conectado { sesion, api ->
         val empleado = empleadoPropio(sesion, empleadoId)
         exigirGenerarConstancia(sesion)
 

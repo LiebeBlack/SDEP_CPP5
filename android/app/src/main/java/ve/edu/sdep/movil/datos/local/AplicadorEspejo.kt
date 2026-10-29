@@ -685,7 +685,11 @@ class AplicadorEspejo @Inject constructor(
                 val idLocal = identidadDao.idLocalDe(blob.tabla, blob.filaUuid) ?: return false
                 val documento = documentoDao.buscarPorId(idLocal) ?: return false
                 documentoDao.actualizar(
-                    documento.copy(contenidoBinario = contenido, tamanoBytes = contenido.size),
+                    documento.copy(
+                        contenidoBinario = contenido,
+                        contenidoHash = blob.hash,
+                        tamanoBytes = contenido.size,
+                    ),
                 )
             }
 

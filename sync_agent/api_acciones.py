@@ -897,9 +897,21 @@ class ApiAcciones:
         self, sesion: SesionValida, nombre: str, contenido: bytes, dispositivo
     ) -> dict:
         """Guarda un archivo en el almacén central (deduplicado por hash)"""
-        exigir_permiso(sesion, "create", "documentos")
+        es_documento_propio = sesion.rol == "user"
+        if es_documento_propio:
+            from src.security.contexto import normalizar_cedula
+
+            exigir_permiso(sesion, "create_own", "documentos")
+            sufijo_cedula = f"{normalizar_cedula(sesion.cedula)}_"
+            if not sesion.cedula or not str(nombre).startswith(sufijo_cedula):
+                raise ErrorApi("Solo puede adjuntar documentos a su propia ficha", 403)
+        else:
+            exigir_permiso(sesion, "create", "documentos")
         if not contenido:
             raise ErrorApi("El archivo está vacío")
+        if es_documento_propio:
+            if len(contenido) > 8 * 1024 * 1024 or not contenido.startswith(b"%PDF-"):
+                raise ErrorApi("El archivo debe ser un PDF válido de hasta 8 MB", 413)
         hash_archivo = hash_bytes(contenido)
         self.nucleo.guardar_blob(dispositivo, hash_archivo, contenido)
         _auditar(
@@ -964,21 +976,69 @@ class ApiAcciones:
             generador = PDFGenerator()
             servicio_empleados = EmpleadoService(db)
 
-            def empleado_o_error(empleado_id: int | None):
-                empleado = servicio_empleados.obtener_empleado(empleado_id) if empleado_id else None
+            def empleado_o_error(empleado_id: int | None = None, cedula: str | None = None):
+                empleado = (
+                    servicio_empleados.obtener_empleado(empleado_id)
+                    if empleado_id
+                    else servicio_empleados.obtener_empleado_por_cedula(str(cedula or "").strip())
+                    if cedula
+                    else None
+                )
                 if empleado is None:
                     raise ErrorApi("El empleado no existe", 404)
                 return empleado
 
-            if tipo == "constancia_trabajo":
-                exigir_permiso(sesion, "report", "empleados")
-                destino = str(Path(temporal) / "constancia_trabajo.pdf")
-                nombre = "constancia_trabajo.pdf"
-                self._ejecutar(
-                    lambda: generador.generate_constancia_trabajo(
-                        empleado_o_error(_entero(cuerpo, "empleado_id")), destino
-                    )
+            if tipo in ("constancia_trabajo", "constancia_plantilla"):
+                es_constancia_propia = sesion.rol == "user"
+                if es_constancia_propia:
+                    from src.security.contexto import normalizar_cedula
+
+                    if not sesion.cedula:
+                        raise ErrorApi("La cuenta no tiene una cédula asociada", 403)
+                    cedula_solicitada = str(cuerpo.get("cedula") or "").strip()
+                    if normalizar_cedula(cedula_solicitada) != normalizar_cedula(sesion.cedula):
+                        raise ErrorApi("Solo puede emitir su propia constancia", 403)
+                else:
+                    exigir_permiso(sesion, "report", "empleados")
+                empleado = empleado_o_error(
+                    _entero(cuerpo, "empleado_id", requerido=False),
+                    str(cuerpo.get("cedula") or "").strip() or None,
                 )
+                nombre = str(cuerpo.get("nombre_completo") or "").strip()
+                cedula = str(cuerpo.get("cedula") or "").strip()
+                if nombre and nombre != empleado.nombre_completo:
+                    raise ErrorApi("El nombre no coincide con la ficha del empleado", 400)
+                if cedula and cedula != empleado.cedula:
+                    raise ErrorApi("La cédula no coincide con la ficha del empleado", 400)
+                if es_constancia_propia:
+                    from src.security.contexto import normalizar_cedula
+
+                    if normalizar_cedula(empleado.cedula) != normalizar_cedula(sesion.cedula):
+                        raise ErrorApi("Solo puede emitir su propia constancia", 403)
+                    if getattr(empleado, "activo", 1) != 1:
+                        raise ErrorApi("Solo se emiten constancias a personal activo", 403)
+                sufijo = str(empleado.cedula or empleado.id).replace("/", "-").replace("\\", "-")
+                nombre = f"constancia_{sufijo}.pdf"
+                destino = str(Path(temporal) / nombre)
+                plantilla = cuerpo.get("plantilla_markdown")
+                if tipo == "constancia_plantilla":
+                    if not isinstance(plantilla, str) or not plantilla.strip():
+                        raise ErrorApi("Debe enviar una plantilla Markdown", 400)
+                    if len(plantilla.encode("utf-8")) > 65_536:
+                        raise ErrorApi("La plantilla Markdown no puede superar 64 KB", 413)
+                    titulo_constancia = str(cuerpo.get("titulo_documento") or "CONSTANCIA DE TRABAJO").strip()
+                    self._ejecutar(
+                        lambda: generador.generate_constancia_plantilla(
+                            empleado,
+                            plantilla,
+                            destino,
+                            titulo_constancia[:120],
+                        )
+                    )
+                else:
+                    self._ejecutar(
+                        lambda: generador.generate_constancia_trabajo(empleado, destino)
+                    )
 
             elif tipo == "ficha_empleado":
                 exigir_permiso(sesion, "report", "empleados")
@@ -986,7 +1046,11 @@ class ApiAcciones:
                 nombre = "ficha_empleado.pdf"
                 self._ejecutar(
                     lambda: generador.generate_ficha_empleado(
-                        empleado_o_error(_entero(cuerpo, "empleado_id")), destino
+                        empleado_o_error(
+                            _entero(cuerpo, "empleado_id", requerido=False),
+                            str(cuerpo.get("cedula") or "").strip() or None,
+                        ),
+                        destino,
                     )
                 )
 

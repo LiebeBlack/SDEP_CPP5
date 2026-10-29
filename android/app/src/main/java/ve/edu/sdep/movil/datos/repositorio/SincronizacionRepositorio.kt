@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.SerializationException
 import ve.edu.sdep.movil.datos.local.AplicadorEspejo
 import ve.edu.sdep.movil.datos.local.BaseDatosSdep
@@ -191,7 +193,8 @@ class SincronizacionRepositorio @Inject constructor(
             aplicador.reintentarDiferidas()
             val enviadas = enviarPendientes(api)
             val recibidas = recibirNovedades(api)
-            val blobs = descargarBlobs(api)
+            val blobsSubidos = subirBlobs(api)
+            val blobs = descargarBlobs(api) + blobsSubidos
             val ahora = System.currentTimeMillis()
             val previo = estadoDao.obtener() ?: EstadoSyncEntity()
             estadoDao.guardar(
@@ -389,6 +392,36 @@ class SincronizacionRepositorio @Inject constructor(
     // ------------------------------------------------------------------
     // Binarios
     // ------------------------------------------------------------------
+
+    /** Sube archivos nuevos del legajo al almacén autenticado del nodo. */
+    private suspend fun subirBlobs(api: ProtocoloApi): Int {
+        var subidos = 0
+        for (blob in blobDao.pendientesDeSalida(LIMITE_BLOBS_POR_CICLO)) {
+            try {
+                val id = baseDatos.identidadDao().idLocalDe(blob.tabla, blob.filaUuid) ?: continue
+                val bytes = when (blob.tabla) {
+                    "documentos" -> baseDatos.documentoDao().buscarPorId(id)?.contenidoBinario
+                    else -> null
+                } ?: continue
+                if (bytes.size != blob.tamano || sha256(bytes) != blob.hash) {
+                    blobDao.marcarIntento(blob.hash, "error_hash")
+                    continue
+                }
+                api.subirBlob(blob.hash, bytes.toRequestBody("application/octet-stream".toMediaType()))
+                blobDao.eliminar(blob.hash)
+                subidos++
+            } catch (_: retrofit2.HttpException) {
+                // Se conserva el pendiente para permitir reintentos con el siguiente ciclo.
+            } catch (_: IOException) {
+                break
+            }
+        }
+        return subidos
+    }
+
+    private fun sha256(bytes: ByteArray): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it) }
 
     /**
      * Descarga los binarios anunciados en la última recepción.

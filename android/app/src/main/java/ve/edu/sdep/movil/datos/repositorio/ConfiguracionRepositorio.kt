@@ -92,6 +92,19 @@ class ConfiguracionRepositorio @Inject constructor(
         guardado
     }
 
+    /** Cambia el intervalo automático sin modificar el vínculo del equipo. */
+    suspend fun cambiarPeriodo(minutos: Int): Boolean {
+        val actual = cargar()
+        if (!actual.completa) return false
+        return guardar(
+            url = actual.url,
+            equipo = actual.equipo,
+            token = actual.token,
+            activa = actual.activa,
+            periodoMinutos = minutos,
+        )
+    }
+
     /** Activa o desactiva el envío automático sin tocar la vinculación */
     suspend fun cambiarActiva(activa: Boolean): Boolean {
         val actual = cargar()

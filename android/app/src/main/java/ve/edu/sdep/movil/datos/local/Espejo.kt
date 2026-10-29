@@ -209,7 +209,13 @@ object Espejo {
      * @param completa true en un alta (todas las columnas de dominio no nulas);
      *   false en una edición (solo las columnas cuyo valor difiere de [anterior]).
      */
-    fun payload(tabla: String, entidad: Any?, anterior: Any?, completa: Boolean): JsonObject? {
+    fun payload(
+        tabla: String,
+        entidad: Any?,
+        anterior: Any?,
+        completa: Boolean,
+        incluirBlob: Boolean = true,
+    ): JsonObject? {
         val campos = mutableMapOf<String, JsonElement>()
         when (tabla) {
             "empleados" -> {
@@ -277,11 +283,13 @@ object Espejo {
                 campos["nombre_archivo"] = JsonPrimitive(e.nombreArchivo)
                 poner(campos, "tamano_bytes", e.tamanoBytes, completa || a?.tamanoBytes != e.tamanoBytes)
                 poner(campos, "tipo_mime", e.tipoMime, completa || a?.tipoMime != e.tipoMime)
-                // El contenido viaja como hash (canal de binarios), no como bytes
-                if (e.contenidoHash != null && (completa || a?.contenidoHash != e.contenidoHash)) {
+                // Un alta o reemplazo de archivo anuncia su huella SHA-256, nunca los bytes.
+                if (incluirBlob && e.contenidoHash != null &&
+                    (completa || a?.contenidoHash != e.contenidoHash)
+                ) {
                     campos["contenido_binario"] = marcaBlob(
                         e.contenidoHash,
-                        e.tamanoBytes ?: 0,
+                        e.tamanoBytes ?: e.contenidoBinario?.size ?: 0,
                     )
                 }
                 poner(campos, "activo", e.activo, completa || a?.activo != e.activo)
@@ -626,6 +634,7 @@ object Espejo {
             tamanoBytes = enteroO(campos, "tamano_bytes", e.tamanoBytes),
             tipoMime = textoO(campos, "tipo_mime", e.tipoMime),
             contenidoHash = hashBlob(campos, "contenido_binario") ?: e.contenidoHash,
+            contenidoBinario = if (campos.containsKey("contenido_binario")) null else e.contenidoBinario,
             activo = enteroO(campos, "activo", e.activo) ?: e.activo,
             observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,

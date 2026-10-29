@@ -1,6 +1,9 @@
 package ve.edu.sdep.movil.datos.remoto
 
 import kotlinx.serialization.json.JsonElement
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -157,15 +160,22 @@ interface ApiAcciones {
     @POST("api/v1/archivos/excel/{tipo}")
     suspend fun generarExcel(@Path("tipo") tipo: String, @Body cuerpo: JsonElement): ArchivoDto
 
+    @retrofit2.http.Streaming
+    @retrofit2.http.GET("api/v1/blob/{hash}")
+    suspend fun descargar(@Path("hash") hash: String): ResponseBody
+
     @POST("api/v1/archivos/subir")
     suspend fun subirArchivo(
         @Query("nombre") nombre: String,
-        @Body cuerpo: ByteArray,
+        @Body cuerpo: RequestBody,
     ): ArchivoDto
 
-    /** Descarga de un archivo por su hash (mismo endpoint de binarios v1) */
-    @retrofit2.http.GET("api/v1/blob/{hash}")
-    suspend fun descargar(@Path("hash") hash: String): ByteArray
+    @POST("api/v1/blob/{hash}")
+    suspend fun subirBlob(
+        @Path("hash") hash: String,
+        @Body cuerpo: ByteArray,
+    ): Response<Unit>
+
 
     /** Compatibilidad con lecturas que llegan como pares clave-valor */
     @GET("api/v1/ping")

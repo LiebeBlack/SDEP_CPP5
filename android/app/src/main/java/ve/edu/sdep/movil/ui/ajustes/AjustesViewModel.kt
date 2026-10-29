@@ -31,6 +31,7 @@ data class EstadoAjustes(
     val urlServidor: String = "",
     val versionProtocolo: String? = null,
     val activa: Boolean = true,
+    val periodoMinutos: Int = 15,
     val ocupado: Boolean = false,
     val probando: Boolean = false,
     val sincronizando: Boolean = false,
@@ -76,6 +77,7 @@ class AjustesViewModel @Inject constructor(
                     conectado = config.completa,
                     urlServidor = config.url,
                     activa = if (config.completa) config.activa else true,
+                    periodoMinutos = configuracion.periodoMinutos,
                     biometriaActiva = biometria,
                 )
             }
@@ -137,6 +139,7 @@ class AjustesViewModel @Inject constructor(
                             conectado = true,
                             urlServidor = config.url,
                             activa = config.activa,
+                            periodoMinutos = configuracion.periodoMinutos,
                             mensaje = "Teléfono vinculado con el sistema de escritorio.",
                             esError = false,
                         )
@@ -151,6 +154,36 @@ class AjustesViewModel @Inject constructor(
                         esError = true,
                     )
                 }
+            }
+        }
+    }
+
+    /** Cambia el periodo con una opción predefinida, entre 15 y 360 minutos. */
+    fun cambiarPeriodo(minutos: Int) {
+        val nuevo = minutos.coerceIn(15, 360)
+        if (_estado.value.periodoMinutos == nuevo || _estado.value.ocupado) return
+        viewModelScope.launch {
+            _estado.update { it.copy(ocupado = true) }
+            if (!configuracion.cambiarPeriodo(nuevo)) {
+                _estado.update {
+                    it.copy(
+                        ocupado = false,
+                        mensaje = "No se pudo guardar el intervalo de sincronización.",
+                        esError = true,
+                    )
+                }
+                return@launch
+            }
+            if (_estado.value.activa) {
+                withContext(Dispatchers.IO) { programador.programar(nuevo) }
+            }
+            _estado.update {
+                it.copy(
+                    ocupado = false,
+                    periodoMinutos = nuevo,
+                    mensaje = "Intervalo automático ajustado a $nuevo minutos.",
+                    esError = false,
+                )
             }
         }
     }

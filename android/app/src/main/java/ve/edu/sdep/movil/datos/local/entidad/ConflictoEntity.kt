@@ -1,5 +1,6 @@
 package ve.edu.sdep.movil.datos.local.entidad
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -19,16 +20,16 @@ import androidx.room.PrimaryKey
 data class ConflictoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     /** Tabla del espejo donde ocurrió (vacío en los choques heredados) */
-    val tabla: String = "",
+    @ColumnInfo(defaultValue = "''") val tabla: String = "",
     val filaUuid: String,
     val titulo: String,
     val campo: String,
     val valorLocal: String,
     val valorRemoto: String,
     /** «local» o «remoto»: qué escritura quedó vigente */
-    val ganador: String = "",
+    @ColumnInfo(defaultValue = "''") val ganador: String = "",
     /** Regla del motor que decidió, para poder auditar la decisión */
-    val regla: String = "",
+    @ColumnInfo(defaultValue = "''") val regla: String = "",
     val momento: Long,
     val revisado: Boolean,
 )

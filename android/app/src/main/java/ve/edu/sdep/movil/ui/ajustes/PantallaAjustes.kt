@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -144,6 +146,8 @@ fun PantallaAjustes(
                 alRedescubrir = vistaModelo::redescubrir,
                 alProbar = vistaModelo::probarConexion,
                 alCambiarActiva = vistaModelo::cambiarActiva,
+                periodoMinutos = estado.periodoMinutos,
+                alCambiarPeriodo = vistaModelo::cambiarPeriodo,
             )
 
             TarjetaSincronizacion(
@@ -314,6 +318,8 @@ private fun TarjetaServidor(
     alRedescubrir: () -> Unit,
     alProbar: () -> Unit,
     alCambiarActiva: (Boolean) -> Unit,
+    periodoMinutos: Int,
+    alCambiarPeriodo: (Int) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -385,7 +391,7 @@ private fun TarjetaServidor(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Sincronizar este equipo", style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        text = "Envío y recepción automáticos cada 15 minutos",
+                        text = "Envío y recepción automáticos cada $periodoMinutos minutos",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -395,6 +401,28 @@ private fun TarjetaServidor(
                     onCheckedChange = alCambiarActiva,
                     enabled = estado.conectado,
                 )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Frecuencia para ahorrar batería",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(15, 30, 60, 120, 360).forEach { minutos ->
+                    FilterChip(
+                        selected = periodoMinutos == minutos,
+                        onClick = { alCambiarPeriodo(minutos) },
+                        label = { Text(if (minutos == 360) "6 h" else "$minutos min") },
+                        enabled = estado.conectado && !estado.redescubriendo && !estado.ocupado,
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))

@@ -147,6 +147,109 @@ class PDFGenerator:
         finally:
             db_config.close_session(session)
 
+    def generate_constancia_plantilla(
+        self,
+        empleado: Empleado,
+        plantilla_markdown: str,
+        output_path: str,
+        titulo_documento: str = "CONSTANCIA DE TRABAJO",
+    ) -> str:
+        """Genera una constancia a partir de Markdown confiable y datos del empleado."""
+        import re
+
+        if not isinstance(plantilla_markdown, str) or not plantilla_markdown.strip():
+            raise ValueError("La plantilla Markdown está vacía")
+        if len(plantilla_markdown.encode("utf-8")) > 65_536:
+            raise ValueError("La plantilla Markdown no puede superar 64 KB")
+
+        config = self._get_configuracion()
+        titulo_documento = str(titulo_documento or "CONSTANCIA DE TRABAJO").strip()[:120]
+        valores = {
+            "nombre": empleado.nombre_completo,
+            "nombre_completo": empleado.nombre_completo,
+            "cedula": empleado.cedula,
+            "cargo": empleado.cargo,
+            "departamento": empleado.departamento,
+            "fecha_contratacion": format_date(empleado.fecha_contratacion),
+            "salario": format_currency(empleado.salario_base),
+            "fecha_emision": format_date(date.today()),
+            "institucion": config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+        }
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=self.page_size,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=54,
+            bottomMargin=36,
+        )
+        story = [
+            Paragraph(
+                escape(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA")),
+                self.styles["CustomTitle"],
+            ),
+            Paragraph(escape(str(titulo_documento)[:120]), self.styles["CustomSubtitle"]),
+            Spacer(1, 0.2 * inch),
+        ]
+
+        for linea in plantilla_markdown.splitlines():
+            linea_limpia = linea.strip()
+            if linea_limpia.startswith("### "):
+                nivel_titulo = 3
+                linea_limpia = linea_limpia[4:].strip()
+            elif linea_limpia.startswith("## "):
+                nivel_titulo = 2
+                linea_limpia = linea_limpia[3:].strip()
+            elif linea_limpia.startswith("# "):
+                nivel_titulo = 1
+                linea_limpia = linea_limpia[2:].strip()
+            else:
+                nivel_titulo = 0
+            texto = escape(linea_limpia)
+            texto = re.sub(
+                r"\{\{?([a-z_]+)\}?\}",
+                lambda match: escape(str(valores.get(match.group(1), match.group(0)))),
+                texto,
+            )
+            if not texto:
+                story.append(Spacer(1, 6))
+            elif nivel_titulo:
+                story.append(Paragraph(texto, self.styles[f"Heading{nivel_titulo}"]))
+            else:
+                texto = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", texto)
+                texto = re.sub(r"\*(.+?)\*", r"<i>\1</i>", texto)
+                if texto.startswith("- "):
+                    texto = "&#8226; " + texto[2:]
+                story.append(Paragraph(texto, self.styles["CustomBody"]))
+
+        story.extend(
+            [
+                Spacer(1, 0.5 * inch),
+                Table(
+                    [
+                        ["____________________________", ""],
+                        ["Firma autorizada", "SELLO INSTITUCIONAL"],
+                        [config.get("nombre_institucion", "Institución"), "Fecha: ______________"],
+                    ],
+                    colWidths=[3 * inch, 3 * inch],
+                    rowHeights=[0.28 * inch, 0.72 * inch, 0.28 * inch],
+                    style=TableStyle(
+                        [
+                            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 9),
+                            ("BOX", (1, 1), (1, 1), 1, colors.darkblue),
+                            ("TOPPADDING", (0, 0), (-1, -1), 5),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                        ]
+                    ),
+                ),
+            ]
+        )
+        doc.build(story)
+        return output_path
+
     def generate_constancia_trabajo(self, empleado: Empleado, output_path: str) -> str:
         """
         Genera una constancia de trabajo

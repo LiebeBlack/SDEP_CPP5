@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -66,12 +67,16 @@ fun PantallaInicio(
     alAjustes: () -> Unit,
     alConflictos: () -> Unit,
     alTodosLosModulos: () -> Unit,
+    alHerramientasPdf: () -> Unit = {},
     vistaModelo: ModulosViewModel = hiltViewModel(),
 ) {
     val catalogo by vistaModelo.catalogo.collectAsStateWithLifecycle()
     val datos = catalogo.datos
 
-    val categorias = buildList {
+    val categorias = remember(
+        sesion, datos, alAbrirModulo, alAbrirTabla, alCaptura, alAjustes, alConflictos, alHerramientasPdf,
+    ) {
+        buildList {
             add(
                 Categoria(
                     titulo = "Personal",
@@ -92,6 +97,19 @@ fun PantallaInicio(
                             "Permisos, reposos y ausencias",
                             Icons.Filled.EventBusy, datos.incidencias.size,
                         ) { alAbrirModulo(Modulo.INCIDENCIAS) },
+                        if (sesion.puedeAbrir(Modulo.EMPLEADOS) &&
+                            (sesion.puede(ve.edu.sdep.movil.dominio.modelo.Permiso.REPORTAR) ||
+                                (sesion.puedeAbrir(Modulo.DOCUMENTOS) &&
+                                    sesion.puede(ve.edu.sdep.movil.dominio.modelo.Permiso.CREAR)))
+                        ) {
+                            Solucion(
+                                titulo = "Constancias y PDF",
+                                detalle = "Generar, cargar y compartir documentos del personal",
+                                icono = Icons.Filled.Description,
+                                conteo = null,
+                                alAbrir = alHerramientasPdf,
+                            )
+                        } else null,
                     ),
                 ),
             )
@@ -176,6 +194,7 @@ fun PantallaInicio(
                 ),
             )
         }.filter { categoria -> categoria.soluciones.isNotEmpty() }
+    }
 
     Scaffold(
         topBar = {
@@ -215,6 +234,7 @@ fun PantallaInicio(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = categoria.titulo,
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
@@ -223,18 +243,10 @@ fun PantallaInicio(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                items(categoria.soluciones.chunked(2), key = { fila ->
-                    "fila-${categoria.titulo}-${fila.first().titulo}"
-                }) { fila ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        fila.forEach { solucion ->
-                            TarjetaSolucion(solucion, Modifier.weight(1f))
-                        }
-                        if (fila.size == 1) Spacer(Modifier.weight(1f))
-                    }
+                items(categoria.soluciones, key = { solucion ->
+                    "${categoria.titulo}-${solucion.titulo}"
+                }) { solucion ->
+                    TarjetaSolucion(solucion, Modifier.fillMaxWidth())
                 }
             }
 
@@ -251,13 +263,16 @@ fun PantallaInicio(
 @Composable
 private fun TarjetaSolucion(solucion: Solucion, modificador: Modifier) {
     Card(modifier = modificador.clickable(onClick = solucion.alAbrir)) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 shape = CircleShape,
             ) {
-                Box(modifier = Modifier.size(38.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = solucion.icono,
                         contentDescription = null,
@@ -265,19 +280,20 @@ private fun TarjetaSolucion(solucion: Solucion, modificador: Modifier) {
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            Text(text = solucion.titulo, style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = solucion.detalle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (solucion.conteo != null) {
-                Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = solucion.titulo, style = MaterialTheme.typography.titleSmall)
                 Text(
-                    text = "${solucion.conteo} registro(s)",
-                    style = MaterialTheme.typography.labelSmall,
+                    text = solucion.detalle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            solucion.conteo?.let { cantidad ->
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = cantidad.toString(),
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }

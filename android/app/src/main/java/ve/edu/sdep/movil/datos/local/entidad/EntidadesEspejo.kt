@@ -62,7 +62,7 @@ data class OperacionEntradaEntity(
      * la mezcla debe comparar el MISMO instante que declaró el emisor, no uno
      * redondeado a milisegundos.
      */
-    @ColumnInfo(name = "creado_en_iso") val creadoEnIso: String = "",
+    @ColumnInfo(name = "creado_en_iso", defaultValue = "''") val creadoEnIso: String = "",
     val motivo: String?,
     val intentos: Int = 0,
 )

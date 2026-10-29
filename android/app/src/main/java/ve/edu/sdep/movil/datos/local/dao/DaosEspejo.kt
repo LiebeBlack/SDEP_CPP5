@@ -127,8 +127,22 @@ interface DocumentoDao {
     @Query("SELECT * FROM documentos WHERE activo = 1 ORDER BY fecha_vencimiento, titulo")
     fun observarTodos(): Flow<List<DocumentoEntity>>
 
+    /** Metadatos para listados; evita copiar adjuntos grandes desde SQLite. */
+    @Query(
+        "SELECT id, empleado_id, tipo_documento, titulo, descripcion, numero_documento, " +
+            "fecha_emision, fecha_vencimiento, nombre_archivo, ruta_archivo, tamano_bytes, " +
+            "tipo_mime, contenido_hash, " +
+            "CASE WHEN contenido_binario IS NULL THEN NULL ELSE X'00' END AS contenido_binario, " +
+            "activo, observaciones, created_at, updated_at FROM documentos " +
+            "WHERE activo = 1 ORDER BY fecha_vencimiento, titulo",
+    )
+    fun observarParaListado(): Flow<List<DocumentoEntity>>
+
     @Query("SELECT * FROM documentos WHERE empleado_id = :empleadoId AND activo = 1 ORDER BY titulo")
     fun observarPorEmpleado(empleadoId: Long): Flow<List<DocumentoEntity>>
+
+    @Query("SELECT * FROM documentos WHERE activo = 1 ORDER BY fecha_emision DESC, id DESC")
+    suspend fun listarActivos(): List<DocumentoEntity>
 
     @Query("SELECT * FROM documentos WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): DocumentoEntity?
@@ -156,6 +170,9 @@ interface DocumentoDao {
 
     @Query("UPDATE documentos SET contenido_binario = :bytes WHERE id = :id")
     suspend fun guardarContenido(id: Long, bytes: ByteArray)
+
+    @Query("UPDATE documentos SET contenido_hash = :hash, tamano_bytes = :tamano, contenido_binario = :bytes WHERE id = :id")
+    suspend fun guardarArchivo(id: Long, hash: String, tamano: Int, bytes: ByteArray)
 }
 
 @Dao
@@ -163,6 +180,19 @@ interface IncidenciaDao {
 
     @Query("SELECT * FROM incidencias ORDER BY fecha_inicio DESC")
     fun observarTodas(): Flow<List<IncidenciaEntity>>
+
+    /** Metadatos para listados; evita copiar soportes binarios desde SQLite. */
+    @Query(
+        "SELECT id, empleado_id, tipo_incidencia, estado, fecha_inicio, fecha_fin, " +
+            "fecha_solicitud, fecha_aprobacion, motivo, descripcion, dias_solicitados, " +
+            "dias_aprobados, documento_soporte_nombre, documento_soporte_ruta, " +
+            "documento_soporte_hash, " +
+            "CASE WHEN documento_soporte_binario IS NULL THEN NULL " +
+            "ELSE X'00' END AS documento_soporte_binario, aprobado_por, " +
+            "comentarios_aprobacion, afecta_nominas, descuento_dias, observaciones, " +
+            "created_at, updated_at FROM incidencias ORDER BY fecha_inicio DESC",
+    )
+    fun observarParaListado(): Flow<List<IncidenciaEntity>>
 
     @Query("SELECT * FROM incidencias WHERE estado = :estado ORDER BY fecha_inicio DESC")
     fun observarPorEstado(estado: String): Flow<List<IncidenciaEntity>>
@@ -499,6 +529,9 @@ interface BlobPendienteDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun guardar(blob: BlobPendienteEntity)
+
+    @Query("SELECT * FROM blobs_pendientes WHERE direccion = 'salida' AND estado = 'por_subir' ORDER BY creado_en LIMIT :limite")
+    suspend fun pendientesDeSalida(limite: Int): List<BlobPendienteEntity>
 
     @Query("DELETE FROM blobs_pendientes WHERE hash = :hash")
     suspend fun eliminar(hash: String)

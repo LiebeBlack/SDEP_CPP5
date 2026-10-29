@@ -18,6 +18,7 @@ import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.ajustes.PantallaAjustes
 import ve.edu.sdep.movil.ui.ajustes.UserProfileScreen
 import ve.edu.sdep.movil.ui.conflictos.PantallaConflictos
+import ve.edu.sdep.movil.ui.documentos.PantallaHerramientasPdf
 import ve.edu.sdep.movil.ui.empleados.PantallaEmpleado
 import ve.edu.sdep.movil.ui.formulario.PantallaFormulario
 import ve.edu.sdep.movil.ui.inicio.PantallaInicio
@@ -84,6 +85,14 @@ private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
                 alAjustes = { navegador.navigate(Rutas.AJUSTES) },
                 alConflictos = { navegador.navigate(Rutas.CONFLICTOS) },
                 alTodosLosModulos = { navegador.navigate(Rutas.MODULOS) },
+                alHerramientasPdf = { navegador.navigate(Rutas.HERRAMIENTAS_PDF) },
+            )
+        }
+
+        composable(Rutas.HERRAMIENTAS_PDF) {
+            PantallaHerramientasPdf(
+                sesion = sesion,
+                alVolver = { navegador.popBackStack() },
             )
         }
 
@@ -246,6 +255,7 @@ private object Rutas {
     const val AJUSTES = "ajustes"
     const val CONFLICTOS = "conflictos"
     const val MODULOS = "modulos"
+    const val HERRAMIENTAS_PDF = "herramientas-pdf"
     const val LISTA = "modulo"
     const val FICHA = "ficha"
     const val TABLA = "tabla"

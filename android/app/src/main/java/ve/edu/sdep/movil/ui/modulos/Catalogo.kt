@@ -130,8 +130,9 @@ class Catalogo(val datos: Datos) {
      */
     fun filas(modulo: Modulo): List<FilaCatalogo> = when (modulo) {
         Modulo.DASHBOARD, Modulo.REGISTROS -> emptyList()
+        // Room ya devuelve estas tablas en este orden; no volver a ordenar
+        // listas completas en memoria, especialmente en teléfonos básicos.
         Modulo.EMPLEADOS -> datos.empleados
-            .sortedWith(compareBy({ it.apellidos.lowercase() }, { it.nombres.lowercase() }))
             .map { empleado ->
                 FilaCatalogo(
                     id = empleado.id,
@@ -195,7 +196,6 @@ class Catalogo(val datos: Datos) {
         }
 
         Modulo.ESTUDIANTES -> datos.estudiantes
-            .sortedWith(compareBy({ it.apellidos.lowercase() }, { it.nombres.lowercase() }))
             .map { estudiante ->
                 FilaCatalogo(
                     id = estudiante.id,
@@ -210,12 +210,18 @@ class Catalogo(val datos: Datos) {
                 )
             }
 
-        Modulo.NOTAS -> datos.grados
-            .sortedWith(compareBy({ nombrePeriodo(it.periodoId) }, { it.nivel }, { it.nombre }))
-            .map { grado ->
-                val notas = datos.notas.filter { it.gradoId == grado.id }
-                val matriculados =
-                    datos.matriculas.count { it.gradoId == grado.id && it.activa != 0 }
+        Modulo.NOTAS -> {
+            val notasPorGrado = datos.notas.groupBy { it.gradoId }
+            val matriculasPorGrado = datos.matriculas
+                .asSequence()
+                .filter { it.activa != 0 }
+                .groupingBy { it.gradoId }
+                .eachCount()
+            datos.grados
+                .sortedWith(compareBy({ nombrePeriodo(it.periodoId) }, { it.nivel }, { it.nombre }))
+                .map { grado ->
+                val notas = notasPorGrado[grado.id].orEmpty()
+                val matriculados = matriculasPorGrado[grado.id] ?: 0
                 FilaCatalogo(
                     id = grado.id,
                     titulo = grado.nombreCompleto,
@@ -233,6 +239,7 @@ class Catalogo(val datos: Datos) {
                     },
                 )
             }
+        }
 
         Modulo.CONFIGURACION -> datos.configuraciones.map { configuracion ->
             FilaCatalogo(
@@ -810,7 +817,7 @@ class Catalogo(val datos: Datos) {
 
     /** Avisos accionables: vencimientos, incidencias abiertas y pagos por hacer */
     fun alertas(): List<AlertaPanel> {
-        val documentos = datos.documentos.mapNotNull { documento ->
+        val documentos = datos.documentos.asSequence().mapNotNull { documento ->
             val aviso = vencimientoDocumento(documento) ?: return@mapNotNull null
             AlertaPanel(
                 modulo = Modulo.DOCUMENTOS,
@@ -824,7 +831,34 @@ class Catalogo(val datos: Datos) {
                 ),
             )
         }
-        val incidencias = datos.incidencias
+        val contratos = datos.contratos.asSequence().mapNotNull { contrato ->
+            val aviso = vencimientoContrato(contrato) ?: return@mapNotNull null
+            AlertaPanel(
+                modulo = Modulo.CONTRATOS,
+                fila = FilaCatalogo(
+                    id = contrato.id,
+                    titulo = "${contrato.numero} · ${contrato.cargo}",
+                    subtitulo = nombreEmpleado(contrato.empleadoId),
+                    nota = contrato.fechaFin?.let { "Termina el ${fecha(it)}" },
+                    etiqueta = aviso.first,
+                    tono = aviso.second,
+                ),
+            )
+        }
+        val pagos = datos.pagos.asSequence().filter { it.pagado == 0 }.map { pago ->
+            AlertaPanel(
+                modulo = Modulo.NOMINA,
+                fila = FilaCatalogo(
+                    id = pago.id,
+                    titulo = nombreEmpleado(pago.empleadoId),
+                    subtitulo = etiquetaEstado(pago.tipoPago),
+                    nota = "Neto ${bolivares(pago.montoNeto)}",
+                    etiqueta = "Pendiente",
+                    tono = Tono.ALERTA,
+                ),
+            )
+        }
+        val incidencias = datos.incidencias.asSequence()
             .filter { it.estado == "pendiente" }
             .map { incidencia ->
                 AlertaPanel(
@@ -839,34 +873,10 @@ class Catalogo(val datos: Datos) {
                     ),
                 )
             }
-        val contratos = datos.contratos.mapNotNull { contrato ->
-            val aviso = vencimientoContrato(contrato) ?: return@mapNotNull null
-            AlertaPanel(
-                modulo = Modulo.CONTRATOS,
-                fila = FilaCatalogo(
-                    id = contrato.id,
-                    titulo = "${contrato.numero} · ${contrato.cargo}",
-                    subtitulo = nombreEmpleado(contrato.empleadoId),
-                    nota = contrato.fechaFin?.let { "Termina el ${fecha(it)}" },
-                    etiqueta = aviso.first,
-                    tono = aviso.second,
-                ),
-            )
-        }
-        val pagos = datos.pagos.filter { it.pagado == 0 }.map { pago ->
-            AlertaPanel(
-                modulo = Modulo.NOMINA,
-                fila = FilaCatalogo(
-                    id = pago.id,
-                    titulo = nombreEmpleado(pago.empleadoId),
-                    subtitulo = etiquetaEstado(pago.tipoPago),
-                    nota = "Neto ${bolivares(pago.montoNeto)}",
-                    etiqueta = "Pendiente",
-                    tono = Tono.ALERTA,
-                ),
-            )
-        }
-        return (documentos + incidencias + contratos + pagos).take(40)
+        return sequenceOf(documentos, incidencias, contratos, pagos)
+            .flatten()
+            .take(40)
+            .toList()
     }
 
     // ---- Reglas de presentación ----------------------------------------

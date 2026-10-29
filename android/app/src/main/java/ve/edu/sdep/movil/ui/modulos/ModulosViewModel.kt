@@ -83,10 +83,17 @@ class ModulosViewModel @Inject constructor(
         val configuraciones: List<ConfiguracionEntity>,
     )
 
+    private data class GrupoCatalogo(
+        val personal: GrupoPersonal,
+        val laboral: GrupoLaboral,
+        val academico: GrupoAcademico,
+        val sesion: Sesion?,
+    )
+
     private val personal = combine(
         empleadoDao.observarTodos(),
-        documentoDao.observarTodos(),
-        incidenciaDao.observarTodas(),
+        documentoDao.observarParaListado(),
+        incidenciaDao.observarParaListado(),
     ) { empleados, documentos, incidencias ->
         GrupoPersonal(empleados, documentos, incidencias)
     }
@@ -110,11 +117,12 @@ class ModulosViewModel @Inject constructor(
     }
 
     val catalogo: StateFlow<Catalogo> = combine(
-        personal,
-        laboral,
-        academico,
-        sesionRepositorio.sesion
-    ) { personas, trabajo, academia, sesion ->
+        combine(personal, laboral, academico) { personas, trabajo, academia ->
+            Triple(personas, trabajo, academia)
+        },
+        sesionRepositorio.sesion,
+    ) { grupos, sesion ->
+        val (personas, trabajo, academia) = grupos
         Catalogo(
             Datos(
                 empleados = personas.empleados,

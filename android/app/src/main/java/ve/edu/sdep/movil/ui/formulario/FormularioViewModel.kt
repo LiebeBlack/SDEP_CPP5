@@ -17,6 +17,7 @@ import ve.edu.sdep.movil.datos.repositorio.TablaRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import ve.edu.sdep.movil.sincronizacion.ProgramadorSync
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -107,7 +108,7 @@ class FormularioViewModel @Inject constructor(
                 return@launch
             }
             val valores = campos.associate { campo ->
-                campo.nombre to (actual?.get(campo.nombre) ?: predeterminado(campo))
+                campo.nombre to (actual?.get(campo.nombre) ?: predeterminado(tabla, campo))
             }
             _estado.update {
                 it.copy(
@@ -174,11 +175,31 @@ class FormularioViewModel @Inject constructor(
         }
     }
 
-    /** Valor inicial de un alta: los indicadores de estado nacen activos */
-    private fun predeterminado(campo: ColumnaTabla): String = when {
-        campo.tipo == TipoCampo.BOOLEANO ->
-            if (campo.nombre == "activo" || campo.nombre == "activa") "1" else "0"
-
-        else -> ""
+    /** Valores iniciales seguros para acelerar las altas habituales. */
+    private fun predeterminado(tabla: String, campo: ColumnaTabla): String {
+        val clave = "$tabla.${campo.nombre}"
+        return when (clave) {
+            "empleados.tipo_empleado" -> "docente"
+            "empleados.fecha_contratacion", "contratos.fecha_inicio",
+            "incidencias.fecha_solicitud", "matriculas.fecha_matricula" -> LocalDate.now().toString()
+            "documentos.tipo_documento" -> "cedula"
+            "incidencias.tipo_incidencia" -> "permiso"
+            "incidencias.estado" -> "pendiente"
+            "incidencias.dias_solicitados" -> "1"
+            "contratos.tipo" -> "indefinido"
+            "contratos.estado" -> "vigente"
+            "contratos.horas_semanales" -> "40"
+            "pagos.tipo_pago" -> "salario_base"
+            "pagos.metodo_pago" -> "transferencia"
+            "periodos_academicos.estado" -> "abierto"
+            "grados.seccion" -> "A"
+            else -> if (campo.tipo == TipoCampo.BOOLEANO) {
+                if (campo.nombre == "activo" || campo.nombre == "activa" ||
+                    campo.nombre == "afecta_nominas"
+                ) "1" else "0"
+            } else {
+                ""
+            }
+        }
     }
 }

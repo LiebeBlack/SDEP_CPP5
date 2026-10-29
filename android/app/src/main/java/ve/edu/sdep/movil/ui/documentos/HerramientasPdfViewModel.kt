@@ -98,6 +98,10 @@ class HerramientasPdfViewModel @Inject constructor(
     }
 
     fun seleccionarPlantilla(indice: Int) {
+        if (indice == -1) {
+            _estado.update { it.copy(plantillaIndice = -1, mensaje = null) }
+            return
+        }
         val plantilla = PLANTILLAS_CONSTANCIA.getOrNull(indice) ?: return
         _estado.update { it.copy(plantillaIndice = indice, markdown = plantilla.second, mensaje = null) }
     }
@@ -138,8 +142,8 @@ class HerramientasPdfViewModel @Inject constructor(
 
     private fun empleadoSeleccionado(): Long? = _estado.value.empleadoId
 
-    fun actualizarSesion(usuario: String, cedula: String?, esTrabajador: Boolean) {
-        val nuevaClave = "$usuario|${cedula.orEmpty()}|$esTrabajador"
+    fun actualizarSesion(usuario: String, rol: String, cedula: String?, esTrabajador: Boolean) {
+        val nuevaClave = "$usuario|$rol|${cedula.orEmpty()}|$esTrabajador"
         if (nuevaClave == claveSesion) return
         claveSesion = nuevaClave
         accionJob?.cancel()

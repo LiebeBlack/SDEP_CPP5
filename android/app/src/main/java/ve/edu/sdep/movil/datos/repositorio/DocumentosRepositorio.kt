@@ -102,12 +102,12 @@ class DocumentosRepositorio @Inject constructor(
         val bytes = withContext(Dispatchers.IO) {
             leerPdfLimitado(api.descargar(archivo.hash)).also { verificarPdf(it, archivo.hash) }
         }
-        val nombreSeguro = archivo.nombre?.substringAfterLast('/')?.substringAfterLast('\\')
-            ?.filter { it.isLetterOrDigit() || it in "._- " }
-            ?.take(120)
-            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: nombre
-        archivar(sesion, empleado.id, nombreSeguro, titulo.filterNot { it.isISOControl() }.trim().take(200).ifBlank { "Constancia de trabajo" }, archivo.hash, bytes)
+        val nombreSeguro = nombrePdfSeguro(archivo.nombre, nombre)
+        archivar(
+            sesion, empleado.id, nombreSeguro,
+            titulo.filterNot { it.isISOControl() }.trim().take(200).ifBlank { "Constancia de trabajo" },
+            archivo.hash, bytes,
+        )
         PdfListo(nombreSeguro, bytes, archivado = true)
     }
 
@@ -180,11 +180,16 @@ class DocumentosRepositorio @Inject constructor(
         if (!contenido.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
             error("El archivo seleccionado no es un PDF válido.")
         }
-        val nombre = nombreOriginal.substringAfterLast('/').substringAfterLast('\\')
+        val originalSeguro = nombreOriginal.substringAfterLast('/').substringAfterLast('\\')
+        require(originalSeguro.endsWith(".pdf", ignoreCase = true)) {
+            "Seleccione un archivo PDF con nombre válido."
+        }
+        val baseNombre = originalSeguro.substringBeforeLast('.')
             .filter { it.isLetterOrDigit() || it in "._- " }
-            .take(120)
-            .takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: error("Seleccione un archivo PDF con nombre válido.")
+            .trim()
+            .take(100)
+            .ifBlank { "documento" }
+        val nombre = "$baseNombre.pdf"
         require(identidadDao.uuidDe("empleados", empleado.id) != null) {
             "La ficha debe sincronizarse antes de subir documentos."
         }
@@ -193,12 +198,12 @@ class DocumentosRepositorio @Inject constructor(
             require(prefijoCedula.isNotBlank() && prefijoCedula.all { it.isLetterOrDigit() || it in "-_" }) {
                 "La cédula de la sesión no tiene un formato válido."
             }
-            val nombreLimpio = nombre.filter { it.isLetterOrDigit() || it in "._- " }
-            val maximoBase = 160 - prefijoCedula.length - 1 - 4
+            val nombreLimpio = baseNombre.filter { it.isLetterOrDigit() || it in "._- " }
+            val maximoBase = 160 - prefijoCedula.length - 1 - "documento_".length - 4
             require(maximoBase >= 1) {
                 "La cédula asociada no permite crear un nombre de archivo válido."
             }
-            "${prefijoCedula}_${nombreLimpio.take(maximoBase).ifBlank { "documento" }}.pdf"
+            "${prefijoCedula}_documento_${nombreLimpio.take(maximoBase).ifBlank { "adjunto" }}.pdf"
         } else nombre
         val archivo = api.subirArchivo(
             nombreParaServidor,
@@ -240,8 +245,11 @@ class DocumentosRepositorio @Inject constructor(
     ) {
         val empleadoUuid = identidadDao.uuidDe("empleados", empleadoId)
             ?: error("La ficha debe sincronizarse antes de archivar documentos.")
-        val puedeGuardarPropio =                sesion.esTrabajador && empleadoDao.buscarPorId(empleadoId)?.cedula?.let { normalizarCedula(it) == sesion.cedulaNormalizada } == true &&
-                sesion.puede(Permiso.CREAR) && sesion.puedeAbrir(Modulo.DOCUMENTOS)
+        val puedeGuardarPropio = sesion.esTrabajador &&
+            empleadoDao.buscarPorId(empleadoId)?.cedula?.let {
+                normalizarCedula(it) == sesion.cedulaNormalizada
+            } == true && sesion.puede(Permiso.CREAR) &&
+            sesion.puedeAbrir(Modulo.DOCUMENTOS)
         val puedeGuardarGestion = !sesion.esTrabajador && sesion.puedeAbrir(Modulo.DOCUMENTOS) &&
             (sesion.puede(Permiso.CREAR) || sesion.puede(Permiso.REPORTAR))
         require(puedeGuardarPropio || puedeGuardarGestion) {
@@ -365,23 +373,15 @@ class DocumentosRepositorio @Inject constructor(
         bytes
     }
 
-    private fun nombrePdfSeguro(nombre: String?, alternativo: String): String =
-        nombre?.substringAfterLast('/')?.substringAfterLast('\\')
-            ?.filter { it.isLetterOrDigit() || it in "._- " }
-            ?.take(120)
-            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: alternativo.filter { it.isLetterOrDigit() || it in "._- " }
-                .take(120).takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: "documento.pdf"
-
-    private fun nombrePdfSeguro(nombre: String?, alternativo: String): String =
-        nombre?.substringAfterLast('/')?.substringAfterLast('\\')
-            ?.filter { it.isLetterOrDigit() || it in "._- " }
-            ?.take(120)
-            ?.takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: alternativo.filter { it.isLetterOrDigit() || it in "._- " }
-                .take(120).takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: "documento.pdf"
+    private fun nombrePdfSeguro(nombre: String?, alternativo: String): String {
+        fun normalizar(valor: String): String? {
+            val base = valor.substringAfterLast('/').substringAfterLast('\\')
+            if (!base.endsWith(".pdf", ignoreCase = true)) return null
+            val nombreLimpio = base.filter { it.isLetterOrDigit() || it in "._- " }.take(120)
+            return nombreLimpio.takeIf { it.endsWith(".pdf", ignoreCase = true) }
+        }
+        return nombre?.let(::normalizar) ?: normalizar(alternativo) ?: "documento.pdf"
+    }
 
     private fun verificarPdf(bytes: ByteArray, hashEsperado: String) {
         require(bytes.size in 5..MAX_PDF) { "El PDF está vacío o supera 8 MB." }

@@ -924,6 +924,7 @@ class ApiAcciones:
             or any(ord(caracter) < 32 for caracter in nombre)
             or not nombre_archivo.lower().endswith(".pdf")
             or not all(caracter.isalnum() or caracter in "._- " for caracter in nombre)
+            or (es_documento_propio and not nombre_archivo.startswith("documento_"))
         ):
             raise ErrorApi("El nombre debe ser un archivo PDF válido", 400)
         if not contenido:
@@ -969,11 +970,11 @@ class ApiAcciones:
             if carpeta.name.startswith("sdep_movil_"):
                 shutil.rmtree(carpeta, ignore_errors=True)
         if not contenido:
-            raise ErrorApi("El archivo generado está vacío", 500)            if nombre.lower().endswith(".pdf"):
-                if len(contenido) < 5:
-                    raise ErrorApi("El PDF generado está vacío o incompleto", 500)
-                if len(contenido) > 8 * 1024 * 1024:
-
+            raise ErrorApi("El archivo generado está vacío", 500)
+        if nombre.lower().endswith(".pdf"):
+            if len(contenido) < 5:
+                raise ErrorApi("El PDF generado está vacío o incompleto", 500)
+            if len(contenido) > 8 * 1024 * 1024:
                 raise ErrorApi("El PDF generado supera el límite de 8 MB", 413)
             if not contenido.startswith(b"%PDF-"):
                 raise ErrorApi("El generador no produjo un PDF válido", 500)
@@ -1043,8 +1044,8 @@ class ApiAcciones:
                 if es_constancia_propia:
                     if normalizar_cedula(empleado.cedula) != normalizar_cedula(sesion.cedula):
                         raise ErrorApi("Solo puede emitir su propia constancia", 403)
-                    if getattr(empleado, "activo", 1) != 1:
-                        raise ErrorApi("Solo se emiten constancias a personal activo", 403)
+                if getattr(empleado, "activo", 1) != 1:
+                    raise ErrorApi("Solo se emiten constancias a personal activo", 403)
                 sufijo = str(empleado.cedula or empleado.id).replace("/", "-").replace("\\", "-")
                 sufijo = "".join(caracter for caracter in sufijo if caracter.isalnum() or caracter in "-_.")
                 nombre = f"constancia_{sufijo or empleado.id}.pdf"

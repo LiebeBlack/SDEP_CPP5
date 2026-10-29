@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -87,7 +88,7 @@ fun PantallaHerramientasPdf(
         runCatching {
             val desde = java.time.LocalDate.parse(periodoInicio)
             val hasta = java.time.LocalDate.parse(periodoFin)
-            !hasta.isBefore(desde)
+            desde.toString() == periodoInicio && hasta.toString() == periodoFin && !hasta.isBefore(desde)
         }.getOrDefault(false)
     }
     val puedeEmitir = sesion.puedeAbrir(ve.edu.sdep.movil.dominio.modelo.Modulo.EMPLEADOS) &&
@@ -130,7 +131,7 @@ fun PantallaHerramientasPdf(
         }
     }
     LaunchedEffect(sesion.usuario, sesion.rol, sesion.cedula) {
-        vistaModelo.actualizarSesion(sesion.usuario, sesion.cedula, sesion.esTrabajador)
+        vistaModelo.actualizarSesion(sesion.usuario, sesion.rol.valor, sesion.cedula, sesion.esTrabajador)
         if (!sesion.puede(Permiso.CREAR)) {
             vistaModelo.limpiarPdf()
             tituloSubida = ""
@@ -163,7 +164,7 @@ fun PantallaHerramientasPdf(
                         "Emite constancias laborales, genera reportes y organiza los PDF del legajo.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    if (sesion.esTrabajador) {
+                            if (sesion.esTrabajador) {
                         Text("Acceso personal · ${sesion.nombre}", style = MaterialTheme.typography.labelLarge)
                     } else {
                         Text("Sesión: ${sesion.etiquetaRol}", style = MaterialTheme.typography.labelLarge)
@@ -171,6 +172,9 @@ fun PantallaHerramientasPdf(
                 }
             }
             if (estado.cargando || estado.cargandoEmpleados) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (sesion.offline) {
+                Text("Modo sin conexión: la generación y carga de PDF requieren conexión.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+            }
             val secciones = listOfNotNull(
                 if (puedeUsarPlantilla) "constancia" to "Constancias" else null,
                 if (puedeAdjuntar || puedeVerFicha || sesion.esTrabajador) "legajo" to "Legajo" else null,
@@ -187,9 +191,13 @@ fun PantallaHerramientasPdf(
             ) {
                 secciones.forEach { (clave, titulo) ->
                     if (seccionActiva == clave) {
-                        Button(onClick = { seccionActiva = clave }, modifier = Modifier.width(112.dp)) { Text(titulo) }
+                        Button(onClick = { seccionActiva = clave }, modifier = Modifier.width(112.dp)) {
+                            Text(titulo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     } else {
-                        OutlinedButton(onClick = { seccionActiva = clave }, modifier = Modifier.width(112.dp)) { Text(titulo) }
+                        OutlinedButton(onClick = { seccionActiva = clave }, modifier = Modifier.width(112.dp)) {
+                            Text(titulo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
             }
@@ -221,15 +229,14 @@ fun PantallaHerramientasPdf(
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Constancia de trabajo", style = MaterialTheme.typography.titleLarge)
                     Text(
-                        "Previsualiza y personaliza la plantilla; los datos de identidad y empleo se completan desde la ficha oficial.",
+                        "Revisa y personaliza la plantilla; los datos de identidad y empleo se completan desde la ficha oficial.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     ExposedDropdownMenuBox(expanded = plantillaExpandida, onExpandedChange = { plantillaExpandida = it }) {
                         OutlinedTextField(
-                            value = if (estado.plantillaIndice < PLANTILLAS_CONSTANCIA.size) {
-                                PLANTILLAS_CONSTANCIA[estado.plantillaIndice].first
-                            } else "Plantilla personalizada",
+                            value = PLANTILLAS_CONSTANCIA.getOrNull(estado.plantillaIndice)?.first
+                                ?: "Plantilla personalizada",
                             onValueChange = {}, readOnly = true, label = { Text("Plantilla preconfigurada") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(plantillaExpandida) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -242,11 +249,23 @@ fun PantallaHerramientasPdf(
                                     plantillaExpandida = false
                                 })
                             }
+                            DropdownMenuItem(
+                                text = { Text("Plantilla personalizada actual") },
+                                onClick = {
+                                    nombreDocumento = "Constancia personalizada"
+                                    vistaModelo.seleccionarPlantilla(-1)
+                                    plantillaExpandida = false
+                                },
+                            )
                         }
                     }
                     OutlinedButton(
                         enabled = !estado.cargando && !estado.cargandoEmpleados,
-                        onClick = { selectorMarkdown.launch(arrayOf("text/markdown", "text/plain", "application/octet-stream")) },
+                        onClick = {
+                            nombreDocumento = "Constancia personalizada"
+                            vistaModelo.seleccionarPlantilla(-1)
+                            selectorMarkdown.launch(arrayOf("text/markdown", "text/plain", "application/octet-stream"))
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Importar plantilla Markdown (.md)") }
                     OutlinedTextField(
@@ -269,16 +288,15 @@ fun PantallaHerramientasPdf(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                        enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null && estado.markdown.isNotBlank(),
-                        onClick = {
-                            nombreDocumento = PLANTILLAS_CONSTANCIA.getOrNull(estado.plantillaIndice)?.first ?: "Constancia personalizada"
-                            vistaModelo.constancia(personalizada = true, titulo = nombreDocumento)
-                        },
+                            enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                            onClick = {
+                                vistaModelo.constancia(personalizada = true, titulo = nombreDocumento)
+                            },
                         ) { Text("Generar ${nombreDocumento.lowercase()}") }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                        enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null,
-                        onClick = { vistaModelo.constancia(personalizada = false, titulo = "Constancia de trabajo") },
+                            enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null,
+                            onClick = { vistaModelo.constancia(personalizada = false, titulo = "Constancia de trabajo") },
                         ) { Text("Usar formato institucional básico") }
                     }
                 }
@@ -392,10 +410,12 @@ fun PantallaHerramientasPdf(
                         }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && !estado.cargandoEmpleados && (accion.tipo != "planilla_nomina" || periodoValido),
+                            enabled = !estado.cargando && !estado.cargandoEmpleados &&
+                                (accion.tipo != "planilla_nomina" || periodoValido),
                             onClick = {
                                 if (accion.tipo == "planilla_nomina") {
-                                    vistaModelo.reporte(accion.tipo, periodoInicio, periodoFin)
+                                    if (periodoValido) vistaModelo.reporte(accion.tipo, periodoInicio, periodoFin)
+                                    else vistaModelo.errorSeleccionArchivo("La fecha final debe ser igual o posterior a la inicial.")
                                 } else vistaModelo.reporte(accion.tipo)
                             },
                         ) { Text("Generar PDF") }
@@ -444,7 +464,8 @@ fun PantallaHerramientasPdf(
 private fun cargarMarkdown(contexto: Context, uri: Uri): String {
     val nombre = contexto.contentResolver.query(
         uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null,
-    )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }.orEmpty()    require(nombre.endsWith(".md", ignoreCase = true)) { "Seleccione un archivo con extensión .md." }
+    )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }.orEmpty()
+    require(nombre.endsWith(".md", ignoreCase = true)) { "Seleccione un archivo con extensión .md." }
     val texto = contexto.contentResolver.openInputStream(uri)?.use { input ->
         val salida = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(4 * 1024)
@@ -464,13 +485,14 @@ private fun cargarMarkdown(contexto: Context, uri: Uri): String {
 }
 
 private fun cargarPdf(contexto: Context, uri: Uri): Pair<String, ByteArray> {
+    val max = 8L * 1024 * 1024
     val nombre = contexto.contentResolver.query(
         uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null,
     )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
         ?.substringAfterLast('/')?.substringAfterLast('\\')
         ?.takeIf { it.isNotBlank() }
         ?.take(160)
-        ?: "documento.pdf"    val max = 8L * 1024 * 1024
+        ?: "documento.pdf"
     val bytes = contexto.contentResolver.openInputStream(uri)?.use { input ->
         val salida = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(16 * 1024)
@@ -496,11 +518,15 @@ private suspend fun compartirPdf(contexto: Context, nombre: String, bytes: ByteA
         require(bytes.size >= 5 && bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
             "El archivo no contiene un PDF válido."
         }
-        val nombreSeguro = nombre.substringAfterLast('/').substringAfterLast('\\')
-            .filter { it.isLetterOrDigit() || it in "._- " }
-            .take(120)
-            .takeIf { it.endsWith(".pdf", ignoreCase = true) }
-            ?: "documento.pdf"
+        val nombreBase = nombre.substringAfterLast('/').substringAfterLast('\\')
+        val nombreSeguro = if (nombreBase.endsWith(".pdf", ignoreCase = true)) {
+            val base = nombreBase.substringBeforeLast('.')
+                .filter { it.isLetterOrDigit() || it in "._- " }
+                .take(100)
+                .trim()
+                .ifBlank { "documento" }
+            "$base.pdf"
+        } else "documento.pdf"
         val archivo = withContext(Dispatchers.IO) {
             File(contexto.cacheDir, "documentos/$nombreSeguro").apply {
                 parentFile?.mkdirs()
@@ -510,7 +536,7 @@ private suspend fun compartirPdf(contexto: Context, nombre: String, bytes: ByteA
         val uri = FileProvider.getUriForFile(contexto, "${contexto.packageName}.archivos", archivo)
         val intent = if (compartir) {
             Intent(Intent.ACTION_SEND).apply {
-                        type = "application/pdf"
+                type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 clipData = android.content.ClipData.newUri(contexto.contentResolver, nombreSeguro, uri)
             }

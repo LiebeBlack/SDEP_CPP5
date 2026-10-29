@@ -284,9 +284,7 @@ class PDFGenerator:
         )
 
         if config.get("direccion"):
-            story.append(
-                Paragraph(escape(str(config["direccion"])), self.styles["CustomFooter"])
-            )
+            story.append(Paragraph(escape(str(config["direccion"])), self.styles["CustomFooter"]))
 
         if config.get("telefono"):
             story.append(

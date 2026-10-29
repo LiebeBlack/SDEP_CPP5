@@ -280,6 +280,7 @@ fun PantallaHerramientasPdf(
                         value = estado.markdown,
                         onValueChange = { texto ->
                             if (texto.toByteArray(Charsets.UTF_8).size <= 65_536) {
+                                nombreDocumento = "Constancia personalizada"
                                 vistaModelo.cambiarMarkdown(texto)
                             }
                         },

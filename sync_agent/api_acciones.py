@@ -32,11 +32,9 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, overload
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from src.security.contexto import normalizar_cedula
 from sync_agent.comun import hash_bytes
 from sync_agent.sesiones import ErrorSesion, GestorSesiones, SesionValida
-
-# Importado aquí para uso en múltiples métodos
-from src.security.contexto import normalizar_cedula
 
 if TYPE_CHECKING:
     from sync_agent.servidor import NucleoCentral

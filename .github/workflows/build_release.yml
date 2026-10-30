@@ -1,0 +1,98 @@
+name: Android APK Firmado (Release)
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android-signed:
+    name: Compilar y firmar APK Android
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v5
+
+      - name: Leer versión
+        run: |
+          ver=$(cat VERSION)
+          if [ -z "$ver" ]; then
+            echo "ERROR: VERSION está vacío" >&2
+            exit 1
+          fi
+          echo "APP_VERSION=$ver" >> $GITHUB_ENV
+          echo "Versión detectada: $ver"
+
+      - name: Configurar JDK 17 y caché de Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      # El APK se compila y se firma directamente desde Gradle, sin generar
+      # APK de debug ni pasar por apksigner de nuevo.
+      - name: Compilar y firmar APK de release
+        env:
+          # variables que lee signingConfigs/release en build.gradle.kts
+          SDEP_KEYSTORE: ${{ github.workspace }}/release.keystore
+          SDEP_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SDEP_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SDEP_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android
+          ./gradlew :app:assembleRelease \
+            --no-daemon --build-cache --stacktrace
+
+      - name: Decodificar almacén de firmas (release.keystore)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ERROR: Falta el secreto KEYSTORE_BASE64" >&2
+            exit 1
+          fi
+          base64 --decode <<< "$KEYSTORE_BASE64" > release.keystore
+          if [ ! -f release.keystore ] || [ ! -s release.keystore ]; then
+            echo "ERROR: release.keystore no se generó correctamente" >&2
+            exit 1
+          fi
+          ls -lh release.keystore
+
+      - name: Localizar APK de release firmado
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          if [ ! -f "$apk" ]; then
+            echo "ERROR: No se generó ningún APK de release" >&2
+            exit 1
+          fi
+          echo "RELEASE_APK=$apk" >> $GITHUB_ENV
+          echo "APK de release: $apk"
+          ls -lh "$apk"
+
+      # Verificación: apksigner confirma que el APK tiene v1/v2/v3/v4.
+      - name: Verificar APK firmado (v1/v2/v3/v4)
+        run: |
+          apksigner=$(find ${{ env.ANDROID_HOME }}/build-tools -name apksigner -type f | sort -V -r | head -1)
+          if [ ! -x "$apksigner" ]; then
+            echo "ERROR: apksigner no encontrado" >&2
+            exit 1
+          fi
+          echo "Verificando APK firmado"
+          "$apksigner" verify --verbose --print-certs "$RELEASE_APK"
+
+      - name: Subir APK firmado y firma v4 (.idsig)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-${{ env.APP_VERSION }}
+          path: |
+            ${{ env.RELEASE_APK }}
+            ${{ env.RELEASE_APK }}.idsig
+          retention-days: 30

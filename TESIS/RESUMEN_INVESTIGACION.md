@@ -68,14 +68,15 @@ Los resultados que se enuncian a continuación fueron comprobados de forma direc
 
 | Aspecto verificado | Resultado |
 |--------------------|-----------|
-| Extensión del código fuente | 29 475 líneas en 77 archivos, organizadas en diez capas y componentes |
-| Módulos funcionales | Siete, con control de acceso por rol y atajos de teclado |
-| Módulos implementados | Panel de control, empleados, documentos, incidencias, contratos, nómina y configuración |
-| Esquema de base de datos | Siete tablas con integridad referencial y migraciones |
+| Extensión del código fuente | 33 601 líneas en 81 archivos, organizadas en diez capas y componentes |
+| Cliente Android | 18 635 líneas en 82 archivos Kotlin (Compose, Room, Hilt) |
+| Módulos funcionales | Nueve, con control de acceso por rol y atajos de teclado |
+| Módulos implementados | Panel de control, empleados, documentos, incidencias, contratos, nómina, configuración, estudiantes y calificaciones |
+| Esquema de base de datos | Catorce tablas con integridad referencial y migraciones |
 | Dominio de cálculo | Motor de nómina aislado con deducciones, impuesto sobre la renta, horas extra, prestaciones, seguridad social y finiquito |
-| Suite de pruebas | 551 funciones de prueba en 32 archivos, con 8 059 líneas de código de prueba |
+| Suite de pruebas | 605 funciones de prueba en 37 archivos, con 9 435 líneas de código de prueba |
 | Seguridad | Autenticación con PBKDF2-HMAC-SHA256 de 200 000 iteraciones y sal de 16 bytes; control de acceso por cuatro roles; auditoría; respaldos sujetos a política de retención |
-| Generación documental | Doce tipos de documentos oficiales en formato PDF |
+| Generación documental | Trece tipos de documentos oficiales en formato PDF, más constancias desde plantilla Markdown |
 | Exportación | Formatos abiertos para empleados, documentos, incidencias, pagos y reportes |
 | Cobertura de referencia | Medición de la versión 1.0.4: 43 % total y 73 % en la lógica de negocio; debe re-medirse sobre la versión vigente |
 

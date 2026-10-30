@@ -16,20 +16,21 @@ El sistema se materializó en una arquitectura de capas con separación estricta
 
 | Capa | Archivos | Líneas de código | Responsabilidad principal |
 |------|----------|------------------|---------------------------|
-| `src/models` | 16 | 1 887 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
-| `src/repositories` | 16 | 2 383 | Acceso a datos y consultas reutilizables |
-| `src/services` | 11 | 4 332 | Reglas de negocio y orquestación de flujos |
-| `src/utils` | 10 | 5 525 | Seguridad, auditoría, respaldos, PDF y utilidades |
-| `src/config` | 3 | 1 706 | Configuración, rutas y sesión de base de datos |
-| `src/gui` | 10 | 11 598 | Interfaz gráfica (CustomTkinter) |
-| `src/nomina` | 9 | 1 502 | Motor de cálculo de nómina y prestaciones |
+| `src/models` | 17 | 1 969 | Entidades del dominio y enumeraciones (SQLAlchemy ORM) |
+| `src/repositories` | 16 | 2 599 | Acceso a datos y consultas reutilizables |
+| `src/services` | 11 | 5 378 | Reglas de negocio y orquestación de flujos |
+| `src/security` | 3 | 409 | Contexto de sesión y aislamiento de datos |
+| `src/utils` | 10 | 5 963 | Seguridad, auditoría, respaldos, PDF y utilidades |
+| `src/config` | 3 | 1 719 | Configuración, rutas y sesión de base de datos |
+| `src/gui` | 10 | 13 266 | Interfaz gráfica (CustomTkinter) |
+| `src/nomina` | 9 | 1 513 | Motor de cálculo de nómina y prestaciones |
 | `src/__init__.py` | 1 | 8 | Declaración del paquete raíz |
-| `src/main.py` | 1 | 534 | Punto de entrada de la aplicación |
-| **Total** | **77** | **29 475** | |
+| `src/main.py` | 1 | 777 | Punto de entrada de la aplicación |
+| **Total** | **81** | **33 601** | |
 
 *Fuente: medición directa con `wc -l` sobre `src/` en la versión 3.0.1. El conteo de archivos incluye los módulos `__init__.py`.*
 
-A esta extensión se suma el agente de sincronización, deliberadamente construido como **paquete independiente** en `sync_agent/` (13 archivos, 5 433 líneas) para que funcione tanto ejecutado por sí solo —`py -3 -m sync_agent`— como embebido en la aplicación mediante un enganche a los eventos del ORM. Su separación mantiene la aplicación utilizable sin sincronización y permite verificar su motor de mezcla de forma aislada, pues está compuesto por funciones puras.
+A esta extensión se suma el agente de sincronización, deliberadamente construido como **paquete independiente** en `sync_agent/` (19 archivos, 10 904 líneas) para que funcione tanto ejecutado por sí solo —`py -3 -m sync_agent`— como embebido en la aplicación mediante un enganche a los eventos del ORM. Su separación mantiene la aplicación utilizable sin sincronización y permite verificar su motor de mezcla de forma aislada, pues está compuesto por funciones puras.
 
 La cifra anterior evidencia una decisión de diseño pertinente para el contexto de aplicación: la capa gráfica concentra el 39 % del código y la lógica de negocio —servicios, modelos, repositorios y motor de nómina— el 34 %, de modo que las reglas críticas del dominio no dependen de los componentes visuales y pueden probarse de manera aislada.
 
@@ -68,7 +69,7 @@ La capa de acceso a datos aplica el patrón Repository sobre un repositorio base
 
 #### 4.2.1.4 Capa de Modelos
 
-Los modelos se declararon con el ORM SQLAlchemy y representan las entidades del dominio junto con sus enumeraciones de apoyo. El esquema consta de trece tablas: las siete del núcleo de gestión de personal y nómina —`empleados`, `documentos`, `incidencias`, `contratos`, `pagos`, `configuraciones` y `usuarios`— y las seis del dominio académico y la gestión de sesiones —`estudiantes`, `grados`, `matriculas`, `notas_finales`, `periodos_academicos` y `tokens_sesion`—. Las relaciones principales responden a la naturaleza del negocio: un empleado concentra documentos, incidencias, contratos y pagos; cada pago pertenece a un empleado y a un periodo; y los contratos conservan la vigencia de la relación laboral que alimenta el finiquito.
+Los modelos se declararon con el ORM SQLAlchemy y representan las entidades del dominio junto con sus enumeraciones de apoyo. El esquema consta de catorce tablas: las siete del núcleo de gestión de personal y nómina —`empleados`, `documentos`, `incidencias`, `contratos`, `pagos`, `configuraciones` y `usuarios`—, las seis del dominio académico y la gestión de sesiones —`estudiantes`, `grados`, `matriculas`, `notas_finales`, `periodos_academicos` y `tokens_sesion`— y la tabla `registros_moviles`, que recibe los registros levantados desde el teléfono. Las relaciones principales responden a la naturaleza del negocio: un empleado concentra documentos, incidencias, contratos y pagos; cada pago pertenece a un empleado y a un periodo; y los contratos conservan la vigencia de la relación laboral que alimenta el finiquito.
 
 #### 4.2.1.5 Dominio de Cálculo de Nómina
 
@@ -76,7 +77,7 @@ El cálculo de nómina se aisló en el paquete `src/nomina`, que no depende de l
 
 #### 4.2.1.6 Servicios Transversales
 
-Los módulos transversales refuerzan la seguridad, la trazabilidad y la sostenibilidad de la información. `security.py` valida y sanitiza entradas, verifica permisos y gestiona contraseñas con PBKDF2-HMAC-SHA256, doscientas mil iteraciones y sal aleatorio de dieciséis bytes, con comparación en tiempo constante. `audit_logger.py` registra las acciones críticas, entre ellas los inicios de sesión y las operaciones sobre empleados, documentos, incidencias y nómina. `backup_manager.py` y `backup_scheduler.py` administran respaldos y restauración con políticas de retención, mientras que `pdf_generator.py` produce doce tipos de documentos oficiales, entre los que figuran constancias de trabajo, de estudios y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de empleados, incidencias, vencimientos, contratos y movimiento anual. `document_manager.py` gobierna el almacenamiento de archivos y fotografías, `exporter.py` genera exportaciones en formatos abiertos y `validators.py`, junto con `helpers.py`, completa las utilidades de validación y presentación.
+Los módulos transversales refuerzan la seguridad, la trazabilidad y la sostenibilidad de la información. `security.py` valida y sanitiza entradas, verifica permisos y gestiona contraseñas con PBKDF2-HMAC-SHA256, doscientas mil iteraciones y sal aleatorio de dieciséis bytes, con comparación en tiempo constante. `audit_logger.py` registra las acciones críticas, entre ellas los inicios de sesión y las operaciones sobre empleados, documentos, incidencias y nómina. `backup_manager.py` y `backup_scheduler.py` administran respaldos y restauración con políticas de retención, mientras que `pdf_generator.py` produce trece tipos de documentos oficiales, entre los que figuran constancias de trabajo, de estudios y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de empleados, incidencias, vencimientos, contratos y movimiento anual; a ellos se añade la constancia generada desde una plantilla Markdown propia de la institución, cuyos marcadores `{{campo}}` se resuelven con los datos del empleado y con los quince campos declarados en `CAMPOS_PLANTILLA`. `document_manager.py` gobierna el almacenamiento de archivos y fotografías, `exporter.py` genera exportaciones en formatos abiertos y `validators.py`, junto con `helpers.py`, completa las utilidades de validación y presentación.
 
 ### 4.2.2 Funcionalidades Implementadas
 
@@ -145,11 +146,17 @@ El módulo académico amplía el alcance del sistema hacia la gestión escolar y
 
 El módulo de calificaciones administra las notas finales por materia y periodo, con registro, corrección y eliminación, carga por lotes en una única transacción, consolidado del periodo, boletín por estudiante y acta final del grado. Los periodos académicos se gestionan con alta y edición del año escolar y con un cierre que bloquea la carga de notas tanto en el servicio como en la base de datos; la reapertura queda restringida al rol administrador. La escritura de calificaciones exige una autorización por token de alcance limitado —vigente por una jornada y almacenado únicamente como resumen criptográfico— que corresponde al administrador o al docente asignado al grado, lo que refuerza el control de acceso más allá del rol del usuario.
 
+#### 4.2.2.9 Cliente Android y Nodo Central de Sincronización
+
+El sistema se completa con dos componentes que trasladan la operación fuera del puesto de escritorio y que forman parte de lo entregado, no de la arquitectura proyectada. El primero es **SDEP Móvil**, cliente Android nativo en Kotlin con Jetpack Compose, Room y Hilt, que suma 18 635 líneas en 82 archivos. El teléfono conserva un espejo de los datos en Room, autentica al usuario contra el nodo con el mismo usuario y contraseña del escritorio (PBKDF2) y admite desbloqueo biométrico; desde él se consulta la ficha del empleado, se emiten constancias —incluidas las generadas desde plantilla Markdown—, se ejecutan las herramientas PDF y se levantan registros de campo que aterrizan en la tabla `registros_moviles`. La sincronización es *offline-first*: cada escritura se guarda localmente y se encola, y la cola se vacía al recuperar la red.
+
+El segundo es el **nodo central** (`sync_agent`), servicio HTTP de la biblioteca estándar sobre SQLite en modo WAL, con autenticación por token hasheado, límite de peticiones por minuto, TLS opcional y una secuencia autoritativa de operaciones. Implementa la mezcla por campo con un orden total determinista, de modo que dos puestos que editan columnas distintas conservan ambas ediciones y el choque en la misma columna deja el valor perdedor en una bandeja de conflictos. Ambos componentes comparten el aplicador de operaciones y la deduplicación por clave natural, lo que permite tratar al teléfono como un puesto más de la intranet sin duplicar registros.
+
 ### 4.2.3 Características Técnicas
 
 #### 4.2.3.1 Base de Datos
 
-El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de mapeo objeto-relacional. El esquema comprende trece tablas con integridad referencial mediante claves foráneas, índices sobre los campos de consulta frecuente —cédula, nombre y periodo— y un mecanismo de migración que permite evolucionar la estructura sin pérdida de datos. La elección de SQLite responde a las condiciones de operación previstas: instalación local, ausencia de servidor dedicado y volumen de información acotado. Las mediciones de rendimiento del apartado 4.3.3 determinarán si esa elección se sostiene en el rango superior de volumen previsto.
+El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de mapeo objeto-relacional. El esquema comprende catorce tablas con integridad referencial mediante claves foráneas, índices sobre los campos de consulta frecuente —cédula, nombre y periodo— y un mecanismo de migración que permite evolucionar la estructura sin pérdida de datos. La elección de SQLite responde a las condiciones de operación previstas: instalación local, ausencia de servidor dedicado y volumen de información acotado. Las mediciones de rendimiento del apartado 4.3.3 determinarán si esa elección se sostiene en el rango superior de volumen previsto.
 
 #### 4.2.3.2 Interfaz Gráfica
 
@@ -181,7 +188,7 @@ Los permisos de operación se organizan de forma análoga: el administrador disp
 
 ### 4.3.1 Pruebas Automatizadas
 
-La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.1 —objeto de este informe— declara 551 funciones de prueba distribuidas en 32 archivos, con 8 059 líneas de código en `tests/` (33 archivos: se cuenta también `conftest.py`, donde viven las fixtures compartidas). La Tabla 4.7 presenta la distribución por archivo, medición verificable de manera directa sobre `tests/`.
+La suite de pruebas evolucionó junto con el sistema. En la versión 2.79 el conjunto documentado comprendía 323 pruebas; la versión 3.0.1 declara hoy 605 funciones de prueba distribuidas en 37 archivos, con 9 435 líneas de código en `tests/` (38 archivos: se cuenta también `conftest.py`, donde viven las fixtures compartidas). El recuento corresponde a la medición estática del 30 de octubre de 2026. La Tabla 4.7 conserva la distribución por archivo del corte del 6 de octubre de 2026 —551 funciones en 32 archivos—, que es la última ejecución registrada y por tanto el dato de ejecución que este informe puede sostener.
 
 **Tabla 4.7. Distribución de funciones de prueba por archivo (versión 3.0.1)**
 
@@ -510,7 +517,7 @@ El contexto de aplicación reúne condiciones favorables y restricciones conocid
 
 ### 4.9.1 Limitaciones Identificadas
 
-Las limitaciones técnicas se concentran en la escalabilidad —el motor SQLite y la arquitectura de escritorio están concebidos para volúmenes del orden de miles de empleados, no de decenas de miles—, en la dependencia de infraestructura básica y en la ausencia de integración con otros sistemas institucionales. Las limitaciones funcionales comprenden la escasa flexibilidad de la analítica, la inexistencia de versión web o móvil y la falta de soporte multiinstitución en una misma instalación. Las limitaciones metodológicas, por su parte, derivan del tamaño de la muestra prevista —entre tres y cinco instituciones—, de la duración acotada del periodo de evaluación y de la especificidad del contexto regional, circunstancias que restringen la generalización de los hallazgos sin invalidarlos.
+Las limitaciones técnicas se concentran en la escalabilidad —el motor SQLite y la arquitectura de escritorio están concebidos para volúmenes del orden de miles de empleados, no de decenas de miles—, en la dependencia de infraestructura básica y en la ausencia de integración con otros sistemas institucionales. Las limitaciones funcionales comprenden la escasa flexibilidad de la analítica, la inexistencia de interfaz web —el acceso remoto se resuelve con el cliente Android y el nodo central, no con un portal en el navegador—, la dependencia del emparejamiento por red local para el teléfono y la falta de soporte multiinstitución en una misma instalación. Las limitaciones metodológicas, por su parte, derivan del tamaño de la muestra prevista —entre tres y cinco instituciones—, de la duración acotada del periodo de evaluación y de la especificidad del contexto regional, circunstancias que restringen la generalización de los hallazgos sin invalidarlos.
 
 ### 4.9.2 Retos Enfrentados
 
@@ -518,7 +525,7 @@ Durante el desarrollo, el reto principal fue sostener el equilibrio entre cobert
 
 ## 4.10 CONCLUSIONES DEL CAPÍTULO
 
-Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.1 comprende 29 475 líneas de código en `src/` —más 5 433 del paquete de sincronización— distribuidas en diez capas y componentes, nueve módulos funcionales con acceso por rol, trece tablas con integridad referencial y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 551 funciones de prueba organizadas en 32 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, y la re-medición sobre la versión 3.0.1 confirmó esa tendencia con un 76 % en la capa de servicios y un 89 % en el dominio de cálculo de nómina.
+Los resultados técnicos expuestos permiten sostener tres afirmaciones con respaldo verificable. En primer lugar, el sistema fue efectivamente construido: la versión 3.0.1 comprende 33 601 líneas de código en `src/` —más 10 904 del paquete de sincronización— distribuidas en diez capas y componentes, nueve módulos funcionales con acceso por rol, catorce tablas con integridad referencial, un cliente Android de 18 635 líneas en 82 archivos Kotlin y un motor de nómina que concentra las reglas de mayor riesgo financiero. En segundo lugar, la calidad técnica descansa en una suite de 605 funciones de prueba organizadas en 37 archivos, con énfasis explícito en seguridad, validación del dominio y cálculo de nómina, y en un conjunto de servicios transversales que cubren auditoría, respaldos, generación documental y actualización del sistema. En tercer lugar, la cobertura de código medida en la versión 1.0.4 alcanzó niveles altos en la lógica de negocio, y la re-medición sobre la versión 3.0.1 confirmó esa tendencia con un 76 % en la capa de servicios y un 89 % en el dominio de cálculo de nómina.
 
 Los apartados de validación empírica definen con precisión qué se medirá, cómo se medirá y con qué umbral se decidirá, de manera que la evidencia pendiente no constituya una indeterminación metodológica, sino un registro preparado para recibirla. Las hipótesis planteadas se resolverán con esa evidencia: tres de ellas cuentan ya con indicadores estructurales verificados, mientras que su magnitud de impacto permanece condicionada al piloto. Las limitaciones identificadas —muestra acotada, periodo breve, contexto regional y dependencia de recursos propios— son consistentes con el alcance de un trabajo de grado y delimitan con honestidad el campo de validez de los resultados.
 

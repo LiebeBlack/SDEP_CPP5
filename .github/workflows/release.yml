@@ -151,12 +151,14 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
-      - name: Compilar APK Android
+      - name: Compilar APK Android (pruebas, depuración y release)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease \
+            --no-daemon --build-cache --stacktrace
         shell: bash
 
       - name: Verificar y renombrar APK
@@ -170,6 +172,23 @@ jobs:
           Move-Item -Path $apk -Destination $apkFinal -Force
           Write-Host "OK: APK generado y renombrado: $apkFinal"
           Get-ChildItem $apkFinal | Select-Object Name, Length
+
+          # El APK de release comprueba que R8 en modo completo empaqueta la
+          # aplicación; se publica aparte y sin firmar si no hay almacén.
+          $releaseFirmado = "android\app\build\outputs\apk\release\app-release.apk"
+          $releaseSinFirma = "android\app\build\outputs\apk\release\app-release-unsigned.apk"
+          $releaseFinal = "SDEP-Movil-Android-$env:APP_VERSION-release-sin-firmar.apk"
+          if (Test-Path $releaseFirmado) {
+            Copy-Item -Path $releaseFirmado -Destination $releaseFinal -Force
+            Write-Host "OK: APK de release firmado copiado: $releaseFinal"
+          } elseif (Test-Path $releaseSinFirma) {
+            Copy-Item -Path $releaseSinFirma -Destination $releaseFinal -Force
+            Write-Host "OK: APK de release sin firmar copiado: $releaseFinal"
+          } else {
+            Write-Error "No se generó ningún APK de release"
+            exit 1
+          }
+          Get-ChildItem $releaseFinal | Select-Object Name, Length
 
       # -------------------------------------------------------------------------
       # 3. Compilar ejecutable principal (PyInstaller onedir) y renombrarlo

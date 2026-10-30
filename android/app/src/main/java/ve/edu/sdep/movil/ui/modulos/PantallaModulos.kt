@@ -91,7 +91,7 @@ fun PantallaModulos(
                 )
             }
 
-            items(modulos) { modulo ->
+            items(modulos, key = { it.name }) { modulo ->
                 TarjetaModulo(
                     modulo = modulo,
                     conteo = conteo(catalogo, modulo),

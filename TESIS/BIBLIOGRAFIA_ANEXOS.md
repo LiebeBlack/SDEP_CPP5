@@ -424,7 +424,7 @@ SDEP_CPP5/
 │                          merge.py · captura.py · aplicador.py · agente.py
 │                          servidor.py · cliente.py · esquema.py · identidad.py
 │                          registro.py · comun.py · config.py · __main__.py
-├── tests/                 treinta y dos archivos de prueba · 551 funciones
+├── tests/                 treinta y siete archivos de prueba · 605 funciones
 ├── updater/               auto_updater.py · tray_icon.py · updater_gui.py
 ├── installer/             configuración de instalación para Windows
 ├── docs/                  portal de documentación
@@ -504,7 +504,7 @@ class AuthService:
         return usuario_bd
 ```
 
-El código completo se encuentra en el repositorio del proyecto. Su extensión es de 29 475 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV, a las que se suman 5 433 líneas del paquete independiente de sincronización (`sync_agent/`, 13 archivos).
+El código completo se encuentra en el repositorio del proyecto. Su extensión es de 33 601 líneas en `src/`, distribuidas conforme a la Tabla 4.1 del Capítulo IV, a las que se suman 10 904 líneas del paquete independiente de sincronización (`sync_agent/`, 19 archivos) y 18 635 líneas del cliente Android (`android/`, 82 archivos Kotlin).
 
 ### 6.2.7 Anexo 7: Resultados de Pruebas Técnicas
 
@@ -512,9 +512,9 @@ El código completo se encuentra en el repositorio del proyecto. Su extensión e
 
 | Indicador | Valor |
 |-----------|-------|
-| Archivos de prueba | 32 |
-| Funciones de prueba declaradas | 551 |
-| Líneas de código de prueba | 8 059 |
+| Archivos de prueba | 37 |
+| Funciones de prueba declaradas | 605 |
+| Líneas de código de prueba | 9 435 |
 | Distribución por archivo | Tabla 4.7 del Capítulo IV |
 | Herramienta de ejecución | `pytest`, con cobertura configurada en `pyproject.toml` |
 

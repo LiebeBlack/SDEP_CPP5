@@ -136,14 +136,16 @@ SDEP_CPP5/
 │   │   ├── academico_service.py, nota_service.py
 │   │   ├── token_sesion_service.py  # Tokens de sesión académicos
 │   │   └── auth_service.py    # Usuarios y política de credenciales
+│   ├── security/         # Contexto de sesión y aislamiento de datos
+│   │   └── contexto.py, aislamiento.py
 │   ├── utils/            # Utilidades transversales
 │   │   ├── helpers.py, validators.py, security.py
-│   │   ├── pdf_generator.py   # Reportes y recibos PDF
+│   │   ├── pdf_generator.py   # 13 reportes PDF + constancia desde plantilla .md
 │   │   ├── exporter.py        # Exportación Excel/CSV (multihoja)
 │   │   ├── audit_logger.py    # Auditoría
 │   │   └── backup_manager.py, backup_scheduler.py
 │   └── main.py           # Punto de entrada y selftest
-├── tests/                # 32 archivos test_*.py (planos) + conftest.py
+├── tests/                # 37 archivos test_*.py (planos) + conftest.py
 │   ├── conftest.py       # Aislamiento de almacenamiento y base de prueba
 │   ├── test_*.py         # Unitarias, de integración, de sincronización y de GUI
 │   └── (sin subcarpetas: la suite es plana)
@@ -163,6 +165,12 @@ SDEP_CPP5/
 ├── installer/           # Inno Setup (setup.iss) para Windows
 ├── tools/               # generate_docs_bundle.py y verify_docs.py
 ├── sync_agent/          # Paquete independiente de sincronización entre puestos
+├── android/             # SDEP Móvil: cliente Android (Kotlin, Compose, Room, Hilt)
+│   ├── app/src/main/java/ve/edu/sdep/movil/
+│   │   ├── datos/       # Espejo Room, cliente del protocolo y repositorios
+│   │   ├── ui/          # Portada, módulos, formularios, herramientas PDF y ajustes
+│   │   └── sincronizacion/   # Programador de sincronización en segundo plano
+│   └── README.md        # Compilación, emparejamiento y contrato del protocolo
 └── README.md           # Documentación del proyecto
 ```
 

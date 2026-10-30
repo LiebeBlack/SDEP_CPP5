@@ -245,7 +245,7 @@ El nodo central no necesita un servidor dedicado. Se ejecuta como un proceso de 
 
 ### 3.5.1 Vista general
 
-El esquema comprende trece tablas de dominio y doce tablas de sincronización. Las primeras representan la información institucional; las segundas sostienen la replicación y no se replican entre puestos, salvo las operaciones y los identificadores.
+El esquema comprende catorce tablas de dominio y diecinueve tablas de sincronización. Las primeras representan la información institucional; las segundas sostienen la replicación y no se replican entre puestos, salvo las operaciones y los identificadores.
 
 ```text
  DOMINIO DE PERSONAL Y NOMINA
@@ -514,7 +514,7 @@ El protocolo HTTP se diseñó como un contrato estable y versionado, no como un 
 
 Una terminal de este tipo requiere cuatro elementos que el producto no incluye. El primero es un ámbito de token de solo lectura, que el nodo central aún no distingue del token de escritura. El segundo es un catálogo de consultas por dominio, porque el protocolo actual entrega operaciones y no vistas consolidadas. El tercero es una política de retención en el terminal, que debe purgar las operaciones antiguas para no crecer sin límite. El cuarto es TLS obligatorio si el terminal opera fuera de la red local.
 
-La aplicación móvil se documenta como arquitectura proyectada y no como funcionalidad entregada. Un cliente móvil exigiría, además de lo anterior, almacenamiento cifrado del token, una cola de salida propia para las operaciones que se registren sin red y una interfaz de resolución de conflictos equivalente a la bandeja del escritorio. Nada de eso se construyó. Lo que existe es el contrato que permitiría construirlo sin reescribir el nodo central, y esa es la contribución de diseño que este apartado declara.
+La aplicación móvil proyectada en este apartado se construyó y forma parte del sistema entregado. El cliente Android SDEP Móvil implementa los elementos que aquí se anticiparon: almacenamiento cifrado de credenciales mediante la bóveda del dispositivo, cola de salida propia para las operaciones registradas sin red, una bandeja de conflictos equivalente a la del escritorio y autorización por rol verificada en el propio nodo. La restricción de solo lectura no se resolvió con un ámbito de token separado, sino aplicando en el servidor la misma matriz de permisos del escritorio (`PermissionChecker`), de modo que cada acción exige sesión válida, módulo visible para el rol y permiso explícito. La arquitectura descrita sirvió, por tanto, como contrato de diseño y como guía de implementación: el nodo central no necesitó reescribirse para incorporar el teléfono, que opera como un puesto más de la intranet.
 
 ### 3.6.12 Fallos previstos y recuperación
 

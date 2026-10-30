@@ -206,6 +206,22 @@ def _entero(cuerpo: dict, clave: str, requerido: bool = True) -> int | None:
         raise ErrorApi(f"El valor «{clave}» debe ser un número entero") from None
 
 
+def _titulo_de_markdown(plantilla: str) -> str:
+    """Primer encabezado de la plantilla, para usarlo como título del documento.
+
+    Si el cliente no envía ``titulo_documento`` (el caso de una plantilla subida
+    a mano), la cabecera del PDF debe decir lo mismo que el primer «#» del
+    Markdown y no un «CONSTANCIA DE TRABAJO» genérico que contradiría al texto.
+    """
+    for linea in str(plantilla or "").splitlines():
+        limpia = linea.strip()
+        if limpia.startswith("#"):
+            titulo = "".join(c for c in limpia.lstrip("#").strip() if ord(c) >= 32).strip()
+            if titulo:
+                return titulo[:120]
+    return ""
+
+
 # ----------------------------------------------------------------------
 # Núcleo de la API
 # ----------------------------------------------------------------------
@@ -1046,6 +1062,14 @@ class ApiAcciones:
                         raise ErrorApi("Solo puede emitir su propia constancia", 403)
                 if getattr(empleado, "activo", 1) != 1:
                     raise ErrorApi("Solo se emiten constancias a personal activo", 403)
+                # La configuración se lee con la sesión que ya está abierta: antes
+                # cada constancia abría una segunda conexión solo para el nombre
+                # de la institución.
+                from src.services.configuracion_service import ConfiguracionService
+
+                configuracion = self._ejecutar(
+                    lambda: ConfiguracionService(db).obtener_configuracion_general()
+                )
                 sufijo = str(empleado.cedula or empleado.id).replace("/", "-").replace("\\", "-")
                 sufijo = "".join(
                     caracter for caracter in sufijo if caracter.isalnum() or caracter in "-_."
@@ -1059,7 +1083,9 @@ class ApiAcciones:
                     if len(plantilla.encode("utf-8")) > 65_536:
                         raise ErrorApi("La plantilla Markdown no puede superar 64 KB", 413)
                     titulo_constancia = str(
-                        cuerpo.get("titulo_documento") or "CONSTANCIA DE TRABAJO"
+                        cuerpo.get("titulo_documento")
+                        or _titulo_de_markdown(plantilla)
+                        or "CONSTANCIA DE TRABAJO"
                     ).strip()
                     if (
                         not titulo_constancia
@@ -1073,10 +1099,13 @@ class ApiAcciones:
                             plantilla,
                             destino,
                             titulo_constancia[:120],
+                            configuracion,
                         )
                     )
                 else:
-                    self._ejecutar(lambda: generador.generate_constancia_trabajo(empleado, destino))
+                    self._ejecutar(
+                        lambda: generador.generate_constancia_trabajo(empleado, destino, configuracion)
+                    )
 
             elif tipo == "ficha_empleado":
                 exigir_permiso(sesion, "report", "empleados")

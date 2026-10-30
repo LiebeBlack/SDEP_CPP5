@@ -151,7 +151,7 @@ fun PantallaRegistros(
                             label = { Text("Todas") },
                         )
                     }
-                    items(estado.categorias) { categoria ->
+                    items(estado.categorias, key = { it }) { categoria ->
                         FilterChip(
                             selected = estado.categoriaSeleccionada == categoria,
                             onClick = { vistaModelo.filtrarCategoria(categoria) },

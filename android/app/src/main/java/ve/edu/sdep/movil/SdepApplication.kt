@@ -35,7 +35,10 @@ class SdepApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var programador: ProgramadorSync
 
-    private val alcance = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // La tarea toca la bóveda cifrada y el almacenamiento, no la CPU: va al
+    // grupo de entrada/salida para no competir por los núcleos con el arranque
+    // de la interfaz en un teléfono de gama baja.
+    private val alcance = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

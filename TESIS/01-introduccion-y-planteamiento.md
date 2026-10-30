@@ -261,7 +261,7 @@ El sistema se distribuye como aplicación de escritorio para Windows y Linux, co
 
 ### 1.7.3 Fuera del alcance
 
-Quedan fuera del alcance la aplicación móvil nativa, la sincronización con servicios en la nube, la integración con plataformas externas de gestión escolar, la firma electrónica certificada y el marcaje horario del personal. La arquitectura deja preparados los puntos de extensión para una terminal secundaria de solo lectura, pero esa terminal no forma parte del producto entregado. La exclusión se declara para evitar que el lector atribuya al sistema funciones que no fueron construidas.
+La aplicación móvil nativa forma parte del alcance entregado: el cliente Android SDEP Móvil y el nodo central de sincronización se construyeron junto con el puesto de escritorio y comparten su mismo modelo de datos y su mismo protocolo. Quedan fuera del alcance la sincronización con servicios en la nube, la integración con plataformas externas de gestión escolar, la interfaz web en navegador, la firma electrónica certificada y el marcaje horario del personal. La arquitectura deja preparados los puntos de extensión para una terminal secundaria de solo lectura, pero esa terminal no forma parte del producto entregado. La exclusión se declara para evitar que el lector atribuya al sistema funciones que no fueron construidas.
 
 ## 1.8 Limitaciones
 
@@ -305,7 +305,7 @@ El diagnóstico mostró que la institución no enfrenta problemas aislados sino 
 
 La formulación de los objetivos adoptó la taxonomía de Bloom y los criterios SMART, y ese ejercicio obligó a descartar dos formulaciones que no admitían verificación. Las hipótesis y las variables se definieron con unidad de medida, instrumento y prueba estadística, de modo que la evaluación de la Fase IV no dependa de interpretaciones posteriores. El enfoque cuantitativo se justificó por la naturaleza numérica de las variables y por la necesidad de comparar la línea base con el desempeño del sistema.
 
-El alcance quedó delimitado en nueve módulos y seis servicios transversales, con exclusión expresa de la aplicación móvil, la nube y la firma electrónica certificada. Las limitaciones se declararon antes de conocer los resultados, condición que protege la credibilidad de las conclusiones. El capítulo siguiente desarrolla el marco teórico que sustenta estas decisiones y la metodología que las convierte en un procedimiento replicable.
+El alcance quedó delimitado en nueve módulos de escritorio, seis servicios transversales, un cliente Android nativo y un nodo central de sincronización, con exclusión expresa de la nube, la interfaz web en navegador y la firma electrónica certificada. Las limitaciones se declararon antes de conocer los resultados, condición que protege la credibilidad de las conclusiones. El capítulo siguiente desarrolla el marco teórico que sustenta estas decisiones y la metodología que las convierte en un procedimiento replicable.
 
 ## 1.12 Referencias citadas
 

@@ -22,6 +22,7 @@ from src.gui.frames import (
     _seleccionar_fila_click,
 )
 from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.widgets.tabla import EstadoTabla, configurar_cebra, etiqueta_fila
 from src.models import Contrato, Empleado, EstadoContrato, TipoContrato
 from src.utils.helpers import (
     format_currency,
@@ -218,6 +219,8 @@ class ContratosFrame(ctk.CTkFrame):
             )
 
         _habilitar_orden_columnas(self.tree)
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
         self.tree.bind(
             "<ButtonRelease-1>", lambda evento: _seleccionar_fila_click(self.tree, evento)
         )
@@ -319,7 +322,7 @@ class ContratosFrame(ctk.CTkFrame):
             return
 
         self.contratos = contratos
-        for contrato in contratos:
+        for indice, contrato in enumerate(contratos):
             empleado = self._empleados.get(int(contrato.empleado_id))
             nombre = empleado.nombre_completo if empleado else f"Empleado {contrato.empleado_id}"
             dias = contrato.dias_para_vencer
@@ -338,8 +341,14 @@ class ContratosFrame(ctk.CTkFrame):
                     format_currency(float(contrato.salario_pactado or 0)),
                     ETIQUETAS_ESTADO.get(contrato.estado_valor, contrato.estado_valor),
                 ),
+                tags=etiqueta_fila(indice),
             )
 
+        self.estado_tabla.actualizar(
+            len(contratos),
+            "Sin contratos en esta vista",
+            f"Ningún contrato coincide con el filtro «{filtro}»",
+        )
         self._actualizar_resumen()
 
     def _actualizar_resumen(self) -> None:

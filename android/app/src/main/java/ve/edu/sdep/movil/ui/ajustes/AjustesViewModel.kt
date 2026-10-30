@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ve.edu.sdep.movil.datos.local.dao.ConflictoDao
 import ve.edu.sdep.movil.datos.local.dao.OperacionDao
+import ve.edu.sdep.movil.datos.preferencias.ModoApariencia
+import ve.edu.sdep.movil.datos.preferencias.PreferenciasApariencia
 import ve.edu.sdep.movil.datos.repositorio.AutenticacionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.ConectorNodo
 import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
@@ -60,6 +62,7 @@ class AjustesViewModel @Inject constructor(
     private val autenticacion: AutenticacionRepositorio,
     private val sesionRepositorio: SesionRepositorio,
     private val programador: ProgramadorSync,
+    private val apariencia: PreferenciasApariencia,
     operacionDao: OperacionDao,
     conflictoDao: ConflictoDao,
 ) : ViewModel() {
@@ -110,6 +113,12 @@ class AjustesViewModel @Inject constructor(
             }
         }
     }
+
+    /** Tema elegido en este puesto: Sistema, Claro u Oscuro */
+    val modoApariencia: StateFlow<ModoApariencia> = apariencia.modo
+
+    /** Cambia el tema al instante; la raíz de la interfaz se recompone sola. */
+    fun cambiarApariencia(modo: ModoApariencia) = apariencia.cambiar(modo)
 
     fun limpiarMensaje() = _estado.update { it.copy(mensaje = null) }
 

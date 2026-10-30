@@ -343,8 +343,9 @@ El proyecto se encuentra ejecutado en sus componentes de análisis, diseño, des
 | Análisis de requerimientos | Concluido | Apartado 1.2.2 del Capítulo I; instrumentos del Anexo 1 |
 | Diseño de la arquitectura | Concluido e implementado | Apartado 4.2.1 del Capítulo IV |
 | Desarrollo de módulos | Concluido: nueve módulos operativos, con la contratación incorporada y la asistencia y los préstamos retirados del alcance | Apartado 4.2.2 del Capítulo IV |
-| Reportes y documentos oficiales | Concluido: doce tipos de documento | Apartado 4.2.1.6 del Capítulo IV |
-| Pruebas técnicas | Concluido: 551 funciones de prueba en la versión 3.0.1 | Apartado 4.3 del Capítulo IV y Anexo 7 |
+| Reportes y documentos oficiales | Concluido: trece tipos de documento y constancias desde plantilla Markdown | Apartado 4.2.1.6 del Capítulo IV |
+| Cliente móvil y nodo central | Concluido: SDEP Móvil para Android y nodo de sincronización | Apartado 4.2.2.9 del Capítulo IV |
+| Pruebas técnicas | Concluido: 605 funciones de prueba declaradas en 37 archivos, con ejecución registrada de 551 pruebas exitosas | Apartado 4.3 del Capítulo IV y Anexo 7 |
 | Pruebas de usabilidad | Pendiente de ejecución | Protocolo del Anexo 3 |
 | Implementación piloto | Pendiente de ejecución | Apartado 4.5 del Capítulo IV |
 | Documentación | Concluida | Documentos de este informe y documentación del repositorio |

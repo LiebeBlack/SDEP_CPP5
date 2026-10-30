@@ -13,7 +13,7 @@ El registro abarca la documentación académica contenida en el directorio `TESI
 | 1.0.4 | Versión sobre la que se ejecutó la medición de cobertura de pruebas que se conserva como referencia en el Anexo 7 |
 | 2.79 | Versión en la que se documentó por primera vez la suite de 323 pruebas, la autenticación con roles y los módulos iniciales |
 | 3.0.0 | Siete módulos funcionales, motor de nómina, gestión documental, incidencias y contratación, y 476 funciones de prueba. Retira los módulos de asistencia, préstamos y alertas junto con sus tablas, columnas y parámetros de configuración. Incorpora el agente de sincronización entre puestos (`sync_agent/`) |
-| 3.0.1 | Versión vigente al momento de esta revisión y sobre la que se documenta el informe: incorpora el dominio académico (estudiantes, grados, matrículas, calificaciones y periodos), la gestión de tokens de sesión y 75 funciones de prueba adicionales, y extiende el esquema a trece tablas y la interfaz a nueve módulos, con las cifras elevadas a 551 funciones de prueba en 32 archivos y 29 475 líneas de código en `src/` |
+| 3.0.1 | Versión vigente al momento de esta revisión y sobre la que se documenta el informe: incorpora el dominio académico (estudiantes, grados, matrículas, calificaciones y periodos), la gestión de tokens de sesión y 75 funciones de prueba adicionales, y extiende el esquema a catorce tablas y la interfaz a nueve módulos. Sus cifras vigentes, re-medidas el 30 de octubre de 2026, son 605 funciones de prueba en 37 archivos, 33 601 líneas de código en `src/`, 10 904 en `sync_agent/` y 18 635 en el cliente Android |
 
 ## 3. INVENTARIO DOCUMENTAL Y ESTADO
 
@@ -40,11 +40,13 @@ Las comprobaciones que se relacionan a continuación se ejecutaron sobre el repo
 | Verificación | Procedimiento | Resultado |
 |--------------|---------------|-----------|
 | Versión documentada | Lectura de `VERSION` y de `pyproject.toml` | 3.0.1 en ambos archivos |
-| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 29 475 líneas en 77 archivos |
+| Extensión del código fuente | Recuento de líneas con `wc -l` sobre `src/` | 33 601 líneas en 81 archivos |
+| Extensión del cliente Android | Recuento sobre `android/` | 18 635 líneas en 82 archivos Kotlin |
+| Extensión del paquete de sincronización | Recuento sobre `sync_agent/` | 10 904 líneas en 19 archivos |
 | Distribución por capa | Recuento por directorio | Consignada en la Tabla 4.1 del Capítulo IV |
-| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 551 funciones en 32 archivos |
+| Número de funciones de prueba | Recuento de coincidencias de `def test_` en `tests/` | 605 funciones en 37 archivos |
 | Distribución de pruebas por archivo | Recuento por archivo | Consignada en la Tabla 4.7 del Capítulo IV |
-| Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Trece tablas |
+| Esquema de base de datos | Búsqueda de `__tablename__` en `src/models/` | Catorce tablas |
 | Módulos de interfaz | Lectura de la lista de módulos en `src/gui/main_window.py` | Nueve módulos con atajos `Ctrl+1` a `Ctrl+9` |
 | Matriz de acceso por rol | Lectura de `PermissionChecker` en `src/utils/security.py` | Consignada en la Tabla 4.6 del Capítulo IV |
 | Parámetros de seguridad | Lectura de `SecurityValidator` | PBKDF2-HMAC-SHA256, 200 000 iteraciones, sal de 16 bytes |
@@ -94,6 +96,8 @@ Este registro debe actualizarse cada vez que se modifique un documento del exped
 | 9 de octubre de 2026 | `CAPITULO_IV_RESULTADOS.md` | Se documenta el módulo académico, se elevan las cifras estructurales a la versión 3.0.1 (nueve módulos, trece tablas, 551 funciones de prueba en 32 archivos, 29 475 líneas en `src/`) y se corrige la referencia al cierre de la versión anterior |
 | 9 de octubre de 2026 | `CAPITULO_II_MARCO_TEORICO.md`, `BIBLIOGRAFIA_ANEXOS.md` | Se actualizan el modelo conceptual, la arquitectura de capas, el modelo entidad-relación, el inventario de código y la tabla de atajos para reflejar los nueve módulos, los trece repositorios concretos y las trece tablas de la versión 3.0.1 |
 | 9 de octubre de 2026 | `CAPITULO_V_CONCLUSIONES.md`, `RESUMEN_INVESTIGACION.md`, `INDICE_GENERAL.md`, `PROYECTO_SOCIAL_TECNOLOGICO.md` | Se elevan a la versión 3.0.1 el alcance declarado (nueve módulos), las cifras de código, tablas y pruebas, y el delta de funciones de prueba incorporadas desde la versión 2.79 (228 funciones: de 323 a 551) |
+| 30 de octubre de 2026 | `01-introduccion-y-planteamiento.md`, `03-diseno-ingenieria-y-arquitectura.md`, `CAPITULO_IV_RESULTADOS.md`, `CAPITULO_V_CONCLUSIONES.md` | Se corrige la exclusión de la aplicación móvil del alcance: el cliente Android y el nodo central existen en el repositorio y se documentan como componentes entregados. Se agrega el apartado 4.2.2.9 con su descripción técnica |
+| 30 de octubre de 2026 | `CAPITULO_IV_RESULTADOS.md`, `04-implementacion-y-despliegue.md`, `INDICE_GENERAL.md`, `OFICIO_2_PRESENTACION_RESUMEN.md`, `RESUMEN_INVESTIGACION.md`, `PROYECTO_SOCIAL_TECNOLOGICO.md`, `BIBLIOGRAFIA_ANEXOS.md`, `ANTEPROYECTO_TESIS.md` | Se re-miden las cifras estructurales al 30 de octubre: 33 601 líneas en 81 archivos de `src/`, 10 904 líneas en 19 archivos de `sync_agent/`, 18 635 líneas en 82 archivos Kotlin, 605 funciones de prueba en 37 archivos y catorce tablas de dominio. Se conserva como dato de ejecución el corte del 6 de octubre (551 pruebas exitosas). Se elevan los documentos oficiales de doce a trece y se documenta la constancia desde plantilla Markdown |
 | 21 de octubre de 2026 | `01-introduccion-y-planteamiento.md`, `02-marco-teorico-y-metodologico.md`, `03-diseno-ingenieria-y-arquitectura.md`, `04-implementacion-y-despliegue.md` | Se incorpora la serie documental del compendio con enfoque cuantitativo estricto, marco legal venezolano verificado y especificación técnica del subsistema de sincronización. Los capítulos I, II y III quedan como versiones anteriores con nota de sustitución |
 
 Estas correcciones se practicaron sobre contradicciones internas del corpus y sobre la divergencia entre la tesis y el producto, y no alteran ninguna conclusión: restituyen la correspondencia entre documentos para un mismo dato y entre el corpus y la versión vigente del repositorio. Se conserva constancia de que el valor de referencia adoptado es el que resulta de la medición directa declarada sobre el repositorio.

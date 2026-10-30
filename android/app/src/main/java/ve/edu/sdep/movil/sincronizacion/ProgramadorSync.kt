@@ -29,10 +29,14 @@ class ProgramadorSync @Inject constructor(
 
     fun programar(periodoMinutos: Int = 15) {
         val minutos = periodoMinutos.coerceIn(MINIMO_MINUTOS, MAXIMO_MINUTOS).toLong()
+        // En un equipo de gama baja, despertar cada cuarto de hora con la
+        // batería por debajo del 15 % alarga la carga y compite con el sistema.
+        // El ciclo se reanuda solo cuando el teléfono vuelve a tener carga.
         val solicitud = PeriodicWorkRequestBuilder<TrabajoSincronizacion>(minutos, TimeUnit.MINUTES)
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresBatteryNotLow(true)
                     .build(),
             )
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)

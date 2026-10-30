@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión de Personal y Nómina | Documentación Oficial — LiebeBlack Systems</title>
-    <meta name="description" content="Portal oficial de documentación del Sistema de Gestión de Personal y Nómina de LiebeBlack Systems. Lector integrado de Markdown, tesis académica, informes académicos y búsqueda instantánea, sin dependencias externas.">
-    <meta name="keywords" content="sistema de gestion personal, nomina, instituciones educativas, python, sqlalchemy, customtkinter, tesis academica">
+    <meta name="description" content="Portal oficial de documentación del Sistema de Gestión de Personal y Nómina de LiebeBlack Systems. Lector integrado de Markdown, tesis académica, informes académicos, cliente Android con sincronización offline y búsqueda instantánea, sin dependencias externas.">
+    <meta name="keywords" content="sistema de gestion personal, nomina, instituciones educativas, python, sqlalchemy, customtkinter, android, kotlin, sincronizacion offline, tesis academica">
     <meta name="author" content="LiebeBlack Systems">
     <meta name="robots" content="index, follow">
     <meta property="og:title" content="Sistema de Gestión de Personal y Nómina | Documentación Oficial">
@@ -43,6 +43,7 @@
                 <a href="#inicio" class="nav-link">Inicio</a>
                 <a href="#software" class="nav-link">Software</a>
                 <a href="#arquitectura" class="nav-link">Arquitectura</a>
+                <a href="#plataformas" class="nav-link">Plataformas</a>
                 <a href="#catalogo" class="nav-link">Documentos</a>
                 <a href="#informes" class="nav-link">Informes</a>
                 <a href="#quickstart" class="nav-link">Quickstart</a>
@@ -91,7 +92,7 @@
                 </h1>
 
                 <p class="hero-description">
-                    Solución de alto rendimiento para instituciones educativas. Arquitectura modular en capas desacopladas, interfaz CustomTkinter, control documental automatizado e investigación académica formal.
+                    Solución de alto rendimiento para instituciones educativas. Arquitectura modular en capas desacopladas, interfaz CustomTkinter, control documental automatizado, cliente Android con sincronización offline y la investigación académica que la respalda.
                 </p>
 
                 <div class="hero-cta-group">
@@ -173,9 +174,9 @@ python src/main.py</code></pre>
                     <div class="stat-sub">Personal, nómina, contratos y ámbito académico</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-val">12</div>
+                    <div class="stat-val">13</div>
                     <div class="stat-lbl">Documentos Oficiales</div>
-                    <div class="stat-sub">Constancias, recibos, planillas y actas en PDF</div>
+                    <div class="stat-sub">En PDF, más constancias desde plantilla Markdown</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-val" id="stat-docs">21</div>
@@ -229,8 +230,22 @@ python src/main.py</code></pre>
                     <div class="feature-item">
                         <div class="feature-icon-wrap">📊</div>
                         <h3 class="feature-h3">Generación de Reportes</h3>
-                        <p class="feature-p">Constancias oficiales, recibos, planillas salariales y exportación a Excel (.xlsx) y CSV.</p>
+                        <p class="feature-p">Trece documentos oficiales: constancias, fichas, recibos, planillas, liquidaciones y reportes; más exportación a Excel (.xlsx) y CSV.</p>
                         <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver generación PDF →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">📝</div>
+                        <h3 class="feature-h3">Plantillas Propias (.md)</h3>
+                        <p class="feature-p">Se carga un documento Markdown con marcadores como <code>{{nombre}}</code>, <code>{{cedula}}</code> o <code>{{cargo}}</code>; el sistema sustituye los datos del empleado, avisa de marcadores desconocidos y emite el PDF con la fecha de emisión.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="guia-usuario">Ver campos admitidos →</button>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">📱</div>
+                        <h3 class="feature-h3">SDEP Móvil (Android)</h3>
+                        <p class="feature-p">Aplicación nativa en Kotlin con Jetpack Compose, Room y Hilt: consulta la ficha, emite constancias y herramientas PDF desde el teléfono y sincroniza al recuperar la red, con cola de salida y bandeja de conflictos.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="readme">Ver plataforma móvil →</button>
                     </div>
 
                     <div class="feature-item">
@@ -296,9 +311,41 @@ python src/main.py</code></pre>
                         <span class="tech-pill">SQLAlchemy 2.0</span>
                         <span class="tech-pill">SQLite 3</span>
                         <span class="tech-pill">ReportLab (PDF)</span>
+                        <span class="tech-pill">Plantillas Markdown → PDF</span>
                         <span class="tech-pill">openpyxl (Excel)</span>
+                        <span class="tech-pill">Kotlin · Compose · Room · Hilt</span>
+                        <span class="tech-pill">Nodo HTTP con SQLite en WAL</span>
                         <span class="tech-pill">pytest · suite automatizada</span>
                         <span class="tech-pill">PBKDF2 SHA-256</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Platforms Section -->
+            <section id="plataformas" class="section">
+                <div class="section-head">
+                    <span class="section-tag">Tres frentes, una misma verdad</span>
+                    <h2 class="section-heading">Escritorio, Nodo Central y Teléfono</h2>
+                    <p class="section-subtext">Los datos se escriben siempre en local y viajan al nodo del colegio con el mismo protocolo, de modo que el puesto de secretaría y el teléfono del directivo ven la misma información aunque la red falle.</p>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">🖥️</div>
+                        <h3 class="feature-h3">Puesto de escritorio</h3>
+                        <p class="feature-p">Python, CustomTkinter y SQLite local: nueve módulos con control de acceso por rol, nómina, expedientes y generación documental completa.</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">🔗</div>
+                        <h3 class="feature-h3">Nodo central</h3>
+                        <p class="feature-p">Servicio HTTP de la biblioteca estándar sobre SQLite en modo WAL, con token hasheado, límite de peticiones, TLS opcional y secuencia autoritativa de operaciones.</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon-wrap">📲</div>
+                        <h3 class="feature-h3">SDEP Móvil</h3>
+                        <p class="feature-p">Cliente Android offline-first: ingreso con contraseña o biometría, constancias generadas en el propio teléfono y cola de salida que se vacía al recuperar la red.</p>
                     </div>
                 </div>
             </section>

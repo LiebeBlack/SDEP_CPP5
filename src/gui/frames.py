@@ -14,7 +14,7 @@ import threading
 import tkinter as tk
 import webbrowser
 from datetime import date, timedelta
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import customtkinter as ctk
 
@@ -24,6 +24,12 @@ from src.gui.theme import (
     habilitar_scroll_rueda,
 )
 from src.gui.widgets import GraficoBarras, GraficoDona, GraficoLinea, TarjetaIndicador
+from src.gui.widgets.tabla import (
+    EstadoTabla,
+    configurar_cebra,
+    etiqueta_fila,
+    resumen_conteo,
+)
 from src.models import Empleado, EstadoIncidencia
 from src.services.auth_service import AuthService
 from src.utils.audit_logger import AuditEventType, audit_logger
@@ -38,7 +44,7 @@ from src.utils.helpers import (
     parse_int_estricto,
     ruta_a_uri,
 )
-from src.utils.pdf_generator import PDFGenerator
+from src.utils.pdf_generator import PDFGenerator, campos_desconocidos
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +228,17 @@ def _ordenar_por_columna(tree, columna) -> None:
         logger.debug("operación de interfaz ignorada", exc_info=True)
 
 
+def _titulo_plantilla(plantilla: str) -> str:
+    """Título sugerido por la plantilla: su primer encabezado Markdown."""
+    for linea in (plantilla or "").splitlines():
+        limpia = linea.strip()
+        if limpia.startswith("#"):
+            titulo = limpia.lstrip("#").strip()
+            if titulo:
+                return titulo[:120]
+    return "CONSTANCIA DE TRABAJO"
+
+
 def _habilitar_orden_columnas(tree) -> None:
     """
     Habilita el ordenamiento por clic en los encabezados de un Treeview.
@@ -263,6 +280,8 @@ class DashboardFrame(ctk.CTkFrame):
     def __init__(self, parent, main_window):
         super().__init__(parent)
         self.main_window = main_window
+        # Estadísticas de empleados de la última carga (ver _load_data)
+        self._stats_empleados: dict | None = None
         self._create_widgets()
         self._load_data()
 
@@ -357,6 +376,12 @@ class DashboardFrame(ctk.CTkFrame):
         def go_to_contratos():
             self.main_window._show_frame("contratos")
 
+        def go_to_estudiantes():
+            self.main_window._show_frame("estudiantes")
+
+        def go_to_notas():
+            self.main_window._show_frame("notas")
+
         # Solo se muestran accesos a módulos permitidos por el rol del usuario
         acciones = [
             ("Ir a Empleados", go_to_empleados, "empleados"),
@@ -364,6 +389,8 @@ class DashboardFrame(ctk.CTkFrame):
             ("Ir a Incidencias", go_to_incidencias, "incidencias"),
             ("Ir a Contratos", go_to_contratos, "contratos"),
             ("Ir a Nómina", go_to_nomina, "nomina"),
+            ("Ir a Estudiantes", go_to_estudiantes, "estudiantes"),
+            ("Ir a Calificaciones", go_to_notas, "notas"),
         ]
         acciones = [
             (text, command)
@@ -597,10 +624,16 @@ class DashboardFrame(ctk.CTkFrame):
 
     def _load_data(self):
         """Carga los datos del dashboard"""
+        # Las estadísticas de empleados alimentan las tarjetas, el KPI de
+        # dotación y el gráfico por departamento. Se consultan una sola vez
+        # por carga: ``obtener_estadisticas`` ejecuta varias consultas (una de
+        # ellas trae todos los activos) y repetirla triplicaba el trabajo.
+        self._stats_empleados: dict | None = None
         # Solo se consultan estadísticas de módulos accesibles al rol.
         if "empleados" in self.stats_cards or "activos" in self.stats_cards:
             try:
                 stats = self.main_window.empleado_service.obtener_estadisticas()
+                self._stats_empleados = stats
                 if "empleados" in self.stats_cards:
                     self.stats_cards["empleados"].configure(text=str(stats.get("total", 0)))
                 if "activos" in self.stats_cards:
@@ -681,7 +714,9 @@ class DashboardFrame(ctk.CTkFrame):
 
         if "dotacion" in self.indicadores:
             try:
-                stats = self.main_window.empleado_service.obtener_estadisticas()
+                stats = self._stats_empleados or (
+                    self.main_window.empleado_service.obtener_estadisticas()
+                )
                 self.indicadores["dotacion"].establecer_valor(
                     str(int(stats.get("total", 0))),
                     f"{int(stats.get('activos', 0))} empleado(s) activo(s)",
@@ -701,7 +736,9 @@ class DashboardFrame(ctk.CTkFrame):
         if self.grafico_departamentos is None:
             return
         try:
-            stats = self.main_window.empleado_service.obtener_estadisticas()
+            stats = self._stats_empleados or (
+                self.main_window.empleado_service.obtener_estadisticas()
+            )
             por_departamento = stats.get("por_departamento") or {}
             datos = sorted(
                 ((str(area), float(cantidad)) for area, cantidad in por_departamento.items()),
@@ -881,6 +918,11 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
 
+        # Filas alternas y aviso de tabla vacía: la tabla ya no necesita una
+        # fila falsa para comunicar que no hay datos.
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
 
@@ -901,6 +943,9 @@ class EmpleadosFrame(ctk.CTkFrame):
                 label="Constancia de Estudios (PDF)", command=self._on_constancia_estudios
             )
             self.context_menu.add_command(
+                label="Constancia desde plantilla (.md)…", command=self._on_constancia_plantilla
+            )
+            self.context_menu.add_command(
                 label="Ficha del Empleado (PDF)", command=self._on_ficha_empleado
             )
         self.context_menu.add_separator()
@@ -911,6 +956,37 @@ class EmpleadosFrame(ctk.CTkFrame):
             self.context_menu.add_command(label="Eliminar", command=self._on_delete)
 
         self.tree.bind("<Button-3>", self._show_context_menu)
+
+        # Contador de resultados: dice cuántos empleados se están viendo y con
+        # qué filtro, sin obligar al usuario a contar filas a ojo.
+        pie = ctk.CTkFrame(self, fg_color="transparent")
+        pie.pack(fill="x", padx=12, pady=(0, 8))
+        self.lbl_conteo = tk.Label(
+            pie,
+            text="",
+            bg=COLORES["fondo"],
+            fg=COLORES["texto"],
+            font=(_familia_fuente(), 10),
+            anchor="w",
+        )
+        self.lbl_conteo.pack(side="left")
+
+        # Escape limpia la búsqueda y Ctrl+F la enfoca: dos atajos que evitan
+        # soltar el teclado para volver a la lista completa.
+        self.search_entry.bind("<Escape>", self._limpiar_busqueda)
+        self.bind("<Control-f>", lambda _e: self._enfocar_busqueda())
+
+    def _enfocar_busqueda(self):
+        """Lleva el foco al campo de búsqueda y selecciona su contenido."""
+        self.search_entry.focus_set()
+        self.search_entry.selection_range(0, "end")
+
+    def _limpiar_busqueda(self, event=None):
+        """Vacía la búsqueda y devuelve la lista completa."""
+        if self.search_entry.get():
+            self.search_entry.delete(0, "end")
+        self._aplicar_filtros()
+        return "break"
 
     def _load_empleados(self):
         """Carga la lista de empleados (todos los activos)"""
@@ -974,7 +1050,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        for emp in empleados:
+        for indice, emp in enumerate(empleados):
             try:
                 tipo_emp_val = (
                     emp.tipo_empleado.value
@@ -992,11 +1068,23 @@ class EmpleadosFrame(ctk.CTkFrame):
                         tipo_emp_val,
                         format_currency(emp.salario_base),
                     ),
-                    tags=(str(emp.id),),
+                    tags=(str(emp.id),) + etiqueta_fila(indice),
                 )
             except Exception:
                 # Continuar con el siguiente empleado si hay error
                 continue
+
+        # El contador y el aviso se actualizan siempre: sin ellos, una lista
+        # vacía por filtro es indistinguible de un fallo de carga.
+        termino = self.search_entry.get().strip()
+        self.lbl_conteo.configure(
+            text=resumen_conteo(len(empleados), "empleado", "empleados", termino),
+        )
+        self.estado_tabla.actualizar(
+            len(empleados),
+            "No hay empleados que mostrar" if termino else "Todavía no hay empleados registrados",
+            f"Ningún resultado para «{termino}»" if termino else "Cree el primero con el botón Nuevo Empleado",
+        )
 
     def _on_double_click(self, event):
         """Doble clic: selecciona la fila bajo el cursor y abre los detalles"""
@@ -1099,6 +1187,67 @@ class EmpleadosFrame(ctk.CTkFrame):
                 )
             except Exception as e:
                 messagebox.showerror("Error", f"Error al generar constancia: {str(e)}")
+
+    def _on_constancia_plantilla(self):
+        """Genera una constancia desde una plantilla Markdown, como el teléfono."""
+        if not _verificar_permiso_accion(self.main_window, "report", "generar constancias"):
+            return
+        empleado = self._get_selected_empleado()
+        if not empleado:
+            messagebox.showwarning("Advertencia", "Seleccione un empleado primero")
+            return
+
+        ruta = filedialog.askopenfilename(
+            title="Seleccione la plantilla Markdown",
+            filetypes=[("Plantilla Markdown", "*.md"), ("Texto", "*.txt")],
+        )
+        if not ruta:
+            return
+        try:
+            with open(ruta, "rb") as archivo:
+                crudo = archivo.read(65_537)
+            if len(crudo) > 65_536:
+                raise ValueError("La plantilla no puede superar 64 KB")
+            plantilla = crudo.decode("utf-8")
+            if not plantilla.strip():
+                raise ValueError("La plantilla está vacía")
+        except (OSError, UnicodeDecodeError, ValueError) as error:
+            messagebox.showerror("Error", f"No se pudo leer la plantilla: {error}")
+            return
+
+        desconocidos = campos_desconocidos(plantilla)
+        if desconocidos:
+            lista = ", ".join(f"{{{{{campo}}}}}" for campo in desconocidos[:8])
+            if not messagebox.askyesno(
+                "Campos sin datos",
+                f"La plantilla usa campos que el sistema no completa:\n{lista}\n\n"
+                "Se imprimirán tal cual. ¿Desea continuar?",
+            ):
+                return
+
+        titulo = simpledialog.askstring(
+            "Título del documento",
+            "Título que llevará la constancia:",
+            initialvalue=_titulo_plantilla(plantilla),
+            parent=self,
+        )
+        if titulo is None:
+            return
+        titulo = (titulo.strip()[:120] or "CONSTANCIA DE TRABAJO")
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"constancia_{empleado.cedula}.pdf",
+            filetypes=[("PDF Files", "*.pdf")],
+        )
+        if not file_path:
+            return
+        try:
+            PDFGenerator().generate_constancia_plantilla(empleado, plantilla, file_path, titulo)
+            messagebox.showinfo("Éxito", f"Constancia generada exitosamente:\n{file_path}")
+        except Exception as error:
+            logger.exception("No se pudo generar la constancia desde plantilla")
+            messagebox.showerror("Error", f"Error al generar constancia: {error}")
 
     def _on_reporte_empleados(self):
         """Genera un reporte general de empleados en PDF"""
@@ -2125,6 +2274,9 @@ class DocumentosFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
 
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
 
@@ -2262,7 +2414,10 @@ class DocumentosFrame(ctk.CTkFrame):
             self.tree.delete(item)
 
         if not self.current_empleado_id:
-            self.tree.insert("", "end", values=("Seleccione un empleado", "", "", ""))
+            self.estado_tabla.mostrar(
+                "Seleccione un empleado",
+                "Elija un empleado en la lista superior para ver su expediente",
+            )
             return
 
         try:
@@ -2271,10 +2426,13 @@ class DocumentosFrame(ctk.CTkFrame):
             )
 
             if not documentos:
-                self.tree.insert("", "end", values=("", "No hay documentos registrados", "", ""))
+                self.estado_tabla.mostrar(
+                    "Este expediente está vacío",
+                    "Cargue el primer documento con el botón correspondiente",
+                )
                 return
 
-            for doc in documentos:
+            for indice, doc in enumerate(documentos):
                 try:
                     estado = "Vigente" if doc.es_valido else "Vencido"
                 except AttributeError:
@@ -2285,8 +2443,9 @@ class DocumentosFrame(ctk.CTkFrame):
                     "",
                     "end",
                     values=(doc.tipo_documento, doc.titulo, fecha_str, estado),
-                    tags=(str(doc.id),),
+                    tags=(str(doc.id),) + etiqueta_fila(indice),
                 )
+            self.estado_tabla.ocultar()
 
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar documentos: {str(e)}")
@@ -2737,6 +2896,9 @@ class IncidenciasFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
 
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
 
@@ -2881,7 +3043,10 @@ class IncidenciasFrame(ctk.CTkFrame):
             self.tree.delete(item)
 
         if not self.current_empleado_id:
-            self.tree.insert("", "end", values=("Seleccione un empleado", "", "", "", ""))
+            self.estado_tabla.mostrar(
+                "Seleccione un empleado",
+                "Elija un empleado en la lista superior para ver sus incidencias",
+            )
             return
 
         try:
@@ -2890,12 +3055,13 @@ class IncidenciasFrame(ctk.CTkFrame):
             )
 
             if not incidencias:
-                self.tree.insert(
-                    "", "end", values=("", "No hay incidencias registradas", "", "", "")
+                self.estado_tabla.mostrar(
+                    "Sin incidencias registradas",
+                    "No hay ausencias, permisos ni reposos para este empleado",
                 )
                 return
 
-            for incidencia in incidencias:
+            for indice, incidencia in enumerate(incidencias):
                 fechas = (
                     f"{format_date(incidencia.fecha_inicio)} - {format_date(incidencia.fecha_fin)}"
                 )
@@ -2911,8 +3077,9 @@ class IncidenciasFrame(ctk.CTkFrame):
                     "",
                     "end",
                     values=(incidencia.tipo_incidencia, fechas, dias, estado, motivo),
-                    tags=(str(incidencia.id),),
+                    tags=(str(incidencia.id),) + etiqueta_fila(indice),
                 )
+            self.estado_tabla.ocultar()
 
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar incidencias: {str(e)}")
@@ -3493,6 +3660,9 @@ class NominaFrame(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.configure(command=self.tree.yview)
 
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
+
         # Clic en los encabezados para ordenar la lista
         _habilitar_orden_columnas(self.tree)
 
@@ -3522,13 +3692,24 @@ class NominaFrame(ctk.CTkFrame):
             return self.main_window.pago_service.listar_pagados()
         return self.main_window.pago_service.listar_pagos()
 
+    def _mapa_empleados(self) -> dict[int, Empleado]:
+        """Empleados indexados por id, en una sola consulta.
+
+        Antes, dibujar cien pagos lanzaba cien consultas de empleado: el mismo
+        SELECT repetido con distinto id. Con el mapa, la tabla y las
+        exportaciones resuelven el nombre sin tocar la base por fila.
+        """
+        try:
+            empleados = self.main_window.empleado_service.listar_todos()
+        except Exception:
+            logger.exception("No se pudo precargar la dotación para la tabla de pagos")
+            return {}
+        return {empleado.id: empleado for empleado in empleados}
+
     def _pagos_con_empleado(self):
         """Lista de (pago, empleado) para los pagos visibles"""
-        resultado = []
-        for pago in self._obtener_pagos_filtrados():
-            empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
-            resultado.append((pago, empleado))
-        return resultado
+        mapa = self._mapa_empleados()
+        return [(pago, mapa.get(pago.empleado_id)) for pago in self._obtener_pagos_filtrados()]
 
     def _load_pagos(self):
         """Carga la lista de pagos"""
@@ -3539,12 +3720,16 @@ class NominaFrame(ctk.CTkFrame):
             pagos = self._obtener_pagos_filtrados()
 
             if not pagos:
-                self.tree.insert("", "end", values=("", "No hay pagos registrados", "", "", "", ""))
+                self.estado_tabla.mostrar(
+                    "Sin pagos en esta vista",
+                    "Genere la nómina del periodo o cambie el filtro de estado",
+                )
                 return
 
-            for pago in pagos:
+            mapa = self._mapa_empleados()
+            for indice, pago in enumerate(pagos):
                 try:
-                    empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
+                    empleado = mapa.get(pago.empleado_id)
                     nombre_empleado = empleado.nombre_completo if empleado else "Desconocido"
 
                     periodo = (
@@ -3563,10 +3748,11 @@ class NominaFrame(ctk.CTkFrame):
                             format_currency(float(pago.monto_neto)),
                             estado_pago,
                         ),
-                        tags=(str(pago.id),),
+                        tags=(str(pago.id),) + etiqueta_fila(indice),
                     )
                 except Exception:
                     continue
+            self.estado_tabla.ocultar()
 
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar pagos: {str(e)}")
@@ -4070,6 +4256,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
             yscrollcommand=scrollbar.set,
         )
         habilitar_scroll_rueda(self.audit_tree)
+        configurar_cebra(self.audit_tree)
+        self.estado_auditoria = EstadoTabla(self.audit_tree)
         self.audit_tree.heading("fecha", text="Fecha")
         self.audit_tree.heading("tipo", text="Tipo")
         self.audit_tree.heading("usuario", text="Usuario")
@@ -4114,8 +4302,13 @@ class ConfiguracionFrame(ctk.CTkFrame):
                         "Sí" if ev.get("success") else "No",
                         detalle,
                     ),
-                    tags=(str(i),),
+                    tags=(str(i),) + etiqueta_fila(i),
                 )
+            self.estado_auditoria.actualizar(
+                len(eventos),
+                "Sin eventos de auditoría",
+                "Las operaciones registradas aparecerán aquí.",
+            )
         except Exception as e:
             self._audit_eventos = []
             messagebox.showerror("Error", f"Error al cargar auditoría: {str(e)}")
@@ -4488,6 +4681,8 @@ class ConfiguracionFrame(ctk.CTkFrame):
             yscrollcommand=scrollbar.set,
         )
         habilitar_scroll_rueda(self.sync_conflictos_tree)
+        configurar_cebra(self.sync_conflictos_tree)
+        self.estado_conflictos = EstadoTabla(self.sync_conflictos_tree)
         for columna, titulo, ancho in (
             ("fecha", "Fecha", 140),
             ("tabla", "Tabla", 110),
@@ -4593,7 +4788,13 @@ class ConfiguracionFrame(ctk.CTkFrame):
                         _texto_valor_conflicto(loads(fila.valor_local)),
                         _texto_valor_conflicto(loads(fila.valor_remoto)),
                     ),
+                    tags=etiqueta_fila(indice),
                 )
+            self.estado_conflictos.actualizar(
+                len(filas),
+                "Sin conflictos pendientes",
+                "La sincronización no ha detectado diferencias que resolver.",
+            )
         except Exception:
             logger.debug("No se pudieron listar los conflictos", exc_info=True)
         finally:

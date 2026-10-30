@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SearchOff
@@ -97,8 +97,12 @@ fun PantallaFichaModulo(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                item { EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR)) }
-                items(actual.secciones) { seccion -> TarjetaSeccion(seccion) }
+                item(key = "encabezado") { EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR)) }
+                // Clave por posición: los títulos se repiten entre fichas y una
+                // clave duplicada haría fallar la lista en tiempo de ejecución.
+                itemsIndexed(actual.secciones, key = { indice, _ -> indice }) { _, seccion ->
+                    TarjetaSeccion(seccion)
+                }
             }
         }
     }

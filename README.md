@@ -83,13 +83,14 @@ El portal también se abre sin conexión: `start docs/index.html` (Windows),
 - Gráficos de barras, dona y línea dibujados sobre Canvas (sin dependencias nuevas)
 
 ### Generación de Documentos y Exportación
-- Constancias de trabajo y de estudios
-- Ficha completa del empleado (datos personales, laborales, bancarios, salud y familia)
-- Recibos de pago
-- Reportes de empleados
-- Planilla de nómina por periodo con totales (ISSS, AFP, ISR, neto)
-- Reporte de incidencias, control de vencimientos de documentos y
-  reporte de **contratos**
+- **Trece documentos oficiales en PDF**: constancias de trabajo, de estudios y de
+  ingresos; ficha del empleado; recibos de pago; planilla de nómina por periodo con
+  totales (ISSS, AFP, ISR, neto); liquidación; y reportes de empleados, incidencias,
+  vencimientos, contratos y movimiento anual
+- **Constancias desde plantilla Markdown (`.md`)**: se carga un documento propio con
+  marcadores `{{nombre}}`, `{{cedula}}`, `{{cargo}}`… y el sistema los sustituye por los
+  datos del empleado, avisa de marcadores desconocidos y emite el PDF con la fecha de
+  emisión. Los quince campos admitidos están en `CAMPOS_PLANTILLA`
 - Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel),
   incluida la exportación multihoja
 
@@ -150,6 +151,9 @@ institucional.
 - Ingreso con contraseña (PBKDF2) y desbloqueo con huella o rostro.
 - Roles de administrador, editor y consulta.
 - CRUD completo con búsqueda, categorías y valor numérico.
+- **Constancias y herramientas PDF en el teléfono**: ficha, constancia de trabajo o de
+  estudios, constancia desde plantilla `.md` y reportes por periodo, con apertura y
+  compartición del PDF mediante un proveedor de archivos privado.
 - Cola de salida transaccional, cursor de sincronización y bandeja de conflictos.
 - Sin dependencia de servicios en la nube: habla solo con el nodo del colegio.
 

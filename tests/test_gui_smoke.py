@@ -11,11 +11,27 @@ entre módulos, los atajos de teclado y el cambio de tema, por lo que
 detectan errores de ejecución que los análisis estáticos no ven.
 """
 
+import gc
 import time
 
 import pytest
 
 ctk = pytest.importorskip("customtkinter")
+
+
+@pytest.fixture(autouse=True)
+def _recolectar_tk_en_el_hilo_principal():
+    """Libera la basura de Tk en el hilo que creó los widgets.
+
+    Las fuentes e imágenes de Tk se liberan en ``__del__`` y ese destructor
+    llama a Tcl, que no es seguro entre hilos. Si la recolección ocurría más
+    tarde —por ejemplo dentro del hilo de una petición del servidor de
+    sincronización, al final de la suite— Tcl bloqueaba ese hilo para siempre y
+    la petición nunca respondía. Recolectar aquí deja la liberación en el hilo
+    de la interfaz, que es el único que puede tocar Tcl con seguridad.
+    """
+    yield
+    gc.collect()
 
 
 def _tk_disponible() -> bool:
@@ -197,6 +213,34 @@ class TestMainWindow:
             arbol = getattr(main_window.current_frame, attr, None)
             assert arbol is not None, f"{modulo} sin atributo {attr}"
             assert arbol.winfo_exists()
+
+    def test_dashboard_reutiliza_estadisticas(self, main_window, monkeypatch):
+        """El panel consulta las estadísticas de empleados una sola vez por carga
+
+        Regresión: las tarjetas, el KPI de dotación y el gráfico por
+        departamento pedían cada uno su propia copia (cuatro consultas por
+        llamada, una de ellas trayendo todos los empleados activos).
+        """
+        from src.gui.frames import DashboardFrame
+
+        servicio = main_window.empleado_service
+        llamadas = {"n": 0}
+        original = servicio.obtener_estadisticas
+
+        def _contar():
+            llamadas["n"] += 1
+            return original()
+
+        monkeypatch.setattr(servicio, "obtener_estadisticas", _contar)
+        frame = DashboardFrame(main_window.content_frame, main_window)
+        main_window.update()
+        try:
+            assert llamadas["n"] == 1
+            assert frame._stats_empleados is not None
+            assert frame.indicadores["dotacion"].winfo_exists()
+            assert frame.grafico_departamentos.winfo_exists()
+        finally:
+            frame.destroy()
 
     def test_toggle_apariencia_persiste(self, main_window):
         """El botón de tema alterna oscuro/claro y guarda la preferencia"""
@@ -462,6 +506,35 @@ class TestTemaYCombobox:
         _ordenar_por_columna(arbol, "cedula")
         assert arbol.get_children("") == ("f2", "f1")
         assert "▼" in arbol.heading("cedula", "text")
+
+
+class TestTablasEstado:
+    """Contador, cebra y aviso de tabla vacía"""
+
+    def test_contador_y_aviso_coinciden_con_las_filas(self, main_window):
+        """El contador dice cuántas filas hay y el aviso solo aparece sin filas"""
+        main_window._show_frame("empleados")
+        frame = main_window.current_frame
+        filas = len(frame.tree.get_children(""))
+        texto = frame.lbl_conteo.cget("text")
+        assert texto.startswith(f"{filas} empleado")
+        # Con filas no hay aviso; sin filas, el aviso está visible
+        assert frame.estado_tabla._visible is (filas == 0)
+
+    def test_cebra_y_contador_utilitarios(self, main_window):
+        """La cebra alterna por índice y el resumen pluraliza bien"""
+        from src.gui.widgets.tabla import etiqueta_fila, resumen_conteo
+
+        assert etiqueta_fila(0) == ("fila_par",)
+        assert etiqueta_fila(1) == ("fila_impar",)
+        assert resumen_conteo(1, "empleado", "empleados") == "1 empleado"
+        assert resumen_conteo(2, "empleado", "empleados") == "2 empleados"
+        assert "«ana»" in resumen_conteo(3, "empleado", "empleados", "ana")
+
+        main_window._show_frame("nomina")
+        arbol = main_window.current_frame.tree
+        arbol.insert("", "end", values=("", "", "", "", "", ""), tags=etiqueta_fila(1))
+        assert arbol.tag_configure("fila_impar", "background")
 
 
 class TestLogin:

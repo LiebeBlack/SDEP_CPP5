@@ -28,6 +28,12 @@ from src.gui.frames import (
     _seleccionar_fila_click,
 )
 from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.widgets.tabla import (
+    EstadoTabla,
+    configurar_cebra,
+    etiqueta_fila,
+    resumen_conteo,
+)
 from src.models import Estudiante, Genero, Grado, NivelEducativo, PeriodoAcademico
 from src.utils.helpers import format_date, parse_date_estricto
 
@@ -224,6 +230,8 @@ class EstudiantesFrame(ctk.CTkFrame):
         )
         scrollbar_horizontal.grid(row=1, column=0, sticky="ew")
         self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set)
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
 
         self.stats_label = ctk.CTkLabel(
             parent,
@@ -319,6 +327,8 @@ class EstudiantesFrame(ctk.CTkFrame):
         scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=self.grados_tree.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.grados_tree.configure(yscrollcommand=scrollbar.set)
+        configurar_cebra(self.grados_tree)
+        self.estado_grados = EstadoTabla(self.grados_tree)
 
     def _crear_tabla_matriculas(self, parent) -> None:
         """Estudiantes matriculados en el grado seleccionado"""
@@ -379,6 +389,8 @@ class EstudiantesFrame(ctk.CTkFrame):
         scrollbar = ttk.Scrollbar(tabla, orient="vertical", command=self.matriculas_tree.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.matriculas_tree.configure(yscrollcommand=scrollbar.set)
+        configurar_cebra(self.matriculas_tree)
+        self.estado_matriculas = EstadoTabla(self.matriculas_tree)
 
     # ------------------------------------------------------------------
     # Datos de estudiantes
@@ -428,7 +440,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
 
         self._estudiantes = list(estudiantes)
-        for estudiante in self._estudiantes:
+        for indice, estudiante in enumerate(self._estudiantes):
             self.tree.insert(
                 "",
                 "end",
@@ -442,8 +454,14 @@ class EstudiantesFrame(ctk.CTkFrame):
                     estudiante.telefono or estudiante.telefono_representante or "-",
                     "Activo" if estudiante.activo else "Retirado",
                 ),
+                tags=etiqueta_fila(indice),
             )
 
+        self.estado_tabla.actualizar(
+            len(self._estudiantes),
+            "Sin estudiantes para mostrar",
+            "Ajuste la búsqueda y los filtros, o registre un estudiante nuevo.",
+        )
         self._actualizar_estadisticas()
 
     def _actualizar_estadisticas(self) -> None:
@@ -461,7 +479,8 @@ class EstudiantesFrame(ctk.CTkFrame):
             f"{_titulo_nivel(clave)}: {valor}" for clave, valor in por_nivel.items()
         )
         texto = (
-            f"Estudiantes: {datos.get('estudiantes', 0)} · "
+            f"{resumen_conteo(len(self._estudiantes), 'estudiante visible', 'estudiantes visibles')} · "
+            f"Total: {datos.get('estudiantes', 0)} · "
             f"Activos: {datos.get('estudiantes_activos', 0)}"
         )
         if detalle_niveles:
@@ -624,7 +643,7 @@ class EstudiantesFrame(ctk.CTkFrame):
             return
 
         self._grados = list(grados)
-        for grado in self._grados:
+        for indice, grado in enumerate(self._grados):
             profesor = "-"
             if grado.profesor is not None:
                 profesor = grado.profesor.nombre_completo or grado.profesor.username
@@ -643,7 +662,14 @@ class EstudiantesFrame(ctk.CTkFrame):
                     profesor,
                     matriculados,
                 ),
+                tags=etiqueta_fila(indice),
             )
+
+        self.estado_grados.actualizar(
+            len(self._grados),
+            "Sin grados en este periodo",
+            "Cree un grado con el botón «Nuevo grado» para empezar.",
+        )
 
     def _grado_seleccionado(self, avisar: bool = True) -> Grado | None:
         """Grado seleccionado en la tabla (avisar=False para usos opcionales)"""
@@ -683,7 +709,7 @@ class EstudiantesFrame(ctk.CTkFrame):
         grado = next((g for g in self._grados if int(g.id) == grado_id), None)
         if grado is not None:
             self.matriculas_label.configure(text=f"Matriculados en {grado.nombre_completo}")
-        for matricula in matriculas:
+        for indice, matricula in enumerate(matriculas):
             estudiante = matricula.estudiante
             self.matriculas_tree.insert(
                 "",
@@ -694,12 +720,19 @@ class EstudiantesFrame(ctk.CTkFrame):
                     (estudiante.cedula or "-") if estudiante else "-",
                     format_date(matricula.fecha_matricula) if matricula.fecha_matricula else "-",
                 ),
+                tags=etiqueta_fila(indice),
             )
+        self.estado_matriculas.actualizar(
+            len(matriculas),
+            "Sin estudiantes matriculados",
+            "Matricule estudiantes para verlos aquí.",
+        )
 
     def _limpiar_matriculas(self) -> None:
         """Vacía la tabla de matriculados"""
         for item in self.matriculas_tree.get_children():
             self.matriculas_tree.delete(item)
+        self.estado_matriculas.ocultar()
         self.matriculas_label.configure(text="Estudiantes matriculados")
 
     def _on_new_grado(self) -> None:

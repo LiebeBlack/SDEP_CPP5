@@ -219,12 +219,15 @@ jobs:
           cd android
           chmod +x gradlew
 
-      - name: Compilar APK de depuración
+      # Una sola invocación de Gradle para las tres tareas: comparte el trabajo
+      # de configuración y de KSP en lugar de pagarlo tres veces.
+      - name: Compilar, probar y empaquetar Android
         run: |
           cd android
-          ./gradlew :app:assembleDebug --no-daemon
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease \
+            --no-daemon --build-cache --stacktrace
 
-      - name: Verificar APK
+      - name: Verificar APK de depuración
         run: |
           apk="android/app/build/outputs/apk/debug/app-debug.apk"
           if [ ! -f "$apk" ]; then
@@ -233,16 +236,53 @@ jobs:
           fi
           ls -lh "$apk"
 
+      # El APK de release sin firmar es la única forma de comprobar en cada
+      # integración que R8 en modo completo no rompe Hilt, Room, Retrofit ni la
+      # serialización. Sin este paso, un fallo de ofuscación aparecía solo al
+      # publicar la versión.
+      - name: Verificar APK de release
+        run: |
+          firmado="android/app/build/outputs/apk/release/app-release.apk"
+          sin_firmar="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ -f "$firmado" ]; then
+            apk="$firmado"
+          elif [ -f "$sin_firmar" ]; then
+            apk="$sin_firmar"
+          else
+            echo "ERROR: No se generó ningún APK de release"
+            exit 1
+          fi
+          echo "APK de release: $apk"
+          ls -lh "$apk"
+          echo "RELEASE_APK=$apk" >> $GITHUB_ENV
+
+      - name: Comprobar que el APK de release está ofuscado
+        run: |
+          tamano=$(stat -c%s "$RELEASE_APK")
+          echo "Tamaño del APK de release: $tamano bytes"
+          if [ "$tamano" -lt 1000000 ]; then
+            echo "ERROR: El APK de release parece vacío o incompleto"
+            exit 1
+          fi
+
       - name: Renombrar APK con versión
         run: |
           mv android/app/build/outputs/apk/debug/app-debug.apk "SDEP-Movil-Android-${APP_VERSION}-debug.apk"
-          ls -lh "SDEP-Movil-Android-${APP_VERSION}-debug.apk"
+          cp "$RELEASE_APK" "SDEP-Movil-Android-${APP_VERSION}-release-sin-firmar.apk"
+          ls -lh SDEP-Movil-Android-*.apk
 
-      - name: Subir APK de depuración
+      - name: Subir APK de depuración (instalable)
         uses: actions/upload-artifact@v4
         with:
           name: apk-android-debug
           path: SDEP-Movil-Android-${{ env.APP_VERSION }}-debug.apk
+          retention-days: 30
+
+      - name: Subir APK de release (comprobación de R8)
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-android-release-sin-firmar
+          path: SDEP-Movil-Android-${{ env.APP_VERSION }}-release-sin-firmar.apk
           retention-days: 30
 
   build:

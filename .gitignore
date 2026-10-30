@@ -155,5 +155,17 @@ config_local.yaml
 *.pfx
 *.p12
 
+# Android: artefactos de compilación, configuración local y almacenes de firma.
+# El almacén del APK no se versiona nunca; viaja por variables de entorno
+# (SDEP_KEYSTORE y sus contraseñas) o como secreto del CI.
+.gradle/
+local.properties
+android/.gradle/
+android/local.properties
+*.jks
+*.keystore
+*.apk
+*.aab
+
 # Allow important spec files
 !spec/app.spec

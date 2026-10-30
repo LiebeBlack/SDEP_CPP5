@@ -12,6 +12,15 @@ import ve.edu.sdep.movil.datos.local.AplicadorEspejo
 import ve.edu.sdep.movil.datos.local.BaseDatosSdep
 import ve.edu.sdep.movil.datos.local.Espejo
 import ve.edu.sdep.movil.datos.local.Fechas
+import ve.edu.sdep.movil.datos.documentos.DatosConstancia
+import ve.edu.sdep.movil.datos.documentos.PLANTILLA_INSTITUCIONAL
+import ve.edu.sdep.movil.datos.documentos.PdfConstanciaLocal
+import ve.edu.sdep.movil.datos.documentos.antiguedadLegible
+import ve.edu.sdep.movil.datos.documentos.edadEnAnios
+import ve.edu.sdep.movil.datos.documentos.fechaLarga
+import ve.edu.sdep.movil.datos.documentos.mesLargo
+import ve.edu.sdep.movil.datos.documentos.montoEnLetras
+import ve.edu.sdep.movil.datos.local.dao.ConfiguracionDao
 import ve.edu.sdep.movil.datos.local.dao.DocumentoDao
 import ve.edu.sdep.movil.datos.local.dao.EmpleadoDao
 import ve.edu.sdep.movil.datos.local.dao.IdentidadDao
@@ -38,6 +47,7 @@ import javax.inject.Singleton
 class DocumentosRepositorio @Inject constructor(
     private val baseDatos: BaseDatosSdep,
     private val empleadoDao: EmpleadoDao,
+    private val configuracionDao: ConfiguracionDao,
     private val documentoDao: DocumentoDao,
     private val identidadDao: IdentidadDao,
     private val operacionDao: OperacionDao,
@@ -47,7 +57,21 @@ class DocumentosRepositorio @Inject constructor(
     private val configuracionRepositorio: ConfiguracionRepositorio,
     private val sesionRepositorio: SesionRepositorio,
 ) {
-    data class PdfListo(val nombre: String, val contenido: ByteArray, val archivado: Boolean = false)
+    data class PdfListo(
+        val nombre: String,
+        val contenido: ByteArray,
+        val archivado: Boolean = false,
+        /** Compuesto en este equipo: no viajó al nodo ni espera turno de red. */
+        val local: Boolean = false,
+    )
+
+    // Última constancia compuesta en el teléfono: repetir la misma plantilla
+    // para la misma ficha devuelve los mismos bytes sin volver a maquetar.
+    // Clave y PDF van juntos en una sola referencia volátil: leerlos por
+    // separado permitía devolver un PDF con la clave de otra ficha si dos
+    // pantallas pedían constancias a la vez.
+    @Volatile
+    private var cacheLocal: Pair<String, PdfListo>? = null
 
     suspend fun empleadosVisibles(): List<ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity> {
         val sesion = sesionRepositorio.actual ?: return emptyList()
@@ -109,6 +133,147 @@ class DocumentosRepositorio @Inject constructor(
             archivo.hash, bytes,
         )
         PdfListo(nombreSeguro, bytes, archivado = true)
+    }
+
+    /**
+     * Constancia compuesta en el teléfono, sin red.
+     *
+     * Es la vía rápida: no hay dos viajes al nodo ni proceso en el escritorio,
+     * y funciona sin conexión. El documento archivado con folio sigue siendo
+     * [constancia], que sí requiere el nodo central.
+     */
+    suspend fun constanciaLocal(
+        empleadoId: Long,
+        plantilla: String,
+        personalizada: Boolean,
+        titulo: String = "Constancia de trabajo",
+    ): Resultado<PdfListo> {
+        val sesion = sesionRepositorio.actual
+            ?: return Resultado.Fallo("La sesión se cerró. Vuelva a entrar.")
+        return try {
+            val empleado = empleadoPropio(sesion, empleadoId)
+            exigirGenerarConstancia(sesion)
+            val cuerpo = if (personalizada) plantilla else PLANTILLA_INSTITUCIONAL
+            require(cuerpo.toByteArray(Charsets.UTF_8).size <= MAX_PLANTILLA) {
+                "La plantilla Markdown supera 64 KB."
+            }
+            val tituloSeguro = titulo.filterNot { it.isISOControl() }.trim().take(120)
+                .ifBlank { "Constancia de trabajo" }
+            val clave = listOf(empleado.id, empleado.actualizadoEn, tituloSeguro, cuerpo.hashCode())
+                .joinToString("|")
+            val cache = cacheLocal
+            if (cache != null && cache.first == clave) return Resultado.Exito(cache.second)
+
+            val institucion = institucion()
+            val datos = DatosConstancia(
+                institucion = institucion,
+                titulo = tituloSeguro,
+                valores = valoresConstancia(empleado, institucion),
+            )
+            val bytes = withContext(Dispatchers.Default) {
+                PdfConstanciaLocal.generar(cuerpo, datos)
+            }
+            require(bytes.size in 5..MAX_PDF) { "El PDF generado está vacío o supera 8 MB." }
+            require(bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
+                "El PDF generado no es válido."
+            }
+            val sufijo = (empleado.cedula.ifBlank { empleado.id.toString() })
+                .filter { it.isLetterOrDigit() || it in "-_" }
+                .take(80)
+                .ifBlank { empleado.id.toString() }
+            val listo = PdfListo("constancia_$sufijo.pdf", bytes, archivado = false, local = true)
+            cacheLocal = clave to listo
+            Resultado.Exito(listo)
+        } catch (cancelacion: CancellationException) {
+            throw cancelacion
+        } catch (error: Exception) {
+            Resultado.Fallo(error.message ?: "No se pudo componer la constancia.", error)
+        }
+    }
+
+    /**
+     * Valores ya resueltos para la ficha seleccionada: exactamente lo que se
+     * escribirá en el documento. La pantalla los muestra antes de generar para
+     * que nadie firme una constancia con un dato vacío por sorpresa.
+     */
+    suspend fun datosConstancia(empleadoId: Long): Map<String, String> {
+        val empleado = empleadoDao.buscarPorId(empleadoId) ?: return emptyMap()
+        return valoresConstancia(empleado, institucion())
+    }
+
+    /**
+     * Nombre institucional del encabezado. La clave real de la configuración
+     * es `nombre_institucion` (la misma que siembra el nodo y edita el
+     * escritorio); `institucion_nombre` se conserva solo como respaldo de
+     * espejos antiguos. Antes se leía únicamente la segunda, que nunca existe:
+     * toda constancia del teléfono salía como «INSTITUCIÓN EDUCATIVA».
+     */
+    private suspend fun institucion(): String {
+        for (clave in CLAVES_INSTITUCION) {
+            val valor = configuracionDao.valor(clave)?.trim()
+            if (!valor.isNullOrEmpty()) return valor
+        }
+        return "INSTITUCIÓN EDUCATIVA"
+    }
+
+    private fun valoresConstancia(
+        empleado: ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity,
+        institucion: String,
+    ): Map<String, String> {
+        val tipoEmpleado = empleado.tipoEmpleado.ifBlank { "Empleado" }
+        val salario = runCatching {
+            String.format(java.util.Locale.US, "${'$'}%,.2f", empleado.salarioBase)
+        }.getOrDefault("$" + empleado.salarioBase)
+        // Fecha y edad se calculan una sola vez: son datos derivados que la
+        // plantilla puede pedir en palabras o en números.
+        val hoy = LocalDate.now()
+        val edad = edadEnAnios(empleado.fechaNacimiento)
+        return mapOf(
+            "nombre" to empleado.nombreCompleto,
+            "nombre_completo" to empleado.nombreCompleto,
+            "nombres" to empleado.nombres,
+            "apellidos" to empleado.apellidos,
+            "cedula" to empleado.cedula,
+            "cargo" to empleado.cargo,
+            "departamento" to empleado.departamento,
+            "tipo_empleado" to tipoEmpleado.uppercase(),
+            "salario" to salario,
+            "salario_letras" to montoEnLetras(empleado.salarioBase),
+            "fecha_contratacion" to fechaCorta(empleado.fechaContratacion),
+            "fecha_emision" to fechaCorta(hoy.toString()),
+            "fecha_emision_larga" to fechaLarga(hoy),
+            "dia_emision" to hoy.dayOfMonth.toString(),
+            "mes_emision" to mesLargo(hoy.monthValue),
+            "anio_emision" to hoy.year.toString(),
+            "institucion" to institucion,
+            "antiguedad" to antiguedadLegible(empleado.fechaContratacion),
+            "tipo_contratacion" to empleado.tipoContratacion.orEmpty().replace("_", " "),
+            "telefono" to empleado.telefono.orEmpty(),
+            "celular" to empleado.celular.orEmpty(),
+            "correo" to empleado.email.orEmpty(),
+            "direccion" to empleado.direccion.orEmpty(),
+            "ciudad" to empleado.ciudad.orEmpty(),
+            "estado" to empleado.estado.orEmpty(),
+            "nacionalidad" to empleado.nacionalidad.orEmpty(),
+            "genero" to empleado.genero.orEmpty().replace("_", " "),
+            "estado_civil" to empleado.estadoCivil.orEmpty().replace("_", " "),
+            "fecha_nacimiento" to fechaCorta(empleado.fechaNacimiento.orEmpty()),
+            "edad" to (edad?.let { "$it años" } ?: ""),
+            "nivel_educativo" to empleado.nivelEducativo.orEmpty(),
+            "especialidad" to empleado.especialidad.orEmpty(),
+            "titulo_obtenido" to empleado.tituloObtenido.orEmpty(),
+        )
+    }
+
+    private fun fechaCorta(valor: String): String {
+        val limpio = valor.trim()
+        if (limpio.length < 10) return limpio
+        val anio = limpio.substring(0, 4)
+        val mes = limpio.substring(5, 7)
+        val dia = limpio.substring(8, 10)
+        return if (anio.all(Char::isDigit) && mes.all(Char::isDigit) && dia.all(Char::isDigit)) {
+            "$dia/$mes/$anio"
+        } else limpio
     }
 
     suspend fun fichaPdf(empleadoId: Long): Resultado<PdfListo> = conectado { sesion, api ->
@@ -220,10 +385,7 @@ class DocumentosRepositorio @Inject constructor(
         PdfListo(nombreSeguro, contenido, archivado = true)
     }
 
-    private suspend fun empleadoPropio(
-        sesion: Sesion,
-        id: Long,
-    ): ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity {
+    private suspend fun empleadoPropio(sesion: Sesion, id: Long): ve.edu.sdep.movil.datos.local.entidad.EmpleadoEntity {
         val empleado = empleadoDao.buscarPorId(id) ?: error("Empleado no encontrado; sincronice la ficha.")
         require(empleado.activo == 1) { "La ficha no pertenece a personal activo." }
         if (!sesion.puedeAbrir(Modulo.EMPLEADOS)) {
@@ -396,5 +558,8 @@ class DocumentosRepositorio @Inject constructor(
     private companion object {
         const val MAX_PDF = 8 * 1024 * 1024
         const val MAX_PLANTILLA = 65_536
+
+        /** Claves de configuración con el nombre de la institución, en orden. */
+        val CLAVES_INSTITUCION = listOf("nombre_institucion", "institucion_nombre")
     }
 }

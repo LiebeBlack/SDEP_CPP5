@@ -31,6 +31,7 @@ from src.gui.frames import (
     _seleccionar_fila_click,
 )
 from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.widgets.tabla import EstadoTabla, configurar_cebra, etiqueta_fila
 from src.models import Grado, Matricula, NotaFinal, PeriodoAcademico
 from src.utils.helpers import format_date, parse_date_estricto
 
@@ -255,6 +256,8 @@ class NotasFrame(ctk.CTkFrame):
         )
         scrollbar_horizontal.grid(row=1, column=0, sticky="ew")
         self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set)
+        configurar_cebra(self.tree)
+        self.estado_tabla = EstadoTabla(self.tree)
 
     def _crear_tab_periodos(self, parent) -> None:
         """Tabla de periodos con cierre y reapertura"""
@@ -334,6 +337,8 @@ class NotasFrame(ctk.CTkFrame):
         self.periodos_tree.configure(
             yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set
         )
+        configurar_cebra(self.periodos_tree)
+        self.estado_periodos = EstadoTabla(self.periodos_tree)
 
     # ------------------------------------------------------------------
     # Datos de notas
@@ -459,7 +464,7 @@ class NotasFrame(ctk.CTkFrame):
                 or termino in self._nombre_estudiante(nota).lower()
             ]
         self._notas = list(notas)
-        for nota in self._notas:
+        for indice, nota in enumerate(self._notas):
             calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
             aprobada = calif >= self._nota_aprobatoria
             self.tree.insert(
@@ -474,8 +479,18 @@ class NotasFrame(ctk.CTkFrame):
                     "Aprobada" if aprobada else "Reprobada",
                     nota.registrado_por or "-",
                 ),
-                tags=("aprobada" if aprobada else "reprobada",),
+                tags=(("aprobada" if aprobada else "reprobada"),) + etiqueta_fila(indice),
             )
+        self.estado_tabla.actualizar(
+            len(self._notas),
+            "Sin notas registradas",
+            "Elija un grado con estudiantes y registre la primera calificación.",
+        )
+        # El resumen de escala ya se pintó antes de filtrar; se completa con el
+        # número de notas visibles para que el usuario sepa qué está viendo.
+        self.escala_label.configure(
+            text=f"{self.escala_label.cget('text')} · Notas mostradas: {len(self._notas)}"
+        )
         try:
             self.tree.tag_configure("reprobada", foreground=COLOR_ERROR)
         except tk.TclError:
@@ -683,7 +698,7 @@ class NotasFrame(ctk.CTkFrame):
         """Carga la tabla de periodos"""
         for item in self.periodos_tree.get_children():
             self.periodos_tree.delete(item)
-        for periodo in self._periodos:
+        for indice, periodo in enumerate(self._periodos):
             self.periodos_tree.insert(
                 "",
                 "end",
@@ -696,7 +711,13 @@ class NotasFrame(ctk.CTkFrame):
                     periodo.cerrado_por or "-",
                     periodo.observaciones or "",
                 ),
+                tags=etiqueta_fila(indice),
             )
+        self.estado_periodos.actualizar(
+            len(self._periodos),
+            "Sin periodos académicos",
+            "Cree un periodo con el botón «Nuevo periodo».",
+        )
 
     def _periodo_seleccionado_tabla(self) -> PeriodoAcademico | None:
         """Periodo seleccionado en la pestaña de periodos"""
@@ -1153,8 +1174,9 @@ class ConsolidadoDialog(ctk.CTkToplevel):
         scrollbar = ttk.Scrollbar(contenedor, orient="vertical", command=arbol.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         arbol.configure(yscrollcommand=scrollbar.set)
+        configurar_cebra(arbol)
 
-        for fila in filas:
+        for indice, fila in enumerate(filas):
             arbol.insert(
                 "",
                 "end",
@@ -1165,6 +1187,7 @@ class ConsolidadoDialog(ctk.CTkToplevel):
                     fila.get("materia", ""),
                     f"{float(fila.get('calificacion', 0)):g}",
                 ),
+                tags=etiqueta_fila(indice),
             )
         ctk.CTkButton(self, text="Cerrar", width=110, command=self.destroy).pack(
             anchor="e", padx=16, pady=(0, 14)
@@ -1314,9 +1337,10 @@ class ActaDialog(ctk.CTkToplevel):
         scrollbar_horizontal = ttk.Scrollbar(contenedor, orient="horizontal", command=arbol.xview)
         scrollbar_horizontal.grid(row=1, column=0, sticky="ew")
         arbol.configure(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set)
+        configurar_cebra(arbol)
 
         aprobatoria = float(datos.get("nota_aprobatoria", 0) or 0)
-        for fila in datos.get("filas") or []:
+        for indice, fila in enumerate(datos.get("filas") or []):
             notas = fila.get("notas") or {}
             valores: list[Any] = [fila.get("estudiante", ""), fila.get("cedula") or "-"]
             reprobadas = False
@@ -1334,7 +1358,7 @@ class ActaDialog(ctk.CTkToplevel):
                 "",
                 "end",
                 values=tuple(valores),
-                tags=("reprobadas" if reprobadas else "ok",),
+                tags=(("reprobadas" if reprobadas else "ok"),) + etiqueta_fila(indice),
             )
         try:
             arbol.tag_configure("reprobadas", foreground=COLOR_ERROR)

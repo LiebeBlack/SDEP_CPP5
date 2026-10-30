@@ -39,7 +39,7 @@ datos sin interfaz, y cierra la auditoría estática de la versión 3.0.0.
   entre menú, marcos y mapa (`tests/test_permisos_modulos.py`).
 - `log_message` usa `logging` (nivel por nombre, mensaje diferido) y su prueba verifica
   el registro con `caplog` en lugar de stdout.
-- `.env.example` declara `APP_VERSION=3.0.1` y `README.md` cuenta los 32 archivos de prueba de la suite.
+- `.env.example` declara `APP_VERSION=3.0.1` y `README.md` describe la suite actual: 605 funciones de prueba en 37 archivos.
 - Liquidaciones con referencia `LIQ-<contrato>` fija; el recálculo de un pago respeta
   días trabajados y prorrateo; el salario base vacío de un empleado falla con mensaje
   claro y una cédula vacía no borra la existente.
@@ -253,7 +253,7 @@ SDEP_CPP5/
 │   ├── config.py               # Configuración por equipo
 │   ├── __main__.py             # Interfaz de línea de comandos
 │   └── README.md               # Manual de operación
-├── tests/                       # Pruebas automatizadas: 32 archivos · 551 casos (medido)
+├── tests/                       # Pruebas automatizadas: 37 archivos · 605 casos (medido)
 ├── requirements.txt             # Dependencias
 ├── requirements-dev.txt         # Dependencias desarrollo
 ├── pyproject.toml             # Configuración proyecto

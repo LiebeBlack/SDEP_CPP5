@@ -509,6 +509,61 @@ Configuración concentra la configuración por equipo, la prueba de conexión, l
 contadores y la bandeja de conflictos. El manual de operación completo está en
 `sync_agent/README.md`.
 
+## Motor de Plantillas Markdown → PDF
+
+Además de sus trece modelos internos, el generador acepta un documento Markdown
+propio de la institución y lo convierte en PDF sustituyendo marcadores con los
+datos del empleado. La misma pieza la usan el escritorio, el nodo central y el
+teléfono, de modo que una plantilla aprobada se comporta igual en los tres.
+
+### Contrato del procesador
+
+- **Límites de entrada.** La plantilla no puede superar 64 KB ni 600 líneas; se
+  rechaza vacía o binaria. El título propuesto se recorta a 120 caracteres.
+- **Marcadores.** Se reconocen con la forma `{{campo}}`; la comparación de claves
+  ignora mayúsculas, acentos, separadores y espacios sobrantes, así que `{{Cédula}}`,
+  `{{ cedula }}` y `{{CEDULA}}` resuelven al mismo valor.
+- **Campos admitidos.** `CAMPOS_PLANTILLA` declara la lista cerrada: nombre,
+  nombre_completo, nombres, apellidos, cédula, cargo, departamento, tipo_empleado,
+  salario, fecha_contratacion, fecha_emision, institución, nivel_educativo,
+  especialidad y titulo_obtenido.
+- **Aviso previo.** `campos_desconocidos()` devuelve los marcadores que el
+  generador no sabe completar. La interfaz los muestra antes de emitir para que
+  ningún `{{cargo_empleado}}` inventado acabe impreso en el documento.
+- **Escape de contenido.** Los valores del empleado y el encabezado institucional
+  se escapan antes de entrar en el párrafo, de modo que un dato con `&` o `<`
+  (por ejemplo «Ciencias & Letras») no rompe el PDF ni lo deforma.
+- **Formato de salida.** Los encabezados `#`, `##` y `###` del Markdown se
+  traducen a jerarquías del documento; el texto restante se compone en párrafos
+  con la tipografía institucional y pie de página.
+
+## Aplicación Móvil (`android/`)
+
+**SDEP Móvil** es un cliente Android nativo escrito en Kotlin con Jetpack Compose,
+Room y Hilt. No es una vista web empaquetada: replica la lógica de sesión y de
+sincronización del escritorio y guarda su propio espejo de datos en el dispositivo.
+
+| Componente | Responsabilidad |
+|---|---|
+| `datos/remoto` | Cliente del protocolo, descubrimiento del nodo y DTO del contrato HTTP |
+| `datos/local` | Room con el espejo de tablas, el aplicador de operaciones y el journal |
+| `datos/repositorio` | Sesión, empleados, documentos, configuración y sincronización |
+| `datos/seguridad` | Bóveda de credenciales y desbloqueo biométrico |
+| `ui` | Compose: portada, módulos, formularios, registros, herramientas PDF y ajustes |
+
+### Garantías
+
+- **Offline-first.** Toda escritura aterriza en Room y se encola; la red solo
+  transporta la cola cuando está disponible.
+- **Mismo contrato que el escritorio.** El teléfono se autentica contra el nodo
+  con el mismo usuario y contraseña, y sus operaciones se aplican con el mismo
+  aplicador, incluida la deduplicación por clave natural.
+- **Documentos en el teléfono.** La generación de constancias (incluidas las de
+  plantilla `.md`) y las herramientas PDF se ejecutan localmente y el resultado se
+  comparte mediante un proveedor de archivos privado, sin exponer rutas.
+- **Sin nube.** El APK habla únicamente con el nodo de la institución; no hay
+  servicios externos ni telemetría.
+
 ## Integración y Extensión
 
 ### Puntos de Extensión

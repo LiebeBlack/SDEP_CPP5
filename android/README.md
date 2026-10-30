@@ -82,6 +82,35 @@ keytool -genkeypair -v -keystore sdep-movil.jks -alias sdep -keyalg RSA \
         -keysize 2048 -validity 10000
 ```
 
+El almacén **no se versiona** (`*.jks` está ignorado por Git). La firma se
+indica por variables de entorno, de modo que el mismo proyecto compila firmado
+en el equipo del responsable y sin firmar en cualquier otro lado:
+
+```bash
+export SDEP_KEYSTORE=/ruta/sdep-movil.jks
+export SDEP_KEYSTORE_PASSWORD=…
+export SDEP_KEY_ALIAS=sdep
+export SDEP_KEY_PASSWORD=…
+./gradlew :app:assembleRelease
+```
+
+Sin esas variables el APK sale como `app-release-unsigned.apk`. Aun así
+compila con R8 en modo completo, que es la única forma de detectar a tiempo un
+fallo de ofuscación (Hilt, Room, Retrofit, kotlinx-serialization). GitHub
+Actions hace exactamente eso en `build.yml`: pruebas unitarias, APK de
+depuración instalable y APK de release como comprobación, todo en una sola
+invocación de Gradle.
+
+### 3.1 Tema de la interfaz
+
+En **Ajustes → Apariencia** se elige `Sistema`, `Claro` u `Oscuro`. La elección
+se guarda en las preferencias del teléfono (`apariencia`), no en la bóveda
+cifrada: no es un secreto y no viaja al nodo central, igual que `apariencia_modo`
+en el escritorio. `Sistema` sigue el ajuste del teléfono; los otros dos lo
+ignoran. Al cambiar, la aplicación se repinta sin recrear la actividad y los
+iconos de las barras se invierten con el tema, de modo que la hora y la batería
+siguen legibles sobre fondo oscuro.
+
 > El proyecto se abre directamente en Android Studio (Giraffe o posterior). La
 > primera sincronización descarga Gradle 8.7 y las dependencias.
 
@@ -265,6 +294,8 @@ claves naturales y las columnas que no viajan están auditadas en
 | `FechasTest` | Ida y vuelta sin zona horaria y tolerancia a formatos del servidor |
 | `ProtocoloTest` | Nombres `snake_case`, `payload` como texto, respuestas de push/pull |
 | `CatalogoTest` | Vencimientos y avisos del panel, búsqueda y ficha del empleado |
+| `FormatoTest` | Fechas, números, estados e importes tal como se leen en la ficha |
+| `AparienciaTest` | Resolución del tema elegido y respaldo ante valores inválidos |
 | `EspejoTest` | Preferencias del equipo fuera del payload; parámetros institucionales dentro |
 
 Del lado Python, `tests/test_registros_moviles.py` comprueba el mismo contrato:
@@ -294,6 +325,9 @@ natural, mezcla por campo, borrado lógico e idempotencia.
   confía en las anclas del sistema y en las que instale el administrador.
 - **Periodo mínimo de 15 minutos** para la sincronización en segundo plano: es el
   límite que impone Android a WorkManager. El botón manual no tiene ese límite.
+- **Con la batería por debajo del 15 %** el ciclo automático no despierta al
+  teléfono; se reanuda solo al cargarlo. La sincronización que pide el usuario a
+  mano sí se ejecuta.
 
 ## 11. Diagnóstico
 

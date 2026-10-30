@@ -3,7 +3,10 @@ PDF Generator
 Módulo de generación de documentos PDF
 """
 
-from datetime import date
+import re
+import threading
+import unicodedata
+from datetime import date, datetime
 from typing import Any
 from xml.sax.saxutils import escape
 
@@ -17,6 +20,274 @@ from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Space
 from src.models import Empleado
 from src.utils.helpers import format_currency, format_date
 
+# Expresiones del procesador de plantillas: se compilan una sola vez y no en
+# cada línea de cada documento (antes se recompilaban por línea).
+_PATRON_CAMPO = re.compile(r"\{\{?\s*([^}\s]{1,40})\s*\}?\}")
+_PATRON_NEGRITA = re.compile(r"\*\*(.+?)\*\*")
+_PATRON_CURSIVA = re.compile(r"\*(.+?)\*")
+
+# Los estilos de ReportLab son inmutables una vez creados: se construyen una vez
+# por proceso en lugar de repetir la hoja de estilos base en cada PDF.
+_ESTILOS: Any = None
+_CANDADO_ESTILOS = threading.Lock()
+
+
+def _normalizar_clave(clave: str) -> str:
+    """Forma canónica de un campo: sin acentos, sin mayúsculas y con guiones bajos.
+
+    Así «{{Cédula}}», «{{cédula }}» y «{{Cedula}}» resuelven al mismo dato que
+    «{{cedula}}», que es lo que escriben las plantillas y lo que inserta la app.
+    """
+    sin_acentos = unicodedata.normalize("NFD", str(clave).strip().lower())
+    sin_acentos = "".join(c for c in sin_acentos if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9_]+", "_", sin_acentos).strip("_")
+
+
+def _resolver_campo(coincidencia: re.Match, valores: dict, normalizados: dict) -> str:
+    """Valor de un marcador; si no existe se deja el texto original."""
+    crudo = coincidencia.group(1)
+    if crudo in valores:
+        return str(valores[crudo])
+    return str(normalizados.get(_normalizar_clave(crudo), coincidencia.group(0)))
+
+
+# Campos que el procesador de plantillas sabe completar. Es la lista que la
+# app móvil ofrece como chips y la que el escritorio usa para avisar de
+# título y marcadores mal escritos.
+CAMPOS_PLANTILLA: tuple[str, ...] = (
+    "nombre",
+    "nombre_completo",
+    "nombres",
+    "apellidos",
+    "cedula",
+    "cargo",
+    "departamento",
+    "tipo_empleado",
+    "salario",
+    "salario_letras",
+    "fecha_contratacion",
+    "fecha_emision",
+    "fecha_emision_larga",
+    "dia_emision",
+    "mes_emision",
+    "anio_emision",
+    "institucion",
+    "nivel_educativo",
+    "especialidad",
+    "titulo_obtenido",
+    "antiguedad",
+    "tipo_contratacion",
+    "telefono",
+    "celular",
+    "correo",
+    "direccion",
+    "ciudad",
+    "estado",
+    "nacionalidad",
+    "genero",
+    "estado_civil",
+    "fecha_nacimiento",
+    "edad",
+)
+
+
+# --- Valores derivados -------------------------------------------------------
+#
+# Las constancias piden datos que no están guardados como tal (monto en letras,
+# antigüedad, fecha en palabras). Se calculan aquí, una sola vez por documento,
+# para que todas las plantillas —teléfono, escritorio y nodo— impriman lo mismo.
+
+_MESES_LARGOS = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+_UNIDADES_TEXTO = (
+    "",
+    "UNO",
+    "DOS",
+    "TRES",
+    "CUATRO",
+    "CINCO",
+    "SEIS",
+    "SIETE",
+    "OCHO",
+    "NUEVE",
+    "DIEZ",
+    "ONCE",
+    "DOCE",
+    "TRECE",
+    "CATORCE",
+    "QUINCE",
+    "DIECISÉIS",
+    "DIECISIETE",
+    "DIECIOCHO",
+    "DIECINUEVE",
+    "VEINTE",
+)
+_DECENAS_TEXTO = (
+    "",
+    "",
+    "VEINTE",
+    "TREINTA",
+    "CUARENTA",
+    "CINCUENTA",
+    "SESENTA",
+    "SETENTA",
+    "OCHENTA",
+    "NOVENTA",
+)
+_CENTENAS_TEXTO = (
+    "",
+    "CIENTO",
+    "DOSCIENTOS",
+    "TRESCIENTOS",
+    "CUATROCIENTOS",
+    "QUINIENTOS",
+    "SEISCIENTOS",
+    "SETECIENTOS",
+    "OCHOCIENTOS",
+    "NOVECIENTOS",
+)
+_VEINTI_TEXTO = (
+    "VEINTIÚN",
+    "VEINTIDÓS",
+    "VEINTITRÉS",
+    "VEINTICUATRO",
+    "VEINTICINCO",
+    "VEINTISÉIS",
+    "VEINTISIETE",
+    "VEINTIOCHO",
+    "VEINTINUEVE",
+)
+
+
+def _hasta_999(numero: int) -> str:
+    """Número entre 1 y 999 escrito en palabras."""
+    if numero <= 0:
+        return ""
+    if numero == 100:
+        return "CIEN"
+    centenas, resto = divmod(numero, 100)
+    partes = [_CENTENAS_TEXTO[centenas]] if centenas else []
+    if 0 < resto <= 20:
+        partes.append(_UNIDADES_TEXTO[resto])
+    elif 20 < resto < 30:
+        partes.append(_VEINTI_TEXTO[resto - 21])
+    else:
+        decenas, unidades = divmod(resto, 10)
+        if decenas:
+            partes.append(_DECENAS_TEXTO[decenas])
+        if unidades:
+            partes.append("Y " + _UNIDADES_TEXTO[unidades])
+    return " ".join(parte for parte in partes if parte)
+
+
+def _entero_en_letras(numero: int) -> str:
+    """Número entero no negativo escrito en palabras (hasta 999 999 999)."""
+    if numero == 0:
+        return "CERO"
+    millones, resto = divmod(int(numero), 1_000_000)
+    miles, unidades = divmod(resto, 1_000)
+    partes = []
+    if millones:
+        partes.append(
+            "UN MILLÓN" if millones == 1 else f"{_hasta_999(millones)} MILLONES"
+        )
+    if miles:
+        partes.append("MIL" if miles == 1 else f"{_hasta_999(miles)} MIL")
+    if unidades:
+        partes.append(_hasta_999(unidades))
+    texto = " ".join(partes)
+    return texto[:-1] if texto.endswith("UNO") else texto
+
+
+def monto_en_letras(monto: Any, moneda: str = "BOLÍVARES") -> str:
+    """Monto con su expresión en palabras: «MIL OCHOCIENTOS CON 00/100».
+
+    La parte entera se escribe en letras y los céntimos como fracción de 100,
+    que es la forma habitual en las constancias de ingresos venezolanas.
+    """
+    # Sin dato se devuelve vacío: imprimir «CERO BOLÍVARES» haría creer que el
+    # salario es cero, que no es lo mismo que no tenerlo registrado.
+    if monto is None or (isinstance(monto, str) and not monto.strip()):
+        return ""
+    try:
+        valor = round(float(monto), 2)
+    except (TypeError, ValueError):
+        return ""
+    if valor < 0:
+        return ""
+    entero = int(valor)
+    centimos = int(round((valor - entero) * 100))
+    if centimos == 100:
+        entero += 1
+        centimos = 0
+    if entero > 999_999_999:
+        return ""
+    return f"{_entero_en_letras(entero)} {moneda} CON {centimos:02d}/100"
+
+
+def _fecha_larga(valor: Any) -> str:
+    """«30 de octubre de 2026» a partir de una fecha o de un texto ISO."""
+    if isinstance(valor, datetime):
+        fecha = valor.date()
+    elif isinstance(valor, date):
+        fecha = valor
+    else:
+        texto = str(valor or "").strip()
+        if len(texto) < 10:
+            return texto
+        try:
+            fecha = date.fromisoformat(texto[:10])
+        except ValueError:
+            return texto
+    return f"{fecha.day} de {_MESES_LARGOS[fecha.month - 1]} de {fecha.year}"
+
+
+def _antiguedad_legible(desde: Any, hasta: Any = None) -> str:
+    """Antigüedad en años y meses: «7 años y 4 meses»."""
+    if not isinstance(desde, date):
+        return ""
+    referencia = hasta if isinstance(hasta, date) else date.today()
+    if referencia < desde:
+        return ""
+    meses = (referencia.year - desde.year) * 12 + (referencia.month - desde.month)
+    if referencia.day < desde.day:
+        meses -= 1
+    anios, resto = divmod(max(meses, 0), 12)
+    partes = []
+    if anios:
+        partes.append(f"{anios} {'año' if anios == 1 else 'años'}")
+    if resto:
+        partes.append(f"{resto} {'mes' if resto == 1 else 'meses'}")
+    return " y ".join(partes) or "menos de un mes"
+
+
+def campos_desconocidos(plantilla: str) -> list[str]:
+    """Marcadores que la plantilla usa y el generador no sabe completar.
+
+    Sirve para avisar antes de emitir: sin esto, un `{{cargo_empleado}}`
+    inventado termina impreso tal cual en el documento.
+    """
+    conocidas = {_normalizar_clave(clave) for clave in CAMPOS_PLANTILLA}
+    desconocidos: list[str] = []
+    for coincidencia in _PATRON_CAMPO.finditer(plantilla or ""):
+        crudo = coincidencia.group(1)
+        if _normalizar_clave(crudo) not in conocidas and crudo not in desconocidos:
+            desconocidos.append(crudo)
+    return desconocidos
+
 
 def _dato(fila: dict, *claves: str, defecto: Any = "") -> Any:
     """Devuelve el primer valor presente de una fila (admite varios nombres)."""
@@ -26,12 +297,29 @@ def _dato(fila: dict, *claves: str, defecto: Any = "") -> Any:
     return defecto
 
 
+def _estilos_compartidos() -> Any:
+    """Hoja de estilos única del proceso.
+
+    ReportLab la trata como solo lectura (las ``ParagraphStyle`` no se mutan
+    después de crearse), así que reconstruirla en cada documento era trabajo
+    repetido en cada constancia pedida desde el teléfono.
+    """
+    global _ESTILOS
+    if _ESTILOS is None:
+        with _CANDADO_ESTILOS:
+            if _ESTILOS is None:
+                creador = PDFGenerator.__new__(PDFGenerator)
+                creador.styles = getSampleStyleSheet()
+                creador._setup_custom_styles()
+                _ESTILOS = creador.styles
+    return _ESTILOS
+
+
 class PDFGenerator:
     """Generador de documentos PDF"""
 
     def __init__(self):
-        self.styles = getSampleStyleSheet()
-        self._setup_custom_styles()
+        self.styles = _estilos_compartidos()
         self.page_size = letter
 
     def _setup_custom_styles(self):
@@ -153,29 +441,72 @@ class PDFGenerator:
         plantilla_markdown: str,
         output_path: str,
         titulo_documento: str = "CONSTANCIA DE TRABAJO",
+        configuracion: dict | None = None,
     ) -> str:
-        """Genera una constancia a partir de Markdown confiable y datos del empleado."""
-        import re
+        """Genera una constancia a partir de Markdown confiable y datos del empleado.
 
+        ``configuracion`` evita abrir una segunda sesión de base de datos cuando
+        quien llama ya tiene una abierta (el servidor móvil, por ejemplo).
+        """
         if not isinstance(plantilla_markdown, str) or not plantilla_markdown.strip():
             raise ValueError("La plantilla Markdown está vacía")
         if len(plantilla_markdown.encode("utf-8")) > 65_536:
             raise ValueError("La plantilla Markdown no puede superar 64 KB")
 
-        config = self._get_configuracion()
+        config = configuracion if configuracion is not None else self._get_configuracion()
         nombre_institucion = str(config.get("nombre_institucion") or "INSTITUCIÓN EDUCATIVA")
         titulo_documento = str(titulo_documento or "CONSTANCIA DE TRABAJO").strip()[:120]
+        tipo_empleado = (
+            empleado.tipo_empleado.value
+            if hasattr(empleado.tipo_empleado, "value")
+            else str(empleado.tipo_empleado or "")
+        )
+        def _texto(objeto: Any, atributo: str) -> str:
+            """Campo de texto del empleado, ya sea enum, nulo o cadena."""
+            valor = getattr(objeto, atributo, None)
+            if valor is None:
+                return ""
+            return str(getattr(valor, "value", valor)).replace("_", " ").strip()
+
+        hoy = date.today()
+        fecha_nacimiento = getattr(empleado, "fecha_nacimiento", None)
+        edad = getattr(empleado, "edad", None)
         valores = {
             "nombre": empleado.nombre_completo or "",
             "nombre_completo": empleado.nombre_completo or "",
+            "nombres": getattr(empleado, "nombres", "") or "",
+            "apellidos": getattr(empleado, "apellidos", "") or "",
             "cedula": empleado.cedula or "",
             "cargo": empleado.cargo or "",
             "departamento": empleado.departamento or "",
+            "tipo_empleado": str(tipo_empleado).upper(),
             "fecha_contratacion": format_date(empleado.fecha_contratacion),
             "salario": format_currency(empleado.salario_base),
-            "fecha_emision": format_date(date.today()),
+            "salario_letras": monto_en_letras(empleado.salario_base),
+            "fecha_emision": format_date(hoy),
+            "fecha_emision_larga": _fecha_larga(hoy),
+            "dia_emision": str(hoy.day),
+            "mes_emision": _MESES_LARGOS[hoy.month - 1],
+            "anio_emision": str(hoy.year),
             "institucion": nombre_institucion,
+            "nivel_educativo": getattr(empleado, "nivel_educativo", None) or "",
+            "especialidad": getattr(empleado, "especialidad", None) or "",
+            "titulo_obtenido": getattr(empleado, "titulo_obtenido", None) or "",
+            "antiguedad": _antiguedad_legible(empleado.fecha_contratacion, hoy),
+            "tipo_contratacion": _texto(empleado, "tipo_contratacion"),
+            "telefono": _texto(empleado, "telefono"),
+            "celular": _texto(empleado, "celular"),
+            "correo": _texto(empleado, "email"),
+            "direccion": _texto(empleado, "direccion"),
+            "ciudad": _texto(empleado, "ciudad"),
+            "estado": _texto(empleado, "estado"),
+            "nacionalidad": _texto(empleado, "nacionalidad"),
+            "genero": _texto(empleado, "genero"),
+            "estado_civil": _texto(empleado, "estado_civil"),
+            "fecha_nacimiento": format_date(fecha_nacimiento),
+            "edad": f"{edad} años" if edad else "",
         }
+        valores_normalizados = {_normalizar_clave(clave): valor for clave, valor in valores.items()}
         doc = SimpleDocTemplate(
             output_path,
             pagesize=self.page_size,
@@ -196,6 +527,11 @@ class PDFGenerator:
         lineas = plantilla_markdown.splitlines()
         if len(lineas) > 600:
             raise ValueError("La plantilla Markdown supera el máximo de 600 líneas")
+        # El título ya va en la cabecera del documento: si la plantilla abre con
+        # un encabezado igual (lo normal, porque su primer «#» es el título), se
+        # omite para que no aparezca impreso dos veces.
+        titulo_cabecera = _normalizar_clave(titulo_documento)
+        primer_encabezado = True
         for linea in lineas:
             linea_limpia = linea.strip()
             if linea_limpia.startswith("### "):
@@ -209,10 +545,13 @@ class PDFGenerator:
                 linea_limpia = linea_limpia[2:].strip()
             else:
                 nivel_titulo = 0
+            if nivel_titulo and primer_encabezado:
+                primer_encabezado = False
+                if _normalizar_clave(linea_limpia) == titulo_cabecera:
+                    continue
             texto = escape(linea_limpia)
-            texto = re.sub(
-                r"\{\{?([a-z_]+)\}?\}",
-                lambda match: escape(str(valores.get(match.group(1), match.group(0)))),
+            texto = _PATRON_CAMPO.sub(
+                lambda match: escape(_resolver_campo(match, valores, valores_normalizados)),
                 texto,
             )
             if not texto:
@@ -220,52 +559,60 @@ class PDFGenerator:
             elif nivel_titulo:
                 story.append(Paragraph(texto, self.styles[f"Heading{nivel_titulo}"]))
             else:
-                texto = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", texto)
-                texto = re.sub(r"\*(.+?)\*", r"<i>\1</i>", texto)
+                texto = _PATRON_NEGRITA.sub(r"<b>\1</b>", texto)
+                texto = _PATRON_CURSIVA.sub(r"<i>\1</i>", texto)
                 if texto.startswith("- "):
                     texto = "&#8226; " + texto[2:]
                 story.append(Paragraph(texto, self.styles["CustomBody"]))
 
-        story.extend(
-            [
-                Spacer(1, 0.5 * inch),
-                Table(
-                    [
-                        ["____________________________", ""],
-                        ["Firma autorizada", "SELLO INSTITUCIONAL"],
-                        [escape(nombre_institucion), "Fecha: ______________"],
-                    ],
-                    colWidths=[3 * inch, 3 * inch],
-                    rowHeights=[0.28 * inch, 0.72 * inch, 0.28 * inch],
-                    style=TableStyle(
+        # Si la plantilla ya trae su bloque de firma, no se añade otro encima.
+        if "firma" not in plantilla_markdown.lower():
+            story.extend(
+                [
+                    Spacer(1, 0.5 * inch),
+                    Table(
                         [
-                            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                            ("FONTSIZE", (0, 0), (-1, -1), 9),
-                            ("BOX", (1, 1), (1, 1), 1, colors.darkblue),
-                            ("TOPPADDING", (0, 0), (-1, -1), 5),
-                            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                        ]
+                            ["____________________________", ""],
+                            ["Firma autorizada", "SELLO INSTITUCIONAL"],
+                            [escape(nombre_institucion), "Fecha: ______________"],
+                        ],
+                        colWidths=[3 * inch, 3 * inch],
+                        rowHeights=[0.28 * inch, 0.72 * inch, 0.28 * inch],
+                        style=TableStyle(
+                            [
+                                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                                ("BOX", (1, 1), (1, 1), 1, colors.darkblue),
+                                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                            ]
+                        ),
                     ),
-                ),
-            ]
-        )
+                ]
+            )
         doc.build(story)
         return output_path
 
-    def generate_constancia_trabajo(self, empleado: Empleado, output_path: str) -> str:
+    def generate_constancia_trabajo(
+        self,
+        empleado: Empleado,
+        output_path: str,
+        configuracion: dict | None = None,
+    ) -> str:
         """
         Genera una constancia de trabajo
 
         Args:
             empleado: Objeto Empleado
             output_path: Ruta donde se guardará el PDF
+            configuracion: configuración ya cargada (opcional)
 
         Returns:
             Ruta del PDF generado
         """
-        config = self._get_configuracion()
+        config = configuracion if configuracion is not None else self._get_configuracion()
 
         doc = SimpleDocTemplate(
             output_path,
@@ -414,7 +761,7 @@ class PDFGenerator:
         # Encabezado
         story.append(
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             )
         )
@@ -433,28 +780,28 @@ class PDFGenerator:
 
         # Cuerpo
         cuerpo = f"""
-        Por medio de la presente se hace constar que <b>{empleado.nombre_completo}</b>, 
-        portador(a) de la cédula de identidad N° <b>{empleado.cedula}</b>, 
-        cuenta con el nivel educativo de <b>{empleado.nivel_educativo or 'No especificado'}</b>.
+        Por medio de la presente se hace constar que <b>{escape(str(empleado.nombre_completo or ''))}</b>, 
+        portador(a) de la cédula de identidad N° <b>{escape(str(empleado.cedula or ''))}</b>, 
+        cuenta con el nivel educativo de <b>{escape(str(empleado.nivel_educativo or 'No especificado'))}</b>.
         """
 
         story.append(Paragraph(cuerpo, self.styles["CustomBody"]))
 
         if empleado.especialidad:
             especialidad = f"""
-            Con especialización en <b>{empleado.especialidad}</b>.
+            Con especialización en <b>{escape(str(empleado.especialidad))}</b>.
             """
             story.append(Paragraph(especialidad, self.styles["CustomBody"]))
 
         if empleado.titulo_secundaria:
             titulo_sec = f"""
-            Con título de bachiller en <b>{empleado.titulo_secundaria}</b>.
+            Con título de bachiller en <b>{escape(str(empleado.titulo_secundaria))}</b>.
             """
             story.append(Paragraph(titulo_sec, self.styles["CustomBody"]))
 
         if empleado.titulo_obtenido:
             titulo = f"""
-            Obteniendo el título de <b>{empleado.titulo_obtenido}</b>.
+            Obteniendo el título de <b>{escape(str(empleado.titulo_obtenido))}</b>.
             """
             story.append(Paragraph(titulo, self.styles["CustomBody"]))
 
@@ -509,7 +856,7 @@ class PDFGenerator:
 
         story = [
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             ),
             Spacer(1, 0.3 * inch),
@@ -672,7 +1019,7 @@ class PDFGenerator:
         # Encabezado
         story.append(
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             )
         )
@@ -821,7 +1168,7 @@ class PDFGenerator:
 
         story.append(
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             )
         )
@@ -970,7 +1317,7 @@ class PDFGenerator:
 
         story = [
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             ),
             Spacer(1, 0.15 * inch),
@@ -1163,7 +1510,7 @@ class PDFGenerator:
         story = []
         story.append(
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             )
         )
@@ -1270,7 +1617,7 @@ class PDFGenerator:
         story = []
         story.append(
             Paragraph(
-                config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"),
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             )
         )

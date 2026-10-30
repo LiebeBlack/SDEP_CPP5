@@ -6,6 +6,19 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+// La versión del teléfono sale del VERSION del producto: antes estaba fija en
+// 1.0.0 y cada release obligaba a recordar cambiarla aquí a mano.
+val versionProducto: String =
+    rootProject.file("../VERSION").takeIf { it.isFile }?.readText()?.trim()
+        ?.takeIf { it.isNotEmpty() } ?: "3.0.1"
+
+/** 3.0.1 → 30001: el código de versión sube solo con cada release. */
+val codigoVersion: Int = versionProducto.split(".").let { partes ->
+    partes[0].toInt() * 10_000 +
+        (partes.getOrNull(1)?.toInt() ?: 0) * 100 +
+        (partes.getOrNull(2)?.toInt() ?: 0)
+}
+
 android {
     namespace = "ve.edu.sdep.movil"
     compileSdk = 34
@@ -14,11 +27,32 @@ android {
         applicationId = "ve.edu.sdep.movil"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = codigoVersion
+        versionName = versionProducto
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += listOf("es")
     }
+
+    // Firma opcional para distribuir: el almacén y sus contraseñas se pasan por
+    // variables de entorno (CI o el equipo del responsable) y nunca se copian
+    // al repositorio. Sin ellas, el APK de release se genera sin firmar, que es
+    // lo que basta para validar R8 y la ofuscación en cada integración.
+    signingConfigs {
+        val almacen = System.getenv("SDEP_KEYSTORE")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { file(it) }
+            ?.takeIf { it.exists() }
+        if (almacen != null) {
+            create("release") {
+                storeFile = almacen
+                storePassword = System.getenv("SDEP_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SDEP_KEY_ALIAS")
+                keyPassword = System.getenv("SDEP_KEY_PASSWORD")
+            }
+        }
+    }
+
+    val firmaRelease = signingConfigs.findByName("release")
 
     buildTypes {
         debug {
@@ -28,6 +62,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            firmaRelease?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

@@ -54,6 +54,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.BuildConfig
+import ve.edu.sdep.movil.datos.preferencias.ModoApariencia
 import ve.edu.sdep.movil.datos.seguridad.AutenticadorBiometrico
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
@@ -79,6 +80,7 @@ fun PantallaAjustes(
     vistaModelo: AjustesViewModel = hiltViewModel(),
 ) {
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
+    val modoApariencia by vistaModelo.modoApariencia.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
     val actividad = contexto as? FragmentActivity
     val autenticador = remember { AutenticadorBiometrico() }
@@ -139,6 +141,11 @@ fun PantallaAjustes(
                 alCambiarContrasena = { dialogoPassword = true },
                 alSalir = { confirmarSalida = true },
                 alEditarPerfil = alEditarPerfil,
+            )
+
+            TarjetaApariencia(
+                modo = modoApariencia,
+                alCambiar = vistaModelo::cambiarApariencia,
             )
 
             TarjetaServidor(
@@ -312,6 +319,48 @@ private fun TarjetaCuenta(
  * servidor cambió de IP o se reinstaló, «Buscar de nuevo» repite el
  * descubrimiento y el emparejamiento sin que haya que copiar ningún dato.
  */
+/**
+ * Selector de tema del puesto.
+ *
+ * El modo elegido se guarda en el teléfono y manda sobre el ajuste del
+ * sistema: en un equipo configurado en claro, el tema oscuro de la aplicación
+ * ya es alcanzable. La captura de campo se usa mucho de noche y en aulas con
+ * poca luz, donde el fondo claro deslumbra.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TarjetaApariencia(
+    modo: ModoApariencia,
+    alCambiar: (ModoApariencia) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Apariencia", style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = "«Sistema» sigue el ajuste del teléfono. El tema oscuro " +
+                    "cansa menos la vista con poca luz y, en pantallas OLED, gasta menos batería.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ModoApariencia.entries.forEach { opcion ->
+                    FilterChip(
+                        selected = modo == opcion,
+                        onClick = { alCambiar(opcion) },
+                        label = { Text(opcion.etiqueta) },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TarjetaServidor(
     estado: EstadoAjustes,

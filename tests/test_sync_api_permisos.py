@@ -27,6 +27,13 @@ from sync_agent.sesiones import ErrorSesion, SesionValida
 
 ROLES = ("admin", "manager", "user", "viewer")
 
+# Espera máxima de una petición HTTP de prueba. El panel de control agrega seis
+# estadísticas en una sola petición y, con la suite completa corriendo bajo
+# cobertura, su tiempo real varía; 30 s deja margen sin tapar un bloqueo (un
+# cuelgue no termina nunca, con 10 s o con 30 s). El cuelgue que sufría este
+# test era otro: un `__del__` de fuente Tk ejecutado en el hilo de la petición.
+ESPERA_MAXIMA = 30
+
 
 # ----------------------------------------------------------------------
 # Arreglos
@@ -436,7 +443,7 @@ def _pedir(base, ruta, metodo="GET", cuerpo=None, sesion=None, equipo=None, toke
         cabeceras["Authorization"] = f"Bearer {token}"
     peticion = urllib.request.Request(base + ruta, data=data, headers=cabeceras, method=metodo)
     try:
-        with urllib.request.urlopen(peticion, timeout=10) as respuesta:
+        with urllib.request.urlopen(peticion, timeout=ESPERA_MAXIMA) as respuesta:
             crudo = respuesta.read()
             codigo = respuesta.status
     except urllib.error.HTTPError as error:

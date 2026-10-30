@@ -18,6 +18,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
@@ -83,7 +84,64 @@ fun PantallaHerramientasPdf(
     var periodoInicio by rememberSaveable { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(1).toString()) }
     var periodoFin by rememberSaveable { mutableStateOf(java.time.LocalDate.now().toString()) }
     var tituloSubida by rememberSaveable { mutableStateOf("") }
-    var nombreDocumento by rememberSaveable { mutableStateOf("Constancia de trabajo") }
+    var editor by remember {
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(estado.markdown))
+    }
+    // El título sale del propio documento: al elegir una plantilla es su nombre y
+    // al escribir una propia es su primer encabezado. Ya no hay que teclearlo.
+    val tituloDocumento = remember(estado.markdown, estado.plantillaIndice) {
+        PLANTILLAS_CONSTANCIA.getOrNull(estado.plantillaIndice)?.first
+            ?: tituloDesdeMarkdown(estado.markdown)
+            ?: "Constancia personalizada"
+    }
+    val camposUsados = remember(estado.markdown) { clavesUsadas(estado.markdown) }
+    // Los chips se ordenan solos: primero los campos que la plantilla ya usa y
+    // después los que tienen dato en la ficha, para no recorrer 30 etiquetas a
+    // ciegas. El resto conserva el orden del catálogo.
+    val camposOrdenados = remember(estado.campos, camposUsados) {
+        val usados = camposUsados.toSet()
+        val posicion = estado.campos.withIndex().associate { (indice, campo) -> campo.clave to indice }
+        estado.campos.sortedWith(
+            compareByDescending<CampoConstancia> { it.clave in usados }
+                .thenByDescending { !it.valor.isNullOrBlank() }
+                .thenBy { posicion[it.clave] ?: Int.MAX_VALUE },
+        )
+    }
+    val camposInvalidos = remember(estado.markdown) { clavesInvalidas(estado.markdown) }
+    val markdownCorregido = remember(estado.markdown) { corregirCampos(estado.markdown) }
+    LaunchedEffect(estado.markdown) {
+        if (editor.text != estado.markdown) {
+            editor = androidx.compose.ui.text.input.TextFieldValue(
+                estado.markdown,
+                selection = androidx.compose.ui.text.TextRange(estado.markdown.length),
+            )
+        }
+    }
+
+    /**
+     * Inserta texto en el cursor. Con `bloque` se separa del párrafo anterior
+     * para que las frases preestablecidas no queden pegadas a otra línea.
+     */
+    fun insertarTexto(texto: String, bloque: Boolean = false) {
+        val seleccion = editor.selection
+        val inicio = seleccion.min.coerceIn(0, editor.text.length)
+        val fin = seleccion.max.coerceIn(inicio, editor.text.length)
+        val antes = editor.text.take(inicio)
+        val separador = if (bloque && antes.isNotBlank() && !antes.endsWith("\n")) "\n\n" else ""
+        val token = separador + texto
+        val nuevo = editor.text.replaceRange(inicio, fin, token)
+        if (nuevo.toByteArray(Charsets.UTF_8).size > 65_536) {
+            vistaModelo.errorSeleccionArchivo("La plantilla supera 64 KB.")
+            return
+        }
+        editor = androidx.compose.ui.text.input.TextFieldValue(
+            nuevo,
+            selection = androidx.compose.ui.text.TextRange(inicio + token.length),
+        )
+        vistaModelo.cambiarMarkdown(nuevo)
+    }
+
+    fun insertarCampo(clave: String) = insertarTexto("{{$clave}}")
     val fechaInicioValida = remember(periodoInicio) { fechaIsoValida(periodoInicio) }
     val fechaFinValida = remember(periodoFin) { fechaIsoValida(periodoFin) }
     val periodoValido = remember(periodoInicio, periodoFin, fechaInicioValida, fechaFinValida) {
@@ -181,7 +239,11 @@ fun PantallaHerramientasPdf(
             }
             if (estado.cargando || estado.cargandoEmpleados) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (sesion.offline) {
-                Text("Modo sin conexión: la generación y carga de PDF requieren conexión.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                Text(
+                    "Modo sin conexión: las constancias se generan igual en el teléfono; el folio del nodo y la carga al legajo esperan conexión.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
             }
             val secciones = listOfNotNull(
                 if (puedeUsarPlantilla) "constancia" to "Constancias" else null,
@@ -235,7 +297,7 @@ fun PantallaHerramientasPdf(
             }
             if (puedeUsarPlantilla && seccionActiva == "constancia") Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Constancia de trabajo", style = MaterialTheme.typography.titleLarge)
+                    Text(tituloDocumento, style = MaterialTheme.typography.titleLarge)
                     Text(
                         "Revisa y personaliza la plantilla; los datos de identidad y empleo se completan desde la ficha oficial.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -252,7 +314,6 @@ fun PantallaHerramientasPdf(
                         ExposedDropdownMenu(expanded = plantillaExpandida, onDismissRequest = { plantillaExpandida = false }) {
                             PLANTILLAS_CONSTANCIA.forEachIndexed { indice, item ->
                                 DropdownMenuItem(text = { Text(item.first) }, onClick = {
-                                    nombreDocumento = item.first
                                     vistaModelo.seleccionarPlantilla(indice)
                                     plantillaExpandida = false
                                 })
@@ -260,7 +321,6 @@ fun PantallaHerramientasPdf(
                             DropdownMenuItem(
                                 text = { Text("Plantilla personalizada actual") },
                                 onClick = {
-                                    nombreDocumento = "Constancia personalizada"
                                     vistaModelo.seleccionarPlantilla(-1)
                                     plantillaExpandida = false
                                 },
@@ -270,43 +330,114 @@ fun PantallaHerramientasPdf(
                     OutlinedButton(
                         enabled = !estado.cargando && !estado.cargandoEmpleados,
                         onClick = {
-                            nombreDocumento = "Constancia personalizada"
                             vistaModelo.seleccionarPlantilla(-1)
                             selectorMarkdown.launch(arrayOf("text/markdown", "text/plain", "application/octet-stream"))
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Importar plantilla Markdown (.md)") }
+                    if (estado.campos.isNotEmpty()) {
+                        Text("Insertar campo", style = MaterialTheme.typography.titleSmall)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            camposOrdenados.forEach { campo ->
+                                AssistChip(
+                                    onClick = { insertarCampo(campo.clave) },
+                                    label = { Text(campo.etiqueta) },
+                                )
+                            }
+                        }
+                    }
+                    Text("Texto predefinido", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FRAGMENTOS_CONSTANCIA.forEach { (etiqueta, fragmento) ->
+                            AssistChip(
+                                onClick = { insertarTexto(fragmento, bloque = true) },
+                                label = { Text(etiqueta) },
+                            )
+                        }
+                    }
                     OutlinedTextField(
-                        value = estado.markdown,
-                        onValueChange = { texto ->
-                            if (texto.toByteArray(Charsets.UTF_8).size <= 65_536) {
-                                nombreDocumento = "Constancia personalizada"
-                                vistaModelo.cambiarMarkdown(texto)
+                        value = editor,
+                        onValueChange = { nuevo ->
+                            if (nuevo.text.toByteArray(Charsets.UTF_8).size <= 65_536) {
+                                editor = nuevo
+                                vistaModelo.cambiarMarkdown(nuevo.text)
                             }
                         },
                         label = { Text("Plantilla Markdown") },
-                        supportingText = { Text("Campos: {{nombre}}, {{nombre_completo}}, {{cedula}}, {{cargo}}, {{departamento}}, {{salario}}, {{fecha_contratacion}}, {{fecha_emision}}, {{institucion}} · máximo 64 KB") },
+                        supportingText = { Text("Toque un campo para insertarlo donde está el cursor · máximo 64 KB") },
                         minLines = 5,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    val usados = estado.campos.filter { it.clave in camposUsados }
+                    if (usados.isNotEmpty()) {
+                        Text("Datos que se completarán", style = MaterialTheme.typography.titleSmall)
+                        usados.forEach { campo ->
+                            Text(
+                                "${campo.etiqueta}: ${campo.valor ?: "sin dato en la ficha"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (campo.valor == null) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else if (estado.campos.isNotEmpty()) {
+                        Text(
+                            "La plantilla no usa campos: fuera de las etiquetas que inserte, el texto queda tal cual.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                    val faltantes = usados.filter { it.valor == null }
+                    if (faltantes.isNotEmpty()) {
+                        Text(
+                            "Complete en la ficha antes de emitir: " +
+                                faltantes.joinToString(", ") { it.etiqueta.lowercase() },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    if (camposInvalidos.isNotEmpty()) {
+                        Text(
+                            "Campos no reconocidos: " + camposInvalidos.joinToString(", ") { "{{$it}}" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        if (markdownCorregido != estado.markdown) {
+                            TextButton(
+                                onClick = { vistaModelo.cambiarMarkdown(markdownCorregido) },
+                            ) { Text("Corregir nombres de campos") }
+                        }
+                    }
                     Text(
-                        "El documento incluirá el nombre institucional, datos laborales, fecha de emisión, firma y espacio para el sello.",
+                        "El documento incluirá el nombre institucional, datos laborales, fecha de emisión, firma y espacio para el sello. En el teléfono se compone al instante y sin conexión; el nodo añade el folio y lo archiva.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                            enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
                             onClick = {
-                                vistaModelo.constancia(personalizada = true, titulo = nombreDocumento)
+                                vistaModelo.constanciaLocal(personalizada = true, titulo = tituloDocumento)
                             },
-                        ) { Text("Generar ${nombreDocumento.lowercase()}") }
-                        Button(
+                        ) { Text("Generar en el teléfono · al instante") }
+                        OutlinedButton(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null,
-                            onClick = { vistaModelo.constancia(personalizada = false, titulo = "Constancia de trabajo") },
-                        ) { Text("Usar formato institucional básico") }
+                            enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                            onClick = {
+                                vistaModelo.constancia(personalizada = true, titulo = tituloDocumento)
+                            },
+                        ) { Text("Emitir en el nodo y archivar en el legajo") }
+                        TextButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !estado.cargando && estado.empleadoId != null,
+                            onClick = { vistaModelo.constanciaLocal(personalizada = false, titulo = "Constancia de trabajo") },
+                        ) { Text("Formato institucional básico") }
                     }
                 }
             }
@@ -431,10 +562,21 @@ fun PantallaHerramientasPdf(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("PDF listo", style = MaterialTheme.typography.titleMedium)
                         Text(pdf.nombre, style = MaterialTheme.typography.bodyMedium)
-                        if (pdf.archivado) {
-                            Text("Archivado en el legajo y en cola para sincronizar.", color = MaterialTheme.colorScheme.primary)
-                        } else {
-                            Text("Generado por el nodo central.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        when {
+                            pdf.archivado -> Text(
+                                "Archivado en el legajo y en cola para sincronizar.",
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+
+                            pdf.local -> Text(
+                                "Compuesto en este teléfono · sin conexión.",
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+
+                            else -> Text(
+                                "Generado por el nodo central.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -520,6 +662,23 @@ private fun cargarPdf(contexto: Context, uri: Uri): Pair<String, ByteArray> {
     return nombre to bytes
 }
 
+/**
+ * Retira las copias de PDF que ya nadie va a abrir.
+ *
+ * Cada documento compartido deja su archivo en la caché para que la
+ * aplicación receptora pueda leerlo. Sin límite, en un teléfono de gama baja
+ * con poco almacenamiento se acumulan megas que el sistema termina reclamando
+ * en el peor momento. La ventana de dos días cubre de sobra el uso real.
+ */
+private fun limpiarCachePdf(carpeta: File) {
+    val limite = System.currentTimeMillis() - 2L * 24 * 60 * 60 * 1000
+    runCatching {
+        carpeta.listFiles()?.forEach { archivo ->
+            if (archivo.isFile && archivo.lastModified() < limite) archivo.delete()
+        }
+    }
+}
+
 private suspend fun compartirPdf(contexto: Context, nombre: String, bytes: ByteArray, compartir: Boolean) {
     try {
         require(bytes.size >= 5 && bytes.copyOfRange(0, 5).decodeToString().startsWith("%PDF-")) {
@@ -535,10 +694,9 @@ private suspend fun compartirPdf(contexto: Context, nombre: String, bytes: ByteA
             "$base.pdf"
         } else "documento.pdf"
         val archivo = withContext(Dispatchers.IO) {
-            File(contexto.cacheDir, "documentos/$nombreSeguro").apply {
-                parentFile?.mkdirs()
-                writeBytes(bytes)
-            }
+            val carpeta = File(contexto.cacheDir, "documentos").apply { mkdirs() }
+            limpiarCachePdf(carpeta)
+            File(carpeta, nombreSeguro).apply { writeBytes(bytes) }
         }
         val uri = FileProvider.getUriForFile(contexto, "${contexto.packageName}.archivos", archivo)
         val intent = if (compartir) {

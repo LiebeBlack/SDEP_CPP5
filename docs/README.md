@@ -16,7 +16,7 @@ Los 21 documentos del lector viven en `docs_data.js`, que genera `tools/generate
 
 ## 🎨 Características Principales
 
-- **Lector Integrado de Markdown en Web**: Renderiza en tiempo real los 14 documentos de la tesis y los 7 documentos técnicos con tipografía editorial de alta precisión, sin redirigir a archivos planos ni requerir herramientas externas.
+- **Lector Integrado de Markdown en Web**: Renderiza en tiempo real los 14 documentos de la tesis y los 7 documentos técnicos, ya alineados con la versión 3.0.1 del software: trece documentos PDF, constancias desde plantilla Markdown y cliente Android con nodo central con tipografía editorial de alta precisión, sin redirigir a archivos planos ni requerir herramientas externas.
 - **Formato Markdown Avanzado**:
   - Resaltado de sintaxis con Prism (Python, Bash, SQL, JSON, Markdown).
   - Botón de copia de bloques de código con confirmación visual.
@@ -41,7 +41,7 @@ Los 21 documentos del lector viven en `docs_data.js`, que genera `tools/generate
 
 ## 🧭 Estructura de la Página
 
-La portada se organiza en seis bloques: **Inicio** (presentación y métricas), **Software** (nueve módulos), **Arquitectura** (cinco capas), **Documentos** (catálogo con pestañas y buscador), **Informes** (cuatro informes académicos) e **Inicio Rápido**.
+La portada se organiza en siete bloques: **Inicio** (presentación y métricas), **Software** (nueve módulos, plantillas Markdown y cliente Android), **Arquitectura** (cinco capas), **Plataformas** (escritorio, nodo central y teléfono), **Documentos** (catálogo con pestañas y buscador), **Informes** (cuatro informes académicos) e **Inicio Rápido**.
 
 Las pestañas del catálogo y sus recuentos se calculan desde `docs_data.js`; el contador de documentos de la portada también. Ninguna cifra de documentos está escrita a mano, de modo que el portal no se queda desfasado al regenerar el bundle.
 

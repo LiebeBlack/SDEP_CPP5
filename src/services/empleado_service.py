@@ -346,6 +346,15 @@ class EmpleadoService:
         """Lista solo empleados activos"""
         return self.repository.get_activos()
 
+    def listar_todos(self) -> list[Empleado]:
+        """Dotación completa, sin el tope de paginación por defecto.
+
+        La usan los módulos que muestran filas de otra entidad (pagos,
+        incidencias, contratos) y necesitan el nombre del empleado de cada
+        fila: traerlos en una sola consulta evita preguntar por cada registro.
+        """
+        return self.repository.get_all(0, None)
+
     def listar_por_tipo(self, tipo: str | TipoEmpleado) -> list[Empleado]:
         """Lista empleados por tipo"""
         return self.repository.get_by_tipo(tipo)

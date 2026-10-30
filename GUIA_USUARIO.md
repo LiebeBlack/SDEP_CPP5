@@ -492,26 +492,75 @@ Accesos directos a las funciones más utilizadas:
 
 ## Generación de Reportes
 
+El sistema emite trece tipos de documento oficial en PDF. Todos se generan con los
+datos de la ficha del empleado y con la configuración institucional (nombre, dirección
+y datos de contacto de la institución), e incluyen espacio para firma y sello.
+
+| Documento | Qué contiene | Dónde se emite |
+| :--- | :--- | :--- |
+| Constancia de trabajo | Cargo, departamento, fecha de ingreso, tipo de empleado y salario | Menú del empleado |
+| Constancia de estudios | Nivel educativo, especialidad, título obtenido e institución | Menú del empleado |
+| Constancia de ingresos | Remuneración mensual y anual declarada | Módulo de nómina |
+| Constancia desde plantilla | Su propio formato, con los marcadores que usted escriba | Menú del empleado / teléfono |
+| Ficha del empleado | Datos personales, laborales, bancarios, de salud y familiares | Menú del empleado |
+| Recibo de pago | Percepciones, deducciones y neto de un pago concreto | Módulo de nómina |
+| Planilla de nómina | Totales del periodo (seguridad social, pensión, impuesto y neto) | Módulo de nómina |
+| Liquidación | Prestaciones, vacaciones e indemnización al terminar la relación | Módulo de nómina |
+| Reporte de empleados | Dotación filtrable con estadísticas por categoría | Listado de empleados |
+| Reporte de incidencias | Ausencias, permisos y reposos del periodo | Módulo de incidencias |
+| Reporte de vencimientos | Documentos vencidos y próximos a vencer | Módulo documental |
+| Reporte de contratos | Contratos vigentes, por vencer y vencidos | Módulo de contratos |
+| Movimiento anual | Historial del empleado en el año: pagos, incidencias y contratos | Menú del empleado |
+
 ### Constancia de Trabajo
 
 1. Seleccione un empleado
-2. Haga clic en **Generar Constancia de Trabajo**
-3. El sistema crea un PDF oficial con:
-   - Datos de la institución
-   - Información del empleado
-   - Fecha de contratación
-   - Cargo y departamento
-   - Salario actual
-   - Espacio para firma y sello
+2. Haga clic en **Constancia de Trabajo (PDF)**
+3. El sistema crea un PDF oficial con datos de la institución, información del
+   empleado, fecha de contratación, cargo, departamento y salario actual
 
 ### Constancia de Estudios
 
 1. Seleccione un empleado
-2. Haga clic en **Generar Constancia de Estudios**
-3. El documento incluye:
-   - Datos académicos del empleado
-   - Títulos obtenidos
-   - Fechas de graduación
+2. Haga clic en **Constancia de Estudios (PDF)**
+3. El documento incluye los datos académicos, los títulos obtenidos y el nombre de
+   la institución que los respalda
+
+### Constancia desde plantilla (.md)
+
+Permite emitir una constancia con el formato propio de la institución en lugar de
+los modelos internos. La plantilla es un archivo Markdown normal en el que se
+escriben marcadores con doble llave; el sistema los sustituye por los datos del
+empleado seleccionado.
+
+1. Seleccione el empleado
+2. Elija **Constancia desde plantilla (.md)…**
+3. Abra el archivo `.md` (máximo 64 KB, UTF-8). El sistema propone el título a
+   partir del primer encabezado del documento
+4. Escriba el nombre del archivo y genere el PDF
+
+Campos que el generador completa:
+
+| Marcador | Contenido |
+| :--- | :--- |
+| `{{nombre}}`, `{{nombre_completo}}` | Nombre y apellidos del empleado |
+| `{{nombres}}`, `{{apellidos}}` | Cada parte por separado |
+| `{{cedula}}` | Cédula de identidad |
+| `{{cargo}}` | Puesto de trabajo |
+| `{{departamento}}` | Departamento o dependencia |
+| `{{tipo_empleado}}` | Docente, administrativo u obrero |
+| `{{salario}}` | Salario base con formato monetario |
+| `{{fecha_contratacion}}` | Fecha de ingreso |
+| `{{fecha_emision}}` | Fecha del día en que se emite |
+| `{{institucion}}` | Nombre configurado de la institución |
+| `{{nivel_educativo}}` | Nivel académico alcanzado |
+| `{{especialidad}}` | Especialidad declarada |
+| `{{titulo_obtenido}}` | Título registrado |
+
+Los marcadores no distinguen mayúsculas, acentos ni espacios sobrantes: `{{Cédula}}`
+se resuelve igual que `{{cedula}}`. Si la plantilla usa un marcador que el sistema
+no conoce, la aplicación lo advierte antes de generar el documento para que no
+quede impreso tal cual.
 
 ### Reporte de Empleados
 
@@ -520,6 +569,47 @@ Genere reportes que incluyen:
 - Filtrado por departamento o tipo
 - Estadísticas por categoría
 - Exportación a PDF
+
+## Aplicación Móvil (SDEP Móvil)
+
+El teléfono es un puesto más de la intranet. Se conecta al nodo central del colegio
+—no a servicios en la nube— y conserva en el propio dispositivo una copia de trabajo
+para seguir operando sin red.
+
+### Primer ingreso
+
+1. Instale el APK distribuido por la institución
+2. Abra la aplicación y pulse **Buscar el servidor** para descubrir el nodo en la red
+   WiFi, o escriba la dirección que muestra el icono del nodo en la computadora
+   (por ejemplo `http://192.168.1.20:8765`)
+3. Ingrese con el mismo usuario y contraseña que usa en la computadora
+4. Autorice la huella o el rostro si desea entrar sin escribir la contraseña cada vez
+
+### Qué se puede hacer desde el teléfono
+
+- **Ficha del empleado**: consultar datos personales, laborales y de contacto
+- **Constancias**: trabajo, estudios y constancia desde plantilla `.md`, generadas en
+  el propio teléfono y compartidas como PDF
+- **Herramientas PDF**: cargar un PDF al expediente y emitir reportes de empleados,
+  nómina o incidencias por periodo
+- **Registros de campo**: altas y ediciones con búsqueda, categorías y valor numérico
+- **Conflictos**: revisar las operaciones que el nodo rechazó por edición simultánea
+- **Ajustes y perfil**: servidor, sesión y sincronización manual
+
+### Trabajo sin conexión
+
+Cada cambio se guarda primero en el teléfono y se encola para envío. Cuando la red
+vuelve, la cola se vacía sola y el nodo aplica las operaciones en orden. Si dos
+puestos editan el mismo campo, el sistema conserva una de las versiones y deja el
+valor perdedor en la bandeja de **Conflictos**, de modo que nunca se pierde una
+edición sin dejar rastro.
+
+### Buenas prácticas en el teléfono
+
+- Mantenga el teléfono en la misma red WiFi que el nodo central
+- No cierre la aplicación mientras el indicador muestre operaciones pendientes
+- Revise la bandeja de conflictos al final de la jornada
+- Cierre la sesión en equipos compartidos
 
 ## Buenas Prácticas
 

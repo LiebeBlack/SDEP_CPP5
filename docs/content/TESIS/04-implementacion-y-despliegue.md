@@ -61,21 +61,22 @@ La separación entre `src/` y `sync_agent/` es deliberada. El agente puede ejecu
 
 ### 4.2.3 Distribución del código
 
-El recuento documentado para la versión 3.0.1 asigna 29 475 líneas a `src/`, distribuidas en 77 archivos, y 5 433 líneas a `sync_agent/`, distribuidas en 13 archivos. La mayor proporción corresponde a la interfaz, con 11 598 líneas, seguida por los servicios transversales, con 5 525, y por los servicios de negocio, con 4 332. El dominio de nómina, que concentra las reglas de cálculo, ocupa 1 502 líneas y no depende de la interfaz ni del acceso a datos.
+El recuento medido sobre la versión 3.0.1 asigna 33 601 líneas a `src/`, distribuidas en 81 archivos, 10 904 líneas a `sync_agent/` en 19 archivos y 18 635 líneas al cliente Android en 82 archivos Kotlin. La mayor proporción corresponde a la interfaz, con 13 266 líneas, seguida por los servicios transversales, con 5 525, y por los servicios de negocio, con 4 332. El dominio de nómina, que concentra las reglas de cálculo, ocupa 1 502 líneas y no depende de la interfaz ni del acceso a datos.
 
 | Capa | Archivos | Líneas | Proporción |
 |---|---|---|---|
-| Presentación | 10 | 11 598 | 39,3 % |
-| Servicios transversales | 10 | 5 525 | 18,7 % |
-| Servicios de negocio | 11 | 4 332 | 14,7 % |
-| Repositorios | 16 | 2 383 | 8,1 % |
-| Modelos | 16 | 1 887 | 6,4 % |
-| Configuración | 3 | 1 706 | 5,8 % |
-| Dominio de nómina | 9 | 1 502 | 5,1 % |
-| Entrada y paquete | 2 | 542 | 1,8 % |
-| **Total** | **77** | **29 475** | **100 %** |
+| Presentación | 10 | 13 266 | 39,5 % |
+| Servicios transversales | 10 | 5 963 | 17,7 % |
+| Servicios de negocio | 11 | 5 378 | 16,0 % |
+| Repositorios | 16 | 2 599 | 7,7 % |
+| Modelos | 17 | 1 969 | 5,9 % |
+| Configuración | 3 | 1 719 | 5,1 % |
+| Dominio de nómina | 9 | 1 513 | 4,5 % |
+| Seguridad de contexto | 3 | 409 | 1,2 % |
+| Entrada y paquete | 2 | 785 | 2,3 % |
+| **Total** | **81** | **33 601** | **100 %** |
 
-*Fuente: recuento documentado en el documento 10 del expediente, versión 3.0.1. La cifra se conserva como referencia y debe re-medirse si el código cambia.*
+*Fuente: recuento con `wc -l` sobre `src/` el 30 de octubre de 2026, versión 3.0.1. Las cifras anteriores (77 archivos y 29 475 líneas) correspondían al corte del 9 de octubre y quedaron superadas por las incorporaciones posteriores.*
 
 ---
 

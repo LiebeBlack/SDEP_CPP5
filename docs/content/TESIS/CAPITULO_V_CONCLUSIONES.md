@@ -44,7 +44,7 @@ La implementación modular permitió entregar funcionalidad utilizable de forma 
 
 ### 5.3.4 Objetivo Específico 4: Reportes y Documentos Oficiales
 
-Las funcionalidades de reporte y de generación documental se materializaron en doce tipos de documentos PDF, entre los que figuran constancias de trabajo, de estudios y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de empleados, incidencias, vencimientos, contratos y movimiento anual. Su valor reside en que sustituyen una elaboración manual lenta y sujeta a variación por una generación automática y uniforme, condición apreciable tanto para la gestión interna como para la atención al personal. La valoración que los usuarios asignen a esta funcionalidad se registrará durante el piloto.
+Las funcionalidades de reporte y de generación documental se materializaron en trece tipos de documentos PDF, entre los que figuran constancias de trabajo, de estudios y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de empleados, incidencias, vencimientos, contratos y movimiento anual, además de la constancia que se emite desde una plantilla Markdown propia de la institución. Su valor reside en que sustituyen una elaboración manual lenta y sujeta a variación por una generación automática y uniforme, condición apreciable tanto para la gestión interna como para la atención al personal. La valoración que los usuarios asignen a esta funcionalidad se registrará durante el piloto.
 
 ### 5.3.5 Objetivo Específico 5: Validación con Usuarios
 
@@ -70,7 +70,7 @@ La cuarta recomendación es mantener el procedimiento anterior como respaldo dur
 
 En el plano del desarrollo, se recomienda conservar la práctica de verificación automatizada como condición de cada cambio, dado que la suite existente constituye la principal garantía de estabilidad y su valor depende de que se mantenga actualizada. Se recomienda asimismo preservar la separación entre dominio de cálculo y las demás capas, pues es la que permite modificar reglas de nómina sin afectar la interfaz ni el acceso a datos.
 
-En cuanto a la evolución funcional, las prioridades se ordenan según el valor que aportan a las instituciones destinatarias. Las de mayor urgencia son tres: el desarrollo de una interfaz web que habilite el acceso remoto, la integración con sistemas de control de asistencia y la posibilidad de que los usuarios compongan reportes a medida. En un segundo nivel se sitúan la aplicación móvil, el soporte para varias instituciones en una misma instalación, la integración con sistemas contables y la notificación automática por correo electrónico o mensajería. En un nivel diferido quedan la analítica predictiva y los portales de autoservicio para el personal.
+En cuanto a la evolución funcional, las prioridades se ordenan según el valor que aportan a las instituciones destinatarias. Las de mayor urgencia son tres: el desarrollo de una interfaz web que habilite el acceso desde el navegador, la integración con sistemas de control de asistencia y la posibilidad de que los usuarios compongan reportes a medida. La aplicación móvil, que en una versión anterior de este informe figuraba entre las líneas futuras, ya está construida y entregada como cliente Android con nodo central de sincronización. En un segundo nivel se sitúan el soporte para varias instituciones en una misma instalación, la integración con sistemas contables y la notificación automática por correo electrónico o mensajería. En un nivel diferido quedan la analítica predictiva y los portales de autoservicio para el personal.
 
 En el plano técnico se recomienda evaluar la migración desde SQLite hacia un motor de base de datos con mayor concurrencia cuando el volumen o el número de usuarios simultáneos lo justifique, incorporar mecanismos de caché para las consultas repetitivas y habilitar el procesamiento asíncrono de las tareas más costosas, como la generación masiva de documentos.
 
@@ -120,7 +120,7 @@ La primera limitación es el tamaño de la muestra, previsto entre tres y cinco 
 
 ### 5.7.2 Limitaciones Técnicas
 
-El sistema presenta limitaciones de escalabilidad para volúmenes muy superiores a los previstos, derivadas de la elección de SQLite y de una arquitectura de escritorio de instalación local. Carece asimismo de versión web o móvil, lo que restringe el acceso remoto y el uso desde dispositivos portátiles, y ofrece una integración limitada con otros sistemas institucionales, circunstancia que puede resultar restrictiva en instituciones con ecosistemas tecnológicos ya consolidados.
+El sistema presenta limitaciones de escalabilidad para volúmenes muy superiores a los previstos, derivadas de la elección de SQLite y de una arquitectura de escritorio de instalación local. Carece asimismo de interfaz web en navegador —el acceso remoto se cubre con el cliente Android y el nodo central, que exigen emparejamiento por red local o TLS— y ofrece una integración limitada con otros sistemas institucionales, circunstancia que puede resultar restrictiva en instituciones con ecosistemas tecnológicos ya consolidados.
 
 ### 5.7.3 Limitaciones de Recursos
 
@@ -130,7 +130,7 @@ El proyecto dependió del tiempo y de los recursos del investigador, sin financi
 
 ### 5.8.1 Sobre el Logro de los Objetivos
 
-El objetivo general de la investigación se cumplió en los términos delimitados por la evidencia: se diseñó, se desarrolló y se dejó listo para implementación un sistema integral de gestión de personal y nómina que automatiza los procesos administrativos clave, aplica reglas verificadas para el cálculo financiero, ordena el control documental y ofrece información para la toma de decisiones. Los seis objetivos específicos se cumplieron igualmente: el análisis de requerimientos se realizó con instrumentos definidos y aplicados; el diseño arquitectónico quedó implementado y documentado; los módulos funcionales operan de manera integrada; las funcionalidades de reporte se materializaron en doce tipos de documento; la validación técnica se sostiene en una suite de 551 funciones de prueba; y la documentación del sistema está completa y disponible.
+El objetivo general de la investigación se cumplió en los términos delimitados por la evidencia: se diseñó, se desarrolló y se dejó listo para implementación un sistema integral de gestión de personal y nómina que automatiza los procesos administrativos clave, aplica reglas verificadas para el cálculo financiero, ordena el control documental y ofrece información para la toma de decisiones. Los seis objetivos específicos se cumplieron igualmente: el análisis de requerimientos se realizó con instrumentos definidos y aplicados; el diseño arquitectónico quedó implementado y documentado; los módulos funcionales operan de manera integrada; las funcionalidades de reporte se materializaron en trece tipos de documento, más la constancia desde plantilla Markdown; la validación técnica se sostiene en una suite de 605 funciones de prueba declaradas en 37 archivos, cuya última ejecución registrada —551 pruebas exitosas— corresponde al corte del 6 de octubre de 2026; y la documentación del sistema está completa y disponible.
 
 ### 5.8.2 Sobre la Validación de Hipótesis
 
@@ -138,7 +138,7 @@ La resolución definitiva de las hipótesis requiere la evidencia del piloto, y 
 
 ### 5.8.3 Sobre el Impacto del Proyecto
 
-El impacto técnico es verificable y favorable: el sistema se encuentra funcional, organizado en capas, con nueve módulos operativos, control de acceso por rol, auditoría, respaldos y una suite de 551 funciones de prueba que cubren las reglas críticas del dominio. El impacto operativo y el impacto social —mejora en la oportunidad y exactitud de los pagos, reducción de la carga administrativa y optimización de los recursos destinados a tareas de apoyo— se medirán con la evidencia del piloto, conforme a los apartados 4.5 y 4.6. El impacto académico consiste en una investigación aplicada documentada y reproducible, con instrumentos disponibles para su reutilización.
+El impacto técnico es verificable y favorable: el sistema se encuentra funcional, organizado en capas, con nueve módulos operativos, control de acceso por rol, auditoría, respaldos, un cliente Android y un nodo central de sincronización, y una suite de 605 funciones de prueba que cubren las reglas críticas del dominio. El impacto operativo y el impacto social —mejora en la oportunidad y exactitud de los pagos, reducción de la carga administrativa y optimización de los recursos destinados a tareas de apoyo— se medirán con la evidencia del piloto, conforme a los apartados 4.5 y 4.6. El impacto académico consiste en una investigación aplicada documentada y reproducible, con instrumentos disponibles para su reutilización.
 
 ### 5.8.4 Sobre la Sostenibilidad del Proyecto
 

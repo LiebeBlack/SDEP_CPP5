@@ -201,9 +201,7 @@ def _entero_en_letras(numero: int) -> str:
     miles, unidades = divmod(resto, 1_000)
     partes = []
     if millones:
-        partes.append(
-            "UN MILLÓN" if millones == 1 else f"{_hasta_999(millones)} MILLONES"
-        )
+        partes.append("UN MILLÓN" if millones == 1 else f"{_hasta_999(millones)} MILLONES")
     if miles:
         partes.append("MIL" if miles == 1 else f"{_hasta_999(miles)} MIL")
     if unidades:
@@ -461,6 +459,7 @@ class PDFGenerator:
             if hasattr(empleado.tipo_empleado, "value")
             else str(empleado.tipo_empleado or "")
         )
+
         def _texto(objeto: Any, atributo: str) -> str:
             """Campo de texto del empleado, ya sea enum, nulo o cadena."""
             valor = getattr(objeto, atributo, None)

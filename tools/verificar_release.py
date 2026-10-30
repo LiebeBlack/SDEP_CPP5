@@ -91,7 +91,9 @@ def verificar_versiones() -> list[Resultado]:
         "src/config/settings.py": _buscar_version(
             RAIZ / "src" / "config" / "settings.py", r'APP_VERSION_DEFAULT\s*=\s*"([^"]+)"'
         ),
-        "src/__init__.py": _buscar_version(RAIZ / "src" / "__init__.py", r'__version__\s*=\s*"([^"]+)"'),
+        "src/__init__.py": _buscar_version(
+            RAIZ / "src" / "__init__.py", r'__version__\s*=\s*"([^"]+)"'
+        ),
         "installer/setup.iss": _buscar_version(
             RAIZ / "installer" / "setup.iss", r'#define MyAppVersion "([^"]+)"'
         ),
@@ -99,12 +101,14 @@ def verificar_versiones() -> list[Resultado]:
     distintas = {archivo: valor for archivo, valor in declaradas.items() if valor != version}
     if distintas:
         detalle = ", ".join(f"{archivo}={valor}" for archivo, valor in distintas.items())
-        resultados.append(
-            Resultado("Versión coherente", "falla", f"VERSION={version}; {detalle}")
-        )
+        resultados.append(Resultado("Versión coherente", "falla", f"VERSION={version}; {detalle}"))
     else:
         resultados.append(
-            Resultado("Versión coherente", "ok", f"{version} en VERSION, pyproject, settings, __init__ e instalador")
+            Resultado(
+                "Versión coherente",
+                "ok",
+                f"{version} en VERSION, pyproject, settings, __init__ e instalador",
+            )
         )
 
     resultados.extend(_verificar_android(version))
@@ -159,11 +163,12 @@ def _verificar_android(version: str) -> list[Resultado]:
             )
         ]
     partes = [int(p) for p in version.split(".")]
-    codigo = partes[0] * 10_000 + (partes[1] if len(partes) > 1 else 0) * 100 + (
-        partes[2] if len(partes) > 2 else 0
+    codigo = (
+        partes[0] * 10_000
+        + (partes[1] if len(partes) > 1 else 0) * 100
+        + (partes[2] if len(partes) > 2 else 0)
     )
     return [Resultado("Versión Android", "ok", f"{version} derivada de VERSION (código {codigo})")]
-
 
 
 def verificar_actualizador() -> list[Resultado]:
@@ -175,9 +180,7 @@ def verificar_actualizador() -> list[Resultado]:
     resultados = []
     # Un comentario que menciona el archivo viejo es historia; lo que importa es
     # que el recurso no se siga tomando de él.
-    usa_archivo_fijo = bool(
-        re.search(r'version_resource\s*=\s*str\([^)]*version_info\.txt', texto)
-    )
+    usa_archivo_fijo = bool(re.search(r"version_resource\s*=\s*str\([^)]*version_info\.txt", texto))
     if usa_archivo_fijo:
         resultados.append(
             Resultado(
@@ -274,9 +277,7 @@ def verificar_git() -> list[Resultado]:
                     avisables.append(f"{archivo} ({etiqueta})")
                     break
     if bloqueantes:
-        resultados.append(
-            Resultado("Credenciales rastreadas", "falla", ", ".join(bloqueantes[:5]))
-        )
+        resultados.append(Resultado("Credenciales rastreadas", "falla", ", ".join(bloqueantes[:5])))
     else:
         resultados.append(Resultado("Credenciales rastreadas", "ok", "ninguna en el índice"))
     if avisables:
@@ -314,7 +315,11 @@ def verificar_pruebas() -> list[Resultado]:
         text=True,
         timeout=1800,
     )
-    resumen = [linea for linea in (proceso.stdout or "").splitlines() if "passed" in linea or "failed" in linea]
+    resumen = [
+        linea
+        for linea in (proceso.stdout or "").splitlines()
+        if "passed" in linea or "failed" in linea
+    ]
     if proceso.returncode == 0:
         return [Resultado("Suite de pruebas", "ok", resumen[-1] if resumen else "sin fallos")]
     return [
@@ -351,7 +356,9 @@ def main() -> int:
     avisos = [resultado for resultado in resultados if resultado.estado == "aviso"]
     print()
     if fallas:
-        print(f"RESULTADO: {len(fallas)} falla(s), {len(avisos)} aviso(s). No etiquetar el release.")
+        print(
+            f"RESULTADO: {len(fallas)} falla(s), {len(avisos)} aviso(s). No etiquetar el release."
+        )
         return 1
     print(f"RESULTADO: listo para etiquetar ({len(avisos)} aviso(s) para revisar).")
     return 0

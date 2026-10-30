@@ -1104,7 +1104,9 @@ class ApiAcciones:
                     )
                 else:
                     self._ejecutar(
-                        lambda: generador.generate_constancia_trabajo(empleado, destino, configuracion)
+                        lambda: generador.generate_constancia_trabajo(
+                            empleado, destino, configuracion
+                        )
                     )
 
             elif tipo == "ficha_empleado":

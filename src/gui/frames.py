@@ -1083,7 +1083,11 @@ class EmpleadosFrame(ctk.CTkFrame):
         self.estado_tabla.actualizar(
             len(empleados),
             "No hay empleados que mostrar" if termino else "Todavía no hay empleados registrados",
-            f"Ningún resultado para «{termino}»" if termino else "Cree el primero con el botón Nuevo Empleado",
+            (
+                f"Ningún resultado para «{termino}»"
+                if termino
+                else "Cree el primero con el botón Nuevo Empleado"
+            ),
         )
 
     def _on_double_click(self, event):
@@ -1233,7 +1237,7 @@ class EmpleadosFrame(ctk.CTkFrame):
         )
         if titulo is None:
             return
-        titulo = (titulo.strip()[:120] or "CONSTANCIA DE TRABAJO")
+        titulo = titulo.strip()[:120] or "CONSTANCIA DE TRABAJO"
 
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",

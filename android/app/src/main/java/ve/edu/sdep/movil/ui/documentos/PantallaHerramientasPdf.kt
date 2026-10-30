@@ -307,7 +307,9 @@ fun PantallaHerramientasPdf(
                         OutlinedTextField(
                             value = PLANTILLAS_CONSTANCIA.getOrNull(estado.plantillaIndice)?.first
                                 ?: "Plantilla personalizada",
-                            onValueChange = {}, readOnly = true, label = { Text("Plantilla preconfigurada") },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Plantilla preconfigurada") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(plantillaExpandida) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
                         )
@@ -381,8 +383,9 @@ fun PantallaHerramientasPdf(
                             Text(
                                 "${campo.etiqueta}: ${campo.valor ?: "sin dato en la ficha"}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (campo.valor == null) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color =
+                                    if (campo.valor == null) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     } else if (estado.campos.isNotEmpty()) {
@@ -421,14 +424,20 @@ fun PantallaHerramientasPdf(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                            enabled =
+                                !estado.cargando &&
+                                    estado.empleadoId != null &&
+                                    estado.markdown.isNotBlank(),
                             onClick = {
                                 vistaModelo.constanciaLocal(personalizada = true, titulo = tituloDocumento)
                             },
                         ) { Text("Generar en el teléfono · al instante") }
                         OutlinedButton(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && estado.empleadoId != null && estado.markdown.isNotBlank(),
+                            enabled =
+                                !estado.cargando &&
+                                    estado.empleadoId != null &&
+                                    estado.markdown.isNotBlank(),
                             onClick = {
                                 vistaModelo.constancia(personalizada = true, titulo = tituloDocumento)
                             },
@@ -461,12 +470,19 @@ fun PantallaHerramientasPdf(
                     )
                     if (puedeAdjuntar) Button(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null && tituloSubida.isNotBlank(),
+                        enabled =
+                            !estado.cargando &&
+                                !estado.cargandoEmpleados &&
+                                estado.empleadoId != null &&
+                                tituloSubida.isNotBlank(),
                         onClick = { selectorPdf.launch(arrayOf("application/pdf")) },
                     ) { Text("Seleccionar y adjuntar PDF · máximo 8 MB") }
                     if (puedeVerFicha) OutlinedButton(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !estado.cargando && !estado.cargandoEmpleados && estado.empleadoId != null,
+                        enabled =
+                            !estado.cargando &&
+                                !estado.cargandoEmpleados &&
+                                estado.empleadoId != null,
                         onClick = { vistaModelo.ficha() },
                     ) { Text("Generar ficha del empleado") }
                     if (sesion.esTrabajador && estado.empleadoId == null && !estado.cargandoEmpleados) {
@@ -493,17 +509,23 @@ fun PantallaHerramientasPdf(
                         Text(accion.titulo, style = MaterialTheme.typography.titleMedium)
                         if (accion.tipo == "planilla_nomina") {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = {
-                                    val hoy = java.time.LocalDate.now()
-                                    periodoInicio = hoy.withDayOfMonth(1).toString()
-                                    periodoFin = hoy.toString()
-                                }, modifier = Modifier.weight(1f)) { Text("Mes actual") }
-                                OutlinedButton(onClick = {
-                                    val hoy = java.time.LocalDate.now()
-                                    val inicioMesPasado = hoy.minusMonths(1).withDayOfMonth(1)
-                                    periodoInicio = inicioMesPasado.toString()
-                                    periodoFin = inicioMesPasado.plusMonths(1).minusDays(1).toString()
-                                }, modifier = Modifier.weight(1f)) { Text("Mes anterior") }
+                                OutlinedButton(
+                                    onClick = {
+                                        val hoy = java.time.LocalDate.now()
+                                        periodoInicio = hoy.withDayOfMonth(1).toString()
+                                        periodoFin = hoy.toString()
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Mes actual") }
+                                OutlinedButton(
+                                    onClick = {
+                                        val hoy = java.time.LocalDate.now()
+                                        val inicioMesPasado = hoy.minusMonths(1).withDayOfMonth(1)
+                                        periodoInicio = inicioMesPasado.toString()
+                                        periodoFin = inicioMesPasado.plusMonths(1).minusDays(1).toString()
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Mes anterior") }
                             }
                             Text(
                                 "Selecciona el período de nómina que se incluirá en la planilla.",
@@ -544,8 +566,10 @@ fun PantallaHerramientasPdf(
                         }
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !estado.cargando && !estado.cargandoEmpleados &&
-                                (accion.tipo != "planilla_nomina" || periodoValido),
+                            enabled =
+                                !estado.cargando &&
+                                    !estado.cargandoEmpleados &&
+                                    (accion.tipo != "planilla_nomina" || periodoValido),
                             onClick = {
                                 if (accion.tipo == "planilla_nomina") {
                                     if (periodoValido) vistaModelo.reporte(accion.tipo, periodoInicio, periodoFin)

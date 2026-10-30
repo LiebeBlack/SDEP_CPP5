@@ -7,10 +7,9 @@ letras, fechas en palabras, antigüedad y el catálogo que decide si un marcador
 
 import os
 from datetime import date
+from importlib import import_module
 
 import pytest
-
-from importlib import import_module
 
 from reportlab.platypus import Table
 

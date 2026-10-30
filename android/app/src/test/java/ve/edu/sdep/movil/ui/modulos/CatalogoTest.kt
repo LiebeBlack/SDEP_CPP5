@@ -88,9 +88,12 @@ class CatalogoTest {
             ),
         )
 
-        val encontrados = catalogo.buscar(Modulo.DOCUMENTOS, "ACTA")
+        // El texto buscado es el TÍTULO: ambos documentos comparten el tipo
+        // «acta», así que buscar «ACTA» devolvería las dos filas (la búsqueda
+        // también mira el subtítulo, y eso es correcto).
+        val encontrados = catalogo.buscar(Modulo.DOCUMENTOS, "CONSTANCIA DE TRABAJO")
         assertEquals(1, encontrados.size)
-        assertEquals("Acta de grado", encontrados.single().titulo)
+        assertEquals("Constancia de trabajo", encontrados.single().titulo)
         assertTrue(catalogo.buscar(Modulo.DOCUMENTOS, "no existe").isEmpty())
     }
 

@@ -31,8 +31,10 @@ class BackupManager:
 
     def __init__(self):
         """Inicializa el gestor de backups"""
-        # Importar settings aquí para evitar problemas de inicialización
-        from src.config import settings
+        # La instancia se importa del submódulo: este gestor se crea al cargar
+        # ``src.utils``, dentro de la inicialización de ``src.config``, y en ese
+        # momento ``src.config.settings`` aún es el submódulo y no la instancia.
+        from src.config.settings import settings
 
         self.backup_dir = Path(settings.backups_dir)
         try:

@@ -10,7 +10,6 @@ from datetime import date
 from importlib import import_module
 
 import pytest
-
 from reportlab.platypus import Table
 
 from src.models import TipoEmpleado

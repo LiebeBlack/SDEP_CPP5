@@ -21,3 +21,10 @@
 # Room no necesita reglas adicionales, pero las entidades se conservan por
 # claridad al leer un informe de fallos.
 -keep class ve.edu.sdep.movil.datos.local.entidad.** { *; }
+
+# Anotaciones de Error Prone que el cifrado de Android (Tink, usado por
+# ``EncryptedSharedPreferences``) referencia con ámbito de compilación y que
+# no existen en tiempo de ejecución. Sin esta regla, R8 detenía la compilación
+# del APK de release y la versión nunca se podía publicar. Son solo
+# anotaciones: no faltan clases que la aplicación necesite de verdad.
+-dontwarn com.google.errorprone.annotations.**

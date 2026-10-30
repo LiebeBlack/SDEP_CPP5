@@ -60,7 +60,7 @@ class BackupScheduler:
     def _valor_por_defecto(clave: str, por_defecto):
         """Lee el valor desde los ajustes locales cuando no hay sesión"""
         try:
-            from src.config import settings
+            from src.config.settings import settings
 
             valor = settings.get_config_value(clave)
             return por_defecto if valor is None else valor

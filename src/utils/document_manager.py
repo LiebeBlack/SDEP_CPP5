@@ -11,7 +11,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from src.config import settings
+# La instancia va por el submódulo: este módulo se carga desde ``src.utils``
+# durante la inicialización de ``src.config``, cuando el atributo
+# ``src.config.settings`` todavía apunta al módulo y no a la instancia.
+from src.config.settings import settings
 from src.utils.helpers import (
     EXTENSIONES_ABRIBLES,
     ensure_directory_exists,

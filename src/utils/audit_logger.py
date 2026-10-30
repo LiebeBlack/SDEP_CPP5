@@ -60,8 +60,14 @@ class AuditLogger:
 
     def __init__(self):
         """Inicializa el sistema de auditoría"""
-        # Importar settings aquí para evitar problemas de inicialización
-        from src.config import settings
+        # Importar la INSTANCIA desde el submódulo, no desde el paquete: este
+        # módulo se carga durante la inicialización de ``src.config`` (cadena
+        # database -> security -> utils), y en ese momento el atributo
+        # ``src.config.settings`` todavía apunta al submódulo, no a la
+        # instancia. Con ``from src.config import settings`` el registro de
+        # auditoría se quedaba sin directorios y el filtro de aislamiento de
+        # la base no llegaba a instalarse al arrancar.
+        from src.config.settings import settings
 
         self.audit_dir = Path(settings.logs_dir) / "audit"
         self.error_dir = Path(settings.logs_dir) / "errors"
@@ -437,7 +443,7 @@ class AuditLogger:
         if not output_file:
             output_file = f"audit_export_{start_date}_{end_date}.json"
 
-        from src.config import settings
+        from src.config.settings import settings
 
         # Respetar la ruta de exportaciones configurada (no asumir base_dir)
         output_path = Path(settings.exports_path) / output_file

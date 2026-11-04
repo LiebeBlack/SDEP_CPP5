@@ -8,7 +8,7 @@ Esta guía explica cómo ejecutar el servidor de sincronización en cualquier co
 
 ## Requisitos Previos
 
-- Python 3.8 o superior
+- Python 3.15.2 o superior
 - Las dependencias del proyecto ya instaladas (ver `requirements.txt` o usar el entorno virtual)
 
 ## Inicio automático con la aplicación de escritorio

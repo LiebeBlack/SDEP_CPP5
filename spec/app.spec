@@ -94,7 +94,7 @@ else:
 # que la bandeja del servidor lo encuentre dentro del ejecutable.
 datas = collect_data_files("customtkinter") + [(str(project_root / "assets" / "app.ico"), "assets")]
 
-# El binario de Linux se compila en Debian 13 (glibc 2.41) con Python 3.15
+# El binario de Linux se compila en Debian 13 (glibc 2.41) con Python 3.15.2
 # standalone (uv/python-build-standalone). Ese intérprete guarda Tcl/Tk
 # (libtcl9tk9.0.so, libtk9.0.so, etc.) en <base_prefix>/lib, fuera del
 # árbol estándar de PyInstaller; se añaden explícitamente para que el

@@ -244,26 +244,45 @@ class GraficoDona(GraficoBase):
         alto = self.alto_canvas()
         total = sum(valor for _, valor in self.datos) or 1
 
-        diametro = max(20.0, min(alto - 20, ancho * 0.45))
+        # La leyenda se reserva primero: antes el diámetro se calculaba solo
+        # con el ancho y, en ventanas estrechas, la leyenda se salía por el
+        # borde derecho y los textos aparecían recortados.
+        leyenda_visible = ancho >= 260
+        ancho_leyenda = min(240.0, max(120.0, ancho * 0.42)) if leyenda_visible else 0.0
+        espacio_dona = ancho - ancho_leyenda - 32
+        diametro = max(24.0, min(alto - 20, espacio_dona))
         radio = diametro / 2
         centro_x = 16 + radio
         centro_y = alto / 2
-        grosor = max(12, radio * 0.42)
+        grosor = max(4.0, min(radio * 0.42, radio * 0.9))
 
         inicio = 90.0
         for indice, (_etiqueta, valor) in enumerate(self.datos):
             extension = -360.0 * (valor / total)
-            self.canvas.create_arc(
-                centro_x - radio,
-                centro_y - radio,
-                centro_x + radio,
-                centro_y + radio,
-                start=inicio,
-                extent=extension,
-                style="arc",
-                outline=self.color_serie(indice),
-                width=grosor,
-            )
+            if abs(extension) >= 359.5:
+                # El 100 % en un solo dato se dibuja como circunferencia
+                # completa: un arco de 360° depende del redondeo de Tk y podía
+                # quedar sin pintar, dejando la dona vacía.
+                self.canvas.create_oval(
+                    centro_x - radio,
+                    centro_y - radio,
+                    centro_x + radio,
+                    centro_y + radio,
+                    outline=self.color_serie(indice),
+                    width=grosor,
+                )
+            else:
+                self.canvas.create_arc(
+                    centro_x - radio,
+                    centro_y - radio,
+                    centro_x + radio,
+                    centro_y + radio,
+                    start=inicio,
+                    extent=extension,
+                    style="arc",
+                    outline=self.color_serie(indice),
+                    width=grosor,
+                )
             inicio += extension
 
         # Centro de la dona con el total
@@ -282,23 +301,33 @@ class GraficoDona(GraficoBase):
             font=self._fuente_canvas(9),
         )
 
-        # Leyenda (máximo 8 elementos para evitar desborde)
-        max_items = 8
+        # Leyenda: una fila cada 18 px como máximo y textos recortados al
+        # ancho libre, para que no se salga por el borde derecho ni por abajo.
+        if not leyenda_visible:
+            return
+        max_items = max(1, min(8, int((alto - 24) // 18)))
         datos_leyenda = self.datos[:max_items]
         truncado = len(self.datos) > max_items
         total_items = len(datos_leyenda) + (1 if truncado else 0)
-        leyenda_x = centro_x + radio + 28
+        leyenda_x = centro_x + radio + 24
         leyenda_y = centro_y - (total_items * 18) / 2 + 8
+        ancho_texto = max(40.0, ancho - (leyenda_x + 16) - 10)
+        con_porcentaje = ancho_texto >= 80
+        max_caracteres = max(6, int(ancho_texto / 6.2) - (4 if con_porcentaje else 0))
         for indice, (etiqueta, valor) in enumerate(datos_leyenda):
             y = leyenda_y + indice * 18
             self.canvas.create_rectangle(
                 leyenda_x, y - 5, leyenda_x + 10, y + 5, fill=self.color_serie(indice), outline=""
             )
-            texto = etiqueta if len(etiqueta) <= 18 else etiqueta[:17] + "…"
+            if len(etiqueta) <= max_caracteres:
+                texto = etiqueta
+            else:
+                texto = etiqueta[: max_caracteres - 1] + "…"
+            sufijo = f"  {valor / total * 100:.0f}%" if con_porcentaje else ""
             self.canvas.create_text(
                 leyenda_x + 16,
                 y,
-                text=f"{texto}  {valor / total * 100:.0f}%",
+                text=f"{texto}{sufijo}",
                 anchor="w",
                 fill=COLORES["texto"],
                 font=self._fuente_canvas(9),
@@ -352,7 +381,12 @@ class GraficoLinea(GraficoBase):
         alto = max(80, self.alto_canvas())
         margen_sup, margen_inf, margen_lat = 20, 32, 36
         base_y = max(margen_sup + 20, alto - margen_inf)
-        maximo = max((valor for datos in series.values() for _, valor in datos), default=0) or 1
+        # Escala por el mayor valor absoluto y acota el trazo al área del
+        # gráfico: con valores negativos el máximo podía ser negativo (la
+        # escala se invertía) o la línea caía sobre las etiquetas del eje.
+        maximo = (
+            max((abs(valor) for datos in series.values() for _, valor in datos), default=0) or 1
+        )
         etiquetas = [etiqueta for etiqueta, _ in next(iter(series.values()))]
         pasos = max(1, len(etiquetas) - 1)
         ancho_util = max(40.0, float(ancho - margen_lat - 16))
@@ -376,7 +410,8 @@ class GraficoLinea(GraficoBase):
             coordenadas: list[float] = []
             for indice, (_etiqueta, valor) in enumerate(datos):
                 x = margen_lat + ancho_util * (indice / pasos if pasos else 0)
-                y = base_y - (base_y - margen_sup) * (valor / maximo)
+                proporcion = (base_y - margen_sup) * (valor / maximo)
+                y = min(base_y, max(margen_sup, base_y - proporcion))
                 coordenadas.extend((x, y))
             if len(coordenadas) >= 4:
                 self.canvas.create_line(
@@ -481,9 +516,15 @@ class TarjetaIndicador(ctk.CTkFrame):
             self.establecer_variacion(variacion)
 
         if comando is not None:
-            for widget in (self, self.valor_label, self.detalle_label, self.variacion_label):
+            # Todos los hijos (icono y título incluidos) responden al clic:
+            # antes solo el marco y los textos inferiores navegaban, así que
+            # pulsar el icono o el título de la tarjeta no hacía nada.
+            for widget in (self, *self.winfo_children()):
                 widget.bind("<Button-1>", lambda _evento: self.comando())
-                widget.configure(cursor="hand2")
+                try:
+                    widget.configure(cursor="hand2")
+                except Exception:
+                    pass
 
     def establecer_valor(self, valor: str, detalle: str | None = None) -> None:
         """Actualiza el valor mostrado y su detalle"""

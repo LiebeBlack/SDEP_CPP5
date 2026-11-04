@@ -40,7 +40,7 @@ Report unacceptable behavior to the project maintainers through GitHub Issues.
 
 ### Prerequisites
 
-- Python 3.15 or higher
+- Python 3.15.2 or higher
 - Git
 - GitHub account
 - Basic knowledge of Python and GUI development
@@ -347,10 +347,10 @@ Brief description of changes
 
 ### Workflow Overview
 
-The CI/CD pipeline consists of two complementary workflows:
+The CI/CD pipeline consists of three complementary workflows:
 
 1. **Integration & packaging** (`build.yml`)
-   - Runs on every push to main/develop, on `v*` tags, and manually
+   - Runs on every push to main/develop and manually (not on `v*` tags)
    - Job 1 (`tests`): runs the pytest suite and uploads coverage
    - Job 2 (`build-linux`): compiles the portable Linux build inside
      Debian 13, verifies it with `--selftest` and checks its glibc
@@ -358,6 +358,8 @@ The CI/CD pipeline consists of two complementary workflows:
    - Job 3 (`build`, Windows): compiles the executable and the auto-updater
      with PyInstaller, verifies them with `--selftest`, builds the Inno Setup
      installer and uploads all artifacts. It does **not** publish releases.
+   - Job 4 (`build-android`): compiles the debug APK and the unsigned
+     release APK with Gradle and uploads both as artifacts
 
 2. **Signed release** (`release.yml`)
    - Runs on every push to main, on `v*` tags, and manually
@@ -368,6 +370,16 @@ The CI/CD pipeline consists of two complementary workflows:
      `continuous-v<version>.<run number>`; `v*` tags produce versioned
      releases
    - Requires the `PFX_BASE64` and `PFX_PASSWORD` repository secrets
+
+3. **Signed Android APK** (`build_release.yml`)
+   - Runs on every push to main and manually
+   - Restores the release keystore from the repository secrets **before**
+     building, compiles `:app:assembleRelease`, verifies the signature with
+     `apksigner` and uploads the signed APK (plus its v4 `.idsig` when
+     Gradle produces it)
+   - Requires the `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and
+     `KEY_PASSWORD` repository secrets; if any is missing, the workflow
+     stops before compiling
 
 ### CI/CD Best Practices
 
@@ -432,7 +444,7 @@ Add screenshots if applicable
 
 ## Environment
 - OS: [e.g. Windows 11]
-- Python Version: [e.g. 3.15]
+- Python Version: [e.g. 3.15.2]
 - Application Version: [e.g. 1.0.0]
 
 ## Additional Context

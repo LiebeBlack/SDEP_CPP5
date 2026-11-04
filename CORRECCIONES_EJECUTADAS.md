@@ -258,3 +258,140 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 | | `PantallaAjustes`: faltaba `import androidx.compose.material3.Surface`; el error de `@Composable` de la línea siguiente era cascada | Import añadido |
 
 **Qué no se verificó aquí:** la compilación Android (sin SDK/Gradle en esta máquina; lo ejecuta el CI) y `pytest` (por decisión del encargo). Los errores de Kotlin se corrigieron leyendo la lista del compilador uno a uno contra el código fuente; si el paso de Android volviera a fallar, el siguiente paso es leer ese nuevo listado, no reescribir los módulos.
+
+# Tanda 7 — Alineación del CI y la documentación (2026-11-04)
+
+**Origen:** revisión de cierre posterior al commit `bd31e5e`, que añadió el workflow del APK firmado. **Método:** lectura estática y edición de archivos. **No se ejecutó nada**: este equipo no tiene Python, Node ni Java (el alias de Microsoft Store intercepta `python`), así que no pudieron correrse `pytest`, `flake8`, `black`, `isort`, `mypy`, Gradle ni Inno Setup.
+
+## Defectos corregidos en `build_release.yml`
+
+| # | Hallazgo | Corrección |
+|---|---|---|
+| 1 | El almacén de firmas se decodificaba **después** de `assembleRelease`. `signingConfigs/release` solo existe si `SDEP_KEYSTORE` apunta a un archivo existente, así que Gradle generaba `app-release-unsigned.apk` y el paso «Localizar APK de release firmado» fallaba en toda ejecución. | La restauración del almacén pasa a ejecutarse antes de compilar; se validan los cuatro secretos y el workflow aborta con un mensaje explícito si falta alguno. |
+| 2 | `android/gradlew` está en el índice con modo `100644`, sin permiso de ejecución: `./gradlew` falla con «Permission denied» en `ubuntu-latest`. | Paso `chmod +x android/gradlew`, igual que en `build.yml`. |
+| 3 | El artefacto declaraba `app-release.apk.idsig`, que Gradle no siempre genera. | El APK se sube con `if-no-files-found: error` y la firma v4 en un artefacto aparte con `if-no-files-found: ignore`. |
+| 4 | No había disparo manual ni limpieza del almacén en el runner. | `workflow_dispatch` y borrado del keystore con `if: always()`. |
+| 5 | La versión se leía de `VERSION` sin descartar el CR de las copias Windows del archivo. | `tr -d '\r'` antes de exportar `APP_VERSION`. |
+
+## Documentación alineada
+
+| Archivo | Cambio |
+|---|---|
+| `.github/workflows/README.md` | Tres workflows (faltaba `build_release.yml`), disparadores reales de `build.yml` (ya no corre en etiquetas `v*`), recuento medido (621 funciones `def test_` en 38 archivos `test_*.py`, más `conftest.py`), jobs de Android y secretos del APK. |
+| `README.md` | «dos workflows» → tres; 33 → 39 archivos de `tests/` (38 + `conftest.py`); job de Android y párrafo de `build_release.yml`. |
+| `CONTRIBUTING.md` | «two complementary workflows» → tres; se retira el disparador por etiquetas de `build.yml`; job `build-android` y workflow del APK firmado. |
+| `QUICKSTART_CICD.md` | Se retira el disparador por etiquetas de `build.yml`; APK sin firmar como artefacto; sección del APK firmado; «476 funciones» → 621 en 38 archivos. |
+| `docs/content/` y `docs/docs_data.js` | Copias espejo byte a byte y entradas del catálogo regeneradas con un script Perl (no hay Python para `tools/generate_docs_bundle.py`), recalculando `wordCount`, `readingTime` y el contenido embebido. |
+
+## Verificación de esta tanda
+
+- `git diff --check`: sin errores de espacio en blanco.
+- `docs/docs_data.js` vuelve a parsear con `JSON::PP` (catálogo completo) y el `content` embebido de los tres documentos es idéntico al `.md` normalizado.
+- Copias de `docs/content/` comparadas byte a byte contra los originales.
+- **No verificado:** todo lo que exige ejecución. `pytest`, `flake8`, `black`, `isort`, `mypy`, Gradle y `apksigner` siguen sin correr en este equipo; el workflow corregido debe confirmarse en su primera ejecución de GitHub Actions.
+
+# Tanda 8 — Migración a CPython 3.15.2 (2026-11-04)
+
+**Origen:** el proyecto declaraba la serie `3.15` y el pipeline instalaba `3.15` (con `allow-prereleases`, heredado de la época de las release candidates). La revisión estable vigente es **3.15.2**, publicada el 26 de octubre de 2026 según el calendario de PEP 790, y es la que fija esta tanda.
+
+**Método:** edición estática. **No se ejecutó nada**: este equipo no tiene Python, Node ni Java, así que ni la suite ni los linters pudieron correr.
+
+## Cambios aplicados
+
+| # | Archivo | Cambio |
+|---|---|---|
+| 1 | `.python-version` (nuevo) y `.gitignore` | `3.15.2` como fuente única que leen `uv`/`pyenv` al crear el entorno local. El archivo estaba excluido por `.gitignore`; se añadió la excepción `!.python-version` para que se versione. |
+| 2 | `pyproject.toml`, `uv.lock` | `requires-python` pasa de `>=3.15` a `>=3.15.2`, con la misma cadena en la cabecera del lock (el resto de la resolución no cambia: la serie es la misma). |
+| 3 | `.github/workflows/build.yml` | Los jobs de pruebas y de Windows fijan `python-version: "3.15.2"`; el contenedor Debian 13 usa `uv python install 3.15.2` y `uv venv --python 3.15.2`. Se retira `allow-prereleases` y los comentarios que describían 3.15 como pre-release. |
+| 4 | `.github/workflows/release.yml` | Misma revisión fija y sin `allow-prereleases`, para que la release se firme con el mismo intérprete que la suite. |
+| 5 | `README.md`, `GUIA_USUARIO.md`, `ESTRUCTURA_PROYECTO_COMPLETO.md`, `CONTRIBUTING.md`, `NOTAS_DESARROLLO.md` | Requisito de intérprete a «3.15.2 o superior» y referencia de `requires-python` actualizada. |
+| 6 | `TESIS/04-implementacion-y-despliegue.md`, `TESIS/BIBLIOGRAFIA_ANEXOS.md`, `TESIS/PROYECTO_SOCIAL_TECNOLOGICO.md`, `INFORME/04_MARCO_PRACTICO.md` | Tablas y prosa del corpus alineadas con 3.15.2 (las cifras de ejecución fechadas se conservan como registro histórico). |
+| 7 | `docs/content/` y `docs/docs_data.js` | Copias espejo byte a byte de los ocho documentos afectados y entradas del catálogo regeneradas con Perl (no hay Python para `tools/generate_docs_bundle.py`), recalculando `wordCount`, `readingTime` y contenido. |
+
+## Verificación de esta tanda
+
+- `git diff --check` sin hallazgos.
+- `docs_data.js` parsea con `JSON::PP` (21 documentos) y el `content` embebido de los ocho documentos coincide con su `.md` normalizado.
+- `cmp` byte a byte entre cada documento y su copia de `docs/content/`.
+- **No verificado:** `pytest`, `flake8`, `black`, `isort`, `mypy`, PyInstaller, Gradle y el propio `uv lock`. La coherencia del lock se comprobó por lectura (misma serie y misma cadena en ambos archivos); conviene ejecutar `uv lock --check` en un equipo con `uv` antes de la primera release.
+
+# Tanda 9 — Resto de referencias al intérprete (2026-11-04)
+
+**Origen:** continuación de la Tanda 8. Quedaban menciones a la serie 3.15 fuera del núcleo de CI y documentación: el portal, las licencias del instalador, el spec de PyInstaller y una guía con un requisito obsoleto.
+
+| Archivo | Cambio |
+|---|---|
+| `docs/index.html` | Píldora de tecnología, comentario del quickstart y pie del portal: «Python 3.15» → «Python 3.15.2». |
+| `installer/ThirdParty_ES.rtf`, `installer/ThirdParty_EN.rtf` | Componente de terceros «Python 3.15» → «Python 3.15.2», que es lo que realmente empaqueta el instalador. |
+| `spec/app.spec` | Comentario de la compilación Linux: intérprete 3.15.2. |
+| `TESIS/04-implementacion-y-despliegue.md` | La prosa que justifica la versión declarada pasa a 3.15.2 (la tabla ya lo estaba). |
+| `GUIA_SERVIDOR_LOCAL.md` | Requisito **«Python 3.8 o superior»**, obsoleto y contradictorio con `requires-python >=3.15.2`, corregido a 3.15.2. |
+| `docs/content/TESIS/04-implementacion-y-despliegue.md`, `docs/docs_data.js` | Espejo y entrada del catálogo regenerados para el documento afectado. |
+
+## Verificación
+
+- `git diff --check` limpio; `docs_data.js` parsea con `JSON::PP` (21 documentos) y el contenido embebido del documento afectado coincide con el `.md`.
+- Copia de `docs/content/` comparada byte a byte.
+- **No verificado:** nada ejecutable (sin Python, `uv` ni Java en el equipo). Los `.rtf` se editaron como texto: conviene abrir el instalador compilado para confirmar que Inno Setup los muestra bien.
+
+# Tanda 10 — Revisión de GUI, renderizado y visualización (2026-11-04)
+
+**Origen:** revisión solicitada sobre la interfaz: ventanas, widgets y gráficos del panel.
+**Método:** revisión estática. Sin intérprete Python en este equipo no se pudo abrir la aplicación: los cambios se validaron releyendo el código, no ejecutando Tk.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `src/gui/theme.py` | `aplicar_escalado_customtkinter` dividía `tk scaling` (píxeles por punto: 1,333 a 96 ppp) entre 72 y obtenía 0,018, fuera del rango 0,5–3,0; la función **nunca** aplicaba el escalado. Además, el tope de 1,25 recortaba cualquier pantalla por encima del 125 %. | El factor pasa a ser `scaling / (96/72)`, la escala real del sistema, acotada a 0,75–2,5. |
+| `src/gui/widgets/graficos.py` | La dona calculaba el diámetro solo con el ancho (`ancho * 0,45`) y colocaba la leyenda después: en paneles estrechos la leyenda se salía por el borde derecho y los textos se recortaban. | Se reserva primero el ancho de la leyenda (120–240 px), el diámetro ocupa el resto y la leyenda se oculta por debajo de 260 px de ancho. |
+| `src/gui/widgets/graficos.py` | La leyenda pintaba hasta 8 filas fijas de 18 px, que podían superar el alto del canvas, y truncaba a 18 caracteres sin mirar el espacio real. | El número de filas se limita por altura, el texto se recorta según el ancho libre y el porcentaje se omite cuando no cabe. |
+| `src/gui/widgets/graficos.py` | Un solo dato al 100 % generaba un arco de 360°, que depende del redondeo de Tk y podía quedar sin pintar: la dona aparecía vacía. | Ese caso se dibuja con `create_oval` (circunferencia completa); el resto sigue con arcos. |
+| `src/gui/widgets/graficos.py` | `GraficoLinea` tomaba el máximo sin valor absoluto: con una serie totalmente negativa la escala se invertía y, con valores negativos, la línea caía sobre las etiquetas del eje X. | El máximo se calcula sobre `abs(valor)`, el trazo se acota al área del gráfico y la rejilla mantiene una escala no negativa. |
+| `src/gui/widgets/graficos.py` | En `TarjetaIndicador` solo el marco y los textos inferiores tenían `Button-1`: pulsar el icono o el título del KPI no navegaba. | Se enlazan todos los hijos de la tarjeta, con tolerancia en los widgets que no aceptan el cursor de mano. |
+| `src/gui/main_window.py` | La ventana principal abría fija en 1200x800 con mínimo 1000x700 y sin centrar: en 1366x768 la barra de tareas tapaba la parte inferior y en 1280x720 el mínimo no cabía. | El tamaño se adapta a la pantalla (hasta 1200x800), el mínimo se reduce si hace falta y la ventana se centra con `centrar_ventana`. |
+
+## Verificación
+
+- `git diff --check` sin hallazgos y ninguna línea nueva supera los 100 caracteres de `.flake8`/`black`.
+- Diff revisado completo: las nueve sustituciones se aplicaron una sola vez y conservan la indentación.
+- **No verificado:** no se pudo ejecutar `pytest` ni abrir la aplicación (no hay intérprete Python en el equipo). Queda pendiente comprobar en un equipo con CPython 3.15.2: la ventana en 1366x768 y en 1920x1080, el escalado al 125 % y 150 %, una dona con un solo dato, una dona con más de 8 categorías y una serie con valores negativos.
+
+# Tanda 11 — Nómina: formularios preseleccionados y alineados con el servicio (2026-11-04)
+
+**Origen:** revisión de la aplicación de nómina para que los formularios y la generación automática sean más completos e inteligentes, sin tocar el motor de cálculo.
+
+## Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `src/gui/frames.py` | El panel de generación abre con el mes en curso en «Desde» y «Hasta» (antes había que teclear ambas fechas) y valida que el fin no sea anterior al inicio antes de llamar al servicio. |
+| `src/gui/frames.py` | Al generar, el aviso indica cuántos pagos se crearon sobre el total de empleados activos; si faltan, explica que ya tenían nómina en el período o que sus datos no permitían calcularla. |
+| `src/gui/frames.py` | «Nuevo Pago» preselecciona el empleado de la fila seleccionada y, al elegir empleado, propone su salario base. El período arranca en el mes en curso. |
+| `src/gui/frames.py` | El formulario de pago incorpora «Días trabajados», «Días del período» y «Prorratear por días», que el servicio ya persistía pero no se podían capturar; al editar se precargan los días guardados. |
+| `src/gui/frames.py` | Tipos y métodos de pago usan etiquetas legibles en el formulario, la tabla, el detalle y la exportación (antes la tabla mostraba `salario_base` y el método en crudo). Se añade «Liquidación», que el enum y el servicio ya aceptaban. |
+| `src/gui/frames.py` | El detalle del pago muestra los días/prorrateo y los aportes patronales, que el modelo ya calculaba. |
+
+## Verificación
+
+- `git diff --check` limpio y ninguna línea nueva por encima de los 100 caracteres (la única línea larga del archivo es anterior a esta tanda).
+- **No verificado:** sin intérprete Python no se ejecutó `pytest` ni se abrió el diálogo. Queda pendiente comprobar en un equipo con CPython 3.15.2: alta de pago con y sin prorrateo, edición de un pago prorrateado (los días no deben cambiar), generación del mes y exportación con las nuevas etiquetas.
+
+# Tanda 12 — Nómina interactiva: atajos y vista previa (2026-11-04)
+
+**Origen:** continuación de la Tanda 11. Faltaban opciones preseleccionables para el período y el formulario de pago no mostraba el efecto de los importes antes de guardar.
+
+## Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `src/gui/frames.py` | Atajo de período en el panel de nómina: «Mes actual» (por defecto), «Mes anterior», «Primera quincena» y «Segunda quincena» rellenan las fechas al elegirlas. |
+| `src/gui/frames.py` | Vista previa interactiva en el diálogo de pago: bruto, deducciones y neto estimado con el mismo motor de cálculo, recalculados con retardo de 250 ms al escribir y con caché para no repetir el cálculo. |
+| `src/gui/frames.py` | Los campos de días quedan deshabilitados hasta marcar «Prorratear por días»; al activarlo se completan con el período elegido (mes comercial de 30 para períodos completos). |
+| `src/gui/frames.py` | `Ctrl+S` guarda el pago y la vista previa pendiente se cancela al cerrar el diálogo. |
+| `src/gui/frames.py` | Filtro por empleado en la tabla de pagos («Todos» por defecto): la tabla, la exportación y la planilla respetan la selección, y «Nuevo Pago» preselecciona ese empleado. |
+
+## Verificación
+
+- `git diff --check` limpio y ninguna línea nueva por encima de los 100 caracteres.
+- **No verificado:** sin intérprete Python no se ejecutó `pytest` ni se abrió Tk. Queda pendiente probar los cuatro atajos de período, el filtro por empleado en tabla y exportación, el prorrateo con período parcial, la vista previa con y sin deducciones y el cierre con un cálculo pendiente.

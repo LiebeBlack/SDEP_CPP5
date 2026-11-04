@@ -17,7 +17,7 @@ Ve a `Settings > Branches`:
 ## 📋 Workflow
 
 ### Integración y empaquetado (`build.yml`)
-- **Disparadores**: push a `main` o `develop`, etiquetas `v*` y ejecución manual
+- **Disparadores**: push a `main` o `develop` y ejecución manual (no corre en etiquetas `v*`)
 - **Función**: pruebas con pytest + ejecutable Windows + actualizador automático + instalador (Inno Setup)
   + ejecutable Linux portable (PyInstaller dentro de Debian 13)
 - **Salidas (artefactos del run)**: `Setup.exe` (incluye el actualizador automático) + ZIP portable (Windows) + `tar.gz` portable (Linux) + reporte de cobertura
@@ -25,6 +25,8 @@ Ve a `Settings > Branches`:
   (glibc 2.41) y funciona en Debian 13 y Ubuntu 24.04 LTS o superior
   (autoverificado en CI con `--selftest` dentro de contenedores
   `debian:13-slim`, con comprobación de la glibc requerida)
+- **Android**: compila el APK de depuración y el de release sin firmar, y los
+  sube como artefactos del run
 - **No publica releases**: solo compila y verifica
 - **Duración**: ~5-9 minutos (Windows y Linux compilan en paralelo)
 
@@ -37,6 +39,16 @@ Ve a `Settings > Branches`:
   `SistemaGestionPersonal-Setup-<versión>.exe`
 - **Secretos requeridos**: `PFX_BASE64` y `PFX_PASSWORD`
 
+### APK Android firmado (`build_release.yml`)
+- **Disparadores**: push a `main` y ejecución manual
+- **Función**: restaura el almacén de firmas desde los secretos antes de
+  compilar, ejecuta `:app:assembleRelease` con la firma de release,
+  verifica el APK con `apksigner` y publica el APK firmado (más su
+  `.idsig` v4 cuando se genera)
+- **Secretos requeridos**: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+  `KEY_ALIAS` y `KEY_PASSWORD`; si falta alguno, el workflow aborta antes
+  de compilar
+
 ## 🎯 Flujo de Trabajo
 
 ### Release continua firmada por cada push (sin etiqueta)
@@ -46,7 +58,7 @@ git push origin main
 ```
 
 **Resultado:**
-- ✅ Pruebas automatizadas (476 funciones de prueba)
+- ✅ Pruebas automatizadas (621 funciones de prueba en 38 archivos)
 - ✅ Ejecutable Windows (onedir, icono, versión)
 - ✅ Instalador `Setup.exe` firmado y adjunto a la Release
 - ✅ ZIP portable (Windows) y `tar.gz` (Linux) como artefactos del run

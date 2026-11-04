@@ -383,7 +383,7 @@ pylint src/
 
 ### Migración a Python 3.15
 
-- Requisito de intérprete: **Python 3.15** (`requires-python >=3.15` en
+- Requisito de intérprete: **Python 3.15.2** (`requires-python >=3.15.2` en
   `pyproject.toml`). Verificado con `3.15.0rc2` en Windows y con la rc
   más reciente en CI (`allow-prereleases: true` hasta la final del
   2026-10-01).

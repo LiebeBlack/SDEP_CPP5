@@ -583,14 +583,19 @@ def aplicar_escalado_customtkinter(root=None) -> None:
             root = getattr(tk, "_default_root", None)
         if root is None:  # pragma: no cover
             return
-        # tk devuelve puntos por pulgada; 72 pt = 100 % de escala
+        # `tk scaling` no mide puntos por pulgada: devuelve píxeles por punto
+        # (96 ppp = 1,333). Dividirlo entre 72 daba 0,018 y la función no
+        # llegaba a aplicarse nunca; el factor del sistema es esa cifra entre
+        # 96/72, es decir, la escala real de la pantalla.
         scaling_raw = float(root.tk.call("tk", "scaling"))
         if scaling_raw <= 0:
             return
-        factor = scaling_raw / 72.0
-        if 0.5 <= factor <= 3.0:
-            ctk.set_widget_scaling(max(0.8, min(1.25, factor)))
-            ctk.set_window_scaling(max(0.8, min(1.25, factor)))
+        factor = scaling_raw / (96.0 / 72.0)
+        # CustomTkinter admite 0,5–3,0; se acota para no desbordar la ventana
+        # en pantallas con escalado extremo.
+        if 0.75 <= factor <= 2.5:
+            ctk.set_widget_scaling(factor)
+            ctk.set_window_scaling(factor)
     except Exception:
         logger.debug("ajuste visual ignorado", exc_info=True)
 

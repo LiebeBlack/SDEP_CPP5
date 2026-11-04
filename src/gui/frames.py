@@ -50,6 +50,23 @@ logger = logging.getLogger(__name__)
 
 _FUENTE_FAMILIA_CACHE: list[str | None] = [None]
 
+# Etiquetas de presentación de los enums de pago: la base guarda el valor
+# (`salario_base`) y la interfaz debe mostrar el mismo texto que el formulario.
+ETIQUETAS_TIPO_PAGO = {
+    "salario_base": "Salario Base",
+    "bonificacion": "Bonificación",
+    "horas_extra": "Horas Extra",
+    "comision": "Comisión",
+    "descuento": "Descuento",
+    "liquidacion": "Liquidación",
+}
+ETIQUETAS_METODO_PAGO = {
+    "transferencia": "Transferencia",
+    "efectivo": "Efectivo",
+    "cheque": "Cheque",
+    "deposito": "Depósito",
+}
+
 
 def _verificar_permiso_accion(main_window, permiso: str, accion: str) -> bool:
     """Impide ejecutar callbacks protegidos aunque se invoquen fuera del menú."""
@@ -109,6 +126,26 @@ def _texto_valor_conflicto(valor, limite: int = 60) -> str:
         return f"<binario {len(valor)} B>"
     texto = str(valor).replace("\n", " ").strip()
     return texto if len(texto) <= limite else texto[: limite - 1] + "…"
+
+
+def _periodo_mes_actual(hoy: date | None = None) -> tuple[date, date]:
+    """Primer y último día del mes en curso (valores por defecto de nómina)."""
+    referencia = hoy or date.today()
+    inicio = referencia.replace(day=1)
+    siguiente = (inicio + timedelta(days=32)).replace(day=1)
+    return inicio, siguiente - timedelta(days=1)
+
+
+def etiqueta_tipo_pago(valor: object) -> str:
+    """Texto legible del tipo de pago, sin alterar el valor almacenado."""
+    texto = getattr(valor, "value", valor)
+    return ETIQUETAS_TIPO_PAGO.get(str(texto), str(texto))
+
+
+def etiqueta_metodo_pago(valor: object) -> str:
+    """Texto legible del método de pago, sin alterar el valor almacenado."""
+    texto = getattr(valor, "value", valor)
+    return ETIQUETAS_METODO_PAGO.get(str(texto), str(texto))
 
 
 def _seleccionar_fila_click(tree, event) -> bool:
@@ -3571,7 +3608,7 @@ class NominaFrame(ctk.CTkFrame):
         )
         self.fecha_inicio_entry = ctk.CTkEntry(
             generation_frame,
-            width=120,
+            width=100,
             placeholder_text="DD/MM/YYYY",
             fg_color=COLORES["campo"],
             text_color=COLORES["texto"],
@@ -3583,12 +3620,28 @@ class NominaFrame(ctk.CTkFrame):
         )
         self.fecha_fin_entry = ctk.CTkEntry(
             generation_frame,
-            width=120,
+            width=100,
             placeholder_text="DD/MM/YYYY",
             fg_color=COLORES["campo"],
             text_color=COLORES["texto"],
         )
         self.fecha_fin_entry.pack(side="left", padx=5)
+
+        # Atajo de período: evita teclear las fechas de la nómina habitual.
+        ctk.CTkLabel(generation_frame, text="Atajo:", text_color=COLORES["texto"]).pack(
+            side="left", padx=(8, 5)
+        )
+        self.periodo_rapido_combo = ttk.Combobox(
+            generation_frame,
+            values=["Mes actual", "Mes anterior", "Primera quincena", "Segunda quincena"],
+            width=13,
+            state="readonly",
+            font=(_familia_fuente(), 9),
+        )
+        self.periodo_rapido_combo.pack(side="left", padx=5)
+        self.periodo_rapido_combo.set("Mes actual")
+        self.periodo_rapido_combo.bind("<<ComboboxSelected>>", self._aplicar_periodo_rapido)
+        self._aplicar_periodo_rapido()
 
         generate_btn = ctk.CTkButton(
             generation_frame, text="Generar", command=self._on_generate_nomina
@@ -3631,6 +3684,20 @@ class NominaFrame(ctk.CTkFrame):
 
         refresh_btn = ctk.CTkButton(filter_frame, text="Actualizar", command=self._load_pagos)
         refresh_btn.pack(side="right", padx=5)
+
+        # Filtro por empleado en una fila aparte: la fila de botones ya no
+        # admite más controles cuando la ventana está en su tamaño mínimo.
+        empleado_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
+        empleado_frame.pack(fill="x", padx=10, pady=(0, 5))
+        ctk.CTkLabel(empleado_frame, text="Empleado:", text_color=COLORES["texto"]).pack(
+            side="left", padx=5
+        )
+        self.empleado_filtro_combo = ttk.Combobox(
+            empleado_frame, width=38, state="readonly", font=(_familia_fuente(), 9)
+        )
+        self.empleado_filtro_combo.pack(side="left", padx=5)
+        self._cargar_filtro_empleados()
+        self.empleado_filtro_combo.bind("<<ComboboxSelected>>", self._on_filter)
 
         # Tabla de pagos
         table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
@@ -3696,6 +3763,33 @@ class NominaFrame(ctk.CTkFrame):
             return self.main_window.pago_service.listar_pagados()
         return self.main_window.pago_service.listar_pagos()
 
+    def _cargar_filtro_empleados(self):
+        """Carga el filtro de empleados con «Todos» preseleccionado."""
+        self.empleado_filtro_map = {"Todos": None}
+        self.empleado_filtro_combo["values"] = ["Todos"]
+        self.empleado_filtro_combo.set("Todos")
+        try:
+            empleados = self.main_window.empleado_service.listar_todos()
+        except Exception:
+            logger.exception("No se pudo cargar el filtro de empleados de nómina")
+            return
+        self.empleado_filtro_map.update(
+            {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
+        )
+        self.empleado_filtro_combo["values"] = list(self.empleado_filtro_map.keys())
+
+    def _empleado_filtro_id(self) -> int | None:
+        """ID del empleado filtrado, o None cuando la vista es «Todos»."""
+        return self.empleado_filtro_map.get(self.empleado_filtro_combo.get())
+
+    def _pagos_visibles(self):
+        """Pagos que cumplen el filtro de estado y de empleado."""
+        pagos = self._obtener_pagos_filtrados()
+        empleado_id = self._empleado_filtro_id()
+        if empleado_id is None:
+            return pagos
+        return [pago for pago in pagos if pago.empleado_id == empleado_id]
+
     def _mapa_empleados(self) -> dict[int, Empleado]:
         """Empleados indexados por id, en una sola consulta.
 
@@ -3713,7 +3807,7 @@ class NominaFrame(ctk.CTkFrame):
     def _pagos_con_empleado(self):
         """Lista de (pago, empleado) para los pagos visibles"""
         mapa = self._mapa_empleados()
-        return [(pago, mapa.get(pago.empleado_id)) for pago in self._obtener_pagos_filtrados()]
+        return [(pago, mapa.get(pago.empleado_id)) for pago in self._pagos_visibles()]
 
     def _load_pagos(self):
         """Carga la lista de pagos"""
@@ -3721,12 +3815,12 @@ class NominaFrame(ctk.CTkFrame):
             self.tree.delete(item)
 
         try:
-            pagos = self._obtener_pagos_filtrados()
+            pagos = self._pagos_visibles()
 
             if not pagos:
                 self.estado_tabla.mostrar(
                     "Sin pagos en esta vista",
-                    "Genere la nómina del periodo o cambie el filtro de estado",
+                    "Genere la nómina del periodo o cambie los filtros",
                 )
                 return
 
@@ -3747,7 +3841,7 @@ class NominaFrame(ctk.CTkFrame):
                         values=(
                             nombre_empleado,
                             periodo,
-                            pago.tipo_pago,
+                            etiqueta_tipo_pago(pago.tipo_pago),
                             format_currency(float(pago.monto_bruto)),
                             format_currency(float(pago.monto_neto)),
                             estado_pago,
@@ -3764,6 +3858,27 @@ class NominaFrame(ctk.CTkFrame):
     def _on_filter(self, event):
         """Maneja el filtrado de pagos"""
         self._load_pagos()
+
+    def _aplicar_periodo_rapido(self, _evento=None):
+        """Completa las fechas del período elegido en el atajo."""
+        hoy = date.today()
+        opcion = self.periodo_rapido_combo.get()
+        if opcion == "Mes anterior":
+            fin = hoy.replace(day=1) - timedelta(days=1)
+            inicio = fin.replace(day=1)
+        elif opcion == "Primera quincena":
+            inicio = hoy.replace(day=1)
+            fin = hoy.replace(day=15)
+        elif opcion == "Segunda quincena":
+            inicio = hoy.replace(day=16)
+            fin = (hoy.replace(day=1) + timedelta(days=32)).replace(day=1)
+            fin = fin - timedelta(days=1)
+        else:
+            inicio, fin = _periodo_mes_actual(hoy)
+        self.fecha_inicio_entry.delete(0, "end")
+        self.fecha_inicio_entry.insert(0, format_date(inicio))
+        self.fecha_fin_entry.delete(0, "end")
+        self.fecha_fin_entry.insert(0, format_date(fin))
 
     def _on_generate_nomina(self):
         """Genera nómina para un periodo"""
@@ -3784,15 +3899,32 @@ class NominaFrame(ctk.CTkFrame):
                 messagebox.showerror("Error", "Formato de fecha inválido. Use DD/MM/YYYY")
                 return
 
+            if fecha_fin < fecha_inicio:
+                messagebox.showerror(
+                    "Error", "La fecha fin debe ser igual o posterior a la fecha inicio"
+                )
+                return
+
             if messagebox.askyesno(
                 "Confirmar",
                 f"¿Desea generar nómina para el periodo {format_date(fecha_inicio)} - "
                 f"{format_date(fecha_fin)}?",
             ):
+                try:
+                    activos = len(self.main_window.empleado_service.listar_empleados_activos())
+                except Exception:
+                    logger.debug("No se pudo contar la dotación activa", exc_info=True)
+                    activos = 0
                 pagos = self.main_window.pago_service.generar_nominas_periodo(
                     fecha_inicio, fecha_fin
                 )
-                messagebox.showinfo("Éxito", f"Se generaron {len(pagos)} pagos")
+                mensaje = f"Se generaron {len(pagos)} pagos"
+                if activos and len(pagos) < activos:
+                    mensaje += (
+                        f" de {activos} empleados activos. El resto ya tenía nómina "
+                        "en el período o sus datos no permitieron calcularla."
+                    )
+                messagebox.showinfo("Éxito", mensaje)
                 self._load_pagos()
 
         except Exception as e:
@@ -3823,7 +3955,13 @@ class NominaFrame(ctk.CTkFrame):
                 "Su rol no tiene permiso para registrar pagos",
             )
             return
-        dialog = PagoDialog(self, self.main_window)
+        # Si hay una fila seleccionada se preselecciona su empleado: evita
+        # volver a buscarlo en la lista del formulario.
+        pago_actual = self._get_selected_pago()
+        empleado_id = pago_actual.empleado_id if pago_actual is not None else None
+        if empleado_id is None:
+            empleado_id = self._empleado_filtro_id()
+        dialog = PagoDialog(self, self.main_window, empleado_id=empleado_id)
         self.wait_window(dialog)
         if dialog.result:
             self._load_pagos()
@@ -3860,11 +3998,19 @@ class NominaFrame(ctk.CTkFrame):
             desc = float(pago.descuentos or 0)
             neto = float(pago.monto_neto or 0)
 
+            if pago.dias_laborados is not None:
+                detalle_dias = f"{pago.dias_laborados} de {pago.dias_periodo or 30} días"
+                if pago.prorrateado:
+                    detalle_dias += " (prorrateado)"
+            else:
+                detalle_dias = "No registrado"
+
             details = f"""
 Empleado: {nombre_empleado}
 Periodo: {format_date(pago.periodo_inicio)} - {format_date(pago.periodo_fin)}
-Tipo: {pago.tipo_pago}
-Método: {pago.metodo_pago}
+Días: {detalle_dias}
+Tipo: {etiqueta_tipo_pago(pago.tipo_pago)}
+Método: {etiqueta_metodo_pago(pago.metodo_pago)}
 Referencia: {pago.referencia_pago or 'N/A'}
 
 Salario Base: {format_currency(salario_base)}
@@ -3873,6 +4019,7 @@ Horas Extra: {format_currency(hextra)}
 Aguinaldo: {format_currency(aguinaldo)}
 Bono Vacacional: {format_currency(bono_vacacional)}
 Total Bruto: {format_currency(bruto)}
+Aportes patronales: {format_currency(float(pago.total_aportes_patronales or 0))}
 
 Deducciones:
 - Seguro Social: {format_currency(d_seg)}
@@ -3957,8 +4104,8 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
                         "Cédula": str(cedula),
                         "Periodo Inicio": format_date(pago.periodo_inicio),
                         "Periodo Fin": format_date(pago.periodo_fin),
-                        "Tipo de Pago": pago.tipo_pago,
-                        "Método de Pago": pago.metodo_pago,
+                        "Tipo de Pago": etiqueta_tipo_pago(pago.tipo_pago),
+                        "Método de Pago": etiqueta_metodo_pago(pago.metodo_pago),
                         "Salario Base": float(pago.salario_base or 0),
                         "Bonificaciones": float(pago.bonificaciones or 0),
                         "Horas Extra": float(pago.horas_extra or 0),
@@ -5546,31 +5693,35 @@ class InfoDialog(ctk.CTkToplevel):
 class PagoDialog(ctk.CTkToplevel):
     """Diálogo para registrar o editar un pago manual"""
 
-    TIPOS = [
-        ("salario_base", "Salario Base"),
-        ("bonificacion", "Bonificación"),
-        ("horas_extra", "Horas Extra"),
-        ("comision", "Comisión"),
-        ("descuento", "Descuento"),
-    ]
-    METODOS = ["transferencia", "efectivo", "cheque", "deposito"]
+    # Se derivan del mapa de etiquetas: así el formulario ofrece todos los
+    # tipos que el servicio acepta (incluida la liquidación) y el texto del
+    # desplegable coincide con el de la tabla y el detalle.
+    TIPOS = list(ETIQUETAS_TIPO_PAGO.items())
+    METODOS = list(ETIQUETAS_METODO_PAGO.values())
 
-    def __init__(self, parent, main_window, pago=None):
+    def __init__(self, parent, main_window, pago=None, empleado_id: int | None = None):
         super().__init__(parent)
         self.main_window = main_window
         self.pago = pago
+        self.empleado_id_inicial = empleado_id
+        self.empleado_por_id: dict[int, Empleado] = {}
+        self._vista_timer: str | None = None
+        self._vista_clave: tuple | None = None
         self.result = False
 
         self.title("Editar Pago" if pago else "Nuevo Pago")
-        self.geometry("620x560")
+        self.geometry("620x660")
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
         if parent is not None:
             self.transient(parent)
 
         self._create_widgets()
+        self.bind("<Control-s>", lambda _evento: self._on_save())
         if pago:
             self._load_pago_data()
+        else:
+            self._aplicar_valores_iniciales()
 
     def _create_widgets(self):
         form = ctk.CTkFrame(self, fg_color=COLORES["panel"])
@@ -5585,6 +5736,7 @@ class PagoDialog(ctk.CTkToplevel):
         )
         self.empleado_combo.grid(row=0, column=1, columnspan=3, padx=8, pady=6, sticky="w")
         self._load_empleados()
+        self.empleado_combo.bind("<<ComboboxSelected>>", self._on_empleado_cambiado)
 
         # Tipo de pago
         ctk.CTkLabel(form, text="Tipo de Pago:", text_color=COLORES["texto"]).grid(
@@ -5604,7 +5756,7 @@ class PagoDialog(ctk.CTkToplevel):
             form, width=20, values=self.METODOS, state="readonly", font=(_familia_fuente(), 9)
         )
         self.metodo_combo.grid(row=1, column=3, padx=8, pady=6, sticky="w")
-        self.metodo_combo.set("transferencia")
+        self.metodo_combo.set(etiqueta_metodo_pago("transferencia"))
 
         # Periodo
         ctk.CTkLabel(form, text="Período desde:", text_color=COLORES["texto"]).grid(
@@ -5677,13 +5829,70 @@ class PagoDialog(ctk.CTkToplevel):
         pagado_chk = ctk.CTkCheckBox(form, text="Marcar como pagado", variable=self.pagado_var)
         pagado_chk.grid(row=5, column=3, padx=8, pady=6, sticky="w")
 
+        # Prorrateo: el servicio ya guarda los días, pero el formulario no
+        # permitía indicarlos y todo pago se calculaba sobre 30 días.
+        ctk.CTkLabel(form, text="Días trabajados:", text_color=COLORES["texto"]).grid(
+            row=6, column=0, padx=8, pady=6, sticky="e"
+        )
+        self.dias_trabajados_entry = ctk.CTkEntry(
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.dias_trabajados_entry.grid(row=6, column=1, padx=8, pady=6, sticky="w")
+        self.dias_trabajados_entry.insert(0, "30")
+
+        ctk.CTkLabel(form, text="Días del período:", text_color=COLORES["texto"]).grid(
+            row=6, column=2, padx=8, pady=6, sticky="e"
+        )
+        self.dias_periodo_entry = ctk.CTkEntry(
+            form, width=140, fg_color=COLORES["campo"], text_color=COLORES["texto"]
+        )
+        self.dias_periodo_entry.grid(row=6, column=3, padx=8, pady=6, sticky="w")
+        self.dias_periodo_entry.insert(0, "30")
+
+        self.prorratear_var = tk.BooleanVar(value=False)
+        prorratear_chk = ctk.CTkCheckBox(
+            form, text="Prorratear por días", variable=self.prorratear_var
+        )
+        prorratear_chk.grid(row=7, column=1, columnspan=2, padx=8, pady=(0, 6), sticky="w")
+
         ctk.CTkLabel(form, text="Observaciones:", text_color=COLORES["texto"]).grid(
-            row=6, column=0, padx=8, pady=6, sticky="ne"
+            row=8, column=0, padx=8, pady=6, sticky="ne"
         )
         self.observaciones_text = ctk.CTkTextbox(
             form, width=400, height=60, fg_color=COLORES["campo"], text_color=COLORES["texto"]
         )
-        self.observaciones_text.grid(row=6, column=1, columnspan=3, padx=8, pady=6, sticky="w")
+        self.observaciones_text.grid(row=8, column=1, columnspan=3, padx=8, pady=6, sticky="w")
+
+        # Vista previa interactiva: usa el mismo motor que guarda el pago.
+        self.vista_previa_label = ctk.CTkLabel(
+            form,
+            text="Indique el salario base para estimar deducciones y neto",
+            text_color=COLORES["texto_suave"],
+            font=ctk.CTkFont(size=11),
+            anchor="w",
+            justify="left",
+            wraplength=560,
+        )
+        self.vista_previa_label.grid(
+            row=9, column=0, columnspan=4, padx=8, pady=(0, 8), sticky="w"
+        )
+
+        # Interacción: la estimación se recalcula sola (con retardo) y los
+        # días solo se habilitan cuando el pago se prorratea.
+        self.prorratear_var.trace_add("write", self._on_prorrateo_cambiado)
+        for entrada in (
+            self.salario_entry,
+            self.bonificaciones_entry,
+            self.horas_extra_entry,
+            self.otras_deducciones_entry,
+            self.descuentos_entry,
+            self.dias_trabajados_entry,
+            self.dias_periodo_entry,
+        ):
+            entrada.bind("<KeyRelease>", self._programar_vista_previa)
+        for entrada in (self.periodo_inicio_entry, self.periodo_fin_entry):
+            entrada.bind("<FocusOut>", self._on_periodo_cambiado)
+        self._on_prorrateo_cambiado()
 
         # Botones
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -5696,20 +5905,186 @@ class PagoDialog(ctk.CTkToplevel):
 
     def _load_empleados(self):
         empleados = self.main_window.empleado_service.listar_empleados_activos()
-        self.empleado_map = {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
+        self.empleado_por_id = {emp.id: emp for emp in empleados}
+        self.empleado_map = {self._etiqueta_de(emp): emp.id for emp in empleados}
         self.empleado_combo["values"] = list(self.empleado_map.keys())
         if self.pago:
             empleado = self.main_window.empleado_service.obtener_empleado(self.pago.empleado_id)
             if empleado:
-                etiqueta = f"{empleado.nombre_completo} ({empleado.cedula})"
-                if etiqueta in self.empleado_map:
-                    self.empleado_combo.set(etiqueta)
-                else:
-                    self.empleado_combo["values"] = [etiqueta] + list(self.empleado_map.keys())
-                    self.empleado_combo.set(etiqueta)
-                self.empleado_combo.configure(state="readonly")
-        elif self.empleado_map:
-            self.empleado_combo.current(0)
+                self._seleccionar_empleado(empleado)
+        elif empleados:
+            inicial = next(
+                (emp for emp in empleados if emp.id == self.empleado_id_inicial),
+                empleados[0],
+            )
+            self._seleccionar_empleado(inicial)
+
+    @staticmethod
+    def _etiqueta_de(empleado: Empleado) -> str:
+        """Etiqueta única del desplegable de empleados."""
+        return f"{empleado.nombre_completo} ({empleado.cedula})"
+
+    def _seleccionar_empleado(self, empleado: Empleado) -> None:
+        """Selecciona un empleado, aunque no estuviera en la lista activa."""
+        etiqueta = self._etiqueta_de(empleado)
+        if etiqueta not in self.empleado_map:
+            self.empleado_map = {etiqueta: empleado.id, **self.empleado_map}
+            self.empleado_combo["values"] = list(self.empleado_map.keys())
+        self.empleado_combo.set(etiqueta)
+
+    def _empleado_seleccionado(self) -> Empleado | None:
+        """Empleado elegido, resuelto desde la caché cargada una sola vez."""
+        empleado_id = self.empleado_map.get(self.empleado_combo.get())
+        return self.empleado_por_id.get(empleado_id) if empleado_id else None
+
+    def _on_empleado_cambiado(self, _evento=None):
+        """Al elegir empleado se propone su salario base (editable después)."""
+        if self.pago is not None:
+            return
+        empleado = self._empleado_seleccionado()
+        if empleado is None:
+            return
+        salario = float(getattr(empleado, "salario_base", 0) or 0)
+        if salario <= 0:
+            return
+        self.salario_entry.delete(0, "end")
+        self.salario_entry.insert(0, f"{salario:.2f}")
+        self._programar_vista_previa()
+
+    def _aplicar_valores_iniciales(self):
+        """Preselecciona el período del mes en curso y el salario del empleado."""
+        inicio, fin = _periodo_mes_actual()
+        self.periodo_inicio_entry.insert(0, format_date(inicio))
+        self.periodo_fin_entry.insert(0, format_date(fin))
+        self._on_empleado_cambiado()
+
+    @staticmethod
+    def _valor_metodo(texto: str) -> str:
+        """Valor de enum del método de pago a partir de su etiqueta."""
+        for valor, etiqueta in ETIQUETAS_METODO_PAGO.items():
+            if etiqueta == texto:
+                return valor
+        return texto
+
+    def _actualizar_estado_dias(self) -> None:
+        """Los días solo son editables cuando el pago se prorratea."""
+        estado = "normal" if self.prorratear_var.get() else "disabled"
+        self.dias_trabajados_entry.configure(state=estado)
+        self.dias_periodo_entry.configure(state=estado)
+
+    def _on_prorrateo_cambiado(self, *_args) -> None:
+        """Habilita los días y propone el período al activar el prorrateo."""
+        self._actualizar_estado_dias()
+        if self.prorratear_var.get():
+            self._sugerir_dias_periodo()
+        self._programar_vista_previa()
+
+    def _sugerir_dias_periodo(self) -> None:
+        """Completa los días con el período elegido (mes comercial de 30)."""
+        try:
+            inicio = parse_date_estricto(self.periodo_inicio_entry.get(), "Inicio del periodo")
+            fin = parse_date_estricto(self.periodo_fin_entry.get(), "Fin del periodo")
+        except ValueError:
+            return
+        if not inicio or not fin or fin < inicio:
+            return
+        dias_calendario = (fin - inicio).days + 1
+        dias = 30 if dias_calendario >= 28 else dias_calendario
+        self.dias_periodo_entry.delete(0, "end")
+        self.dias_periodo_entry.insert(0, str(dias))
+        if self._int_opcional(self.dias_trabajados_entry, 0) in (0, 30):
+            self.dias_trabajados_entry.delete(0, "end")
+            self.dias_trabajados_entry.insert(0, str(dias))
+
+    def _on_periodo_cambiado(self, _evento=None) -> None:
+        """Al salir de las fechas, sugiere los días si se prorratea."""
+        if self.prorratear_var.get():
+            self._sugerir_dias_periodo()
+            self._programar_vista_previa()
+
+    def _programar_vista_previa(self, _evento=None) -> None:
+        """Agrupa las pulsaciones y recalcula la vista previa una sola vez."""
+        if self._vista_timer is not None:
+            try:
+                self.after_cancel(self._vista_timer)
+            except Exception:
+                pass
+        self._vista_timer = self.after(250, self._actualizar_vista_previa)
+
+    def _actualizar_vista_previa(self) -> None:
+        """Estima deducciones y neto con el mismo motor que guarda el pago."""
+        self._vista_timer = None
+        try:
+            salario = self._float_opcional(self.salario_entry)
+            if salario <= 0:
+                self._vista_clave = None
+                self.vista_previa_label.configure(
+                    text="Indique el salario base para estimar deducciones y neto",
+                    text_color=COLORES["texto_suave"],
+                )
+                return
+            datos = {
+                "bonificaciones": self._float_opcional(self.bonificaciones_entry),
+                "otras_deducciones": self._float_opcional(self.otras_deducciones_entry),
+                "descuentos": self._float_opcional(self.descuentos_entry),
+                "dias_trabajados": self._int_opcional(self.dias_trabajados_entry, 30),
+                "dias_periodo": self._int_opcional(self.dias_periodo_entry, 30),
+                "prorratear": bool(self.prorratear_var.get()),
+            }
+            horas_extra = self._float_opcional(self.horas_extra_entry)
+            clave = (round(salario, 2), horas_extra, *datos.values())
+            if clave == self._vista_clave:
+                return
+            resultado = self.main_window.pago_service.calcular_con_motor(salario, datos)
+            bruto = (
+                float(resultado.salario_base)
+                + float(resultado.bonificaciones)
+                + horas_extra
+                + float(resultado.aguinaldo)
+                + float(resultado.bono_vacacional)
+            )
+            deducciones = float(resultado.total_deducciones)
+            neto = max(0.0, bruto - deducciones - float(resultado.descuentos))
+            self._vista_clave = clave
+            self.vista_previa_label.configure(
+                text=(
+                    f"Bruto {format_currency(bruto)}  ·  "
+                    f"Deducciones {format_currency(deducciones)}  ·  "
+                    f"Neto estimado {format_currency(neto)}"
+                ),
+                text_color=COLORES["texto"],
+            )
+        except Exception:
+            logger.debug("Vista previa del pago no disponible", exc_info=True)
+            self._vista_clave = None
+            self.vista_previa_label.configure(
+                text="Vista previa no disponible", text_color=COLORES["texto_suave"]
+            )
+
+    def _float_opcional(self, entrada) -> float:
+        """Importe del campo; 0 mientras el texto no sea válido."""
+        try:
+            return self._parse_float(entrada.get(), "Importe")
+        except ValueError:
+            return 0.0
+
+    def _int_opcional(self, entrada, por_defecto: int) -> int:
+        """Días del campo; el valor por defecto si aún no es válido."""
+        try:
+            valor = parse_int_estricto(entrada.get(), "Días")
+        except ValueError:
+            return por_defecto
+        return por_defecto if valor is None else valor
+
+    def destroy(self):
+        """Cancela la vista previa pendiente antes de cerrar el diálogo."""
+        if self._vista_timer is not None:
+            try:
+                self.after_cancel(self._vista_timer)
+            except Exception:
+                pass
+            self._vista_timer = None
+        super().destroy()
 
     def _load_pago_data(self):
         """Precarga los datos del pago en el formulario"""
@@ -5722,7 +6097,7 @@ class PagoDialog(ctk.CTkToplevel):
                 break
         else:
             self.tipo_combo.set(tipo_actual)
-        self.metodo_combo.set(self.pago.metodo_pago or "transferencia")
+        self.metodo_combo.set(etiqueta_metodo_pago(self.pago.metodo_pago or "transferencia"))
         self.periodo_inicio_entry.insert(0, format_date(self.pago.periodo_inicio))
         self.periodo_fin_entry.insert(0, format_date(self.pago.periodo_fin))
         self.salario_entry.insert(0, str(float(self.pago.salario_base or 0)))
@@ -5730,9 +6105,18 @@ class PagoDialog(ctk.CTkToplevel):
         self.horas_extra_entry.insert(0, str(float(self.pago.horas_extra or 0)))
         self.otras_deducciones_entry.insert(0, str(float(self.pago.otras_deducciones or 0)))
         self.descuentos_entry.insert(0, str(float(self.pago.descuentos or 0)))
+        self.prorratear_var.set(bool(self.pago.prorrateado))
+        self.dias_trabajados_entry.configure(state="normal")
+        self.dias_periodo_entry.configure(state="normal")
+        self.dias_trabajados_entry.delete(0, "end")
+        self.dias_trabajados_entry.insert(0, str(self.pago.dias_laborados or 30))
+        self.dias_periodo_entry.delete(0, "end")
+        self.dias_periodo_entry.insert(0, str(self.pago.dias_periodo or 30))
+        self._actualizar_estado_dias()
         self.pagado_var.set(bool(self.pago.pagado))
         if self.pago.observaciones:
             self.observaciones_text.insert("1.0", self.pago.observaciones)
+        self._programar_vista_previa()
 
     def _on_save(self):
         """Guarda el pago (crea o actualiza)"""
@@ -5760,7 +6144,7 @@ class PagoDialog(ctk.CTkToplevel):
             datos = {
                 "empleado_id": empleado_id,
                 "tipo_pago": tipo_valor,
-                "metodo_pago": self.metodo_combo.get(),
+                "metodo_pago": self._valor_metodo(self.metodo_combo.get()),
                 "periodo_inicio": parse_date_estricto(
                     self.periodo_inicio_entry.get(), "Inicio del periodo"
                 ),
@@ -5777,6 +6161,23 @@ class PagoDialog(ctk.CTkToplevel):
                 "pagado": 1 if self.pagado_var.get() else 0,
                 "observaciones": self.observaciones_text.get("1.0", "end").strip() or None,
             }
+
+            if self.prorratear_var.get():
+                dias_trabajados = parse_int_estricto(
+                    self.dias_trabajados_entry.get(), "Días trabajados"
+                )
+                dias_periodo = parse_int_estricto(
+                    self.dias_periodo_entry.get(), "Días del período"
+                )
+                if dias_trabajados is None or dias_periodo is None:
+                    messagebox.showerror(
+                        "Error",
+                        "Indique los días trabajados y los del período para prorratear",
+                    )
+                    return
+                datos["prorratear"] = True
+                datos["dias_trabajados"] = dias_trabajados
+                datos["dias_periodo"] = dias_periodo
 
             errores = self.main_window.pago_service.validar_datos_pago(datos)
             if errores:

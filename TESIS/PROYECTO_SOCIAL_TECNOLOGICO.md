@@ -169,7 +169,7 @@ El proyecto seguirá una metodología híbrida que combina elementos de:
 ### 5.3 Herramientas y Tecnologías
 
 **Desarrollo:**
-- Python 3.15 o superior (según `pyproject.toml`)
+- Python 3.15.2 o superior (según `pyproject.toml`)
 - SQLAlchemy como capa de mapeo objeto-relacional
 - CustomTkinter para la interfaz gráfica
 - ReportLab para la generación de documentos PDF

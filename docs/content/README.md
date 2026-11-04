@@ -123,7 +123,7 @@ El portal también se abre sin conexión: `start docs/index.html` (Windows),
 
 ## 📋 Requisitos del Sistema
 
-- Python 3.15 o superior
+- Python 3.15.2 o superior
 - Windows 10/11
 - 4GB RAM mínimo
 - 500MB espacio en disco
@@ -279,12 +279,12 @@ problemas, consulte [`GUIA_SERVIDOR_LOCAL.md`](GUIA_SERVIDOR_LOCAL.md).
 
 ## 🔄 CI/CD Pipeline (GitHub Actions)
 
-La integración continua se reparte entre dos workflows complementarios.
+La integración continua se reparte entre tres workflows complementarios.
 
 **`.github/workflows/build.yml`** (integración y empaquetado):
 
-1. **Pruebas**: ejecuta la suite completa de pytest sobre los 33 archivos de (32 test_*.py + conftest.py)
-   `tests/` en cada push a `main` o `develop`.
+1. **Pruebas**: ejecuta la suite completa de pytest sobre los 39 archivos de
+   `tests/` (38 `test_*.py` + `conftest.py`) en cada push a `main` o `develop`.
 2. **Compilación Windows**: en `windows-latest`, empaqueta la app con
    PyInstaller (directorio `onedir` + icono + metadatos de versión).
 3. **Actualizador automático**: compila `SDEP_CPP5_AutoUpdater.exe`
@@ -300,7 +300,11 @@ La integración continua se reparte entre dos workflows complementarios.
    24.04 LTS o superior; se autoverifica con `--selftest` bajo `xvfb-run`
    dentro de contenedores `debian:13-slim` y se comprueba que la glibc
    máxima requerida no supere 2.41.
-6. **Artefactos**: sube a la ejecución el instalador `Setup.exe`, el ZIP
+6. **Android**: compila los APK de depuración y de release sin firmar en
+   `ubuntu-latest` (`./gradlew :app:testDebugUnitTest :app:assembleDebug
+   :app:assembleRelease`) y los sube como artefactos; el APK firmado lo
+   produce `build_release.yml`.
+7. **Artefactos**: sube a la ejecución el instalador `Setup.exe`, el ZIP
    portable de Windows, el `tar.gz` portable de Linux y el reporte de
    cobertura. El actualizador `SDEP_CPP5_AutoUpdater.exe` se compila y queda
    incluido dentro del instalador. Este workflow **no publica releases**:
@@ -315,6 +319,15 @@ firma y publica la Release con un único adjunto: el instalador
 etiqueta de la release continua es `continuous-v<versión>.<número de
 ejecución>`; una etiqueta `vX.Y.Z` produce una release versionada con ese
 nombre. La firma requiere los secretos `PFX_BASE64` y `PFX_PASSWORD`.
+
+**`.github/workflows/build_release.yml`** (APK Android firmado) se activa
+con cada push a `main` y de forma manual. Restaura el almacén de firmas
+desde los secretos antes de compilar, ejecuta `./gradlew
+:app:assembleRelease` con `signingConfigs/release`, verifica la firma con
+`apksigner` y publica el APK firmado (y su `.idsig` v4 cuando se genera)
+como artefactos. Requiere los secretos `KEYSTORE_BASE64`,
+`KEYSTORE_PASSWORD`, `KEY_ALIAS` y `KEY_PASSWORD`; si falta alguno, el
+workflow se detiene antes de compilar.
 
 Cada cambio publicado genera su Release firmada automáticamente:
 ```bash
@@ -573,7 +586,7 @@ La configuración se puede modificar desde la sección "Configuración" de la ap
 
 ### Error al iniciar la aplicación
 
-- Verifique que Python 3.15+ esté instalado
+- Verifique que Python 3.15.2+ esté instalado
 - Instale las dependencias: `pip install -r requirements.txt`
 - Verifique que los directorios `documents`, `photos`, `exports` existan
 

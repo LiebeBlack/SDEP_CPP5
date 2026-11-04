@@ -31,6 +31,7 @@ from src.gui.theme import (
     COLORES,
     RADIO_MEDIO,
     aplicar_modo_apariencia,
+    centrar_ventana,
     configurar_fuentes_seguras,
     enable_windows_dpi_awareness,
     estilo_boton_moderno,
@@ -132,8 +133,15 @@ class MainWindow(ctk.CTk):
         self._exit_status = "exit"
 
         self.title(settings.app_name)
-        self.geometry("1200x800")
-        self.minsize(1000, 700)
+        # Tamaño adaptado a la pantalla: en portátiles de 1366x768 la ventana
+        # de 1200x800 quedaba cortada por abajo (la barra de tareas tapaba las
+        # acciones) y el mínimo de 1000x700 no cabía en un escritorio de 720.
+        ancho_pantalla = max(1, int(self.winfo_screenwidth()))
+        alto_pantalla = max(1, int(self.winfo_screenheight()))
+        ancho_ventana = max(640, min(1200, ancho_pantalla - 80))
+        alto_ventana = max(480, min(800, alto_pantalla - 120))
+        self.minsize(min(1000, ancho_ventana), min(660, alto_ventana))
+        centrar_ventana(self, ancho_ventana, alto_ventana)
         self.configure(fg_color=COLORES["fondo"])
 
         # Confirmar salida antes de cerrar

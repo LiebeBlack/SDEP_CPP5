@@ -7,7 +7,7 @@ name = "sistema-gestion-personal"
 version = "3.0.1"
 description = "Sistema de Gestión de Personal y Nómina para Instituciones Educativas"
 readme = "README.md"
-requires-python = ">=3.15"
+requires-python = ">=3.15.2"
 license = {text = "MIT"}
 authors = [
     {name = "Developer", email = "developer@example.com"}
@@ -66,7 +66,7 @@ src = ["gui/resources/*"]
 [tool.black]
 line-length = 100
 # black aún no publica el enum py315: se deja el máximo disponible. Con
-# requires-python >=3.15 la detección de features del intérprete no cambia.
+# requires-python >=3.15.2 la detección de features del intérprete no cambia.
 target-version = ['py313']
 include = '\.pyi?$'
 extend-exclude = '''

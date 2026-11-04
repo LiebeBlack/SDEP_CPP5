@@ -74,7 +74,7 @@ La misma aplicación se empaqueta en un archivo comprimido para Linux, que funci
 
 ### 3.3 Ejecución desde el código fuente
 
-Para el entorno de desarrollo y para la institución que desee auditar el software, el sistema se ejecuta desde el código fuente con el intérprete de Python 3.15 o superior y las dependencias declaradas en `requirements.txt`. Este procedimiento es el que emplea la propia verificación técnica y el que permite reproducir la suite de pruebas.
+Para el entorno de desarrollo y para la institución que desee auditar el software, el sistema se ejecuta desde el código fuente con el intérprete de Python 3.15.2 o superior y las dependencias declaradas en `requirements.txt`. Este procedimiento es el que emplea la propia verificación técnica y el que permite reproducir la suite de pruebas.
 
 ### 3.4 Construcción y empaquetado
 
@@ -128,7 +128,7 @@ La documentación del sistema prevé las incidencias más comunes de la operaci�
 
 ### 6.3 Requisitos de operación
 
-Los requisitos prácticos de operación son deliberadamente modestos: Windows 10 o superior, o bien Linux Debian 13 / Ubuntu 24.04 LTS o superior; Python 3.15 o superior cuando se ejecute desde el código fuente; cuatro gigabytes de memoria recomendada y quinientos megabytes de espacio en disco. La aplicación funciona sin conexión a internet, salvo el actualizador automático, que la consulta de forma opcional. Esta austeridad de requisitos responde directamente a la barrera de infraestructura documentada en el diagnóstico y es condición de viabilidad en el contexto de aplicación.
+Los requisitos prácticos de operación son deliberadamente modestos: Windows 10 o superior, o bien Linux Debian 13 / Ubuntu 24.04 LTS o superior; Python 3.15.2 o superior cuando se ejecute desde el código fuente; cuatro gigabytes de memoria recomendada y quinientos megabytes de espacio en disco. La aplicación funciona sin conexión a internet, salvo el actualizador automático, que la consulta de forma opcional. Esta austeridad de requisitos responde directamente a la barrera de infraestructura documentada en el diagnóstico y es condición de viabilidad en el contexto de aplicación.
 
 ---
 

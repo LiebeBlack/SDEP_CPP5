@@ -20,7 +20,7 @@ Esa distinción no debilita el documento: lo hace verificable. Un informe que pr
 
 | Componente | Tecnología | Versión declarada | Función |
 |---|---|---|---|
-| Lenguaje | Python | 3.15 o superior | Ejecución de la aplicación y del nodo central |
+| Lenguaje | Python | 3.15.2 o superior | Ejecución de la aplicación y del nodo central |
 | ORM | SQLAlchemy | 2.0.54 o superior | Mapeo objeto-relacional y sesiones |
 | Base de datos | SQLite | Integrada en Python | Persistencia local y central |
 | Interfaz | CustomTkinter | 6.0.0 o superior | Componentes gráficos |
@@ -32,7 +32,7 @@ Esa distinción no debilita el documento: lo hace verificable. Un informe que pr
 | Empaquetado | PyInstaller | 6.22.0 o superior | Ejecutable de Windows y Linux |
 | Instalador | Inno Setup | 6 | Instalador de Windows |
 
-La versión de Python se fijó en 3.15 porque el proyecto utiliza la sintaxis de tipos moderna y porque las versiones de las bibliotecas se verificaron sobre ese intérprete. Las versiones mínimas de SQLAlchemy y PyInstaller no son arbitrarias: las anteriores no declaran compatibilidad con Python 3.15 o arrastran vulnerabilidades corregidas en las versiones indicadas.
+La versión de Python se fijó en 3.15.2 porque el proyecto utiliza la sintaxis de tipos moderna y porque las versiones de las bibliotecas se verificaron sobre ese intérprete. Las versiones mínimas de SQLAlchemy y PyInstaller no son arbitrarias: las anteriores no declaran compatibilidad con Python 3.15 o arrastran vulnerabilidades corregidas en las versiones indicadas.
 
 ### 4.2.2 Estructura del repositorio
 

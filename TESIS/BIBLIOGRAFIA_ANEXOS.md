@@ -333,7 +333,7 @@ Inicio
 | Elemento | Requisito |
 |----------|-----------|
 | Sistema operativo | Windows 10 o superior, Linux o macOS |
-| Intérprete | Python 3.15 o superior (según `pyproject.toml`) |
+| Intérprete | Python 3.15.2 o superior (según `pyproject.toml`) |
 | Memoria recomendada | 4 GB de RAM |
 | Espacio en disco | 500 MB |
 | Dependencias | SQLAlchemy, CustomTkinter, Pillow, ReportLab, OpenPyXL |

@@ -713,4 +713,4 @@ Un proyecto de software Python exitoso requiere:
 
 **Última actualización:** 2026-08-10
 **Versión:** 1.0.0-python
-**Stack:** Python 3.15+
+**Stack:** Python 3.15.2+

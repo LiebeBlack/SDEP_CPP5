@@ -100,10 +100,8 @@ jobs:
       - name: Configurar Python (Windows)
         uses: actions/setup-python@v6
         with:
-          # 3.15 es pre-release hasta 2026-10-01: allow-prereleases resuelve
-          # la rc más reciente. Retirar la opción al publicarse la final.
-          python-version: "3.15"
-          allow-prereleases: true
+          # Misma revisión estable que el resto del pipeline.
+          python-version: "3.15.2"
 
       - name: Instalar dependencias
         run: |

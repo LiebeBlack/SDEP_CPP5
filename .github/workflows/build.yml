@@ -30,11 +30,10 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          # 3.15 es pre-release hasta 2026-10-01: allow-prereleases permite
-          # que setup-python resuelva la rc más reciente. Retirar la opción
-          # cuando se publique la versión final.
-          python-version: "3.15"
-          allow-prereleases: true
+          # 3.15.2 es la revisión estable vigente (publicada el 2026-10-26);
+          # se fija la revisión exacta para que la suite no cambie de
+          # intérprete entre ejecuciones.
+          python-version: "3.15.2"
           cache: pip
 
       - name: Instalar dependencias
@@ -99,7 +98,7 @@ jobs:
         run: |
           # Se compila en Debian 13 (glibc 2.41), el sistema más antiguo que
           # se quiere soportar tras la migración a Python 3.15. Debian 13 trae
-          # Python 3.13, así que 3.15 se instala con uv (builds independientes
+          # Python 3.13, así que 3.15.2 se instala con uv (builds independientes
           # con Tcl/Tk incluidos); las librerías que PyInstaller empaqueta
           # exigen como máximo la glibc del contenedor.
           docker run --rm \
@@ -113,8 +112,8 @@ jobs:
               apt-get install -y -qq ca-certificates curl binutils
               curl -LsSf https://astral.sh/uv/install.sh | sh
               export PATH=\"/root/.local/bin:$PATH\"
-              uv python install 3.15
-              uv venv --python 3.15 /opt/venv
+              uv python install 3.15.2
+              uv venv --python 3.15.2 /opt/venv
               . /opt/venv/bin/activate
               uv pip install -r requirements.txt pyinstaller
               python -c 'import sys; sys.path.insert(0, \".\"); import tkinter; import src.main; print(\"imports OK (tkinter + app, \" + sys.version.split()[0] + \")\")'
@@ -299,9 +298,8 @@ jobs:
       - name: Configurar Python (Windows)
         uses: actions/setup-python@v6
         with:
-          # 3.15 pre-release (ver comentario del job de pruebas).
-          python-version: "3.15"
-          allow-prereleases: true
+          # Misma revisión que el job de pruebas (ver su comentario).
+          python-version: "3.15.2"
 
       - name: Instalar dependencias
         run: |

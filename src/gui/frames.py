@@ -20,6 +20,7 @@ import customtkinter as ctk
 
 from src.gui.theme import (
     COLORES,
+    atajos_formulario,
     estilo_boton_moderno,
     habilitar_scroll_rueda,
 )
@@ -69,8 +70,15 @@ ETIQUETAS_METODO_PAGO = {
 
 
 def _verificar_permiso_accion(main_window, permiso: str, accion: str) -> bool:
-    """Impide ejecutar callbacks protegidos aunque se invoquen fuera del menú."""
-    if main_window.tiene_permiso(permiso):
+    """
+    Impide ejecutar callbacks protegidos aunque se invoquen fuera del menú.
+
+    Es la única implementación de esta comprobación: los módulos de
+    estudiantes, notas y contratos la importan en lugar de mantener tres
+    copias con el mismo texto. Acepta ``main_window`` nulo porque los
+    diálogos pueden construirse sin ventana principal (pruebas).
+    """
+    if main_window is not None and main_window.tiene_permiso(permiso):
         return True
     messagebox.showwarning(
         "Acceso denegado",
@@ -1703,6 +1711,8 @@ class EmpleadoDialog(ctk.CTkToplevel):
         self.bind("<Escape>", lambda e: self.destroy())
 
         self._create_widgets()
+        # Ctrl+Intro guarda desde cualquier pestaña del formulario.
+        atajos_formulario(self, self._on_save)
 
         # En modo edición precargar los datos del empleado
         if self.empleado and self.edit_mode:
@@ -2286,6 +2296,10 @@ class DocumentosFrame(ctk.CTkFrame):
                 actions_frame, text="Exportar", command=self._on_exportar_documentos
             )
             export_doc_btn.pack(side="left", padx=5)
+            export_doc_pdf_btn = ctk.CTkButton(
+                actions_frame, text="📄 PDF", command=self._on_exportar_documentos_pdf
+            )
+            export_doc_pdf_btn.pack(side="left", padx=5)
 
         # Tabla de documentos
         table_frame = ctk.CTkFrame(self, fg_color=COLORES["fondo"])
@@ -2406,6 +2420,51 @@ class DocumentosFrame(ctk.CTkFrame):
             exportar_archivo(filas, file_path)
             messagebox.showinfo("Éxito", f"Documentos exportados exitosamente:\n{file_path}")
         except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar documentos: {str(e)}")
+
+    def _on_exportar_documentos_pdf(self):
+        """Genera el listado de documentos visibles en PDF"""
+        if not _verificar_permiso_accion(self.main_window, "report", "exportar documentos"):
+            return
+        documentos = self._documentos_visibles()
+        if not documentos:
+            messagebox.showwarning("Advertencia", "No hay documentos para exportar")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"documentos_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")],
+        )
+        if not file_path:
+            return
+
+        try:
+            filas = []
+            for doc in documentos:
+                empleado = self.main_window.empleado_service.obtener_empleado(doc.empleado_id)
+                filas.append(
+                    [
+                        empleado.nombre_completo if empleado else "Desconocido",
+                        empleado.cedula if empleado else "",
+                        doc.tipo_documento,
+                        doc.titulo,
+                        format_date(doc.fecha_emision),
+                        format_date(doc.fecha_vencimiento),
+                        _estado_documento(doc),
+                    ]
+                )
+            PDFGenerator().generate_reporte_tabla(
+                "Listado de documentos",
+                ["Empleado", "Cédula", "Tipo", "Título", "Emisión", "Vencimiento", "Estado"],
+                filas,
+                file_path,
+                subtitulo=f"Total de documentos: {len(filas)}",
+                horizontal=True,
+            )
+            messagebox.showinfo("Éxito", f"Documentos exportados exitosamente:\n{file_path}")
+        except Exception as e:
+            logger.exception("No se pudo exportar el listado de documentos a PDF")
             messagebox.showerror("Error", f"Error al exportar documentos: {str(e)}")
 
     def _on_reporte_vencimientos(self):
@@ -3488,10 +3547,10 @@ class ApprovalDialog(ctk.CTkToplevel):
         mantener_ventana_al_frente(self)
         self.bind("<Escape>", lambda e: self.destroy())
 
-        self._create_widgets(title, action, incidencia)
+        self._create_widgets(action, incidencia)
 
-    def _create_widgets(self, title: str, action: str, incidencia):
-        """Crea los widgets del diálogo"""
+    def _create_widgets(self, action: str, incidencia):
+        """Crea los widgets del diálogo (el título ya lo fijó __init__)"""
         form_frame = ctk.CTkFrame(self, fg_color=COLORES["panel"])
         form_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -3677,6 +3736,10 @@ class NominaFrame(ctk.CTkFrame):
                 filter_frame, text="Planilla PDF", command=self._on_planilla_pdf
             )
             planilla_btn.pack(side="left", padx=5)
+            recibos_btn = ctk.CTkButton(
+                filter_frame, text="Recibos PDF", command=self._on_recibos_pdf
+            )
+            recibos_btn.pack(side="left", padx=5)
             export_pagos_btn = ctk.CTkButton(
                 filter_frame, text="Exportar", command=self._on_exportar_pagos
             )
@@ -3765,7 +3828,11 @@ class NominaFrame(ctk.CTkFrame):
 
     def _cargar_filtro_empleados(self):
         """Carga el filtro de empleados con «Todos» preseleccionado."""
-        self.empleado_filtro_map = {"Todos": None}
+        # El tipo se declara aquí: main_window llega sin anotar, de modo que
+        # empleado_service.listar_todos() es Any y el diccionario se inferiría
+        # como dict[str, Any]; eso hacía que _empleado_filtro_id devolviera Any
+        # donde promete int | None.
+        self.empleado_filtro_map: dict[str, int | None] = {"Todos": None}
         self.empleado_filtro_combo["values"] = ["Todos"]
         self.empleado_filtro_combo.set("Todos")
         try:
@@ -3774,7 +3841,7 @@ class NominaFrame(ctk.CTkFrame):
             logger.exception("No se pudo cargar el filtro de empleados de nómina")
             return
         self.empleado_filtro_map.update(
-            {f"{emp.nombre_completo} ({emp.cedula})": emp.id for emp in empleados}
+            {f"{emp.nombre_completo} ({emp.cedula})": int(emp.id) for emp in empleados}
         )
         self.empleado_filtro_combo["values"] = list(self.empleado_filtro_map.keys())
 
@@ -4033,6 +4100,71 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 """
             InfoDialog(self, "Detalles del Pago", details)
 
+    def _pago_a_datos_pdf(self, pago, empleado) -> dict:
+        """Datos de un pago en el formato que consume el generador de PDF.
+
+        Lo comparten el recibo individual y el lote de recibos: antes el
+        diccionario estaba escrito dos veces y cualquier campo nuevo había que
+        añadirlo en ambos sitios.
+        """
+        return {
+            "nombre_empleado": empleado.nombre_completo,
+            "cedula": empleado.cedula,
+            "periodo_inicio": pago.periodo_inicio,
+            "periodo_fin": pago.periodo_fin,
+            "referencia_pago": pago.referencia_pago,
+            "salario_base": float(pago.salario_base or 0),
+            "bonificaciones": float(pago.bonificaciones or 0),
+            "horas_extra": float(pago.horas_extra or 0),
+            "aguinaldo": float(pago.aguinaldo or 0),
+            "bono_vacacional": float(pago.bono_vacacional or 0),
+            "monto_bruto": float(pago.monto_bruto or 0),
+            "deduccion_seguro": float(pago.deduccion_seguro or 0),
+            "deduccion_pension": float(pago.deduccion_pension or 0),
+            "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
+            "otras_deducciones": float(pago.otras_deducciones or 0),
+            "descuentos": float(pago.descuentos or 0),
+            "monto_neto": float(pago.monto_neto or 0),
+        }
+
+    def _on_recibos_pdf(self):
+        """Genera en un solo PDF el recibo de cada pago visible"""
+        if not _verificar_permiso_accion(self.main_window, "report", "generar recibos"):
+            return
+        pares = self._pagos_con_empleado()
+        if not pares:
+            messagebox.showwarning("Advertencia", "No hay pagos para generar recibos")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"recibos_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")],
+        )
+        if not file_path:
+            return
+
+        try:
+            datos = [
+                self._pago_a_datos_pdf(pago, empleado)
+                for pago, empleado in pares
+                if empleado is not None
+            ]
+            if not datos:
+                messagebox.showwarning("Advertencia", "Ningún pago tiene un empleado asociado")
+                return
+            PDFGenerator().generate_recibos_pago(
+                datos,
+                file_path,
+                titulo=f"{len(datos)} recibo(s) · {date.today().strftime('%d/%m/%Y')}",
+            )
+            messagebox.showinfo(
+                "Éxito", f"Se generaron {len(datos)} recibos en un solo archivo:\n{file_path}"
+            )
+        except Exception as e:
+            logger.exception("No se pudieron generar los recibos de nómina")
+            messagebox.showerror("Error", f"Error al generar recibos: {str(e)}")
+
     def _on_generate_recibo(self):
         """Genera recibo de pago"""
         if not _verificar_permiso_accion(self.main_window, "report", "generar recibos"):
@@ -4042,25 +4174,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
             empleado = self.main_window.empleado_service.obtener_empleado(pago.empleado_id)
             if empleado:
                 try:
-                    pago_data = {
-                        "nombre_empleado": empleado.nombre_completo,
-                        "cedula": empleado.cedula,
-                        "periodo_inicio": pago.periodo_inicio,
-                        "periodo_fin": pago.periodo_fin,
-                        "referencia_pago": pago.referencia_pago,
-                        "salario_base": float(pago.salario_base or 0),
-                        "bonificaciones": float(pago.bonificaciones or 0),
-                        "horas_extra": float(pago.horas_extra or 0),
-                        "aguinaldo": float(pago.aguinaldo or 0),
-                        "bono_vacacional": float(pago.bono_vacacional or 0),
-                        "monto_bruto": float(pago.monto_bruto or 0),
-                        "deduccion_seguro": float(pago.deduccion_seguro or 0),
-                        "deduccion_pension": float(pago.deduccion_pension or 0),
-                        "deduccion_impuesto": float(pago.deduccion_impuesto or 0),
-                        "otras_deducciones": float(pago.otras_deducciones or 0),
-                        "descuentos": float(pago.descuentos or 0),
-                        "monto_neto": float(pago.monto_neto or 0),
-                    }
+                    pago_data = self._pago_a_datos_pdf(pago, empleado)
 
                     file_path = filedialog.asksaveasfilename(
                         defaultextension=".pdf",
@@ -4392,6 +4506,10 @@ class ConfiguracionFrame(ctk.CTkFrame):
             filtro_frame, text="Exportar", command=self._on_exportar_auditoria
         )
         export_btn.pack(side="left", padx=5)
+        export_pdf_btn = ctk.CTkButton(
+            filtro_frame, text="📄 PDF", command=self._on_exportar_auditoria_pdf
+        )
+        export_pdf_btn.pack(side="left", padx=5)
         manual_btn = ctk.CTkButton(filtro_frame, text="Manual", command=self._on_manual_auditoria)
         manual_btn.pack(side="left", padx=5)
 
@@ -4426,6 +4544,48 @@ class ConfiguracionFrame(ctk.CTkFrame):
         # Doble clic: ver el detalle completo del evento
         self.audit_tree.bind("<Double-1>", self._on_view_auditoria_detail)
         self._load_auditoria()
+
+    def _on_exportar_auditoria_pdf(self):
+        """Genera el registro de auditoría visible en PDF"""
+        eventos = getattr(self, "_audit_eventos", None) or []
+        if not eventos:
+            messagebox.showinfo("Auditoría", "No hay eventos para exportar")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=f"auditoria_{date.today().strftime('%Y%m%d')}.pdf",
+            filetypes=[("PDF Files", "*.pdf")],
+        )
+        if not file_path:
+            return
+
+        try:
+            filas = []
+            for evento in eventos:
+                detalles = evento.get("details") or {}
+                detalle = str(detalles.get("operation", "")) if isinstance(detalles, dict) else ""
+                filas.append(
+                    [
+                        evento.get("timestamp", ""),
+                        evento.get("event_type", ""),
+                        evento.get("user", ""),
+                        "Sí" if evento.get("success") else "No",
+                        detalle,
+                    ]
+                )
+            PDFGenerator().generate_reporte_tabla(
+                "Registro de auditoría",
+                ["Fecha", "Tipo de evento", "Usuario", "Éxito", "Detalle"],
+                filas,
+                file_path,
+                subtitulo=(f"Filtro: {self.audit_tipo_combo.get()} · Eventos: {len(filas)}"),
+                horizontal=True,
+            )
+            messagebox.showinfo("Auditoría", f"Registro exportado exitosamente:\n{file_path}")
+        except Exception as e:
+            logger.exception("No se pudo exportar el registro de auditoría a PDF")
+            messagebox.showerror("Error", f"Error al exportar auditoría: {str(e)}")
 
     def _load_auditoria(self):
         """Carga los eventos de auditoría recientes (con filtro opcional)"""
@@ -5717,6 +5877,8 @@ class PagoDialog(ctk.CTkToplevel):
             self.transient(parent)
 
         self._create_widgets()
+        # Ctrl+Intro y Ctrl+S guardan; el atajo común añade el primero.
+        atajos_formulario(self, self._on_save)
         self.bind("<Control-s>", lambda _evento: self._on_save())
         if pago:
             self._load_pago_data()

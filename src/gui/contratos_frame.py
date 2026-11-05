@@ -21,7 +21,8 @@ from src.gui.frames import (
     _indice_seleccion_combo,
     _seleccionar_fila_click,
 )
-from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.frames import _verificar_permiso_accion as _verificar_permiso
+from src.gui.theme import COLORES, atajos_formulario, habilitar_scroll_rueda
 from src.gui.widgets.tabla import EstadoTabla, configurar_cebra, etiqueta_fila
 from src.models import Contrato, Empleado, EstadoContrato, TipoContrato
 from src.utils.helpers import (
@@ -43,14 +44,6 @@ ETIQUETAS_ESTADO = {
     "vencido": "Vencido",
     "terminado": "Terminado",
 }
-
-
-def _verificar_permiso(main_window, permiso: str, accion: str) -> bool:
-    """Verifica el permiso operativo antes de ejecutar una acción contractual."""
-    if main_window is not None and main_window.tiene_permiso(permiso):
-        return True
-    messagebox.showwarning("Acceso denegado", f"Su rol no tiene permiso para {accion}")
-    return False
 
 
 class ContratosFrame(ctk.CTkFrame):
@@ -554,6 +547,7 @@ class ContratoDialog(ctk.CTkToplevel):
         self._create_widgets()
         self._actualizar_resumen()
         self._centrar()
+        atajos_formulario(self, self._guardar)
 
     def _centrar(self) -> None:
         """Prepara el diálogo modal"""

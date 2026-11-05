@@ -57,6 +57,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.datos.seguridad.AutenticadorBiometrico
+import ve.edu.sdep.movil.ui.comun.MensajeError
 
 /**
  * Puerta de entrada.
@@ -312,6 +313,7 @@ private fun FormularioIngreso(
 
     // Los fallos de conexión ya se explican en la tarjeta superior; aquí solo
     // se muestran los del ingreso (usuario, contraseña, cuenta bloqueada).
+    Spacer(Modifier.height(12.dp))
     MensajeError(estado.error.takeIf { estado.conectado })
 
     Spacer(Modifier.height(20.dp))
@@ -398,22 +400,4 @@ private fun CampoContrasena(
         },
         modifier = Modifier.fillMaxWidth(),
     )
-}
-
-@Composable
-private fun MensajeError(mensaje: String?) {
-    if (mensaje.isNullOrBlank()) return
-    Spacer(Modifier.height(12.dp))
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = MaterialTheme.shapes.small,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = mensaje,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp),
-        )
-    }
 }

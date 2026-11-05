@@ -535,9 +535,9 @@ class TarjetaIndicador(ctk.CTkFrame):
     def establecer_variacion(self, variacion: float) -> None:
         """Muestra la variación porcentual respecto al período anterior"""
         if variacion > 0:
-            texto, color = f"▲ {variacion:.1f}%", "#EF4444"
+            texto, color = f"▲ {variacion:.1f}%", COLORES["error"]
         elif variacion < 0:
-            texto, color = f"▼ {abs(variacion):.1f}%", "#10B981"
+            texto, color = f"▼ {abs(variacion):.1f}%", COLORES["exito"]
         else:
             texto, color = "sin cambios", COLORES["texto_suave"]
         self.variacion_label.configure(text=texto, text_color=color)

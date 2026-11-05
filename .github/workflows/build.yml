@@ -20,9 +20,14 @@ jobs:
   # (requirements-dev.txt, .flake8, pyproject.toml) pero no se ejecutaban en
   # ningún sitio, de modo que el código podía alejarse del estilo y de los
   # tipos sin que nada avisara. El job de compilación depende de este.
+  # La imagen se fija a ubuntu-24.04 en lugar de ubuntu-latest: GitHub migra
+  # la etiqueta a Ubuntu 26 (aviso que aparecía en cada ejecución) y el
+  # contrato de compatibilidad del proyecto se declara sobre glibc 2.41 /
+  # Ubuntu 24.04+. Fijarla evita que un cambio de sistema base rompa la
+  # compilación sin que nadie toque el repositorio.
   tests:
     name: Pruebas y calidad
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Clonar repositorio
         uses: actions/checkout@v5
@@ -80,7 +85,7 @@ jobs:
   build-linux:
     name: "Compilar ejecutable (Linux: Debian 13 / Ubuntu 25.04+)"
     needs: tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PYTHONUNBUFFERED: "1"
 
@@ -194,7 +199,7 @@ jobs:
   build-android:
     name: "Compilar APK Android"
     needs: tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Clonar repositorio

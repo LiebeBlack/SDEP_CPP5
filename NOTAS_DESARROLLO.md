@@ -165,6 +165,13 @@ datos sin interfaz, y cierra la auditoría estática de la versión 3.0.0.
 11. **Cédula numérica**: el servicio valida que la cédula sea numérica.
 12. **Limpieza**: eliminado código muerto y unificada la carga de la lista
     de empleados.
+13. **Tipado en integración continua**: `_empleado_filtro_id` devolvía `Any` y
+    mypy lo rechazaba con `no-any-return`; se resolvió con un mapa tipado
+    (`dict[str, int | None]`) y un `int()` explícito, sin `type: ignore` ni
+    relajar la configuración.
+14. **Pie de página de los PDF**: el gancho se pasaba al constructor de
+    `SimpleDocTemplate`, que lo descarta en silencio; ahora se aplica en
+    `build()` y el pie aparece en todas las páginas.
 
 ## Estructura de Archivos
 
@@ -442,6 +449,54 @@ pylint src/
   Tcl/Tk del intérprete standalone de Python 3.15 (`libtcl9tk9.0.so`,
   `libtk9.0.so`), que viven fuera del árbol de PyInstaller; corrige el
   fallo del selftest "libtcl9tk9.0.so: cannot open shared object file".
+
+## Novedades de la Versión 3.0.1 (identidad y documentos)
+
+Refinamiento del producto sin cambios de esquema: la versión 3.0.1 no migra
+datos y conserva los expedientes existentes.
+
+### Identidad visual
+
+- Nuevo módulo `src/gui/brand.py`: isotipo dibujado sobre `Canvas` (se
+  recolorea con la paleta vigente), encabezado de marca, títulos de ventana e
+  icono de la aplicación. Unifica `NOMBRE_CORTO` («SDEP»), `NOMBRE_PRODUCTO`,
+  `NOMBRE_COMPLETO` y el `LEMA`, que antes convivían con tres grafías
+  distintas («Sistema de Gestión de Personal», «SGP» en el icono y «SDEP» en
+  el instalador y el APK).
+- `tools/make_icon.py` genera `assets/app.ico` con degradado azul, máscara
+  redondeada y monograma, en nueve tamaños de 16 a 256 px.
+- Los colores sueltos que quedaban en la interfaz se sustituyeron por claves
+  de `COLORES`, de modo que el cambio entre tema claro y oscuro alcanza
+  también mensajes de error, avisos y estados de sincronización.
+
+### Documentos
+
+- `generate_reporte_tabla`: reporte paginado genérico (título, subtítulo,
+  columnas, filas y orientación) que emiten los listados de documentos,
+  estudiantes, calificaciones y auditoría.
+- `generate_recibos_pago`: un solo PDF con un recibo por página para el lote
+  de pagos del periodo. Los márgenes y espaciados del recibo se ajustaron
+  para que cada uno ocupe exactamente una página.
+- Pie en todas las páginas con la denominación del sistema, la fecha de
+  emisión y «Página N». El gancho va en `build()`: `SimpleDocTemplate` ignora
+  `onFirstPage`/`onLaterPages` cuando se pasan al constructor, y el pie se
+  perdía sin error visible.
+
+### Formularios e interfaz
+
+- `atajos_formulario(dialogo, guardar, primer_campo)` en `theme.py`:
+  **Ctrl+Intro** guarda y **Esc** cierra, con el foco en el primer campo. Se
+  aplicó a empleado, pago, contrato, contraseña y a los diálogos de
+  estudiantes y notas.
+- Permisos: la comprobación de acción se unificó en
+  `_verificar_permiso_accion`, con tolerancia a ventanas ya destruidas.
+
+### Integración continua
+
+- Los flujos fijan el runner en `ubuntu-24.04` en lugar de `ubuntu-latest`,
+  para que la base del entorno no cambie cuando la etiqueta migre a Ubuntu 26.
+- `mypy` en modo estricto se mantiene en verde sobre todo el árbol tras el
+  cambio de tipado descrito en las correcciones.
 
 ## Novedades de la Versión 3.0.0
 

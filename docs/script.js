@@ -266,18 +266,24 @@
         docsGrid.innerHTML = '';
 
         const query = searchQuery.trim().toLowerCase();
+        const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const q = normalize(query);
         const filteredDocs = docsData.filter(doc => {
             // El filtro usa la categoría real del documento, de modo que
             // cualquier categoría nueva del bundle aparece sin tocar el código.
             const matchesCat = filterCategory === 'all' || doc.category === filterCategory;
+            if (!matchesCat) return false;
+            if (!q) return true;
 
-            const matchesQuery = !query ||
-                (doc.title || '').toLowerCase().includes(query) ||
-                (doc.subtitle || '').toLowerCase().includes(query) ||
-                (doc.category || '').toLowerCase().includes(query) ||
-                (doc.badge || '').toLowerCase().includes(query);
-
-            return matchesCat && matchesQuery;
+            // El buscador del catálogo consulta el texto completo, igual que la
+            // paleta: quien escribe «auditoría» espera encontrar el documento que
+            // la explica, no solo las fichas que la mencionan en el título.
+            if (!doc._catalogIndex) {
+                doc._catalogIndex = normalize(
+                    `${doc.title} ${doc.subtitle} ${doc.category} ${doc.badge} ${doc.content}`
+                );
+            }
+            return doc._catalogIndex.includes(q);
         });
 
         if (filteredDocs.length === 0) {

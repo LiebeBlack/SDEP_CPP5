@@ -15,6 +15,13 @@ from typing import Any
 import customtkinter as ctk
 
 from src.config import db_config, settings
+from src.gui.brand import (
+    LEMA,
+    NOMBRE_CORTO,
+    NOMBRE_PRODUCTO,
+    EncabezadoMarca,
+    aplicar_icono,
+)
 from src.gui.contratos_frame import ContratosFrame
 from src.gui.estudiantes_frame import EstudiantesFrame
 from src.gui.frames import (
@@ -129,10 +136,13 @@ class MainWindow(ctk.CTk):
 
         super().__init__()
         setup_ui_raiz(self)
+        # Icono de la marca; el resto de ventanas lo heredan al ser el
+        # predeterminado de la aplicación.
+        aplicar_icono(self)
 
         self._exit_status = "exit"
 
-        self.title(settings.app_name)
+        self.title(f"{NOMBRE_PRODUCTO} — {settings.app_name}")
         # Tamaño adaptado a la pantalla: en portátiles de 1366x768 la ventana
         # de 1200x800 quedaba cortada por abajo (la barra de tareas tapaba las
         # acciones) y el mínimo de 1000x700 no cabía en un escritorio de 720.
@@ -387,15 +397,20 @@ class MainWindow(ctk.CTk):
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
-        self.title_label = ctk.CTkLabel(
+        # Encabezado de marca: isotipo + nombre del producto + descriptor.
+        # Se conserva title_label apuntando al nombre para que el recoloreado
+        # del cambio de tema siga funcionando igual que antes.
+        self.brand_header = EncabezadoMarca(
             self.sidebar,
-            text="SISTEMA DE GESTIÓN\nDE PERSONAL",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color=COLORES["texto"],
-            justify="left",
-            anchor="w",
+            titulo=NOMBRE_PRODUCTO,
+            subtitulo="Personal y nómina",
+            tamano_logo=38,
+            tamano_titulo=15,
+            wraplength=180,
+            color_fondo=COLORES["panel"],
         )
-        self.title_label.pack(fill="x", pady=(22, 22), padx=18)
+        self.brand_header.pack(fill="x", pady=(20, 18), padx=16)
+        self.title_label = self.brand_header.nombre_label
 
         # Solo los módulos permitidos para el rol del usuario
         for frame_name, titulo, icono in MODULOS:
@@ -445,7 +460,7 @@ class MainWindow(ctk.CTk):
 
         self.version_label = ctk.CTkLabel(
             self.sidebar,
-            text=f"v{settings.app_version}",
+            text=f"{NOMBRE_CORTO} v{settings.app_version}",
             font=ctk.CTkFont(size=10),
             text_color=COLORES["texto_suave"],
         )
@@ -650,12 +665,14 @@ class MainWindow(ctk.CTk):
             "sincronizado": ("al día", "ok"),
             "error_token": ("token rechazado", "error"),
         }
-        es_oscuro = ctk.get_appearance_mode() == "Dark"
+        # Los colores salen de la paleta activa: antes se codificaban a mano
+        # por tema y quedaban fuera del tema cuando este cambiaba sin
+        # recrear el indicador.
         colores = {
             "texto_suave": COLORES["texto_suave"],
             "acento": COLORES["acento"],
-            "ok": "#2ecc71" if es_oscuro else "#1e8449",
-            "error": "#e74c3c" if es_oscuro else "#c0392b",
+            "ok": COLORES["exito"],
+            "error": COLORES["error"],
         }
 
         clave = str(estado.get("estado") or "detenido")
@@ -1333,14 +1350,14 @@ class MainWindow(ctk.CTk):
             if getattr(settings, "build_date", ""):
                 detalle_build += f" ({settings.build_date})"
         texto = (
-            "ACERCA DE\n"
-            "=========\n\n"
+            f"{NOMBRE_PRODUCTO}\n"
+            "================\n\n"
             f"Sistema: {settings.app_name}\n"
             f"Versión: v{settings.app_version}\n"
             + (f"{detalle_build}\n" if detalle_build else "")
             + "\n"
-            "Sistema de gestión de personal y nómina para instituciones\n"
-            "educativas. Desarrollado en Python con CustomTkinter y\n"
+            f"{LEMA}.\n"
+            "Desarrollado en Python con CustomTkinter y\n"
             "SQLAlchemy (SQLite).\n\n"
             "Roles del sistema:\n"
             "  - Administrador: acceso total (configuración, usuarios,\n"
@@ -1395,6 +1412,7 @@ class MainWindow(ctk.CTk):
         try:
             self.configure(fg_color=COLORES["fondo"])
             self.sidebar.configure(fg_color=COLORES["panel"])
+            self.brand_header.recolorear(COLORES["panel"])
             self.title_label.configure(text_color=COLORES["texto"])
             self.institution_label.configure(text_color=COLORES["texto_suave"])
             if getattr(self, "user_label", None) is not None:
@@ -1495,7 +1513,11 @@ class MainWindow(ctk.CTk):
                 except Exception:
                     logger.debug("operación de interfaz ignorada", exc_info=True)
 
-            self.frame_title.configure(text=TITULOS_VENTANA.get(frame_name, frame_name))
+            titulo_modulo = TITULOS_VENTANA.get(frame_name, frame_name)
+            self.frame_title.configure(text=titulo_modulo)
+            # El título de la ventana (barra de tareas) dice siempre en qué
+            # módulo está el usuario, no solo el nombre del producto.
+            self.title(f"{titulo_modulo} · {NOMBRE_PRODUCTO}")
 
             frame_class = FRAME_CLASSES.get(frame_name)
             if frame_class is not None:

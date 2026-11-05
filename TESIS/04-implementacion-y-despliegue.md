@@ -108,6 +108,10 @@ La secuencia no fue casual. Los módulos de personal se construyeron antes que l
 
 **Captura por eventos del ORM.** El journal no depende de que cada servicio llame a una función de registro. Se engancha a los eventos de la sesión, de modo que un CRUD nuevo queda capturado sin modificar el servicio. La decisión reduce el riesgo de olvido y se verificó con pruebas que crean entidades desde servicios distintos.
 
+**Un solo generador para los listados.** Los reportes tabulares de documentos, estudiantes, calificaciones y auditoría se construyen con una única función (`generate_reporte_tabla`) que recibe las filas ya calculadas. La decisión evitó cuatro maquetaciones paralelas que se habrían desviado con el tiempo y permitió añadir el pie foliado en un solo punto.
+
+**Identidad en un módulo propio.** Nombres, lema, isotipo e icono viven en `src/gui/brand.py`. Antes convivían tres grafías del nombre del sistema entre la ventana, el icono y el instalador; centralizarlas convierte un cambio de denominación en una edición y no en una búsqueda por todo el árbol.
+
 **Errores del dominio con nombre propio.** Las reglas de negocio lanzan excepciones específicas, no excepciones genéricas. La interfaz las traduce a mensajes comprensibles y la auditoría registra el código. Esa práctica permitió distinguir en los registros entre un error del usuario y un defecto del sistema.
 
 ### 4.3.3 Fragmentos representativos
@@ -172,7 +176,7 @@ Los casos que la suite cubre con mayor detalle son los que sostienen las garant�
 
 ### 4.4.3 Integración continua
 
-El flujo de integración ejecuta la suite completa en cada push a las ramas principales y compila el ejecutable en Windows y Linux. La compilación de Linux se realiza en un contenedor Debian 13 y se autoverifica con una ejecución sin interfaz. El flujo de publicación firma los binarios y genera el instalador. La documentación se verifica con un paso que comprueba que el catálogo del portal esté sincronizado con los archivos Markdown.
+El flujo de integración ejecuta la suite completa en cada push a las ramas principales y compila el ejecutable en Windows y Linux, sobre runners de versión fijada (`ubuntu-24.04`) para que la migración de las etiquetas `-latest` no altere el entorno del build entre dos ejecuciones. La compilación de Linux se realiza en un contenedor Debian 13 y se autoverifica con una ejecución sin interfaz. El flujo de publicación firma los binarios y genera el instalador. La documentación se verifica con un paso que comprueba que el catálogo del portal esté sincronizado con los archivos Markdown.
 
 Ese paso es relevante para este compendio: si un documento se modifica y no se regenera el catálogo, la integración falla. La regla evita que el portal muestre una versión anterior del texto que el lector cree estar leyendo.
 

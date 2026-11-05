@@ -615,6 +615,41 @@ def centrar_ventana(ventana, ancho: int, alto: int) -> None:
         ventana.geometry(f"{ancho}x{alto}")
 
 
+def atajos_formulario(dialogo, guardar=None, primer_campo=None) -> None:
+    """
+    Atajos y foco comunes de los formularios de la aplicación.
+
+    Los diálogos de alta y edición comparten la misma mecánica de teclado, y
+    antes cada uno la resolvía a mano (o no la tenía):
+
+    - ``Ctrl+Intro`` guarda, sin importar en qué campo esté el cursor.
+    - ``Esc`` cierra: solo se registra si el diálogo no lo había vinculado, de
+      modo que nunca se ejecuta dos veces el cierre.
+    - El foco arranca en el primer campo, no en el primer botón, para que se
+      pueda empezar a escribir al abrir.
+
+    La función no propaga errores: un fallo de foco o de binding no puede
+    impedir que el formulario se muestre.
+    """
+    try:
+        if guardar is not None:
+            for secuencia in ("<Control-Return>", "<Control-KP_Enter>"):
+                dialogo.bind(secuencia, lambda _evento: guardar(), add="+")
+        if not dialogo.bind("<Escape>"):
+            dialogo.bind("<Escape>", lambda _evento: dialogo.destroy())
+        if primer_campo is not None:
+
+            def _enfocar() -> None:
+                try:
+                    primer_campo.focus_set()
+                except Exception:
+                    logger.debug("ajuste visual ignorado", exc_info=True)
+
+            dialogo.after(60, _enfocar)
+    except Exception:
+        logger.debug("ajuste visual ignorado", exc_info=True)
+
+
 def cancelar_after_pendientes(root) -> None:
     """
     Cancela los temporizadores `after` pendientes de una ventana

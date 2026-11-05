@@ -91,6 +91,11 @@ El portal también se abre sin conexión: `start docs/index.html` (Windows),
   marcadores `{{nombre}}`, `{{cedula}}`, `{{cargo}}`… y el sistema los sustituye por los
   datos del empleado, avisa de marcadores desconocidos y emite el PDF con la fecha de
   emisión. Los quince campos admitidos están en `CAMPOS_PLANTILLA`
+- **Recibos de pago por lote**: un solo PDF con un recibo por página para todos los
+  pagos del periodo, con el mismo formato y espacio de firma que el recibo individual
+- **Listados tabulares en PDF** desde documentos, estudiantes, calificaciones y
+  auditoría, con el filtro aplicado en pantalla, contador de filas y pie
+  institucional foliado («Página N»)
 - Exportación de listados a **Excel (.xlsx)** y **CSV** (UTF-8 compatible con Excel),
   incluida la exportación multihoja
 
@@ -104,8 +109,12 @@ El portal también se abre sin conexión: `start docs/index.html` (Windows),
 - Respaldos automáticos programados con verificación de integridad
 
 ### Interfaz y Experiencia de Usuario
+- Identidad visual única **SDEP**: isotipo propio dibujado sobre Canvas, encabezado
+  de marca, título de ventana e icono de aplicación coherentes entre el acceso, la
+  ventana principal y los documentos
 - Tema **oscuro/claro** configurable y persistente (botón ☀️/🌙 en la cabecera)
-- Atajos de teclado para navegar y operar más rápido
+- Atajos de teclado para navegar y operar más rápido, incluido **Ctrl+Intro** para
+  guardar cualquier formulario
 - Panel de control (Dashboard) con tarjetas estadísticas navegables,
   indicadores analíticos y gráficos propios
 - Ventanas integradas de **Ayuda** (guía rápida) y **Acerca de**
@@ -301,7 +310,7 @@ La integración continua se reparte entre tres workflows complementarios.
    dentro de contenedores `debian:13-slim` y se comprueba que la glibc
    máxima requerida no supere 2.41.
 6. **Android**: compila los APK de depuración y de release sin firmar en
-   `ubuntu-latest` (`./gradlew :app:testDebugUnitTest :app:assembleDebug
+   `ubuntu-24.04` (`./gradlew :app:testDebugUnitTest :app:assembleDebug
    :app:assembleRelease`) y los sube como artefactos; el APK firmado lo
    produce `build_release.yml`.
 7. **Artefactos**: sube a la ejecución el instalador `Setup.exe`, el ZIP

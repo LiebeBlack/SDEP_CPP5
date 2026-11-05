@@ -15,7 +15,15 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 from reportlab.lib.pagesizes import A4, landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    KeepTogether,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from src.models import Empleado
 from src.utils.helpers import format_currency, format_date
@@ -419,6 +427,60 @@ class PDFGenerator:
                 alignment=TA_CENTER,
                 fontName="Helvetica",
             )
+        )
+
+    def _pie_de_pagina(self, lienzo, documento) -> None:
+        """Pie común de los documentos: producto, fecha y número de página.
+
+        Los reportes institucionales deben poder identificarse y foliarse al
+        imprimirse; antes el PDF no decía de qué sistema salió ni en qué
+        página estaba el lector.
+        """
+        try:
+            ancho, _alto = documento.pagesize
+            lienzo.saveState()
+            lienzo.setFont("Helvetica", 7)
+            lienzo.setFillColor(colors.gray)
+            lienzo.drawString(
+                36, 18, f"Sistema de Gestión de Personal · {format_date(date.today())}"
+            )
+            lienzo.drawRightString(ancho - 36, 18, f"Página {documento.page}")
+            lienzo.restoreState()
+        except Exception:
+            # El pie es decorativo: un fallo al dibujarlo no puede impedir que
+            # el documento se genere.
+            return
+
+    def _documento(
+        self,
+        output_path: str,
+        pagesize=None,
+        rightMargin: float = 36,
+        leftMargin: float = 36,
+        topMargin: float = 48,
+        bottomMargin: float = 30,
+    ) -> SimpleDocTemplate:
+        """Documento con el pie institucional ya enganchado en todas las páginas."""
+        return SimpleDocTemplate(
+            output_path,
+            pagesize=pagesize or A4,
+            rightMargin=rightMargin,
+            leftMargin=leftMargin,
+            topMargin=topMargin,
+            bottomMargin=bottomMargin,
+        )
+
+    def _construir(self, doc, story) -> None:
+        """Cierra el documento aplicando el pie institucional en cada página.
+
+        El gancho va en ``build`` y no en el constructor: ``SimpleDocTemplate``
+        solo acepta ``onFirstPage``/``onLaterPages`` al construir el PDF; si se
+        pasan al constructor se descartan sin aviso y el pie no se dibuja.
+        """
+        doc.build(
+            story,
+            onFirstPage=self._pie_de_pagina,
+            onLaterPages=self._pie_de_pagina,
         )
 
     def _get_configuracion(self) -> dict:
@@ -844,13 +906,16 @@ class PDFGenerator:
         """
         config = self._get_configuracion()
 
-        doc = SimpleDocTemplate(
+        # Márgenes y espaciado ajustados para que el recibo ocupe UNA página:
+        # con 72 pt de margen superior y 1,5 pulgadas antes de la firma, el
+        # bloque se desbordaba y cada recibo salía en dos hojas.
+        doc = self._documento(
             output_path,
             pagesize=self.page_size,
             rightMargin=72,
             leftMargin=72,
-            topMargin=72,
-            bottomMargin=18,
+            topMargin=36,
+            bottomMargin=24,
         )
 
         story = [
@@ -858,18 +923,18 @@ class PDFGenerator:
                 escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
                 self.styles["CustomTitle"],
             ),
-            Spacer(1, 0.3 * inch),
+            Spacer(1, 0.15 * inch),
             Paragraph("RECIBO DE PAGO", self.styles["CustomTitle"]),
-            Spacer(1, 0.3 * inch),
+            Spacer(1, 0.15 * inch),
             self._tabla_info_recibo(pago_data),
-            Spacer(1, 0.3 * inch),
+            Spacer(1, 0.15 * inch),
             Paragraph("DESGLOSE DE PAGOS", self.styles["CustomSubtitle"]),
             self._tabla_desglose_recibo(pago_data),
-            Spacer(1, 1.5 * inch),
+            Spacer(1, 0.35 * inch),
             self._tabla_firma_recibo(),
         ]
 
-        doc.build(story)
+        self._construir(doc, story)
 
         return output_path
 
@@ -959,7 +1024,7 @@ class PDFGenerator:
                     ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                     ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
                     ("FONTSIZE", (0, 0), (-1, -1), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                     ("LINEABOVE", (0, 6), (-1, 6), 1, colors.black),
                     ("LINEBELOW", (0, 6), (-1, 6), 1, colors.black),
                     ("FONTNAME", (0, 6), (1, 6), "Helvetica-Bold"),
@@ -1477,6 +1542,160 @@ class PDFGenerator:
             ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]
+
+    def generate_reporte_tabla(
+        self,
+        titulo: str,
+        encabezados: list[str],
+        filas: list[list[Any]],
+        output_path: str,
+        subtitulo: str | None = None,
+        resumen: str | None = None,
+        horizontal: bool = False,
+    ) -> str:
+        """Exporta cualquier tabla de la interfaz a un PDF con el estilo común.
+
+        Las listas de estudiantes, calificaciones, contratos o pagos ya se
+        exportan a Excel/CSV; con esta función cualquier módulo puede ofrecer
+        también el PDF sin reescribir cabecera, tabla y pie en cada uno. Las
+        columnas se reparten a partes iguales sobre el ancho útil de la página.
+
+        Args:
+            titulo: título del reporte (se imprime en mayúsculas)
+            encabezados: nombres de las columnas
+            filas: filas ya formateadas como texto
+            output_path: ruta del PDF a generar
+            subtitulo: línea de contexto (periodo, filtro, total)
+            resumen: línea de cierre (totales del reporte)
+            horizontal: usa A4 horizontal para tablas con muchas columnas
+
+        Raises:
+            ValueError: si no hay encabezados o la tabla no cabe en la página
+        """
+        encabezados = [str(encabezado) for encabezado in encabezados if str(encabezado).strip()]
+        if not encabezados:
+            raise ValueError("El reporte necesita al menos una columna")
+
+        config = self._get_configuracion()
+        doc = self._documento(output_path, pagesize=landscape(A4) if horizontal else A4)
+
+        story: list[Any] = [
+            Paragraph(
+                escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA"))),
+                self.styles["CustomTitle"],
+            ),
+            Spacer(1, 0.15 * inch),
+            Paragraph(escape(str(titulo).upper())[:120], self.styles["CustomTitle"]),
+        ]
+        if subtitulo:
+            story.append(Paragraph(escape(str(subtitulo))[:200], self.styles["CustomData"]))
+        story.append(
+            Paragraph(
+                f"Fecha de emisión: {format_date(date.today())} | " f"Registros: {len(filas)}",
+                self.styles["CustomData"],
+            )
+        )
+        story.append(Spacer(1, 0.15 * inch))
+
+        if filas:
+            datos = [encabezados] + [
+                [("" if valor is None else str(valor)) for valor in fila] for fila in filas
+            ]
+            ancho_columna = doc.width / len(encabezados)
+            tabla = Table(datos, repeatRows=1, colWidths=[ancho_columna] * len(encabezados))
+            tabla.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 8),
+                        ("FONTSIZE", (0, 1), (-1, -1), 7.5),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+                        ("GRID", (0, 0), (-1, -1), 0.4, colors.black),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ]
+                )
+            )
+            story.append(tabla)
+        else:
+            story.append(
+                Paragraph(
+                    "No hay registros que coincidan con el filtro aplicado.",
+                    self.styles["CustomBody"],
+                )
+            )
+
+        if resumen:
+            story.append(Spacer(1, 0.15 * inch))
+            story.append(Paragraph(escape(str(resumen))[:300], self.styles["CustomData"]))
+
+        self._construir(doc, story)
+        return output_path
+
+    def generate_recibos_pago(
+        self, pagos: list[dict], output_path: str, titulo: str | None = None
+    ) -> str:
+        """Genera en un solo PDF el recibo de cada pago de la lista.
+
+        Antes, imprimir la nómina completa exigía abrir un diálogo de guardado
+        por cada recibo. Aquí se arma un archivo con una página por empleado y
+        la configuración institucional se lee una sola vez.
+
+        Args:
+            pagos: datos de cada pago, con las mismas claves que
+                ``generate_recibo_pago``
+            output_path: ruta del PDF a generar
+            titulo: subtítulo común (periodo o filtro aplicado)
+
+        Raises:
+            ValueError: si la lista está vacía
+        """
+        if not pagos:
+            raise ValueError("No hay pagos para incluir en los recibos")
+
+        config = self._get_configuracion()
+        nombre_institucion = escape(str(config.get("nombre_institucion", "INSTITUCIÓN EDUCATIVA")))
+        # Un recibo por página: mismos márgenes que el recibo individual, que
+        # también se ajustaron para no partir el bloque en dos hojas.
+        doc = self._documento(
+            output_path,
+            pagesize=self.page_size,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=36,
+            bottomMargin=24,
+        )
+
+        story: list[Any] = []
+        for indice, pago in enumerate(pagos):
+            if indice:
+                story.append(PageBreak())
+            story.extend(
+                [
+                    Paragraph(nombre_institucion, self.styles["CustomTitle"]),
+                    Spacer(1, 0.15 * inch),
+                    Paragraph("RECIBO DE PAGO", self.styles["CustomTitle"]),
+                ]
+            )
+            if titulo:
+                story.append(Paragraph(escape(str(titulo))[:200], self.styles["CustomData"]))
+            story.extend(
+                [
+                    Spacer(1, 0.15 * inch),
+                    self._tabla_info_recibo(pago),
+                    Spacer(1, 0.15 * inch),
+                    Paragraph("DESGLOSE DE PAGOS", self.styles["CustomSubtitle"]),
+                    self._tabla_desglose_recibo(pago),
+                    Spacer(1, 0.35 * inch),
+                    self._tabla_firma_recibo(),
+                ]
+            )
+
+        self._construir(doc, story)
+        return output_path
 
     def generate_reporte_incidencias(
         self, filas: list[dict], output_path: str, titulo: str | None = None

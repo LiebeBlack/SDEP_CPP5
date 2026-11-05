@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Grade
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Tune
@@ -43,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.dominio.modelo.Modulo
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
+import ve.edu.sdep.movil.ui.comun.MensajeVacio
 
 /**
  * Índice de módulos del sistema.
@@ -75,7 +78,7 @@ fun PantallaModulos(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(relleno),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
@@ -89,6 +92,17 @@ fun PantallaModulos(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            if (modulos.isEmpty()) {
+                item {
+                    MensajeVacio(
+                        icono = Icons.Filled.Lock,
+                        titulo = "Sin módulos habilitados",
+                        detalle = "Su rol no tiene acceso a ningún módulo en este teléfono. " +
+                            "El acceso se administra desde el sistema de escritorio.",
+                    )
+                }
             }
 
             items(modulos, key = { it.name }) { modulo ->

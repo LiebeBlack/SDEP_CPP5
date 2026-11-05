@@ -562,6 +562,27 @@ se resuelve igual que `{{cedula}}`. Si la plantilla usa un marcador que el siste
 no conoce, la aplicación lo advierte antes de generar el documento para que no
 quede impreso tal cual.
 
+### Listados tabulares en PDF
+
+Además de los trece modelos, cada listado de trabajo se puede emitir tal como
+está filtrado en pantalla, con las columnas del módulo, el contador de filas y
+el pie institucional con el número de página:
+
+- **Documentos** → botón **📄 PDF**: expediente documental con tipo, título,
+  fecha de emisión, vencimiento y estado
+- **Estudiantes** → botón **📄 PDF**: legajo con cédula, nivel, representante y
+  datos de contacto
+- **Calificaciones** → botón **📄 PDF**: notas del filtro activo
+- **Auditoría** → botón **📄 PDF**: eventos del tipo seleccionado, con usuario y
+  resultado
+
+### Recibos de pago por lote
+
+En **Nómina**, el botón **Recibos PDF** genera un solo archivo con un recibo por
+página para todos los pagos del periodo filtrado. Es el formato adecuado para
+entregar los comprobantes al personal: cada recibo conserva su espacio de firma
+y sello, y el pie indica en qué página va el lector.
+
 ### Reporte de Empleados
 
 Genere reportes que incluyen:
@@ -736,6 +757,7 @@ el módulo que esté visible en ese momento:
 | **Ctrl+N** | Nuevo registro del módulo activo (Empleado, Documento, Incidencia, Pago, Usuario, Estudiante o Nota; la nota exige autorización) |
 | **Ctrl+F** | Enfocar la búsqueda (Empleados) o el filtro del módulo activo |
 | **Ctrl+S** | Guardar cambios en el módulo de Configuración |
+| **Ctrl+Intro** | Guardar y cerrar el formulario abierto (empleado, pago, contrato, contraseña, estudiante o nota) |
 | **F5** | Actualizar la lista o los datos del módulo activo |
 | **Esc** | Cerrar cuadros de diálogo; en la ventana principal, limpiar la selección de la tabla |
 

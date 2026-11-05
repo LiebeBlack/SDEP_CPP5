@@ -30,7 +30,8 @@ from src.gui.frames import (
     _indice_seleccion_combo,
     _seleccionar_fila_click,
 )
-from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.frames import _verificar_permiso_accion as _verificar_permiso
+from src.gui.theme import COLORES, atajos_formulario, habilitar_scroll_rueda
 from src.gui.widgets.tabla import EstadoTabla, configurar_cebra, etiqueta_fila
 from src.models import Grado, Matricula, NotaFinal, PeriodoAcademico
 from src.utils.helpers import format_date, parse_date_estricto
@@ -41,15 +42,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 TODOS = "Todos"
-COLOR_ERROR = "#e74c3c"
-
-
-def _verificar_permiso(main_window, permiso: str, accion: str) -> bool:
-    """Verifica el permiso operativo antes de ejecutar una acción."""
-    if main_window is not None and main_window.tiene_permiso(permiso):
-        return True
-    messagebox.showwarning("Acceso denegado", f"Su rol no tiene permiso para {accion}")
-    return False
 
 
 class NotasFrame(ctk.CTkFrame):
@@ -195,7 +187,7 @@ class NotasFrame(ctk.CTkFrame):
 
         acciones = ctk.CTkFrame(parent, fg_color="transparent")
         acciones.pack(fill="x", padx=8, pady=(0, 4))
-        for columna in range(7):
+        for columna in range(8):
             acciones.grid_columnconfigure(columna, weight=1, uniform="acciones_notas")
 
         botones = (
@@ -206,6 +198,7 @@ class NotasFrame(ctk.CTkFrame):
             ("📄 Boletín", self._ver_boletin),
             ("📑 Acta", self._ver_acta),
             ("📊 Exportar", self._exportar),
+            ("📄 PDF", self._exportar_pdf),
         )
         for indice, (texto, comando) in enumerate(botones):
             ctk.CTkButton(
@@ -492,7 +485,7 @@ class NotasFrame(ctk.CTkFrame):
             text=f"{self.escala_label.cget('text')} · Notas mostradas: {len(self._notas)}"
         )
         try:
-            self.tree.tag_configure("reprobada", foreground=COLOR_ERROR)
+            self.tree.tag_configure("reprobada", foreground=COLORES["error"])
         except tk.TclError:
             logger.debug("No se pudo colorear la fila reprobada", exc_info=True)
 
@@ -691,6 +684,60 @@ class NotasFrame(ctk.CTkFrame):
             logger.warning("No se pudo exportar las notas", exc_info=True)
             messagebox.showerror("Notas", f"No se pudo exportar:\n{e}")
 
+    def _exportar_pdf(self) -> None:
+        """Genera las calificaciones mostradas en PDF"""
+        if not _verificar_permiso(self.main_window, "report", "exportar notas"):
+            return
+        if not self._notas:
+            messagebox.showinfo("Notas", "No hay notas para exportar")
+            return
+        filas = []
+        for nota in self._notas:
+            calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
+            filas.append(
+                [
+                    self._nombre_estudiante(nota),
+                    self._cedula_estudiante(nota),
+                    nota.materia,
+                    f"{calif:g}",
+                    "Aprobada" if calif >= self._nota_aprobatoria else "Reprobada",
+                    nota.registrado_por or "",
+                ]
+            )
+        try:
+            from pathlib import Path
+
+            from src.config import settings
+            from src.utils.helpers import (
+                abrir_con_aplicacion_predeterminada,
+                ensure_directory_exists,
+                get_timestamp,
+            )
+            from src.utils.pdf_generator import pdf_generator
+
+            carpeta = Path(settings.exports_path)
+            ensure_directory_exists(str(carpeta))
+            destino = carpeta / f"notas_{get_timestamp()}.pdf"
+            pdf_generator.generate_reporte_tabla(
+                "Calificaciones registradas",
+                [
+                    "Estudiante",
+                    "Cédula",
+                    "Materia",
+                    "Calificación",
+                    "Estado",
+                    "Registrada por",
+                ],
+                filas,
+                str(destino),
+                subtitulo=(f"Nota aprobatoria: {self._nota_aprobatoria:g} · Total: {len(filas)}"),
+            )
+            abrir_con_aplicacion_predeterminada(destino)
+            messagebox.showinfo("Notas", f"Reporte PDF generado:\n{destino}")
+        except (OSError, ValueError, ImportError) as e:
+            logger.warning("No se pudo generar el reporte PDF de notas", exc_info=True)
+            messagebox.showerror("Notas", f"No se pudo generar el reporte:\n{e}")
+
     # ------------------------------------------------------------------
     # Periodos académicos
     # ------------------------------------------------------------------
@@ -846,7 +893,8 @@ class _DialogoBase(ctk.CTkToplevel):
         self.bind("<Escape>", lambda _e: self.destroy())
 
     def _preparar_modal(self) -> None:
-        """Centra el diálogo y captura el foco"""
+        """Centra el diálogo, captura el foco y activa los atajos del formulario"""
+        atajos_formulario(self, self._guardar)
         try:
             self.update_idletasks()
             self.grab_set()
@@ -954,7 +1002,7 @@ class NotaDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color=COLOR_ERROR,
+            text_color=COLORES["error"],
             anchor="w",
             justify="left",
             wraplength=460,
@@ -1065,7 +1113,7 @@ class PeriodoDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color=COLOR_ERROR,
+            text_color=COLORES["error"],
             anchor="w",
             justify="left",
             wraplength=420,
@@ -1361,7 +1409,7 @@ class ActaDialog(ctk.CTkToplevel):
                 tags=(("reprobadas" if reprobadas else "ok"),) + etiqueta_fila(indice),
             )
         try:
-            arbol.tag_configure("reprobadas", foreground=COLOR_ERROR)
+            arbol.tag_configure("reprobadas", foreground=COLORES["error"])
         except tk.TclError:
             logger.debug("No se pudo colorear el acta", exc_info=True)
 

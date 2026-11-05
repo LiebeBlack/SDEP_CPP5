@@ -79,6 +79,8 @@ El cálculo de nómina se aisló en el paquete `src/nomina`, que no depende de l
 
 Los módulos transversales refuerzan la seguridad, la trazabilidad y la sostenibilidad de la información. `security.py` valida y sanitiza entradas, verifica permisos y gestiona contraseñas con PBKDF2-HMAC-SHA256, doscientas mil iteraciones y sal aleatorio de dieciséis bytes, con comparación en tiempo constante. `audit_logger.py` registra las acciones críticas, entre ellas los inicios de sesión y las operaciones sobre empleados, documentos, incidencias y nómina. `backup_manager.py` y `backup_scheduler.py` administran respaldos y restauración con políticas de retención, mientras que `pdf_generator.py` produce trece tipos de documentos oficiales, entre los que figuran constancias de trabajo, de estudios y de ingresos, recibos de pago, fichas de empleado, planillas de nómina, liquidaciones y reportes de empleados, incidencias, vencimientos, contratos y movimiento anual; a ellos se añade la constancia generada desde una plantilla Markdown propia de la institución, cuyos marcadores `{{campo}}` se resuelven con los datos del empleado y con los quince campos declarados en `CAMPOS_PLANTILLA`. `document_manager.py` gobierna el almacenamiento de archivos y fotografías, `exporter.py` genera exportaciones en formatos abiertos y `validators.py`, junto con `helpers.py`, completa las utilidades de validación y presentación.
 
+Sobre ese generador se añadieron dos piezas en la versión 3.0.1: `generate_recibos_pago`, que reúne en un solo archivo un recibo por página para el lote de pagos de un periodo, y `generate_reporte_tabla`, que compone un listado paginado a partir de las columnas y las filas ya calculadas y del que se sirven los listados de documentos, estudiantes, calificaciones y auditoría. Ambos documentos llevan pie en todas las páginas con la denominación del sistema, la fecha de emisión y el número de página, condición necesaria para identificar y foliar un reporte impreso.
+
 ### 4.2.2 Funcionalidades Implementadas
 
 #### 4.2.2.1 Módulo de Empleados
@@ -160,7 +162,7 @@ El sistema utiliza SQLite como motor de persistencia y SQLAlchemy como capa de m
 
 #### 4.2.3.2 Interfaz Gráfica
 
-La interfaz mantiene un diseño consistente en los nueve módulos, con temas claro y oscuro persistidos en la configuración, validación en tiempo real, retroalimentación visual de las acciones, navegación completa por teclado y diálogos auxiliares de ayuda y de información del sistema. Las tarjetas del panel de control son navegables y conducen al módulo correspondiente, lo que reduce la profundidad de navegación para las consultas habituales.
+La interfaz mantiene un diseño consistente en los nueve módulos, con temas claro y oscuro persistidos en la configuración, validación en tiempo real, retroalimentación visual de las acciones, navegación completa por teclado y diálogos auxiliares de ayuda y de información del sistema. Las tarjetas del panel de control son navegables y conducen al módulo correspondiente, lo que reduce la profundidad de navegación para las consultas habituales. La identidad visual se centralizó en `src/gui/brand.py`, que dibuja el isotipo sobre `Canvas`, compone el encabezado de marca y aplica el icono de la aplicación, de manera que el acceso, la ventana principal y los documentos emplean una misma denominación y una misma paleta.
 
 #### 4.2.3.3 Seguridad
 

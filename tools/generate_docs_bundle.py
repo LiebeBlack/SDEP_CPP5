@@ -5,6 +5,7 @@ en un archivo JavaScript estructurado para permitir lectura instantánea offline
 y en cualquier navegador (sin problemas de CORS en file://).
 """
 
+import hashlib
 import json
 import os
 import re
@@ -243,6 +244,32 @@ def count_words(text: str) -> int:
     return len(re.findall(r"\w+", text))
 
 
+def stamp_asset_versions() -> None:
+    """Fija en index.html un sello de versión derivado del contenido de cada asset.
+
+    El portal se sirve como archivos estáticos y el navegador puede conservar una
+    copia anterior de styles.css, script.js o docs_data.js. Al cambiar el sello
+    (hash corto del archivo) la URL cambia y el navegador descarga la versión
+    nueva, sin depender de cabeceras de caché ni de que el usuario limpie datos.
+    """
+    index_path = DOCS_DIR / "index.html"
+    if not index_path.exists():
+        print("⚠️ Advertencia: no se encontró docs/index.html para sellar versiones")
+        return
+
+    html = index_path.read_text(encoding="utf-8")
+    for asset in ("styles.css", "script.js", "docs_data.js"):
+        asset_path = DOCS_DIR / asset
+        if not asset_path.exists():
+            continue
+        digest = hashlib.md5(asset_path.read_bytes()).hexdigest()[:8]
+        patron = re.compile(rf"{re.escape(asset)}(\?v=[^\"']*)?(?=[\"'])")
+        html = patron.sub(f"{asset}?v={digest}", html)
+        print(f"[OK] Sello de {asset}: {digest}")
+
+    index_path.write_text(html, encoding="utf-8")
+
+
 def build_bundle():
     print(f"Empaquetando documentos desde {REPO_ROOT}...")
     documents = []
@@ -314,6 +341,7 @@ def build_bundle():
     file_size_kb = OUTPUT_FILE.stat().st_size / 1024
     print(f"Catalogo generado exitosamente en {OUTPUT_FILE} ({file_size_kb:.1f} KB)")
     print(f"Archivos sincronizados en {CONTENT_DIR}")
+    stamp_asset_versions()
 
 
 if __name__ == "__main__":

@@ -3,17 +3,30 @@ Genera el ícono de la aplicación (assets/app.ico)
 
 Uso: python tools/make_icon.py
 
-El ícono se usa en el ejecutable (PyInstaller) y en el instalador
-(Inno Setup). Requiere Pillow.
+El ícono se usa en el ejecutable (PyInstaller), en el instalador (Inno Setup)
+y, mediante src.gui.brand, como icono de las ventanas. Requiere Pillow.
+
+La marca es la misma en todo el producto (SDEP): el isotipo del escritorio se
+dibuja con el mismo criterio que el de la interfaz, de modo que el icono del
+.exe, el del instalador y el del login no se contradigan.
 """
 
 import os
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, features
+from PIL import Image, ImageDraw, ImageFont
 
 RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / "assets" / "app.ico"
+
+# Degradado de la marca (mismos tonos que la paleta de la interfaz).
+AZUL_SUPERIOR = (59, 130, 246)  # #3b82f6 (acento)
+AZUL_INFERIOR = (30, 58, 138)  # #1e3a8a (azul profundo)
+
+TAMANO_BASE = 512
+MARGEN = 26
+RADIO = 108
+TAMANOS_ICO = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 
 
 def _fuente(tamano: int):
@@ -31,53 +44,50 @@ def _fuente(tamano: int):
     return ImageFont.load_default()
 
 
+def _degradado_vertical(ancho: int, alto: int) -> Image.Image:
+    """Degradado vertical continuo entre los dos azules de la marca."""
+    degradado = Image.new("RGBA", (ancho, alto), (0, 0, 0, 0))
+    dibujo = ImageDraw.Draw(degradado)
+    for y in range(alto):
+        t = y / max(1, alto - 1)
+        color = tuple(
+            int(AZUL_SUPERIOR[i] + (AZUL_INFERIOR[i] - AZUL_SUPERIOR[i]) * t) for i in range(3)
+        )
+        dibujo.line([(0, y), (ancho, y)], fill=color + (255,))
+    return degradado
+
+
 def generar_icono(ruta: Path) -> None:
-    """Dibuja un cuadrado redondeado azul con las siglas SGP"""
-    tamano_base = 512
-    img = Image.new("RGBA", (tamano_base, tamano_base), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+    """
+    Dibuja el isotipo: cuadrado redondeado con degradado azul y una «S» blanca.
 
-    margen = 24
-    radio = 110
-    azul = (34, 51, 77, 255)  # #22334d (panel de la marca)
-    azul_claro = (58, 88, 130, 255)  # degradado inferior
-    blanco = (255, 255, 255, 255)
+    El degradado se recorta con una máscara redondeada. Antes se pintaba con
+    líneas horizontales sobre el cuadrado ya dibujado y esas líneas tapaban
+    las esquinas, de modo que el icono salía con esquinas rectas.
+    """
+    degradado = _degradado_vertical(TAMANO_BASE, TAMANO_BASE)
 
-    # Fondo redondeado con leve degradado vertical
-    draw.rounded_rectangle(
-        [margen, margen, tamano_base - margen, tamano_base - margen],
-        radius=radio,
-        fill=azul,
+    mascara = Image.new("L", (TAMANO_BASE, TAMANO_BASE), 0)
+    ImageDraw.Draw(mascara).rounded_rectangle(
+        [MARGEN, MARGEN, TAMANO_BASE - MARGEN, TAMANO_BASE - MARGEN],
+        radius=RADIO,
+        fill=255,
     )
-    for y in range(margen, tamano_base - margen):
-        t = (y - margen) / (tamano_base - 2 * margen)
-        color = tuple(int(azul[i] + (azul_claro[i] - azul[i]) * t) for i in range(3)) + (255,)
-        draw.line([(margen, y), (tamano_base - margen, y)], fill=color)
 
-    # Símbolo central: "SGP"
-    texto = "SGP"
-    fuente = _fuente(210)
-    caja = draw.textbbox((0, 0), texto, font=fuente)
-    ancho_texto = caja[2] - caja[0]
-    alto_texto = caja[3] - caja[1]
-    x = int((tamano_base - ancho_texto) // 2 - caja[0])
-    y = int((tamano_base - alto_texto) // 2 - caja[1])
-    draw.text((x, y), texto, font=fuente, fill=blanco)
+    img = Image.new("RGBA", (TAMANO_BASE, TAMANO_BASE), (0, 0, 0, 0))
+    img.paste(degradado, (0, 0), mascara)
 
-    # Redimensionar con suavizado a los tamaños que espera Windows
-    if features.check_module("raqm"):
-        filtro = Image.Resampling.LANCZOS
-    else:
-        filtro = Image.Resampling.BICUBIC
-    img_redimensionada = img.resize((256, 256), filtro)
+    # Monograma centrado, ajustado por la caja real del glifo para que quede
+    # ópticamente centrado y no desplazado por el hueco de la línea base.
+    dibujo = ImageDraw.Draw(img)
+    fuente = _fuente(300)
+    caja = dibujo.textbbox((0, 0), "S", font=fuente)
+    x = int((TAMANO_BASE - (caja[2] - caja[0])) / 2 - caja[0])
+    y = int((TAMANO_BASE - (caja[3] - caja[1])) / 2 - caja[1])
+    dibujo.text((x, y), "S", font=fuente, fill=(255, 255, 255, 255))
 
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    tamanos = [16, 20, 24, 32, 40, 48, 64, 128, 256]
-    img_redimensionada.save(
-        ruta,
-        format="ICO",
-        sizes=[(s, s) for s in tamanos],
-    )
+    img.save(ruta, format="ICO", sizes=[(s, s) for s in TAMANOS_ICO])
     print(f"Ícono generado: {ruta}")
 
 

@@ -11,9 +11,17 @@ import customtkinter as ctk
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.config import db_config
+from src.gui.brand import (
+    LEMA,
+    NOMBRE_COMPLETO,
+    NOMBRE_PRODUCTO,
+    EncabezadoMarca,
+    aplicar_icono,
+)
 from src.gui.theme import (
     COLORES,
     aplicar_modo_apariencia,
+    atajos_formulario,
     cancelar_after_pendientes,
     centrar_ventana,
     enable_windows_dpi_awareness,
@@ -72,6 +80,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         self._fallback_timer: str = self.after(8000, self._cerrar_si_no_visible)
 
         self._create_widgets()
+        atajos_formulario(self, self._on_save, self.new_pass)
 
         # Forzar el mapeo y el foco antes de wait_window: garantiza que el
         # diálogo sea visible y operativo en pantallas con escalado alto.
@@ -162,8 +171,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
         cancel_btn = ctk.CTkButton(
             btn_frame,
             text="Cancelar",
-            fg_color="#8a3b3b",
-            hover_color="#a04a4a",
+            **estilo_boton_moderno("destructivo"),
             command=self._on_cancel,
         )
         cancel_btn.pack(side="right", padx=5)
@@ -218,6 +226,9 @@ class LoginWindow(ctk.CTk):
 
         super().__init__()
         setup_ui_raiz(self)
+        # Icono de la aplicación: al registrarlo como predeterminado, los
+        # diálogos que se abren después lo heredan sin repetir la llamada.
+        aplicar_icono(self)
 
         self.user: Usuario | None = None
         # Copia simple de la identidad autenticada. La sesión de base de
@@ -243,7 +254,7 @@ class LoginWindow(ctk.CTk):
         except Exception:
             aplicar_modo_apariencia("Light")
 
-        self.title("Iniciar Sesión — Sistema de Gestión de Personal")
+        self.title(f"Acceder · {NOMBRE_PRODUCTO} — {NOMBRE_COMPLETO}")
         self.resizable(False, False)
         self.configure(fg_color=COLORES["fondo"])
         centrar_ventana(self, 880, 480)
@@ -268,20 +279,27 @@ class LoginWindow(ctk.CTk):
         brand.pack(side="left", fill="y")
         brand.pack_propagate(False)
 
-        ctk.CTkLabel(
+        # Marca compartida con la ventana principal: isotipo, nombre del
+        # producto y descriptor en un solo componente.
+        EncabezadoMarca(
             brand,
-            text="SISTEMA DE GESTIÓN\nDE PERSONAL Y NÓMINA",
-            font=ctk.CTkFont(size=22, weight="bold"),
-            text_color=COLORES["texto"],
-            justify="center",
+            titulo=NOMBRE_PRODUCTO,
+            subtitulo=NOMBRE_COMPLETO,
+            orientacion="vertical",
+            tamano_logo=104,
+            tamano_titulo=22,
+            wraplength=260,
+            color_fondo=COLORES["panel"],
         ).pack(expand=True, padx=24)
 
         ctk.CTkLabel(
             brand,
-            text="Instituciones Educativas",
-            font=ctk.CTkFont(size=12),
+            text=LEMA,
+            font=ctk.CTkFont(size=11),
             text_color=COLORES["texto_suave"],
-        ).pack(pady=(0, 30))
+            wraplength=260,
+            justify="center",
+        ).pack(pady=(10, 22), padx=24)
 
         # Panel derecho: formulario (colores de la paleta activa para que
         # las etiquetas sigan siendo legibles al cambiar a tema claro)
@@ -338,7 +356,7 @@ class LoginWindow(ctk.CTk):
             inner,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color="#ccaa44",
+            text_color=COLORES["advertencia"],
             wraplength=320,
             justify="center",
         )

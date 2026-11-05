@@ -23,7 +23,7 @@
     <!-- Typography: system fonts only, no third-party requests (works offline) -->
     
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=19e1a4a3">
 </head>
 <body>
 
@@ -176,7 +176,7 @@ python src/main.py</code></pre>
                 <div class="stat-box">
                     <div class="stat-val">13</div>
                     <div class="stat-lbl">Documentos Oficiales</div>
-                    <div class="stat-sub">En PDF, más constancias desde plantilla Markdown</div>
+                    <div class="stat-sub">En PDF, con constancias desde plantilla y recibos por lote</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-val" id="stat-docs">21</div>
@@ -230,7 +230,7 @@ python src/main.py</code></pre>
                     <div class="feature-item">
                         <div class="feature-icon-wrap">📊</div>
                         <h3 class="feature-h3">Generación de Reportes</h3>
-                        <p class="feature-p">Trece documentos oficiales: constancias, fichas, recibos, planillas, liquidaciones y reportes; más exportación a Excel (.xlsx) y CSV.</p>
+                        <p class="feature-p">Trece documentos oficiales —constancias, fichas, recibos, planillas, liquidaciones y reportes—, recibos por lote en un solo PDF y listados tabulares de documentos, estudiantes, calificaciones y auditoría con pie institucional foliado; más exportación a Excel (.xlsx) y CSV.</p>
                         <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver generación PDF →</button>
                     </div>
 
@@ -334,18 +334,21 @@ python src/main.py</code></pre>
                         <div class="feature-icon-wrap">🖥️</div>
                         <h3 class="feature-h3">Puesto de escritorio</h3>
                         <p class="feature-p">Python, CustomTkinter y SQLite local: nueve módulos con control de acceso por rol, nómina, expedientes y generación documental completa.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver arquitectura del puesto →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">🔗</div>
                         <h3 class="feature-h3">Nodo central</h3>
                         <p class="feature-p">Servicio HTTP de la biblioteca estándar sobre SQLite en modo WAL, con token hasheado, límite de peticiones, TLS opcional y secuencia autoritativa de operaciones.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="doc-tecnica">Ver protocolo de sincronización →</button>
                     </div>
 
                     <div class="feature-item">
                         <div class="feature-icon-wrap">📲</div>
                         <h3 class="feature-h3">SDEP Móvil</h3>
                         <p class="feature-p">Cliente Android offline-first: ingreso con contraseña o biometría, constancias generadas en el propio teléfono y cola de salida que se vacía al recuperar la red.</p>
+                        <button class="feature-link open-doc-trigger" data-doc="readme">Ver SDEP Móvil en detalle →</button>
                     </div>
                 </div>
             </section>
@@ -490,6 +493,27 @@ pytest -v
 # 5. Lanzar la aplicación
 python src/main.py</code></pre>
                 </div>
+
+                <form class="url-loader" id="gh-url-form" autocomplete="off">
+                    <div class="url-loader-head">
+                        <span class="url-loader-icon" aria-hidden="true">🔗</span>
+                        <div>
+                            <h3 class="url-loader-title">Abrir un Markdown por URL</h3>
+                            <p class="url-loader-desc">Pega la dirección de un archivo del repositorio oficial. Si el documento ya forma parte del corpus, se abre al instante y sin conexión; si no, se descarga su versión en vivo de GitHub.</p>
+                        </div>
+                    </div>
+                    <div class="url-loader-row">
+                        <input class="gh-url-input" id="gh-url-input" type="url" required
+                               placeholder="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md">
+                        <button class="gh-url-submit" type="submit">Abrir documento</button>
+                    </div>
+                    <div class="github-chips">
+                        <button class="github-chip" type="button" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/README.md">README</button>
+                        <button class="github-chip" type="button" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/DOCUMENTACION_TECNICA.md">Documentación técnica</button>
+                        <button class="github-chip" type="button" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/GUIA_USUARIO.md">Guía de usuario</button>
+                        <button class="github-chip" type="button" data-url="https://github.com/LiebeBlack/SDEP_CPP5/blob/main/NOTAS_DESARROLLO.md">Notas de desarrollo</button>
+                    </div>
+                </form>
             </section>
         </div>
     </main>
@@ -720,9 +744,9 @@ python src/main.py</code></pre>
     <script src="vendor/prism-markdown.min.js" defer></script>
 
     <!-- Centralized Document Corpus Data Bundle -->
-    <script src="docs_data.js" defer></script>
+    <script src="docs_data.js?v=b083350a" defer></script>
 
     <!-- Application Controller -->
-    <script src="script.js" defer></script>
+    <script src="script.js?v=51bb67ae" defer></script>
 </body>
 </html>

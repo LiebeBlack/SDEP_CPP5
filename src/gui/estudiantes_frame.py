@@ -27,7 +27,8 @@ from src.gui.frames import (
     _indice_seleccion_combo,
     _seleccionar_fila_click,
 )
-from src.gui.theme import COLORES, habilitar_scroll_rueda
+from src.gui.frames import _verificar_permiso_accion as _verificar_permiso
+from src.gui.theme import COLORES, atajos_formulario, habilitar_scroll_rueda
 from src.gui.widgets.tabla import (
     EstadoTabla,
     configurar_cebra,
@@ -50,15 +51,6 @@ ETIQUETAS_GENERO.update({valor: valor.capitalize() for valor in GENEROS})
 
 SIN_ASIGNAR = "Sin asignar"
 TODOS = "Todos"
-COLOR_ERROR = "#e74c3c"
-
-
-def _verificar_permiso(main_window, permiso: str, accion: str) -> bool:
-    """Verifica el permiso operativo antes de ejecutar una acción."""
-    if main_window is not None and main_window.tiene_permiso(permiso):
-        return True
-    messagebox.showwarning("Acceso denegado", f"Su rol no tiene permiso para {accion}")
-    return False
 
 
 def _titulo_nivel(nivel: object) -> str:
@@ -189,6 +181,14 @@ class EstudiantesFrame(ctk.CTkFrame):
             hover_color=COLORES["panel_hover"],
             command=self._exportar,
         ).grid(row=0, column=3, padx=4, pady=2, sticky="ew")
+        ctk.CTkButton(
+            acciones,
+            text="📄 PDF",
+            height=34,
+            fg_color=COLORES["campo"],
+            hover_color=COLORES["panel_hover"],
+            command=self._exportar_pdf,
+        ).grid(row=0, column=4, padx=4, pady=2, sticky="ew")
 
         contenedor = ctk.CTkFrame(parent, fg_color="transparent")
         contenedor.pack(fill="both", expand=True, padx=8, pady=4)
@@ -588,6 +588,60 @@ class EstudiantesFrame(ctk.CTkFrame):
             logger.warning("No se pudo exportar los estudiantes", exc_info=True)
             messagebox.showerror("Estudiantes", f"No se pudo exportar:\n{e}")
 
+    def _exportar_pdf(self) -> None:
+        """Genera el listado de estudiantes mostrado en PDF"""
+        if not _verificar_permiso(self.main_window, "report", "exportar estudiantes"):
+            return
+        if not self._estudiantes:
+            messagebox.showinfo("Estudiantes", "No hay estudiantes para exportar")
+            return
+        filas = [
+            [
+                estudiante.cedula or "",
+                estudiante.nombre_completo,
+                _titulo_nivel(estudiante.nivel_valor),
+                estudiante.edad if estudiante.edad is not None else "",
+                estudiante.representante or "",
+                estudiante.telefono or "",
+                "Activo" if estudiante.activo else "Retirado",
+            ]
+            for estudiante in self._estudiantes
+        ]
+        try:
+            from pathlib import Path
+
+            from src.config import settings
+            from src.utils.helpers import (
+                abrir_con_aplicacion_predeterminada,
+                ensure_directory_exists,
+                get_timestamp,
+            )
+            from src.utils.pdf_generator import pdf_generator
+
+            carpeta = Path(settings.exports_path)
+            ensure_directory_exists(str(carpeta))
+            destino = carpeta / f"estudiantes_{get_timestamp()}.pdf"
+            pdf_generator.generate_reporte_tabla(
+                "Listado de estudiantes",
+                [
+                    "Cédula",
+                    "Estudiante",
+                    "Nivel",
+                    "Edad",
+                    "Representante",
+                    "Teléfono",
+                    "Estado",
+                ],
+                filas,
+                str(destino),
+                subtitulo=f"Total de estudiantes: {len(filas)}",
+            )
+            abrir_con_aplicacion_predeterminada(destino)
+            messagebox.showinfo("Estudiantes", f"Reporte PDF generado:\n{destino}")
+        except (OSError, ValueError, ImportError) as e:
+            logger.warning("No se pudo generar el reporte PDF de estudiantes", exc_info=True)
+            messagebox.showerror("Estudiantes", f"No se pudo generar el reporte:\n{e}")
+
     # ------------------------------------------------------------------
     # Datos de grados y matrículas
     # ------------------------------------------------------------------
@@ -865,7 +919,8 @@ class _DialogoBase(ctk.CTkToplevel):
         self.bind("<Escape>", lambda _e: self.destroy())
 
     def _preparar_modal(self) -> None:
-        """Centra el diálogo y captura el foco"""
+        """Centra el diálogo, captura el foco y activa los atajos del formulario"""
+        atajos_formulario(self, self._guardar)
         try:
             self.update_idletasks()
             self.grab_set()
@@ -996,7 +1051,7 @@ class EstudianteDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color=COLOR_ERROR,
+            text_color=COLORES["error"],
             anchor="w",
             justify="left",
             wraplength=560,
@@ -1163,7 +1218,7 @@ class GradoDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color="#e74c3c",
+            text_color=COLORES["error"],
             anchor="w",
             justify="left",
             wraplength=420,
@@ -1337,7 +1392,7 @@ class MatriculaDialog(_DialogoBase):
             contenedor,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color="#e74c3c",
+            text_color=COLORES["error"],
             anchor="w",
             justify="left",
             wraplength=500,

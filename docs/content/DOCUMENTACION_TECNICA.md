@@ -311,7 +311,14 @@ Exportación de listados a archivos:
     `DocumentoDialog`, `IncidenciaDialog`, `ApprovalDialog`, `PagoDialog`,
     `ContratoDialog`, `RenovacionDialog`, `TerminacionDialog`,
     `UsuarioDialog`, `CambiarPasswordDialog`, `InfoDialog` (texto extenso
-    para Ayuda/Acerca de). Todos se cierran con **Esc**
+    para Ayuda/Acerca de). Todos se cierran con **Esc** y guardan con
+    **Ctrl+Intro**, atajos que instala `atajos_formulario` desde `theme.py`
+12. **Identidad de marca** (`src/gui/brand.py`): isotipo dibujado sobre
+    `Canvas` que se recolorea con la paleta vigente, encabezado de marca,
+    títulos de ventana e icono de la aplicación. Centraliza `NOMBRE_CORTO`
+    («SDEP»), `NOMBRE_PRODUCTO`, `NOMBRE_COMPLETO` y `LEMA` para que el
+    acceso, la ventana principal y los documentos usen una sola
+    denominación
 
 ### Theme (Apariencia)
 
@@ -354,6 +361,7 @@ El módulo `src/gui/theme.py` centraliza la apariencia de la aplicación:
 | Ctrl+N | Nuevo registro en el módulo activo |
 | Ctrl+F | Enfocar búsqueda/filtro |
 | Ctrl+S | Guardar (Configuración) |
+| Ctrl+Intro | Guardar y cerrar el formulario abierto (empleado, pago, contrato, contraseña, estudiante, nota, grado, matrícula, periodo) |
 | F5 | Actualizar lista |
 | Esc | Cerrar diálogo o limpiar selección |
 
@@ -536,6 +544,27 @@ teléfono, de modo que una plantilla aprobada se comporta igual en los tres.
 - **Formato de salida.** Los encabezados `#`, `##` y `###` del Markdown se
   traducen a jerarquías del documento; el texto restante se compone en párrafos
   con la tipografía institucional y pie de página.
+
+## Reportes Tabulares y Pie Institucional
+
+`PDFGenerator.generate_reporte_tabla` compone un listado paginado a partir de un
+título, un subtítulo informativo, la lista de columnas y las filas ya calculadas
+por el módulo, con orientación vertical u horizontal. Es la pieza que emiten los
+listados de documentos, estudiantes, calificaciones y auditoría, de modo que
+cuatro pantallas distintas producen el mismo formato de reporte sin duplicar
+maquetaciones.
+
+`PDFGenerator.generate_recibos_pago` reúne en un único archivo los recibos de
+varios pagos, uno por página, y reutiliza la maqueta del recibo individual con
+sus márgenes y espaciados ajustados para que cada recibo ocupe exactamente una
+página, incluso en lotes.
+
+Ambos documentos llevan pie en todas las páginas con la denominación del
+sistema, la fecha de emisión y el número de página. El pie se engancha en
+`build()` y no en el constructor: `SimpleDocTemplate` solo acepta
+`onFirstPage`/`onLaterPages` al construir el archivo y descarta en silencio los
+que recibe en el constructor, de modo que un pie mal enganchado se pierde sin
+error visible.
 
 ## Aplicación Móvil (`android/`)
 

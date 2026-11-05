@@ -16,7 +16,7 @@ Los 21 documentos del lector viven en `docs_data.js`, que genera `tools/generate
 
 ## 🎨 Características Principales
 
-- **Lector Integrado de Markdown en Web**: Renderiza en tiempo real los 14 documentos de la tesis y los 7 documentos técnicos, ya alineados con la versión 3.0.1 del software: trece documentos PDF, constancias desde plantilla Markdown y cliente Android con nodo central con tipografía editorial de alta precisión, sin redirigir a archivos planos ni requerir herramientas externas.
+- **Lector Integrado de Markdown en Web**: Renderiza en tiempo real los 14 documentos de la tesis y los 7 documentos técnicos, ya alineados con la versión 3.0.1 del software: trece documentos PDF, constancias desde plantilla Markdown, recibos por lote, listados tabulares con pie foliado y cliente Android con nodo central con tipografía editorial de alta precisión, sin redirigir a archivos planos ni requerir herramientas externas.
 - **Formato Markdown Avanzado**:
   - Resaltado de sintaxis con Prism (Python, Bash, SQL, JSON, Markdown).
   - Botón de copia de bloques de código con confirmación visual.

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Grade
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
@@ -48,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.dominio.modelo.Modulo
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
+import ve.edu.sdep.movil.ui.comun.MensajeVacio
 import ve.edu.sdep.movil.ui.modulos.ModulosViewModel
 
 /**
@@ -228,6 +230,19 @@ fun PantallaInicio(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(10.dp))
+            }
+
+            if (categorias.isEmpty()) {
+                item {
+                    // Un rol sin módulos no debe ver una portada vacía: el aviso
+                    // explica por qué no hay tarjetas y a quién pedir el acceso.
+                    MensajeVacio(
+                        icono = Icons.Filled.Lock,
+                        titulo = "Sin soluciones para su rol",
+                        detalle = "Su cuenta no tiene módulos habilitados en este teléfono. " +
+                            "Pida al administrador que revise sus permisos.",
+                    )
+                }
             }
 
             categorias.forEach { categoria ->

@@ -76,7 +76,8 @@ Los resultados que se enuncian a continuación fueron comprobados de forma direc
 | Dominio de cálculo | Motor de nómina aislado con deducciones, impuesto sobre la renta, horas extra, prestaciones, seguridad social y finiquito |
 | Suite de pruebas | 605 funciones de prueba en 37 archivos, con 9 435 líneas de código de prueba |
 | Seguridad | Autenticación con PBKDF2-HMAC-SHA256 de 200 000 iteraciones y sal de 16 bytes; control de acceso por cuatro roles; auditoría; respaldos sujetos a política de retención |
-| Generación documental | Trece tipos de documentos oficiales en formato PDF, más constancias desde plantilla Markdown |
+| Generación documental | Trece tipos de documentos oficiales en formato PDF, constancias desde plantilla Markdown y listados tabulares con pie foliado |
+| Recibos por lote | Un solo archivo PDF con un recibo por página para todos los pagos de un periodo |
 | Exportación | Formatos abiertos para empleados, documentos, incidencias, pagos y reportes |
 | Cobertura de referencia | Medición de la versión 1.0.4: 43 % total y 73 % en la lógica de negocio; debe re-medirse sobre la versión vigente |
 

@@ -11,13 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,6 +48,7 @@ import ve.edu.sdep.movil.datos.local.ColumnaTabla
 import ve.edu.sdep.movil.datos.local.TipoCampo
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
 import ve.edu.sdep.movil.ui.comun.DialogoConfirmar
+import ve.edu.sdep.movil.ui.comun.MensajeError
 import ve.edu.sdep.movil.ui.comun.MensajeVacio
 
 /**
@@ -140,24 +142,19 @@ fun PantallaFormulario(
                 }
 
                 estado.error?.let { mensaje ->
-                    item {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = mensaje,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(14.dp),
-                            )
-                        }
-                    }
+                    item { MensajeError(mensaje) }
                 }
 
-                items(estado.campos, key = { it.nombre }) { campo ->
+                itemsIndexed(estado.campos, key = { _, campo -> campo.nombre }) { indice, campo ->
                     CampoEditable(
                         campo = campo,
                         valor = estado.valores[campo.nombre].orEmpty(),
                         opcionesForaneas = estado.opcionesForaneas[campo.tablaForanea].orEmpty(),
                         habilitado = estado.puedeEscribir && !estado.guardando,
+                        esUltimo = indice == estado.campos.lastIndex,
+                        // «Listo» en el teclado guarda el formulario: en una ficha con
+                        // veinte campos obliga a no tener que bajar hasta la barra.
+                        alGuardar = { if (estado.puedeEscribir) vistaModelo.guardar() },
                         alCambiar = { valor -> vistaModelo.cambiar(campo.nombre, valor) },
                     )
                 }
@@ -184,6 +181,8 @@ private fun CampoEditable(
     valor: String,
     opcionesForaneas: List<ve.edu.sdep.movil.datos.local.OpcionTabla>,
     habilitado: Boolean,
+    esUltimo: Boolean,
+    alGuardar: () -> Unit,
     alCambiar: (String) -> Unit,
 ) {
     when (campo.tipo) {
@@ -236,15 +235,20 @@ private fun CampoEditable(
             } else {
                 null
             },
-            keyboardOptions = when (campo.tipo) {
-                TipoCampo.ENTERO, TipoCampo.DECIMAL ->
-                    KeyboardOptions(keyboardType = KeyboardType.Number)
-
-                else -> KeyboardOptions.Default
-            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = tecladoDe(campo.tipo),
+                imeAction = if (esUltimo) ImeAction.Done else ImeAction.Next,
+            ),
+            keyboardActions = KeyboardActions(onDone = { if (esUltimo) alGuardar() }),
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/** Teclado que corresponde al tipo de columna que devolvió el esquema */
+private fun tecladoDe(tipo: TipoCampo): KeyboardType = when (tipo) {
+    TipoCampo.ENTERO, TipoCampo.DECIMAL -> KeyboardType.Number
+    else -> KeyboardType.Text
 }
 
 @Composable

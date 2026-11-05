@@ -15,7 +15,9 @@ concurrency:
 jobs:
   build-android-signed:
     name: Compilar y firmar APK Android
-    runs-on: ubuntu-latest
+    # Fijada por el mismo motivo que en build.yml: ubuntu-latest migra a
+    # Ubuntu 26 y la compilación Android se valida sobre Ubuntu 24.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Clonar repositorio

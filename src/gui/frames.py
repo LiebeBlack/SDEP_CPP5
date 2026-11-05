@@ -5873,9 +5873,7 @@ class PagoDialog(ctk.CTkToplevel):
             justify="left",
             wraplength=560,
         )
-        self.vista_previa_label.grid(
-            row=9, column=0, columnspan=4, padx=8, pady=(0, 8), sticky="w"
-        )
+        self.vista_previa_label.grid(row=9, column=0, columnspan=4, padx=8, pady=(0, 8), sticky="w")
 
         # Interacción: la estimación se recalcula sola (con retardo) y los
         # días solo se habilitan cuando el pago se prorratea.
@@ -6166,9 +6164,7 @@ class PagoDialog(ctk.CTkToplevel):
                 dias_trabajados = parse_int_estricto(
                     self.dias_trabajados_entry.get(), "Días trabajados"
                 )
-                dias_periodo = parse_int_estricto(
-                    self.dias_periodo_entry.get(), "Días del período"
-                )
+                dias_periodo = parse_int_estricto(self.dias_periodo_entry.get(), "Días del período")
                 if dias_trabajados is None or dias_periodo is None:
                     messagebox.showerror(
                         "Error",

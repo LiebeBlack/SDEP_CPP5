@@ -30,7 +30,6 @@ from sync_agent import consolidacion, identidad, registro
 from sync_agent.aplicador import (
     MOTIVO_BORRADA,
     MOTIVO_DUPLICADA,
-    MOTIVO_ERROR,
     MOTIVO_SUPERADA,
     AplicadorRemoto,
     FilaPendiente,

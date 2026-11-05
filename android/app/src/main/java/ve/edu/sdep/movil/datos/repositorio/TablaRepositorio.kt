@@ -101,7 +101,9 @@ class TablaRepositorio @Inject constructor(
         // protocolo declara como padres de clave foránea. Antes cualquier
         // nombre con forma de tabla (incluidas las internas del espejo)
         // podía consultarse desde aquí.
-        val tablasPadre = Espejo.CLAVES_FORANEAS.values.flatten().toSet()
+        val tablasPadre = Espejo.CLAVES_FORANEAS.values
+            .flatMap { foraneas -> foraneas.values }
+            .toSet()
         if (tabla !in tablasPadre) return@withContext emptyList()
         val etiqueta = when (tabla) {
             "empleados" -> "nombres || ' ' || apellidos || ' · ' || cedula"

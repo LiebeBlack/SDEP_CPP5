@@ -464,8 +464,8 @@ class SincronizacionRepositorio @Inject constructor(
     }
 
     /** Baja y verifica un binario; nunca lanza hacia el ciclo */
-    private suspend fun descargarBlob(api: ProtocoloApi, blob: BlobPendienteEntity): Boolean =
-        try {
+    private suspend fun descargarBlob(api: ProtocoloApi, blob: BlobPendienteEntity): Boolean {
+        return try {
             // `use` cierra el cuerpo aunque falle la lectura: sin eso, cada
             // archivo dejaría una conexión abierta hasta el recolector.
             val cuerpo = api.descargarBlob(blob.hash)
@@ -501,6 +501,7 @@ class SincronizacionRepositorio @Inject constructor(
             marcarBlobFallido(blob.hash, blob.intentos)
             false
         }
+    }
 
     private suspend fun marcarBlobFallido(hash: String, intentosPrevios: Int) {
         val intentos = intentosPrevios + 1

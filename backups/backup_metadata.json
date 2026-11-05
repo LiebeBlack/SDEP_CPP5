@@ -59,5 +59,15 @@
     "checksum": "ce64ad672712e6cd5d664a50b1da34612fa11c55fecd5118f7823a8aa0a5d70b",
     "compressed": true,
     "version": 2
+  },
+  "initial_setup_20261105_134747_311075": {
+    "name": "initial_setup_20261105_134747_311075",
+    "filename": "initial_setup_20261105_134747_311075.db.gz",
+    "path": "initial_setup_20261105_134747_311075.db.gz",
+    "timestamp": "20261105_134747",
+    "size_bytes": 10984,
+    "checksum": "e3c21a5e05297b969c2801e1c3f757f2f52fc4662db540945832bf96b342ff9d",
+    "compressed": true,
+    "version": 2
   }
 }

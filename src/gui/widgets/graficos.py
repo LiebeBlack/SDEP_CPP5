@@ -387,8 +387,11 @@ class GraficoLinea(GraficoBase):
         maximo = (
             max((abs(valor) for datos in series.values() for _, valor in datos), default=0) or 1
         )
+        # El paso se calcula con la serie más larga: antes solo se miraba la
+        # primera y una serie con más puntos desbordaba el borde derecho.
+        max_puntos = max((len(datos) for datos in series.values()), default=1)
         etiquetas = [etiqueta for etiqueta, _ in next(iter(series.values()))]
-        pasos = max(1, len(etiquetas) - 1)
+        pasos = max(1, max_puntos - 1)
         ancho_util = max(40.0, float(ancho - margen_lat - 16))
 
         # Rejilla horizontal de referencia (cuatro niveles)

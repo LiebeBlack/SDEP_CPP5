@@ -512,27 +512,28 @@ class DocumentosRepositorio @Inject constructor(
 
     private fun leerPdfLimitado(cuerpo: okhttp3.ResponseBody): ByteArray = cuerpo.use { respuesta ->
         val longitud = respuesta.contentLength()
-        require(longitud in 5L..MAX_PDF.toLong()) {
-            "El PDF está vacío, supera 8 MB o no informa su tamaño."
-        }
-        val bytes = ByteArray(longitud.toInt())
+        // ``contentLength() == -1`` indica respuesta servida por chunks, sin
+        // Content-Length: antes se rechazaba aunque el PDF fuera válido. Ahora
+        // se lee por streaming con el mismo tope de 8 MB; si el servidor sí
+        // declara el tamaño y miente por defecto, el conteo real manda.
+        require(longitud <= MAX_PDF) { "El PDF supera 8 MB." }
+        val salida = java.io.ByteArrayOutputStream(
+            if (longitud > 0) longitud.toInt() else 8192,
+        )
         val entrada = respuesta.byteStream()
-        var posicion = 0
-        while (posicion < bytes.size) {
-            val leidos = entrada.read(bytes, posicion, minOf(32 * 1024, bytes.size - posicion))
+        val buffer = ByteArray(32 * 1024)
+        var total = 0L
+        while (true) {
+            val leidos = entrada.read(buffer)
             if (leidos < 0) break
-            if (leidos == 0) {
-                val siguiente = entrada.read()
-                if (siguiente < 0) break
-                bytes[posicion++] = siguiente.toByte()
-            } else {
-                posicion += leidos
-            }
+            total += leidos
+            require(total <= MAX_PDF) { "El PDF supera 8 MB." }
+            salida.write(buffer, 0, leidos)
         }
-        require(posicion == bytes.size && entrada.read() == -1) {
-            "El PDF recibido está incompleto o excede el tamaño informado."
+        if (longitud > 0) {
+            require(total == longitud) { "El PDF recibido está incompleto." }
         }
-        bytes
+        salida.toByteArray()
     }
 
     private fun nombrePdfSeguro(nombre: String?, alternativo: String): String {

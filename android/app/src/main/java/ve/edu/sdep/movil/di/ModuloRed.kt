@@ -20,7 +20,10 @@ object ModuloRed {
     fun json(): Json = Json {
         // El servidor puede añadir campos en versiones nuevas sin romper esta.
         ignoreUnknownKeys = true
-        isLenient = true
+        // Estricto a propósito: el protocolo viaja siempre en JSON válido
+        // (``json.dumps`` en el nodo); aceptar JSON laxo ocultaría corrupción
+        // o respuestas manipuladas en la red.
+        isLenient = false
         encodeDefaults = false
     }
 

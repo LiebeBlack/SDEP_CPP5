@@ -51,7 +51,7 @@ import ve.edu.sdep.movil.datos.local.entidad.*
         OpAplicadaEntity::class,
         BlobPendienteEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class BaseDatosSdep : RoomDatabase() {
@@ -115,6 +115,35 @@ abstract class BaseDatosSdep : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE operaciones_entrada ADD COLUMN dispositivo TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE operaciones_entrada ADD COLUMN usuario TEXT")
+            }
+        }
+
+        /**
+         * v4 → v5: PK compuesta en ``blobs_pendientes``.
+         *
+         * Con ``PRIMARY KEY(hash)`` dos documentos con contenido idéntico
+         * compartían fila y el ``REPLACE`` del segundo borraba el apuntador
+         * del primero (quedaba sin binario para siempre). SQLite no permite
+         * cambiar la PK con ALTER, así que se recrea la tabla conservando
+         * los datos.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE blobs_pendientes_nueva (" +
+                        "hash TEXT NOT NULL, tamano INTEGER NOT NULL, tabla TEXT NOT NULL, " +
+                        "fila_uuid TEXT NOT NULL, columna TEXT NOT NULL, " +
+                        "direccion TEXT NOT NULL, estado TEXT NOT NULL, intentos INTEGER NOT NULL, " +
+                        "creado_en INTEGER NOT NULL, actualizado_en INTEGER NOT NULL, " +
+                        "PRIMARY KEY(hash, tabla, fila_uuid, columna, direccion))",
+                )
+                db.execSQL(
+                    "INSERT OR IGNORE INTO blobs_pendientes_nueva " +
+                        "SELECT hash, tamano, tabla, fila_uuid, columna, direccion, " +
+                        "estado, intentos, creado_en, actualizado_en FROM blobs_pendientes",
+                )
+                db.execSQL("DROP TABLE blobs_pendientes")
+                db.execSQL("ALTER TABLE blobs_pendientes_nueva RENAME TO blobs_pendientes")
             }
         }
 

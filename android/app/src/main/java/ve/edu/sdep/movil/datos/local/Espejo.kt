@@ -179,7 +179,13 @@ object Espejo {
     fun marcaBlob(hash: String, tamano: Int): JsonObject =
         JsonObject(mapOf("__blob__" to JsonPrimitive(hash), "tamano" to JsonPrimitive(tamano)))
 
-    /** Normaliza «2026-01-01T12:00:00.123456» o «…Z» a ISO sin milisegundos */
+    /** Normaliza «2026-01-01T12:00:00.123456» o «…Z» a ISO sin zona horaria.
+     *
+     * La fracción de segundos se conserva con seis dígitos (como
+     * ``datetime.isoformat()`` de Python): antes se recortaba y dos
+     * escrituras distintas del mismo segundo quedaban empatadas al comparar
+     * marcas en la mezcla.
+     */
     fun normalizarIso(valor: String?): String? {
         val limpio = valor?.trim().orEmpty()
         if (limpio.isEmpty()) return null
@@ -187,8 +193,19 @@ object Espejo {
         val parte = sinZona.split("T")
         val dia = parte.getOrNull(0) ?: return null
         val horaCruda = parte.getOrNull(1) ?: return dia
-        val hora = horaCruda.substringBefore(".").substringBefore("+")
-        return if (hora.isEmpty()) dia else "${dia}T$hora"
+        // Quita el desplazamiento («+00:00» o «-05:00») conservando la fracción.
+        val sinOffset = horaCruda.substringBefore("+").substringBefore("-")
+        val segundos = sinOffset.substringBefore(".")
+        if (segundos.isEmpty()) return dia
+        val fraccion = sinOffset.substringAfter(".", "")
+            .filter { it.isDigit() }
+            .take(6)
+        val hora = if (fraccion.isEmpty()) {
+            segundos
+        } else {
+            "$segundos.${fraccion.padEnd(6, '0')}"
+        }
+        return "${dia}T$hora"
     }
 
     private fun JsonElement.textoCrudo(): String? = when (this) {

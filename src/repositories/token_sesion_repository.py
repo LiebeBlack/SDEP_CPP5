@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.models import TokenSesion
+from src.security.contexto import actual
 from src.utils.helpers import utcnow
 
 from .base_repository import BaseRepository
@@ -69,6 +70,16 @@ class TokenSesionRepository(BaseRepository[TokenSesion]):
         Se usa al cerrar sesión o al desactivar un usuario: a partir de ese
         momento ninguno de sus tokens sirve para escribir notas.
         """
+        # ``query.update`` no pasa por el hook ``before_flush`` del
+        # aislamiento: hay que comprobar la propiedad aquí mismo o un WORKER
+        # podría revocar los tokens de otra cuenta.
+        contexto = actual()
+        if contexto is not None and contexto.es_trabajador:
+            if usuario_id != contexto.usuario_id:
+                logger.warning(
+                    "Intento de revocar tokens de otro usuario (id=%s)", usuario_id
+                )
+                return 0
         try:
             query = self.session.query(TokenSesion).filter(
                 TokenSesion.usuario_id == usuario_id,

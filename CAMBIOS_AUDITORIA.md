@@ -280,25 +280,16 @@ updater, GUI, utilidades y configuración).
 
 - `ServidorConfig`: cambiar defaults de clase a `host="127.0.0.1"` y
   `emparejamiento_abierto=False`; exposición LAN solo por configuración
-  explícita. Revisar todos los puntos de construcción de la config.
-- Cuota de disco en `POST /api/v1/blob/{hash}` del nodo central (hoy cualquier
-  dispositivo autenticado puede llenar el disco).
-- `token_sesion_repository` usa `query.update()` que bypassa el aislamiento
-  ORM (revisar si aplica a WORKER).
-- `_log_data_operation` audita `to_dict()` completo → datos bancarios/salud en
-  claro en el log de auditoría; saneamiento selectivo pendiente.
+  explícita. (La opción ya es configurable vía `iniciar_servidor.py`;
+  queda pendiente endurecer el default de la clase sin romper el alta móvil.)
+- ~~Cuota de disco en `POST /api/v1/blob/{hash}`~~ → resuelta en la tercera
+  pasada (`max_bytes_blobs_total`, respuesta 507 al exceder).
 - Migración explícita `Empleado.salario_base` Float→Numeric en bases existentes.
 - Android: `cleartextTrafficPermitted` + confianza en CAs de usuario
-  (`seguridad_red.xml`), `leerPdfLimitado` con respuestas chunked sin
-  `Content-Length`, `codigoVersion`/parseo de versión, `Json` lenient,
-  `Dispatchers.IO` para lectura sincrónica de `EncryptedSharedPreferences`,
-  `puedeEditar` en registros existentes, orden de `LaunchedEffect` de
-  navegación, colisión de hash en `blobs_pendientes` (PK `hash` con `REPLACE`).
-- GUI: guards `None` en `contratos_frame`/`estudiantes_frame`/`frames.py`,
-  `notas_frame` validación float, `theme.py`/`graficos` edge cases,
-  try/except en descargas del updater.
-- `ContratoRepository`/`empleado_repository.get_filtrados`: revisar el caso de
-  filtro mal formado (hoy devuelve `[]` silenciosamente).
+  (`seguridad_red.xml`) — decisión documentada, evaluar TLS en el nodo.
+- GUI: guards `None` restantes en `contratos_frame`/`estudiantes_frame`,
+  `theme.py`/`graficos` edge cases, try/except en descargas del updater,
+  validación float en `notas_frame`/`contratos_frame`.
 
 ---
 
@@ -314,6 +305,103 @@ errores introducidos en la primera pasada; todos corregidos:
 - `TablaRepositorio.kt::opcionesForaneas`: `CLAVES_FORANEAS.values.flatten()`
   no compila porque los valores son `Map` (no `Iterable`) →
   `flatMap { it.values }` para obtener los nombres de tabla padre.
+
+## 8b. Segunda pasada línea por línea (post-CI)
+
+### Backend / sincronización
+- `iniciar_servidor.py`: la opción `emparejamiento_abierto` ahora se lee de la
+  configuración del servidor y se documenta en el dict por defecto; el alta
+  supervisada de teléfonos queda disponible sin tocar código (la app móvil
+  sigue funcionando con el valor por defecto `true`).
+- `base_repository.py`: `_datos_auditables()` enmascara en la auditoría de
+  datos toda clave que contenga password/token/hash/cuenta/banco/seguro/
+  enfermedad/alergia/discapacidad/salud/cedula (antes `to_dict()` completo
+  dejaba datos bancarios y de salud en claro en el log).
+- `token_sesion_repository.revocar_usuario`: `query.update()` bypassea el
+  aislamiento ORM; ahora un WORKER solo puede revocar sus propios tokens.
+
+### Android
+- `DocumentosRepositorio.leerPdfLimitado`: acepta respuestas servidas por
+  chunks (`Content-Length == -1`) leyendo por streaming con tope de 8 MB; el
+  tamaño declarado, si existe, se verifica al final. Antes todo PDF sin
+  `Content-Length` se rechazaba.
+- `Boveda` (EncryptedSharedPreferences/Keystore): las llamadas de
+  `prepararCambioDeUsuario` ahora corren en `Dispatchers.IO` (la primera
+  lectura inicializa el Keystore y no debe ocurrir en el hilo principal).
+- `EditorViewModel`: editar un registro existente exige `Permiso.EDITAR`
+  (antes pedía `CREAR`; un rol con EDITAR pero sin CREAR veía el formulario
+  bloqueado).
+- `PantallaEmpleado`: tras guardar se espera ~1.2 s antes de navegar atrás,
+  para que el snackbar de confirmación se alcance a mostrar.
+- `ModuloRed` (Json): `isLenient = false` — el protocolo siempre viaja en
+  JSON válido; aceptar JSON laxo ocultaría corrupción o respuestas
+  manipuladas.
+- `Espejo.normalizarIso`: conserva la fracción de segundos con 6 dígitos
+  (como `isoformat` de Python); antes la recortaba y dos escrituras del
+  mismo segundo quedaban empatadas en la mezcla. También quita desplazamientos
+  `+hh:mm`/`-hh:mm`.
+- `BlobPendienteEntity`: PK compuesta `(hash, tabla, fila_uuid, columna,
+  direccion)` + migración Room **v4→v5** (`MIGRATION_4_5`, recrea la tabla
+  conservando datos). Antes `PRIMARY KEY(hash)` + `REPLACE` hacía que dos
+  documentos con contenido idéntico perdieran el apuntador del primero.
+  Nuevos `eliminarFila`/`marcarIntentoFila` por clave completa; todos los
+  callers actualizados para no afectar a otros apuntadores del mismo hash.
+
+### Tercera pasada (post-CI, ronda 2)
+- `sync_agent/captura.py::adoptar`: si `asegurar_uuid` no resuelve identidad
+  para **ninguna** fila del lote, el `while True` re-consultaba las mismas
+  filas indefinidamente. Ahora registra advertencia y sale del bucle.
+- `src/gui/widgets/graficos.py::GraficoLinea.dibujar`: el paso del eje X se
+  calculaba solo con la primera serie; una serie con más puntos desbordaba
+  el borde derecho. Ahora `pasos` usa la serie más larga.
+- `sync_agent/servidor.py::NucleoCentral.guardar_blob`: cuota total del
+  almacén de binarios (`max_bytes_blobs_total`, 2 GB por defecto). Antes
+  cualquier dispositivo autenticado podía llenar el disco del nodo con blobs
+  deduplicados ilimitados; la subida que supera el techo responde 507. El
+  contador se inicializa una vez recorriendo el directorio y se actualiza
+  bajo `_candado` solo cuando el blob es nuevo (los duplicados por hash no
+  consumen cuota).
+- `contratos_frame`/`estudiantes_frame`/`frames.py`: revisados los `int()`/
+  `float()` de formularios — todos ya van dentro de `try` con mensaje al
+  usuario; `subprocess.Popen` en apertura de documentos usa lista de
+  argumentos sin `shell=True` y rutas validadas por `ruta_abrible`.
+
+### Cuarta pasada: verificación "abrir y funciona"
+
+Se verificó la cadena completa de arranque sin configuración manual
+(`python src/main.py --selftest` → OK, v3.0.1):
+
+1. `setup_environment()` crea todos los directorios de datos.
+2. `init_db()` crea tablas, inserta las 38 configuraciones iniciales, crea el
+   administrador por defecto (`admin`, cambio de contraseña obligatorio en el
+   primer login) y genera un backup inicial.
+3. `iniciar_servidor_sincronizacion()` auto-arranca el nodo central embebido
+   en el primer uso (`sync_servidor_auto`), crea las cuentas iniciales
+   (`admin`/`manager`/`user`/`viewer`), copia las cuentas del escritorio al
+   nodo y da de alta este equipo como dispositivo (`_configurar_cliente`),
+   habilitando `sync_habilitado` en `config.json`.
+4. `iniciar_sincronizacion()` arranca el agente solo si quedó configurado;
+   si el nodo local está detenido, lo omite sin errores.
+5. Respaldo periódico programado en `main_window` (cada 30 min de idle) y
+   vigilante que reinicia el nodo si se cae.
+6. Reconfiguración manual disponible en la pestaña Sincronización de
+   Ajustes (URL, token, intervalo, habilitar/deshabilitar).
+
+**Corrección aplicada**: `config.json` no estaba en `.gitignore` y contiene
+`sync_token` (secreto por instalación). Añadido a `.gitignore`. Si el archivo
+llegó a versionarse, el token debe rotarse (borrar el dispositivo en el nodo
+y re-emparejar) y depurarse del historial con `git filter-repo`.
+
+### Verificado como correcto (sin cambios)
+- `notas_frame`/`frames.py`: los `insert` de Tk están guardados por `if
+  campo:` o campos `nullable=False`; `format_date(None)` devuelve `""`.
+- `seguridad_red.xml`: `cleartextTrafficPermitted=true` es decisión
+  documentada (intranet sin TLS); confianza en CAs de usuario documentada
+  como trade-off consciente.
+- `versionProtocolo`: se almacena como String sin parseo — sin riesgo.
+- `get_filtrados`: las claves desconocidas se ignoran y los valores se
+  validan; el `except` devuelve `[]` con log de error (comportamiento
+  aceptable para UI).
 
 ## 9. Verificación realizada
 

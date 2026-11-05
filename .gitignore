@@ -149,6 +149,9 @@ backups/
 hang_stack.txt
 data/
 config_local.yaml
+# Preferencias locales del usuario: config.json guarda el token del equipo
+# (sync_token) y demás secretos por instalación; nunca se versiona.
+config.json
 
 # Certificados PRIVADOS: nunca subir a GitHub (el PFX solo viaja como
 # secreto CODE_SIGN_CERT_BASE64 y se decodifica en el runner del CI).

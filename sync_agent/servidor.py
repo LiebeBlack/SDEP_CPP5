@@ -91,6 +91,9 @@ class ServidorConfig:
     max_ops_por_lote: int = MAX_OPS_POR_LOTE
     max_bytes_peticion: int = MAX_BYTES_PETICION
     max_bytes_blob: int = MAX_BYTES_BLOB
+    # Techo total del almacén de binarios: sin él, cualquier dispositivo
+    # autenticado podía subir blobs hasta agotar el disco del nodo central.
+    max_bytes_blobs_total: int = 2 * 1024 * 1024 * 1024
     peticiones_por_minuto: int = PETICIONES_POR_MINUTO
     certificado: str | None = None
     clave: str | None = None
@@ -144,6 +147,7 @@ class NucleoCentral:
         )
         self.config.dir_blobs.mkdir(parents=True, exist_ok=True)
         self._candado = threading.Lock()
+        self._bytes_blobs: int | None = None
         self._peticiones: dict[str, list] = {}
         # Capa del protocolo 2: autenticación de usuario, acciones de negocio
         # y generación de documentos. Comparte el motor y el almacén de blobs.
@@ -1616,11 +1620,31 @@ class NucleoCentral:
 
         destino = self._ruta_blob(hash_archivo)
         if not destino.exists():
+            self._verificar_cuota_blobs(len(contenido))
+        if not destino.exists():
             destino.parent.mkdir(parents=True, exist_ok=True)
             temporal = destino.with_suffix(".parcial")
             temporal.write_bytes(contenido)
             temporal.replace(destino)
         return {"hash": hash_archivo, "tamano": len(contenido)}
+
+    def _verificar_cuota_blobs(self, bytes_nuevos: int) -> None:
+        """Rechaza la subida si el almacén superaría su techo total"""
+        with self._candado:
+            if self._bytes_blobs is None:
+                total = 0
+                for archivo in self.config.dir_blobs.rglob("*"):
+                    if archivo.is_file():
+                        try:
+                            total += archivo.stat().st_size
+                        except OSError:
+                            continue
+                self._bytes_blobs = total
+            if self._bytes_blobs + bytes_nuevos > self.config.max_bytes_blobs_total:
+                raise ErrorPeticion(
+                    "El almacén de archivos alcanzó su límite de almacenamiento", 507
+                )
+            self._bytes_blobs += bytes_nuevos
 
     def leer_blob(self, hash_archivo: str) -> bytes | None:
         """Devuelve el contenido almacenado de un archivo, si existe"""

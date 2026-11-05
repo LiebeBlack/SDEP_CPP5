@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
@@ -73,7 +74,13 @@ fun PantallaEmpleado(
     }
 
     LaunchedEffect(estado.guardado, estado.dadoDeBaja) {
-        if (estado.guardado || estado.dadoDeBaja) alVolver()
+        if (estado.guardado || estado.dadoDeBaja) {
+            // Dar un respiro para que el snackbar de confirmación alcance a
+            // mostrarse: antes se navegaba atrás en el mismo frame y el
+            // usuario nunca veía el mensaje de «guardado».
+            delay(1_200)
+            alVolver()
+        }
     }
 
     val permiso = if (estado.id == null) Permiso.CREAR else Permiso.EDITAR

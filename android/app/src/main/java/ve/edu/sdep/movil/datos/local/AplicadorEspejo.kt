@@ -706,7 +706,9 @@ class AplicadorEspejo @Inject constructor(
 
             else -> return false
         }
-        blobDao.eliminar(blob.hash)
+        // Solo este apuntador: otro documento puede compartir el mismo hash
+        // y debe conservar su propio pendiente hasta recibir su contenido.
+        blobDao.eliminarFila(blob)
         return true
     }
 

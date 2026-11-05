@@ -1,6 +1,7 @@
 package ve.edu.sdep.movil.datos.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -549,11 +550,31 @@ interface BlobPendienteDao {
     @Query("DELETE FROM blobs_pendientes WHERE hash = :hash")
     suspend fun eliminar(hash: String)
 
+    /** Borra solo el apuntador de esta fila (la PK es compuesta desde v5) */
+    @Delete
+    suspend fun eliminarFila(blob: BlobPendienteEntity)
+
     @Query(
         "UPDATE blobs_pendientes SET intentos = intentos + 1, estado = :estado " +
             "WHERE hash = :hash",
     )
     suspend fun marcarIntento(hash: String, estado: String)
+
+    /** Igual que [marcarIntento] pero limitado a la fila exacta (mismo hash
+     *  puede tener varios apuntadores: un fallo no debe penalizar a todos) */
+    @Query(
+        "UPDATE blobs_pendientes SET intentos = intentos + 1, estado = :estado " +
+            "WHERE hash = :hash AND tabla = :tabla AND fila_uuid = :filaUuid " +
+            "AND columna = :columna AND direccion = :direccion",
+    )
+    suspend fun marcarIntentoFila(
+        hash: String,
+        tabla: String,
+        filaUuid: String,
+        columna: String,
+        direccion: String,
+        estado: String,
+    )
 }
 
 // ----------------------------------------------------------------------

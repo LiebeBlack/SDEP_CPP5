@@ -53,7 +53,14 @@ class EditorViewModel @Inject constructor(
         EstadoEditor(
             cargando = uuid != null,
             esNuevo = uuid == null,
-            puedeEditar = sesion?.puede(Permiso.CREAR) == true,
+            // Un registro existente exige EDITAR; CREAR solo habilita el alta.
+            // Antes ambos casos pedían CREAR, así que un rol con EDITAR pero
+            // sin CREAR veía el formulario bloqueado al editar.
+            puedeEditar = if (uuid == null) {
+                sesion?.puede(Permiso.CREAR) == true
+            } else {
+                sesion?.puede(Permiso.EDITAR) == true
+            },
             puedeEliminar = sesion?.puede(Permiso.ELIMINAR) == true,
         ),
     )

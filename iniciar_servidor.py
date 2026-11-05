@@ -80,6 +80,10 @@ def cargar_config(ruta_config: str | None = None) -> dict:
         "max_bytes_peticion": 3 * 1024 * 1024,
         "max_bytes_blob": 64 * 1024 * 1024,
         "peticiones_por_minuto": 120,
+        # La app móvil se da de alta sola en la red; si la instalación quiere
+        # exigir alta supervisada, poner "emparejamiento_abierto": false y
+        # crear los dispositivos desde la consola (sync_agent __main__).
+        "emparejamiento_abierto": True,
     }
 
 
@@ -209,6 +213,7 @@ def iniciar_servidor(config: dict) -> None:
         max_bytes_peticion=config.get("max_bytes_peticion", 3 * 1024 * 1024),
         max_bytes_blob=config.get("max_bytes_blob", 64 * 1024 * 1024),
         peticiones_por_minuto=config.get("peticiones_por_minuto", 120),
+        emparejamiento_abierto=config.get("emparejamiento_abierto", True),
     )
 
     ip_local = obtener_ip_local()

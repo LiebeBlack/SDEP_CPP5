@@ -126,10 +126,15 @@ class SincronizacionRepositorio @Inject constructor(
      * peor que pedirle al usuario que se conecte y sincronice.
      */
     suspend fun prepararCambioDeUsuario(nuevoUsuario: String): Resultado<Unit> = candado.withLock {
-        val anterior = boveda.leerUltimoUsuario()?.trim().orEmpty()
+        // La bóveda usa EncryptedSharedPreferences/Keystore: su primera
+        // lectura inicializa el Keystore y no debe correr en el hilo
+        // principal.
+        val anterior = withContext(Dispatchers.IO) {
+            boveda.leerUltimoUsuario()?.trim().orEmpty()
+        }
         val mismo = anterior.isNotBlank() && anterior == nuevoUsuario.trim()
         if (mismo) {
-            boveda.guardarUltimoUsuario(nuevoUsuario)
+            withContext(Dispatchers.IO) { boveda.guardarUltimoUsuario(nuevoUsuario) }
             return@withLock Resultado.Exito(Unit)
         }
 
@@ -429,11 +434,11 @@ class SincronizacionRepositorio @Inject constructor(
                     else -> null
                 } ?: continue
                 if (bytes.size != blob.tamano || sha256(bytes) != blob.hash) {
-                    blobDao.marcarIntento(blob.hash, "error_hash")
+                    marcarBlobFila(blob, "error_hash")
                     continue
                 }
                 api.subirBlob(blob.hash, bytes.toRequestBody("application/octet-stream".toMediaType()))
-                blobDao.eliminar(blob.hash)
+                blobDao.eliminarFila(blob)
                 subidos++
             } catch (_: retrofit2.HttpException) {
                 // Se conserva el pendiente para permitir reintentos con el siguiente ciclo.
@@ -475,7 +480,7 @@ class SincronizacionRepositorio @Inject constructor(
             val declarados = cuerpo.contentLength()
             if (declarados > MAX_BYTES_BLOB || (blob.tamano > 0 && blob.tamano > MAX_BYTES_BLOB)) {
                 cuerpo.close()
-                marcarBlobFallido(blob.hash, blob.intentos)
+                marcarBlobFallido(blob)
                 return false
             }
             val contenido = cuerpo.use { it.bytes() }
@@ -484,29 +489,38 @@ class SincronizacionRepositorio @Inject constructor(
             } else {
                 // Contenido que no coincide con su hash: se marca como
                 // sospechoso y no se vuelve a pedir sin revisión.
-                marcarBlobFallido(blob.hash, blob.intentos)
+                marcarBlobFallido(blob)
                 false
             }
         } catch (error: retrofit2.HttpException) {
             if (error.code() == 404) {
                 // El nodo central no lo tiene (nadie lo subió): no se insiste
                 // para siempre.
-                marcarBlobFallido(blob.hash, blob.intentos)
+                marcarBlobFallido(blob)
             }
             false
         } catch (_: IOException) {
             // Sin red: se reintenta en el próximo ciclo
             false
         } catch (_: Exception) {
-            marcarBlobFallido(blob.hash, blob.intentos)
+            marcarBlobFallido(blob)
             false
         }
     }
 
-    private suspend fun marcarBlobFallido(hash: String, intentosPrevios: Int) {
-        val intentos = intentosPrevios + 1
+    /** Fija un estado intermedio sobre la fila exacta (p. ej. «error_hash») */
+    private suspend fun marcarBlobFila(blob: BlobPendienteEntity, estado: String) {
+        blobDao.marcarIntentoFila(
+            blob.hash, blob.tabla, blob.filaUuid, blob.columna, blob.direccion, estado,
+        )
+    }
+
+    private suspend fun marcarBlobFallido(blob: BlobPendienteEntity) {
+        val intentos = blob.intentos + 1
         val estado = if (intentos >= MAX_INTENTOS_BLOB) "omitido" else "por_bajar"
-        blobDao.marcarIntento(hash, estado)
+        blobDao.marcarIntentoFila(
+            blob.hash, blob.tabla, blob.filaUuid, blob.columna, blob.direccion, estado,
+        )
     }
 
     // ------------------------------------------------------------------

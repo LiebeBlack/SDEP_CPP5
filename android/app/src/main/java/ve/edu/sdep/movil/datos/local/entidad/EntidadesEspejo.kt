@@ -459,9 +459,15 @@ data class OpAplicadaEntity(
  * El contenido nunca viaja en el payload: aquí solo queda qué hash hay que
  * bajar y para qué fila y columna sirve.
  */
-@Entity(tableName = "blobs_pendientes")
+@Entity(
+    tableName = "blobs_pendientes",
+    // La PK compuesta evita la pérdida de binarios: dos filas con el mismo
+    // contenido (mismo hash) son pendientes distintas y con PK solo `hash`
+    // el INSERT ... REPLACE borraba el apuntador de la primera.
+    primaryKeys = ["hash", "tabla", "fila_uuid", "columna", "direccion"],
+)
 data class BlobPendienteEntity(
-    @PrimaryKey val hash: String,
+    val hash: String,
     val tamano: Int = 0,
     val tabla: String,
     @ColumnInfo(name = "fila_uuid") val filaUuid: String,

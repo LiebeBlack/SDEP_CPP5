@@ -426,6 +426,17 @@ def adoptar_existentes(session: Session, lote: int = 500) -> int:
                 if uuid:
                     uuid_por_fila[(nombre, fila.id)] = uuid
 
+            if not uuid_por_fila:
+                # Ninguna fila obtuvo identidad (error de base, clave natural
+                # irresoluble…): repetir la consulta devolvería las mismas
+                # filas y el bucle no terminaría nunca.
+                logger.warning(
+                    "Adopción de %s detenida: %s filas sin identidad resoluble",
+                    nombre,
+                    len(filas),
+                )
+                break
+
             momento = ahora_utc()
             for fila in filas:
                 uuid = uuid_por_fila.get((nombre, fila.id))

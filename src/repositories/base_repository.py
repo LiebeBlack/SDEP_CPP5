@@ -40,6 +40,39 @@ class BaseRepository[T: BaseModel]:
         self.session = session
         self._model_name = model.__name__ if hasattr(model, "__name__") else str(model)
 
+    # Fragmentos de clave que marcan un dato como sensible en la auditoría:
+    # credenciales, cuentas bancarias y datos de salud no deben quedar en
+    # claro en el registro de operaciones.
+    _CLAVES_SENSIBLES = (
+        "password",
+        "token",
+        "hash",
+        "cuenta",
+        "banco",
+        "seguro",
+        "enfermedad",
+        "alergia",
+        "discapacidad",
+        "salud",
+        "cedula",
+    )
+
+    @classmethod
+    def _datos_auditables(cls, data: Any) -> Any:
+        """Enmascara los campos sensibles antes de escribirlos en auditoría"""
+        if not isinstance(data, dict):
+            return data
+        enmascarado = {}
+        for clave, valor in data.items():
+            nombre = str(clave).lower()
+            if any(fragmento in nombre for fragmento in cls._CLAVES_SENSIBLES):
+                enmascarado[clave] = "***"
+            elif isinstance(valor, dict):
+                enmascarado[clave] = cls._datos_auditables(valor)
+            else:
+                enmascarado[clave] = valor
+        return enmascarado
+
     def _log_data_operation(
         self,
         operation: str,
@@ -56,8 +89,8 @@ class BaseRepository[T: BaseModel]:
                     operation=operation,
                     entity_type=self._model_name,
                     entity_id=entity_id,
-                    data=data,
-                    changes=changes,
+                    data=self._datos_auditables(data),
+                    changes=self._datos_auditables(changes),
                     success=success,
                 )
         except Exception:

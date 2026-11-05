@@ -47,6 +47,7 @@ from sync_agent.esquema import (
     CampoRemoto,
     ConflictoSync,
     OpAplicada,
+    SyncId,
     VersionFila,
 )
 
@@ -133,6 +134,14 @@ class AplicadorRemoto:
             logger.warning("Operación rechazada: tabla no sincronizable %r", tabla)
             return resultado
 
+        tipo_op = str(operacion.get("operacion") or "upsert")
+        if tipo_op not in ("upsert", "delete"):
+            # Sin lista blanca, cualquier cadena distinta de "delete" se
+            # aplicaba silenciosamente como upsert.
+            resultado.motivo = "operacion_no_valida"
+            logger.warning("Operación rechazada: tipo de operación %r", tipo_op)
+            return resultado
+
         if self._ya_aplicada(op_id):
             resultado.motivo = MOTIVO_DUPLICADA
             return resultado
@@ -154,7 +163,7 @@ class AplicadorRemoto:
             # una sola fila corrupta bloqueaba la sincronización de todos.
             with self.session.begin_nested():
                 with cambios_silenciosos(self.session):
-                    if str(operacion.get("operacion")) == "delete":
+                    if tipo_op == "delete":
                         self._aplicar_borrado(operacion, tabla, fila_uuid, resultado)
                     else:
                         self._aplicar_upsert(operacion, tabla, fila_uuid, payload, resultado)
@@ -241,6 +250,12 @@ class AplicadorRemoto:
                     setattr(existente, descripcion.columna_activo, 0)
                 else:
                     self.session.delete(existente)
+                    # Igual que en ``_aplicar_borrado``: liberar la identidad
+                    # del id local borrado para que una re-creación con el
+                    # mismo UUID no choque con la restricción única.
+                    self.session.query(SyncId).filter(
+                        SyncId.tabla == tabla, SyncId.uuid == fila_uuid
+                    ).delete(synchronize_session=False)
             else:
                 for campo, valor in traducido.items():
                     columna = registro.columna(tabla, campo)
@@ -302,6 +317,14 @@ class AplicadorRemoto:
                 setattr(fila, descripcion.columna_activo, 0)
             else:
                 self.session.delete(fila)
+                # La identidad global no debe seguir apuntando a un id local
+                # muerto: si no, un upsert posterior con el mismo fila_uuid
+                # chocaría con uq_sync_ids_tabla_uuid al registrar la fila
+                # nueva. La versión de fila (tumba) y las marcas de campos se
+                # conservan: son las que deciden la mezcla.
+                self.session.query(SyncId).filter(
+                    SyncId.tabla == tabla, SyncId.uuid == fila_uuid
+                ).delete(synchronize_session=False)
 
         self._actualizar_version(tabla, fila_uuid, marca, borrado=True)
         resultado.aplicada = True
@@ -622,9 +645,17 @@ class AplicadorRemoto:
         dispositivo = str(operacion.get("dispositivo") or "")
         resultado: dict[str, merge.Marca] = {}
         for campo, marca in entrantes.items():
-            valor = traducido.get(campo, marca.valor)
+            if campo not in traducido:
+                # La columna se omitió al traducir el payload (clave foránea
+                # cuyo padre no se replica): si se escribiera el UUID remoto
+                # aquí, ``deserializar_valor`` la convertiría en NULL y
+                # pisaría un valor local válido.
+                continue
             resultado[campo] = merge.Marca(
-                valor=valor, op_id=op_id, dispositivo=dispositivo, actualizado_en=momento
+                valor=traducido[campo],
+                op_id=op_id,
+                dispositivo=dispositivo,
+                actualizado_en=momento,
             )
         return resultado
 

@@ -95,8 +95,9 @@ def test_actualizar_pago_recalcula(session, empleado):
 def test_generar_nomina_empleado(session, empleado):
     servicio = PagoService(session)
     pago = servicio.generar_nominas_empleado(empleado.id, date(2026, 2, 1), date(2026, 2, 28))
-    # El motor de nómina con prorratear=True debería reducir el salario
-    # pero actualmente devuelve el salario completo. Esto refleja el comportamiento actual.
+    # El empleado fue contratado en 2019: febrero 2026 es un mes completo,
+    # así que el salario no se prorratea. (Antes este comentario sugería que
+    # el motor debía reducirlo, lo que congelaba un bug de prorrateo.)
     assert float(pago.salario_base) == pytest.approx(2000.0)
 
 

@@ -513,10 +513,39 @@ object Espejo {
             .joinToString(",", "{", "}") { "\"${it.key}\":${canonica(it.value)}" }
         is JsonArray -> elemento.joinToString(",", "[", "]") { canonica(it) }
         is JsonPrimitive -> when {
-            elemento.isString -> "\"${elemento.content.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+            elemento.isString -> "\"${escaparCadena(elemento.content)}\""
             else -> elemento.content
         }
         else -> elemento.toString()
+    }
+
+    /**
+     * Escapa el contenido de una cadena JSON igual que ``json.dumps`` de
+     * Python (``ensure_ascii=False``): comillas, barra invertida y todos los
+     * caracteres de control. Antes solo se escapaban comillas y barras, así
+     * que un salto de línea producía una marca canónica distinta en Android
+     * y en el nodo central y el desempate de conflictos no coincidía.
+     */
+    private fun escaparCadena(texto: String): String {
+        val salida = StringBuilder(texto.length + 8)
+        for (c in texto) {
+            when (c) {
+                '"' -> salida.append("\\\"")
+                '\\' -> salida.append("\\\\")
+                '\b' -> salida.append("\\b")
+                '\t' -> salida.append("\\t")
+                '\n' -> salida.append("\\n")
+                '\u000C' -> salida.append("\\f")
+                '\r' -> salida.append("\\r")
+                else -> if (c < ' ') {
+                    salida.append("\\u")
+                    salida.append(c.code.toString(16).padStart(4, '0'))
+                } else {
+                    salida.append(c)
+                }
+            }
+        }
+        return salida.toString()
     }
 
     // ==================================================================

@@ -97,6 +97,12 @@ class TablaRepositorio @Inject constructor(
 
     /** Opciones de una tabla padre, para el selector de clave foránea */
     suspend fun opcionesForaneas(tabla: String): List<OpcionTabla> = withContext(Dispatchers.IO) {
+        // La tabla se interpola en el SQL: solo se admiten las que el
+        // protocolo declara como padres de clave foránea. Antes cualquier
+        // nombre con forma de tabla (incluidas las internas del espejo)
+        // podía consultarse desde aquí.
+        val tablasPadre = Espejo.CLAVES_FORANEAS.values.flatten().toSet()
+        if (tabla !in tablasPadre) return@withContext emptyList()
         val etiqueta = when (tabla) {
             "empleados" -> "nombres || ' ' || apellidos || ' · ' || cedula"
             "estudiantes" -> "nombres || ' ' || apellidos || ' · ' || cedula"

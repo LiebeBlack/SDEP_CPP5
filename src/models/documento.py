@@ -3,6 +3,7 @@ Documento Model
 Modelo de datos para documentos de empleados
 """
 
+import logging
 from datetime import date
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,8 @@ from .base import Base, BaseModel
 
 if TYPE_CHECKING:
     from .empleado import Empleado
+
+logger = logging.getLogger(__name__)
 
 
 class Documento(Base, BaseModel):
@@ -61,7 +64,11 @@ class Documento(Base, BaseModel):
                 )
                 return date.today() <= venc
             except Exception:
-                return True
+                # Una fecha de vencimiento que no se puede interpretar no
+                # puede declararse válida: para un control documental lo
+                # correcto es fallar cerrado.
+                logger.debug("Fecha de vencimiento no interpretable", exc_info=True)
+                return False
         return True
 
     @property

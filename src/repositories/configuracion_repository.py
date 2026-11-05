@@ -48,7 +48,10 @@ class ConfiguracionRepository(BaseRepository[Configuracion]):
         if config:
             try:
                 config.set_valor(valor)
-                self.session.commit()
+                # ``update`` audita el cambio como el resto de escrituras;
+                # antes este método confirmaba por su cuenta y quedaba sin
+                # rastro en la auditoría de datos.
+                self.update(config)
                 return True
             except Exception:
                 self.session.rollback()

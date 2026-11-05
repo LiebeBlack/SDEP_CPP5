@@ -8,7 +8,7 @@ para el cálculo de días trabajados.
 """
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -59,6 +59,17 @@ class PagoService:
     genera recibos de pago y mantiene el control de pagos pendientes
     y realizados.
     """
+
+    # El formulario llama ``dias_trabajados`` a los días laborados, pero en el
+    # modelo ese nombre es una propiedad de solo lectura con los días
+    # calendario del período. Para comparar lo que llega del formulario hay
+    # que mirarlo en ``dias_laborados``.
+    _CAMPO_PERSISTIDO = {"dias_trabajados": "dias_laborados"}
+
+    # Columnas reales del modelo: la actualización masiva por ``datos`` no
+    # debe aceptar relaciones (``empleado``), la PK (``id``), marcas de tiempo
+    # ni propiedades de solo lectura, que ``hasattr`` sí deja pasar.
+    _COLUMNAS_PAGO = frozenset(attr.key for attr in Pago.__mapper__.column_attrs) - {"id"}
 
     def __init__(self, session: Session):
         """
@@ -452,7 +463,9 @@ class PagoService:
         # parámetros de nómina del día.
         recalcular = any(
             campo in datos
-            and (not hasattr(pago, campo) or not _mismo_importe(getattr(pago, campo), datos[campo]))
+            and not _mismo_importe(
+                getattr(pago, self._CAMPO_PERSISTIDO.get(campo, campo), None), datos[campo]
+            )
             for campo in campos_calculo - {"prorratear"}
         )
         prorratear_actual = bool(pago.prorrateado)
@@ -544,8 +557,32 @@ class PagoService:
                         }
                     )
 
+            # ``salario_base`` persistido es el salario EFECTIVO del período
+            # (ya prorrateado cuando ``prorrateado`` es verdadero), pero el
+            # motor espera el salario completo del período para volver a
+            # prorratearlo. Si el importe recibido coincide con el guardado,
+            # el usuario no modificó el salario: se reconstruye el del
+            # período invirtiendo el prorrateo, para no descontar los días
+            # dos veces en cada guardado. Si cambió, el valor nuevo se
+            # interpreta como salario completo, igual que en la creación.
+            salario_motor = round(float(componentes["salario_base"] or 0), 2)
+            if (
+                prorrateado
+                and pago.prorrateado
+                and pago.dias_laborados
+                and _mismo_importe(salario_motor, pago.salario_base)
+            ):
+                periodo_guardado = int(pago.dias_periodo or 30)
+                salario_motor = float(
+                    redondear(
+                        a_decimal(salario_motor)
+                        * a_decimal(periodo_guardado)
+                        / a_decimal(int(pago.dias_laborados))
+                    )
+                )
+
             resultado = self.calcular_con_motor(
-                salario_base=round(float(componentes["salario_base"] or 0), 2),
+                salario_base=salario_motor,
                 datos=datos_calculo,
                 horas_extra=horas_extra_desglosadas,
             )
@@ -635,7 +672,7 @@ class PagoService:
         if "dias_trabajados" in datos:
             datos.pop("dias_trabajados")
         for campo, valor in datos.items():
-            if hasattr(pago, campo) and campo not in {"empleado_id", "prorratear"}:
+            if campo in self._COLUMNAS_PAGO and campo not in {"empleado_id", "prorratear"}:
                 setattr(pago, campo, valor)
 
         return self.pago_repository.update(pago)
@@ -703,15 +740,31 @@ class PagoService:
             raise ValueError("Fechas de período inválidas o requeridas")
         if periodo_fin < periodo_inicio:
             raise ValueError("La fecha fin debe ser igual o posterior a la fecha inicio")
+        if (periodo_fin - periodo_inicio).days + 1 > 31:
+            # Un solo pago no puede cubrir varios meses: el salario base es
+            # mensual y liquidar 45/60 días como "un mes de 30 días" subpagaba
+            # los meses restantes en silencio. Quien necesite rangos largos
+            # debe usar ``generar_nominas_periodo``, que divide por meses.
+            raise ValueError(
+                "El período supera un mes; use generar_nominas_periodo, "
+                "que genera un pago por cada mes del rango"
+            )
 
         empleado = self.empleado_repository.get_by_id(empleado_id)
         if not empleado:
             raise ValueError("Empleado no encontrado")
 
-        # Verificar si ya existe nómina para este periodo
-        pagos_existentes = self.pago_repository.get_by_empleado_periodo(
-            empleado_id, periodo_inicio, periodo_fin
-        )
+        # Verificar si ya existe nómina (salario) para este periodo. Otros
+        # conceptos que toquen las mismas fechas — liquidación, bono,
+        # comisión — no son un duplicado de la nómina y no deben bloquearla.
+        pagos_existentes = [
+            pago
+            for pago in self.pago_repository.get_by_empleado_periodo(
+                empleado_id, periodo_inicio, periodo_fin
+            )
+            if (getattr(pago.tipo_pago, "value", pago.tipo_pago) or "")
+            == TipoPago.SALARIO_BASE.value
+        ]
         if pagos_existentes:
             raise ValueError("Ya existe una nómina para este periodo")
 
@@ -772,22 +825,47 @@ class PagoService:
         pagos_generados = []
 
         for empleado in empleados_activos:
-            try:
-                pago = self.generar_nominas_empleado(empleado.id, periodo_inicio, periodo_fin)
-                pagos_generados.append(pago)
-            except Exception as e:
-                # Se continúa con el resto del personal (por ejemplo si el
-                # empleado ya tiene nómina en el período), pero el motivo
-                # queda registrado para poder diagnosticarlo.
-                logger.warning(
-                    "No se generó la nómina del empleado %s: %s",
-                    empleado.id,
-                    e,
-                    exc_info=True,
-                )
-                continue
+            # Cada mes del rango se intenta por separado: si uno ya existe o
+            # falla, los demás se siguen generando (antes un solo período
+            # largo producía un único pago de un mes y subpagaba el resto).
+            for ini, fin in self._tramos_mensuales(periodo_inicio, periodo_fin):
+                try:
+                    pago = self.generar_nominas_empleado(empleado.id, ini, fin)
+                    pagos_generados.append(pago)
+                except Exception as e:
+                    # Se continúa con el resto del personal y de los meses
+                    # (por ejemplo si el empleado ya tiene nómina en ese
+                    # mes), pero el motivo queda registrado.
+                    logger.warning(
+                        "No se generó la nómina del empleado %s (%s a %s): %s",
+                        empleado.id,
+                        ini,
+                        fin,
+                        e,
+                        exc_info=True,
+                    )
+                    continue
 
         return pagos_generados
+
+    @staticmethod
+    def _tramos_mensuales(inicio: date, fin: date):
+        """
+        Divide un rango de fechas en tramos de como máximo un mes calendario
+
+        ``generar_nominas_empleado`` liquida como máximo un mes por pago;
+        un rango de varios meses se convierte en un pago por mes para que
+        cada tramo conserve su prorrateo e incidencias propias.
+        """
+        cursor = inicio
+        while cursor <= fin:
+            if cursor.month == 12:
+                fin_mes = date(cursor.year, 12, 31)
+            else:
+                fin_mes = date(cursor.year, cursor.month + 1, 1) - timedelta(days=1)
+            tramo_fin = min(fin_mes, fin)
+            yield cursor, tramo_fin
+            cursor = tramo_fin + timedelta(days=1)
 
     def obtener_estadisticas(self) -> dict:
         """Obtiene estadísticas de pagos"""

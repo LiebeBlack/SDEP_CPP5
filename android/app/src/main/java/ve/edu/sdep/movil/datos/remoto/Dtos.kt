@@ -116,6 +116,8 @@ data class SesionInfoDto(
     val cedula: String? = null,
     @SerialName("debe_cambiar_password") val debeCambiarPassword: Boolean = false,
     @SerialName("expira_en") val expiraEn: String? = null,
+    /** Vida relativa de la sesión en horas; se usa si el nodo no envía expira_en */
+    @SerialName("vida_relativa_horas") val vidaRelativaHoras: Int = 12,
     @SerialName("password_min_longitud") val passwordMinLongitud: Int = 6,
 )
 

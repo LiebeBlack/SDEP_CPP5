@@ -7,11 +7,12 @@ incluyendo datos personales, laborales, académicos y de contacto.
 """
 
 from datetime import date
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import Float, Integer, String, Text
+from sqlalchemy import Float, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, BaseModel
@@ -128,7 +129,9 @@ class Empleado(Base, BaseModel):
     departamento: Mapped[str] = mapped_column(String(100), nullable=False)
     fecha_contratacion: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     fecha_terminacion: Mapped[date | None] = mapped_column(Date, nullable=True)
-    salario_base: Mapped[float] = mapped_column(Float, nullable=False)
+    # Numeric como el resto del dominio monetario (Pago, Contrato): Float
+    # arrastra error de redondeo binario que se acumula en la nómina.
+    salario_base: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     activo: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     # Datos académicos
@@ -185,13 +188,14 @@ class Empleado(Base, BaseModel):
         if self.fecha_nacimiento:
             try:
                 today = date.today()
-                return (
+                return max(
+                    0,
                     today.year
                     - self.fecha_nacimiento.year
                     - (
                         (today.month, today.day)
                         < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
-                    )
+                    ),
                 )
             except Exception:
                 return None

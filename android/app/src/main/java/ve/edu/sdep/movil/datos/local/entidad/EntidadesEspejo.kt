@@ -63,6 +63,13 @@ data class OperacionEntradaEntity(
      * redondeado a milisegundos.
      */
     @ColumnInfo(name = "creado_en_iso", defaultValue = "''") val creadoEnIso: String = "",
+    /**
+     * Origen de la operación. Sin él, un reintento diferido llegaba al
+     * aplicador con `dispositivo=""` y el desempate de conflictos por
+     * simultaneidad comparaba contra un equipo inexistente.
+     */
+    @ColumnInfo(name = "dispositivo", defaultValue = "''") val dispositivo: String = "",
+    @ColumnInfo(name = "usuario") val usuario: String? = null,
     val motivo: String?,
     val intentos: Int = 0,
 )
@@ -349,7 +356,8 @@ data class GradoEntity(
     tableName = "matriculas",
     // El escritorio garantiza una sola matrícula ACTIVA por (estudiante,
     // grado) con un índice parcial; Room no admite índices parciales, así que
-    // aquí el índice es simple y la unicidad la aporta la clave natural al    // aplicar la operación remota (mismo comportamiento, distinta vía).
+    // aquí el índice es simple y la unicidad la aporta la clave natural al
+    // aplicar la operación remota (mismo comportamiento, distinta vía).
     indices = [Index("estudiante_id"), Index("grado_id"), Index("activa")],
 )
 data class MatriculaEntity(

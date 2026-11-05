@@ -174,7 +174,11 @@ class AutenticacionRepositorio @Inject constructor(
                 rol = Rol.desde(info.rol),
                 cedula = info.cedula,
                 token = par.token,
-                expiraEn = Fechas.desdeIso(info.expiraEn) ?: 0L,
+                // Si el nodo no informa expira_en, la sesión NO es eterna:
+                // se acota con la vida relativa que declara el protocolo.
+                expiraEn = Fechas.desdeIso(info.expiraEn)
+                    ?: System.currentTimeMillis() +
+                        info.vidaRelativaHoras.coerceAtLeast(1) * 3_600_000L,
                 debeCambiarPassword = info.debeCambiarPassword,
                 minLongitudPassword = info.passwordMinLongitud.coerceAtLeast(1),
             )
@@ -185,13 +189,24 @@ class AutenticacionRepositorio @Inject constructor(
             sesionRepositorio.iniciar(sesion)
             Resultado.Exito(sesion)
         } catch (error: HttpException) {
-            boveda.olvidarCredencialBiometrica()
-            boveda.olvidarSesionToken()
-            sesionUsuarioDao.limpiar()
-            Resultado.Fallo(
-                "La sesión guardada ya no es válida. Entre con su contraseña.",
-                error,
-            )
+            // Solo un rechazo de autenticación (401/403) invalida la sesión
+            // guardada. Un 5xx o un 429 del nodo es un fallo transitorio: la
+            // credencial biométrica se conserva y el usuario puede reintentar.
+            if (error.code() == 401 || error.code() == 403) {
+                boveda.olvidarCredencialBiometrica()
+                boveda.olvidarSesionToken()
+                sesionUsuarioDao.limpiar()
+                Resultado.Fallo(
+                    "La sesión guardada ya no es válida. Entre con su contraseña.",
+                    error,
+                )
+            } else {
+                Resultado.Fallo(
+                    "El nodo central no respondió correctamente. Intente de nuevo.",
+                    error,
+                    reintentable = true,
+                )
+            }
         } catch (error: IOException) {
             // Sin red: ventana de gracia con el caché local de la sesión.
             // La comprobación completa vive en la condición del retorno
@@ -400,7 +415,8 @@ class AutenticacionRepositorio @Inject constructor(
         if (sesion.token.isNotBlank()) boveda.guardarSesionToken(sesion.token)
     }
 
-    private fun vigente(expiraEn: Long): Boolean = expiraEn <= 0L || System.currentTimeMillis() <= expiraEn
+    private fun vigente(expiraEn: Long): Boolean =
+        expiraEn > 0L && System.currentTimeMillis() <= expiraEn
 
     /**
      * Comprueba la contraseña con la política del servidor, no con una copia.

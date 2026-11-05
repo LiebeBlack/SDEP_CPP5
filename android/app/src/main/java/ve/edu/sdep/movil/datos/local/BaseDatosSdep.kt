@@ -51,7 +51,7 @@ import ve.edu.sdep.movil.datos.local.entidad.*
         OpAplicadaEntity::class,
         BlobPendienteEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class BaseDatosSdep : RoomDatabase() {
@@ -100,6 +100,21 @@ abstract class BaseDatosSdep : RoomDatabase() {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE sesion_usuario ADD COLUMN cedula TEXT")
+            }
+        }
+
+        /**
+         * v3 → v4: las operaciones diferidas guardan su origen.
+         *
+         * Al reintentar una operación cuyo registro padre llegó tarde, el
+         * aplicador necesita `dispositivo`/`usuario` originales para el
+         * desempate de conflictos; antes se perdían y el empate se resolvía
+         * contra una cadena vacía.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE operaciones_entrada ADD COLUMN dispositivo TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE operaciones_entrada ADD COLUMN usuario TEXT")
             }
         }
 

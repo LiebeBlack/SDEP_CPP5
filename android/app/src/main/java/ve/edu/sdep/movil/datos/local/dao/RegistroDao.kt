@@ -54,4 +54,8 @@ interface RegistroDao {
     /** Registros con cambios aún no confirmados por el servidor */
     @Query("SELECT COUNT(*) FROM registros WHERE estado = 'PENDIENTE' AND eliminado = 0")
     fun observarPendientes(): Flow<Int>
+
+    /** Cantidad de registros esperando envío (para decidir si hay datos que proteger) */
+    @Query("SELECT COUNT(*) FROM registros WHERE estado = 'PENDIENTE' AND eliminado = 0")
+    suspend fun contarPendientes(): Int
 }

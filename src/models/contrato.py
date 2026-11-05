@@ -174,9 +174,11 @@ class Contrato(Base, BaseModel):
         """Valor de la hora ordinaria derivado de la jornada semanal pactada"""
         if not self.salario_pactado:
             return CERO
-        horas_mes = Decimal(self.horas_semanales or 40) * Decimal(4.33)
+        # 52 semanas / 12 meses: más preciso que el 4.33 aproximado, que
+        # introduce un ~0.08 % de error en el valor de la hora.
+        horas_mes = Decimal(self.horas_semanales or 40) * Decimal("4.3333")
         if horas_mes <= 0:
-            horas_mes = Decimal(40) * Decimal(4.33)
+            horas_mes = Decimal(40) * Decimal("4.3333")
         return (Decimal(self.salario_pactado) / horas_mes).quantize(Decimal("0.01"))
 
     def to_dict(self) -> dict:

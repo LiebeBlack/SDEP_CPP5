@@ -490,9 +490,14 @@ class BaseRepository[T: BaseModel]:
                 logger.warning(f"Campo {field_name} no existe en {self._model_name}")
                 return []
 
+            # Los comodines de LIKE se escapan para que un "%" o "_" en el
+            # término buscado no actúe como patrón.
+            termino = (
+                value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            )
             result = (
                 self.session.query(self.model)
-                .filter(getattr(self.model, field_name).like(f"%{value}%"))
+                .filter(getattr(self.model, field_name).like(f"%{termino}%", escape="\\"))
                 .all()
             )
 

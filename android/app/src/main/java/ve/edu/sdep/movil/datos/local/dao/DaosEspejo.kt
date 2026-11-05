@@ -526,12 +526,19 @@ interface OpAplicadaDao {
 @Dao
 interface BlobPendienteDao {
 
-    /** Binarios de entrada aún no descargados, los más pequeños primero */
+    /**
+     * Binarios de entrada aún no descargados, los más pequeños primero.
+     *
+     * ``omitido`` es terminal (se alcanzó el máximo de reintentos o el nodo
+     * no lo tiene): antes la consulta lo volvía a seleccionar para siempre
+     * y el teléfono reintentaba el mismo archivo en cada ciclo.
+     */
     @Query(
         "SELECT * FROM blobs_pendientes WHERE direccion = 'entrada' " +
-            "AND estado IN ('por_bajar', 'omitido') ORDER BY tamano LIMIT :limite",
+            "AND estado = 'por_bajar' AND intentos < :maxIntentos " +
+            "ORDER BY tamano LIMIT :limite",
     )
-    suspend fun pendientesDeEntrada(limite: Int): List<BlobPendienteEntity>
+    suspend fun pendientesDeEntrada(limite: Int, maxIntentos: Int = 100): List<BlobPendienteEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun guardar(blob: BlobPendienteEntity)

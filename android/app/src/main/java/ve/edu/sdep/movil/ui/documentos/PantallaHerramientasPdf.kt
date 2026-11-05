@@ -199,7 +199,9 @@ fun PantallaHerramientasPdf(
         }
     }
     LaunchedEffect(estado.mensaje) {
-        estado.mensaje?.let { snackbar.showSnackbar(it) }
+        val texto = estado.mensaje ?: return@LaunchedEffect
+        snackbar.showSnackbar(texto)
+        vistaModelo.limpiarMensaje()
     }
     LaunchedEffect(sesion.usuario, sesion.rol) {
         seccionActiva = when {

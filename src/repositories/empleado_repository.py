@@ -6,7 +6,7 @@ Repositorio para operaciones de datos de empleados con manejo de errores mejorad
 import logging
 from typing import Any, cast
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -32,10 +32,10 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 self.session.query(Empleado).filter(Empleado.cedula == cedula).first(),
             )
         except SQLAlchemyError as e:
-            logger.error(f"Error de base de datos al buscar empleado por cédula {cedula}: {e}")
+            logger.error("Error de base de datos al buscar empleado por cédula: %s", e)
             return None
         except Exception as e:
-            logger.error(f"Error inesperado al buscar empleado por cédula {cedula}: {e}")
+            logger.error("Error inesperado al buscar empleado por cédula: %s", e)
             return None
 
     def get_by_tipo(self, tipo: str | TipoEmpleado) -> list[Empleado]:
@@ -158,7 +158,13 @@ class EmpleadoRepository(BaseRepository[Empleado]):
                 query = query.filter(Empleado.departamento == filtros["departamento"])
 
             if "activo" in filtros and filtros["activo"] is not None:
-                query = query.filter(Empleado.activo == int(filtros["activo"]))
+                # El filtro puede llegar como bool, entero o texto desde un
+                # combobox/JSON; un int() crudo lanzaba ValueError y el
+                # except devolvía [] (todos los empleados "desaparecían").
+                activo = filtros["activo"]
+                if isinstance(activo, str):
+                    activo = activo.strip().lower() in {"1", "true", "si", "sí", "activo"}
+                query = query.filter(Empleado.activo == (1 if activo else 0))
 
             if "cargo" in filtros and filtros["cargo"]:
                 query = query.filter(Empleado.cargo == filtros["cargo"])
@@ -223,14 +229,16 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         """Obtiene estadísticas de empleados por tipo con manejo de errores"""
         try:
             stats = {t.value: 0 for t in TipoEmpleado}
-            empleados = self.get_activos()
-            for empleado in empleados:
-                t = (
-                    empleado.tipo_empleado.value
-                    if hasattr(empleado.tipo_empleado, "value")
-                    else str(empleado.tipo_empleado)
-                )
-                stats[t] = stats.get(t, 0) + 1
+            # GROUP BY en SQL: antes se hidrataban todos los empleados
+            # activos en memoria solo para contarlos.
+            for tipo, total in (
+                self.session.query(Empleado.tipo_empleado, func.count(Empleado.id))
+                .filter(Empleado.activo == 1)
+                .group_by(Empleado.tipo_empleado)
+                .all()
+            ):
+                clave = tipo.value if hasattr(tipo, "value") else str(tipo)
+                stats[clave] = stats.get(clave, 0) + int(total or 0)
             return stats
         except Exception as e:
             logger.error(f"Error obteniendo estadísticas por tipo: {e}")
@@ -240,11 +248,14 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         """Obtiene estadísticas de empleados por departamento con manejo de errores"""
         try:
             stats: dict[str, Any] = {}
-            empleados = self.get_activos()
-            for empleado in empleados:
-                dept = empleado.departamento
-                if dept:
-                    stats[dept] = stats.get(dept, 0) + 1
+            for departamento, total in (
+                self.session.query(Empleado.departamento, func.count(Empleado.id))
+                .filter(Empleado.activo == 1, Empleado.departamento.isnot(None))
+                .group_by(Empleado.departamento)
+                .all()
+            ):
+                if departamento:
+                    stats[departamento] = int(total or 0)
             return stats
         except Exception as e:
             logger.error(f"Error obteniendo estadísticas por departamento: {e}")

@@ -262,15 +262,39 @@ class TestPermissionChecker:
 
 
 class TestSecurityLogger:
+    """Cada evento debe quedar registrado de forma verificable.
+
+    Antes estos tests solo comprobaban que la llamada no lanzaba: un
+    ``log_security_event`` que no escribiera nada pasaba en verde.
+    """
+
+    @staticmethod
+    def _ultimos():
+        from src.utils.audit_logger import audit_logger
+
+        return audit_logger.get_recent_events(limit=50)
+
     def test_log_event_auth_failure(self, db_config):
         SecurityLogger.log_security_event("auth_failure", {"usuario": "anonimo"}, "WARNING")
+        evento = self._ultimos()[-1]
+        assert evento["event_type"] == "SECURITY_AUTH_FAILURE"
+        assert evento["details"]["usuario"] == "anonimo"
+        assert evento["success"] is False
 
     def test_log_event_permission_denied(self, db_config):
         SecurityLogger.log_security_event("permission_denied", {"modulo": "nomina"})
+        evento = self._ultimos()[-1]
+        assert evento["event_type"] == "SECURITY_PERMISSION_DENIED"
+        assert evento["details"]["modulo"] == "nomina"
 
     def test_log_event_sospechoso(self, db_config):
         SecurityLogger.log_security_event("suspicious", {"detalle": "acceso raro"})
+        evento = self._ultimos()[-1]
+        assert evento["event_type"] == "SECURITY_SUSPICIOUS"
+        assert evento["details"]["detalle"] == "acceso raro"
 
     def test_log_event_tipo_desconocido(self, db_config):
         # Tipos no mapeados caen en SECURITY_SUSPICIOUS sin excepción
         SecurityLogger.log_security_event("otro", {})
+        evento = self._ultimos()[-1]
+        assert evento["event_type"] == "SECURITY_SUSPICIOUS"

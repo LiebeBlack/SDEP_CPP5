@@ -331,6 +331,9 @@ class HerramientasPdfViewModel @Inject constructor(
         _estado.update { it.copy(mensaje = mensaje) }
     }
 
+    /** El snackbar ya mostró el mensaje; sin limpiarlo reaparece al volver a la pantalla */
+    fun limpiarMensaje() = _estado.update { it.copy(mensaje = null) }
+
     private fun empleadoSeleccionado(): Long? = _estado.value.empleadoId
 
     fun actualizarSesion(usuario: String, rol: String, cedula: String?, esTrabajador: Boolean) {

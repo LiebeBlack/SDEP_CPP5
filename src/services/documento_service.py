@@ -145,6 +145,21 @@ class DocumentoService:
             raise ValueError("Documento no encontrado")
 
         datos = dict(datos)
+        # Campos que solo el propio servicio puede fijar: la PK y las
+        # relaciones no son editables, y los metadatos del archivo los
+        # gestiona el bloque de reemplazo (o quedan como están).
+        for protegido in (
+            "id",
+            "empleado",
+            "empleado_id",
+            "created_at",
+            "updated_at",
+            "contenido_binario",
+            "ruta_archivo",
+            "tamano_bytes",
+            "nombre_archivo",
+        ):
+            datos.pop(protegido, None)
         if archivo_binario is not None:
             archivo_binario = self._normalizar_contenido(archivo_binario)
         ruta_anterior = documento.ruta_archivo
@@ -183,9 +198,11 @@ class DocumentoService:
             if "tipo_documento" in datos and hasattr(datos["tipo_documento"], "value"):
                 datos["tipo_documento"] = datos["tipo_documento"].value
 
-            # Actualizar campos
+            # Actualizar campos: solo columnas reales del modelo, nunca
+            # relaciones ni propiedades de solo lectura.
+            columnas = {attr.key for attr in Documento.__mapper__.column_attrs}
             for campo, valor in datos.items():
-                if hasattr(documento, campo) and campo != "empleado_id":
+                if campo in columnas and campo != "empleado_id":
                     setattr(documento, campo, valor)
 
             actualizado = self.repository.update(documento)

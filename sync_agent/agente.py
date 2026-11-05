@@ -27,7 +27,14 @@ from typing import Any, Callable
 from sqlalchemy.exc import SQLAlchemyError
 
 from sync_agent import consolidacion, identidad, registro
-from sync_agent.aplicador import MOTIVO_ERROR, AplicadorRemoto, FilaPendiente
+from sync_agent.aplicador import (
+    MOTIVO_BORRADA,
+    MOTIVO_DUPLICADA,
+    MOTIVO_ERROR,
+    MOTIVO_SUPERADA,
+    AplicadorRemoto,
+    FilaPendiente,
+)
 from sync_agent.captura import cambios_silenciosos, establecer_dispositivo
 from sync_agent.cliente import (
     ClienteSync,
@@ -39,6 +46,7 @@ from sync_agent.cliente import (
 from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads, nuevo_uuid
 from sync_agent.config import ConfigSync, cargar
 from sync_agent.esquema import (
+    BLOB_OMITIDO,
     BLOB_POR_BAJAR,
     BLOB_POR_SUBIR,
     BLOB_SUBIDO,
@@ -68,6 +76,7 @@ ESTADO_SINCRONIZADO = "sincronizado"
 ESTADO_ERROR_TOKEN = "error_token"
 
 MAX_INTENTOS_DIFERIDA = 10
+MAX_INTENTOS_BLOB = 10
 MAX_LOTES_POR_CICLO = 20
 DIAS_RETENCION_JOURNAL = 7
 ESPERA_MAXIMA = 300
@@ -165,6 +174,10 @@ class AgenteSincronizacion:
             hilo.join(timeout=timeout)
             if hilo.is_alive():  # pragma: no cover - salida lenta
                 logger.warning("El hilo de sincronización no terminó en %s s", timeout)
+                # No se limpia la referencia: el hilo sigue vivo y ``iniciar``
+                # no debe arrancar un segundo ciclo en paralelo. Saldrá solo
+                # al ver el evento de detención.
+                return
         self._hilo = None
         self._publicar(estado=ESTADO_DETENIDO)
 
@@ -433,18 +446,34 @@ class AgenteSincronizacion:
         """Marca como confirmadas las operaciones aceptadas por el servidor"""
         if not op_ids:
             return
-        aceptadas = self._op_ids_respuesta(respuesta)
+        # ``aplicadas`` puede venir vacía de forma legítima (lote todo
+        # duplicado o consolidación aún no cerrada): en ese caso NADA se
+        # confirma y las operaciones vuelven a la cola. El reenvío es
+        # idempotente porque el nodo deduplica por ``op_id``.
+        aplicadas = respuesta.get("aplicadas")
+        aceptadas = {str(op) for op in aplicadas} if isinstance(aplicadas, list) else set()
+        hay_lista = isinstance(aplicadas, list)
+        # Las rechazadas sí se conocen siempre: se cierran como RECHAZADA
+        # para no reenviarlas en cada ciclo para siempre.
+        motivos_rechazo = {
+            str(rechazo.get("op_id")): str(rechazo.get("motivo") or "rechazada")
+            for rechazo in (respuesta.get("rechazadas") or [])
+            if isinstance(rechazo, dict) and rechazo.get("op_id")
+        }
         confirmadas: list[str] = []
         sesion = self._sesion()
         try:
             for fila in sesion.query(JournalOp).filter(JournalOp.op_id.in_(op_ids)).all():
-                if not aceptadas or fila.op_id in aceptadas:
+                if fila.op_id in motivos_rechazo:
+                    fila.estado = RECHAZADA
+                    fila.error = f"rechazada: {motivos_rechazo[fila.op_id]}"
+                elif hay_lista and fila.op_id in aceptadas:
                     fila.estado = CONFIRMADA
                     fila.error = None
                     confirmadas.append(fila.op_id)
                 else:
                     fila.estado = PENDIENTE
-                    fila.error = "rechazada por el nodo central"
+                    fila.error = "pendiente de confirmación del nodo central"
             for conflicto in respuesta.get("conflictos") or []:
                 self._guardar_conflicto_servidor(sesion, conflicto)
             sesion.commit()
@@ -455,14 +484,6 @@ class AgenteSincronizacion:
         finally:
             self._cerrar(sesion)
         self._registrar_binarios_de(confirmadas)
-
-    @staticmethod
-    def _op_ids_respuesta(respuesta: dict) -> set[str]:
-        """Identificadores de las operaciones que el servidor dio por aplicadas"""
-        aplicadas = respuesta.get("aplicadas")
-        if isinstance(aplicadas, list):
-            return {str(op) for op in aplicadas}
-        return set()
 
     def _devolver_a_pendiente(self, op_ids: list[str]) -> None:
         """Devuelve a la cola las operaciones marcadas como en envío"""
@@ -622,17 +643,38 @@ class AgenteSincronizacion:
             operaciones = respuesta.get("ops") or []
             if not operaciones:
                 break
-            aplicadas += self._aplicar_lote(operaciones)
+            aplicadas_lote, _ = self._aplicar_lote(operaciones)
+            aplicadas += aplicadas_lote
             nuevo_cursor = int(respuesta.get("cursor") or cursor)
             self._guardar_cursor(nuevo_cursor)
             if not respuesta.get("hay_mas"):
                 break
         return aplicadas
 
-    def _aplicar_lote(self, operaciones: list[dict]) -> int:
-        """Aplica un lote de operaciones remotas (transacción propia)"""
+    # Motivos con los que una operación remota queda resuelta aunque no se
+    # haya "aplicado" en este puesto: ya estaba aplicada, la superó una
+    # escritura más reciente o la fila está borrada en el nodo central.
+    _MOTIVOS_RESUELTOS = frozenset(
+        {
+            MOTIVO_DUPLICADA,
+            MOTIVO_SUPERADA,
+            MOTIVO_BORRADA,
+        }
+    )
+
+    def _aplicar_lote(self, operaciones: list[dict]) -> tuple[int, set[str]]:
+        """
+        Aplica un lote de operaciones remotas (transacción propia)
+
+        Returns:
+            Tupla ``(aplicadas, resueltas)``: cuántas se aplicaron de verdad y
+            los ``op_id`` que quedaron resueltos (aplicadas o con motivo
+            terminal), para que el llamador pueda cerrar las filas del
+            journal sin volver a adivinarlas.
+        """
         sesion = self._sesion()
         aplicadas = 0
+        resueltas: set[str] = set()
         try:
             aplicador = AplicadorRemoto(
                 sesion,
@@ -641,20 +683,36 @@ class AgenteSincronizacion:
             )
             for operacion in operaciones:
                 resultado = aplicador.aplicar(operacion)
+                op_id = str(operacion.get("op_id") or "")
                 if resultado.aplicada:
                     aplicadas += 1
+                    resueltas.add(op_id)
+                elif resultado.motivo in self._MOTIVOS_RESUELTOS:
+                    # Ya no hay nada que hacer con ella: resuelta.
+                    resueltas.add(op_id)
                 elif resultado.diferida:
                     self._guardar_diferida(sesion, operacion, resultado.motivo)
-                elif resultado.motivo == MOTIVO_ERROR:
+                else:
+                    # Rechazo o error: queda registrado como conflicto y, si
+                    # era una diferida, su fila del journal se cierra.
                     self._guardar_rechazo(sesion, operacion, resultado.motivo)
+                    self._cerrar_diferida(sesion, op_id, resultado.motivo)
             sesion.commit()
         except SQLAlchemyError:
             sesion.rollback()
             logger.error("No se pudo aplicar el lote descargado", exc_info=True)
-            return 0
+            return 0, set()
         finally:
             self._cerrar(sesion)
-        return aplicadas
+        return aplicadas, resueltas
+
+    @staticmethod
+    def _cerrar_diferida(sesion, op_id: str, motivo: str | None) -> None:
+        """Marca RECHAZADA una fila del journal que dejó de ser reintentable"""
+        fila = sesion.query(JournalOp).filter(JournalOp.op_id == op_id).first()
+        if fila is not None and fila.estado == DIFERIDA:
+            fila.estado = RECHAZADA
+            fila.error = f"rechazada: {motivo or 'desconocido'}"
 
     def _guardar_diferida(self, sesion, operacion: dict, motivo: str | None) -> None:
         """Guarda una operación cuya dependencia aún no llegó, para reintentarla"""
@@ -677,7 +735,13 @@ class AgenteSincronizacion:
                 base_op_id=operacion.get("base_op_id"),
                 dispositivo=str(operacion.get("dispositivo") or ""),
                 usuario=operacion.get("usuario"),
-                creado_en=ahora_utc(),
+                # Se conserva el sello original de la operación remota: si se
+                # guardara el momento de recepción, la mezcla LWW compararía
+                # marcas más nuevas de lo que la operación realmente tenía.
+                creado_en=(
+                    consolidacion.momento_de_texto(operacion.get("creado_en"))
+                    or ahora_utc()
+                ),
                 estado=DIFERIDA,
                 direccion=DIRECCION_ENTRADA,
                 intentos=1,
@@ -723,17 +787,38 @@ class AgenteSincronizacion:
             )
             if not pendientes:
                 return 0
+            # Las filas NO se borran antes de reintentar: si el padre sigue
+            # sin llegar, ``_guardar_diferida`` incrementa el contador de la
+            # misma fila y ``MAX_INTENTOS_DIFERIDA`` puede alcanzarse. Antes
+            # se borraban y se recreaban con intentos=1, así que el tope era
+            # inalcanzable y una operación huérfana se reintentaba siempre.
             operaciones = [self._a_operacion(fila) for fila in pendientes]
-            for fila in pendientes:
-                sesion.delete(fila)
-            sesion.commit()
         except SQLAlchemyError:
             sesion.rollback()
             return 0
         finally:
             self._cerrar(sesion)
 
-        aplicadas = self._aplicar_lote(operaciones)
+        aplicadas, resueltas = self._aplicar_lote(operaciones)
+        # Las que quedaron resueltas (aplicadas, duplicadas, superadas o con
+        # rechazo terminal) ya no necesitan su fila del journal.
+        if resueltas:
+            sesion = self._sesion()
+            try:
+                for fila in (
+                    sesion.query(JournalOp)
+                    .filter(
+                        JournalOp.op_id.in_(resueltas),
+                        JournalOp.estado == DIFERIDA,
+                    )
+                    .all()
+                ):
+                    sesion.delete(fila)
+                sesion.commit()
+            except SQLAlchemyError:
+                sesion.rollback()
+            finally:
+                self._cerrar(sesion)
         logger.info("Operaciones diferidas reintentadas: %s de %s", aplicadas, len(operaciones))
         return aplicadas
 
@@ -802,7 +887,10 @@ class AgenteSincronizacion:
             pendiente["tabla"], pendiente["fila_uuid"], pendiente["columna"]
         )
         if contenido is None:
-            self._marcar_blob(pendiente["hash"], BLOB_SUBIDO)
+            # La fila ya no tiene el binario (se borró o nunca existió
+            # localmente): se marca OMITIDO, no SUBIDO, para que el nodo
+            # central no quede esperándolo como si se hubiera transferido.
+            self._marcar_blob(pendiente["hash"], BLOB_OMITIDO)
             return False
         if hash_bytes(contenido) != pendiente["hash"]:
             logger.warning(
@@ -812,7 +900,9 @@ class AgenteSincronizacion:
             )
             return False
         if pendiente["tamano"] > self.config.max_bytes_binario:
-            self._marcar_blob(pendiente["hash"], BLOB_SUBIDO)
+            # OMITIDO (no SUBIDO): el remoto puede tener un límite mayor y
+            # quedar pidiendo un blob que aquí nunca se enviará.
+            self._marcar_blob(pendiente["hash"], BLOB_OMITIDO)
             logger.warning(
                 "El archivo %s (%s bytes) supera el límite y no se transfiere",
                 pendiente["hash"][:12],
@@ -827,7 +917,23 @@ class AgenteSincronizacion:
         """Descarga un archivo del nodo central y lo escribe en su fila"""
         contenido = cliente.bajar_blob(pendiente["hash"])
         if contenido is None:
+            intentos = int(pendiente.get("intentos") or 0) + 1
+            if intentos >= MAX_INTENTOS_BLOB:
+                # Un blob que el servidor no tiene (o que ya no existirán
+                # sus bytes) no se reintenta para siempre.
+                self._marcar_blob(pendiente["hash"], BLOB_OMITIDO)
+                logger.warning(
+                    "El archivo %s no está disponible en el nodo central; se omite",
+                    pendiente["hash"][:12],
+                )
+                return False
             self._marcar_blob(pendiente["hash"], BLOB_POR_BAJAR, incrementar=True)
+            return False
+        if len(contenido) > self.config.max_bytes_blob:
+            self._marcar_blob(pendiente["hash"], BLOB_OMITIDO)
+            logger.warning(
+                "El archivo %s supera el tamaño máximo; se omite", pendiente["hash"][:12]
+            )
             return False
         if self._escribir_blob(pendiente, contenido):
             self._marcar_blob(pendiente["hash"], BLOB_SUBIDO)

@@ -292,6 +292,17 @@ class NucleoCentral:
             return
         ahora = ahora_utc()
         with self._candado:
+            # Poda de claves viejas: el dict crecía una entrada por cada IP o
+            # dispositivo que llamaba una sola vez y nunca se liberaba.
+            if len(self._peticiones) > 1000:
+                limite_marca = ahora - timedelta(minutes=1)
+                self._peticiones = {
+                    clave: [m for m in marcas if m > limite_marca]
+                    for clave, marcas in self._peticiones.items()
+                }
+                self._peticiones = {
+                    clave: marcas for clave, marcas in self._peticiones.items() if marcas
+                }
             marcas = [
                 m
                 for m in self._peticiones.get(dispositivo_id, [])
@@ -494,6 +505,12 @@ class NucleoCentral:
             if len(payload.encode("utf-8")) > self.config.max_bytes_peticion:
                 rechazadas.append({"op_id": op_id, "motivo": "payload_demasiado_grande"})
                 continue
+            tipo_op = str(operacion.get("operacion") or "upsert")
+            if tipo_op not in ("upsert", "delete"):
+                # Sin lista blanca, cualquier cadena se materializaba como
+                # upsert al reconstruir el ciclo.
+                rechazadas.append({"op_id": op_id, "motivo": "operacion_no_valida"})
+                continue
             if sesion_usuario is not None:
                 # La cuenta autenticada manda sobre el campo ``usuario`` que
                 # traiga el payload: un teléfono no puede atribuir una escritura
@@ -514,7 +531,7 @@ class NucleoCentral:
                     "lote_id": lote_id,
                     "tabla": tabla,
                     "fila_uuid": fila_uuid,
-                    "operacion": str(operacion.get("operacion") or "upsert"),
+                    "operacion": tipo_op,
                     "payload": payload,
                     "base_op_id": operacion.get("base_op_id"),
                     "dispositivo": dispositivo.dispositivo_id,
@@ -2174,12 +2191,18 @@ class ManejadorSync(BaseHTTPRequestHandler):
             raise ErrorPeticion("Cabecera Content-Length inválida") from None
         if longitud <= 0:
             return b""
-        subida_pdf = urlparse(self.path).path.startswith(RUTA_ARCHIVOS + "/subir")
-        limite = (
-            8 * 1024 * 1024
-            if subida_pdf
-            else max(self.nucleo.config.max_bytes_peticion, self.nucleo.config.max_bytes_blob)
-        )
+        ruta = urlparse(self.path).path
+        subida_pdf = ruta.startswith(RUTA_ARCHIVOS + "/subir")
+        es_blob = ruta.startswith(RUTA_BLOB + "/")
+        if es_blob:
+            limite = self.nucleo.config.max_bytes_blob
+        elif subida_pdf:
+            limite = 8 * 1024 * 1024
+        else:
+            # Rutas JSON (login, emparejar, push, acciones): el tope es el de
+            # petición, no el de blobs. Antes se usaba el máximo de ambos y un
+            # cliente sin autenticar podía enviar cuerpos de 64 MB a /login.
+            limite = self.nucleo.config.max_bytes_peticion
         if longitud > limite:
             self.close_connection = True
             raise ErrorPeticion(f"El cuerpo supera el límite de {limite} bytes", 413)

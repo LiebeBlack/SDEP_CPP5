@@ -65,6 +65,10 @@ fun UserProfileScreen(
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
     val barra = remember { SnackbarHostState() }
 
+    // Antes nadie invocaba cargarPerfil(): la pantalla siempre mostraba el
+    // estado vacío. Se carga al entrar y al volver a la pantalla.
+    LaunchedEffect(Unit) { vistaModelo.cargarPerfil() }
+
     var dialogoEdicion by remember { mutableStateOf(false) }
     var nombreEdicion by remember { mutableStateOf("") }
     var cedulaEdicion by remember { mutableStateOf("") }

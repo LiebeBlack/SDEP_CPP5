@@ -11,7 +11,11 @@ from typing import Any
 
 from sqlalchemy import func
 
-# Pares (acentuada, plana) que se reemplazan en ambos lados de la comparación
+# Pares (acentuada, plana) que se reemplazan en ambos lados de la comparación.
+# SQLite ``lower()`` solo pliega ASCII: una 'É' mayúscula sobrevivía al
+# lower() y los replace de minúsculas no la tocaban, así que "PÉREZ" no
+# encontraba "perez". Por eso se incluyen también las mayúsculas, que se
+# reemplazan directamente por la vocal plana en minúscula.
 _ACENTOS: tuple[tuple[str, str], ...] = (
     ("á", "a"),
     ("é", "e"),
@@ -20,6 +24,13 @@ _ACENTOS: tuple[tuple[str, str], ...] = (
     ("ú", "u"),
     ("ü", "u"),
     ("ñ", "n"),
+    ("Á", "a"),
+    ("É", "e"),
+    ("Í", "i"),
+    ("Ó", "o"),
+    ("Ú", "u"),
+    ("Ü", "u"),
+    ("Ñ", "n"),
 )
 
 

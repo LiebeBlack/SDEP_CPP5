@@ -110,6 +110,16 @@ class NotaFinalRepository(BaseRepository[NotaFinal]):
         """
         if not filas:
             return 0
+        # El INSERT masivo no pasa por los ganchos ORM del aislamiento por
+        # cédula (before_flush/do_orm_execute): hay que comprobar el contexto
+        # a mano. Un WORKER nunca puede escribir notas, igual que en
+        # ``create``.
+        from src.security.aislamiento import ErrorAislamiento
+        from src.security.contexto import actual
+
+        contexto = actual()
+        if contexto is not None and contexto.es_trabajador:
+            raise ErrorAislamiento("Su rol no tiene permiso para modificar este módulo.")
         try:
             self.session.execute(insert(NotaFinal), filas)
             self.session.commit()

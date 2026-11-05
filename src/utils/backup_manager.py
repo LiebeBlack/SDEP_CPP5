@@ -346,6 +346,10 @@ class BackupManager:
             raise FileNotFoundError(f"Archivo de backup no encontrado: {backup_path}")
 
         restore_temp_path = None
+        # Solo se borra al final el temporal que este método creó al
+        # descomprimir. Si el backup no está comprimido, ``temp_restore_path``
+        # apunta al propio archivo de backup y eliminarlo lo destruiría.
+        temporal_propio = False
         try:
             # Crear backup del estado actual antes de restaurar
             current_backup = f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -368,6 +372,7 @@ class BackupManager:
                 ) as temp_restore:
                     restore_temp_path = Path(temp_restore.name)
                 temp_restore_path = restore_temp_path
+                temporal_propio = True
                 if not self._decompress_file(backup_path, temp_restore_path):
                     raise RuntimeError("Error descomprimiendo backup")
 
@@ -430,7 +435,7 @@ class BackupManager:
             logger.error(f"Error restaurando backup: {e}")
             raise
         finally:
-            if restore_temp_path is not None:
+            if restore_temp_path is not None and temporal_propio:
                 try:
                     restore_temp_path.unlink(missing_ok=True)
                 except OSError:

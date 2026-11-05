@@ -34,16 +34,38 @@ def obtener_ip_local() -> str:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))
             ip_local = s.getsockname()[0]
-        return ip_local
+        if ip_local and not ip_local.startswith("127."):
+            return ip_local
     except Exception:
-        return "127.0.0.1"
+        pass
+    try:
+        # Sin salida a Internet (o UDP bloqueado) se intenta resolver el
+        # propio nombre del equipo, que suele dar la IP de la LAN.
+        ip_local = socket.gethostbyname(socket.gethostname())
+        if ip_local and not ip_local.startswith("127."):
+            return ip_local
+    except Exception:
+        pass
+    return "127.0.0.1"
 
 
 def cargar_config(ruta_config: str | None = None) -> dict:
     """Carga la configuración del servidor desde archivo o usa valores por defecto"""
-    if ruta_config and Path(ruta_config).exists():
-        with open(ruta_config, "r", encoding="utf-8") as f:
-            return json.load(f)
+    if ruta_config:
+        ruta = Path(ruta_config)
+        if not ruta.exists():
+            logger.error("El archivo de configuración no existe: %s", ruta_config)
+            sys.exit(2)
+        try:
+            with open(ruta, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.error("No se pudo leer la configuración %s: %s", ruta_config, e)
+            sys.exit(2)
+        if not isinstance(config, dict):
+            logger.error("La configuración %s no es un objeto JSON", ruta_config)
+            sys.exit(2)
+        return config
 
     # Configuración por defecto para ejecución local
     # host: 0.0.0.0 permite conexiones desde cualquier IP en la red local
@@ -108,18 +130,25 @@ def crear_usuarios_por_defecto(config: dict) -> None:
         try:
             servicio = AuthService(sesion)
 
-            # Usuarios por defecto
+            # Usuarios por defecto. Las cuentas privilegiadas nacen con la
+            # obligación de cambiar la contraseña en el primer inicio: las
+            # claves documentadas aquí son públicas y no deben seguir siendo
+            # válidas después del primer acceso.
             usuarios = [
-                ("admin", "Admin1234", "admin", "Administrador del Sistema"),
-                ("manager", "Gestor1234", "manager", "Gestor Principal"),
-                ("user", "Usuario1234", "user", "Usuario Estándar"),
-                ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura"),
+                ("admin", "Admin1234", "admin", "Administrador del Sistema", True),
+                ("manager", "Gestor1234", "manager", "Gestor Principal", True),
+                ("user", "Usuario1234", "user", "Usuario Estándar", False),
+                ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura", False),
             ]
 
-            for username, password, rol, nombre_completo in usuarios:
+            for username, password, rol, nombre_completo, debe_cambiar in usuarios:
                 if servicio.usuario_por_username(username) is None:
                     servicio.crear_usuario(
-                        username, password, rol, nombre_completo, debe_cambiar_password=False
+                        username,
+                        password,
+                        rol,
+                        nombre_completo,
+                        debe_cambiar_password=debe_cambiar,
                     )
                     logger.info(f"Usuario '{username}' creado con rol '{rol}'")
                 else:
@@ -152,6 +181,12 @@ def crear_dispositivo_por_defecto(
     nucleo = NucleoCentral(servidor_config)
 
     try:
+        # Solo se crea el dispositivo si el nodo aún no tiene ninguno:
+        # ejecutarlo en cada arranque generaba dispositivos y tokens nuevos
+        # duplicados en cada reinicio del servidor.
+        if nucleo.listar_dispositivos():
+            logger.info("Ya existen dispositivos registrados; no se crea uno nuevo")
+            return None, None
         dispositivo_id, token = nucleo.crear_dispositivo(nombre)
         logger.info(f"Dispositivo creado: ID={dispositivo_id}")
         return dispositivo_id, token
@@ -248,14 +283,15 @@ def main():
     # Crear dispositivo por defecto
     if not args.sin_dispositivo:
         dispositivo_id, token = crear_dispositivo_por_defecto(config)
-        print("\n" + "=" * 60)
-        print("DISPOSITIVO POR DEFECTO CREADO")
-        print("=" * 60)
-        print(f"ID del dispositivo: {dispositivo_id}")
-        print(f"Token: {token}")
-        print("\nGUARDE ESTE TOKEN - no se puede recuperar después")
-        print("Úselo para conectar este u otro equipo al servidor")
-        print("=" * 60 + "\n")
+        if dispositivo_id:
+            print("\n" + "=" * 60)
+            print("DISPOSITIVO POR DEFECTO CREADO")
+            print("=" * 60)
+            print(f"ID del dispositivo: {dispositivo_id}")
+            print(f"Token: {token}")
+            print("\nGUARDE ESTE TOKEN - no se puede recuperar después")
+            print("Úselo para conectar este u otro equipo al servidor")
+            print("=" * 60 + "\n")
 
     # Iniciar servidor (o solo inicializar)
     if not args.solo_inicializar:

@@ -133,9 +133,17 @@ class SincronizacionRepositorio @Inject constructor(
             return@withLock Resultado.Exito(Unit)
         }
 
-        val hayDatos = identidadDaoContar() > 0
+        // Antes solo se miraba la tabla de identidades, pero las capturas de
+        // campo viven en `registros`/`operaciones_pendientes` sin identidad:
+        // un cambio de usuario borraba fichas sin enviar. Ahora se protege
+        // cualquier dato pendiente de la cuenta anterior.
+        val hayDatos = withContext(Dispatchers.IO) {
+            identidadDaoContar() > 0 ||
+                registroDao.contarPendientes() > 0 ||
+                operacionDao.contarPendientes() > 0
+        }
         if (hayDatos) {
-            if (operacionDao.pendientes(1).isNotEmpty()) {
+            if (operacionDao.contarPendientes() > 0 || registroDao.contarPendientes() > 0) {
                 val configuracion = configuracionRepositorio.cargar()
                 val tokenViejo = boveda.leerSesionToken()?.takeIf { it.isNotBlank() }
                 if (!configuracion.completa || tokenViejo.isNullOrBlank()) {
@@ -145,7 +153,10 @@ class SincronizacionRepositorio @Inject constructor(
                     )
                 }
                 val envio = intentarCiclo(configuracion, tokenViejo)
-                if (envio is Resultado.Fallo || operacionDao.pendientes(1).isNotEmpty()) {
+                val quedanPendientes = withContext(Dispatchers.IO) {
+                    operacionDao.contarPendientes() > 0 || registroDao.contarPendientes() > 0
+                }
+                if (envio is Resultado.Fallo || quedanPendientes) {
                     return@withLock Resultado.Fallo(
                         "Hay cambios sin enviar de la cuenta anterior. Conecte el " +
                             "teléfono y sincronice antes de cambiar de usuario.",
@@ -316,6 +327,7 @@ class SincronizacionRepositorio @Inject constructor(
                     rechazo.motivo.ifBlank { "el servidor no indicó el motivo" },
                 )
             }
+            marcarRechazadas(lote.filter { it.opId in respuesta.rechazadas.map { r -> r.opId }.toSet() })
             respuesta.conflictos.forEach { conflicto -> registrarConflictoRemoto(conflicto) }
 
             enviadas += respuesta.aplicadas.size
@@ -327,6 +339,19 @@ class SincronizacionRepositorio @Inject constructor(
             if (lote.size < TAMANO_LOTE) break
         }
         return enviadas
+    }
+
+    /** Los registros rechazados por el servidor no deben quedar "pendientes" eternos */
+    private suspend fun marcarRechazadas(rechazadas: List<OperacionPendienteEntity>) {
+        for (operacion in rechazadas) {
+            if (operacion.tabla != TABLA_REGISTROS) continue
+            val registro = registroDao.buscarPorUuid(operacion.filaUuid) ?: continue
+            if (registro.estado == EstadoSincronizacion.PENDIENTE.name) {
+                registroDao.insertar(
+                    registro.copy(estado = EstadoSincronizacion.RECHAZADO.name),
+                )
+            }
+        }
     }
 
     /** Los registros confirmados dejan de estar pendientes en la barra de estado */
@@ -429,7 +454,7 @@ class SincronizacionRepositorio @Inject constructor(
      * @return Cuántos archivos quedaron guardados con su hash verificado
      */
     private suspend fun descargarBlobs(api: ProtocoloApi): Int = coroutineScope {
-        val pendientes = blobDao.pendientesDeEntrada(LIMITE_BLOBS_POR_CICLO)
+        val pendientes = blobDao.pendientesDeEntrada(LIMITE_BLOBS_POR_CICLO, MAX_INTENTOS_BLOB)
         // Descargas en grupos pequeños: la red y el SHA-256 se reparten entre
         // varios hilos, pero la base sigue recibiendo escrituras acotadas.
         val descargas = pendientes.chunked(DESCARGAS_EN_PARALELO).flatMap { grupo ->
@@ -443,7 +468,17 @@ class SincronizacionRepositorio @Inject constructor(
         try {
             // `use` cierra el cuerpo aunque falle la lectura: sin eso, cada
             // archivo dejaría una conexión abierta hasta el recolector.
-            val contenido = api.descargarBlob(blob.hash).use { it.bytes() }
+            val cuerpo = api.descargarBlob(blob.hash)
+            // Un Content-Length que excede el tope del protocolo se rechaza
+            // sin leer: antes `bytes()` cargaba el cuerpo completo en memoria
+            // y un nodo comprometido podía tumbar la app con un archivo enorme.
+            val declarados = cuerpo.contentLength()
+            if (declarados > MAX_BYTES_BLOB || (blob.tamano > 0 && blob.tamano > MAX_BYTES_BLOB)) {
+                cuerpo.close()
+                marcarBlobFallido(blob.hash, blob.intentos)
+                return false
+            }
+            val contenido = cuerpo.use { it.bytes() }
             if (aplicador.guardarContenidoDescargado(blob, contenido)) {
                 true
             } else {
@@ -578,6 +613,8 @@ class SincronizacionRepositorio @Inject constructor(
         const val MAX_PAGINAS = 50
         const val LIMITE_BLOBS_POR_CICLO = 10
         const val MAX_INTENTOS_BLOB = 5
+        /** Tope de un binario del protocolo (64 MiB, igual que el nodo central) */
+        const val MAX_BYTES_BLOB = 64L * 1024 * 1024
         const val DESCARGAS_EN_PARALELO = 3
     }
 }

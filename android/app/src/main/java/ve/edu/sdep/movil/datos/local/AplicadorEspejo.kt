@@ -981,6 +981,8 @@ class AplicadorEspejo @Inject constructor(
                 payload = op.payload?.toString() ?: "{}",
                 creadoEn = Fechas.desdeIso(op.creadoEn) ?: System.currentTimeMillis(),
                 creadoEnIso = op.creadoEn,
+                dispositivo = op.dispositivo,
+                usuario = op.usuario,
                 motivo = motivo,
             ),
         )
@@ -1048,8 +1050,8 @@ class AplicadorEspejo @Inject constructor(
                 filaUuid = entrada.filaUuid,
                 operacion = entrada.operacion,
                 payload = textoAJsonObject(entrada.payload),
-                dispositivo = "",
-                usuario = null,
+                dispositivo = entrada.dispositivo,
+                usuario = entrada.usuario,
                 creadoEn = entrada.creadoEnIso.ifBlank {
                     Fechas.isoDesde(entrada.creadoEn)
                 },

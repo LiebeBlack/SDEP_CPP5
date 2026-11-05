@@ -40,6 +40,10 @@ interface OperacionDao {
     @Query("UPDATE operaciones_pendientes SET estado = 'ENVIADA' WHERE opId IN (:ids)")
     suspend fun marcarEnviadas(ids: List<String>)
 
+    /** Cantidad de operaciones esperando envío (para decidir si hay datos que proteger) */
+    @Query("SELECT COUNT(*) FROM operaciones_pendientes WHERE estado = 'PENDIENTE'")
+    suspend fun contarPendientes(): Int
+
     /** Operación rechazada: se conserva con el motivo para poder mostrarla */
     @Query(
         "UPDATE operaciones_pendientes SET estado = 'RECHAZADA', motivo = :motivo " +

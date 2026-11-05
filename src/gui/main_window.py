@@ -1613,10 +1613,18 @@ class MainWindow(ctk.CTk):
         self._esperar_respaldo_y_cerrar()
 
     def _esperar_respaldo_y_cerrar(self):
-        if self._backup_en_curso.is_set():
+        # Límite de espera: si el respaldo se cuelga (disco lento, archivo
+        # bloqueado por otro proceso), la aplicación debe poder cerrarse
+        # igualmente en lugar de quedar abierta para siempre.
+        limite = getattr(self, "_respaldo_espera_max", 240)  # ~2 minutos
+        intentos = getattr(self, "_respaldo_espera_intentos", 0) + 1
+        self._respaldo_espera_intentos = intentos
+        if self._backup_en_curso.is_set() and intentos * 500 < limite * 1000:
             if self.winfo_exists():
                 self.after(500, self._esperar_respaldo_y_cerrar)
             return
+        if self._backup_en_curso.is_set():
+            logger.warning("Se cerró la aplicación con un respaldo aún en curso")
         self._cleanup()
         self._exit_status = "exit"
         if self.winfo_exists():
@@ -1733,8 +1741,14 @@ class MainWindow(ctk.CTk):
 
             vencido = True
             if ultimo and len(str(ultimo)) == 15:
-                ultima_fecha = datetime.strptime(str(ultimo), "%Y%m%d_%H%M%S")
-                vencido = datetime.now() - ultima_fecha > timedelta(hours=intervalo_horas)
+                try:
+                    ultima_fecha = datetime.strptime(str(ultimo), "%Y%m%d_%H%M%S")
+                    vencido = datetime.now() - ultima_fecha > timedelta(hours=intervalo_horas)
+                except ValueError:
+                    # Marca de tiempo ilegible: se asume vencido y se crea
+                    # un respaldo nuevo en lugar de propagar la excepción.
+                    logger.warning("Marca de tiempo de respaldo ilegible: %r", ultimo)
+                    vencido = True
 
             if vencido and not self._backup_en_curso.is_set():
                 # La copia (gzip + checksum + rotación) se ejecuta fuera del

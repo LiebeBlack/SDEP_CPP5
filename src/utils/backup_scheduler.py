@@ -136,17 +136,32 @@ class BackupScheduler:
             verificacion. Nunca lanza excepciones: un respaldo fallido no
             debe tumbar la aplicación.
         """
-        if not forzar and not self.debe_ejecutar():
-            return {
-                "ejecutado": False,
-                "motivo": (
-                    "todavía no corresponde"
-                    if self.esta_habilitado()
-                    else "respaldos automáticos deshabilitados"
-                ),
-                "backup": None,
-                "verificacion": None,
-            }
+        if not forzar:
+            try:
+                habilitado = self.esta_habilitado()
+                corresponde = habilitado and self.debe_ejecutar()
+            except Exception as e:
+                # La comprobación de horario también puede fallar (sesión
+                # cerrada, configuración ilegible): el contrato del método
+                # es no lanzar nunca.
+                logger.error("No se pudo comprobar el horario de respaldo: %s", e)
+                return {
+                    "ejecutado": False,
+                    "motivo": f"error al comprobar horario: {e}",
+                    "backup": None,
+                    "verificacion": None,
+                }
+            if not corresponde:
+                return {
+                    "ejecutado": False,
+                    "motivo": (
+                        "todavía no corresponde"
+                        if habilitado
+                        else "respaldos automáticos deshabilitados"
+                    ),
+                    "backup": None,
+                    "verificacion": None,
+                }
 
         try:
             from src.utils.backup_manager import get_backup_manager

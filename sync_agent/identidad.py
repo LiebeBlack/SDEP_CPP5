@@ -24,7 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from sync_agent import registro
 from sync_agent.comun import nuevo_uuid
-from sync_agent.esquema import SyncId
+from sync_agent.esquema import CampoRemoto, SyncId, VersionFila
 
 logger = logging.getLogger(__name__)
 
@@ -68,19 +68,51 @@ def registrar(session, tabla: str, uuid: str, id_local: int) -> SyncId:
     )
     if existente is not None:
         if existente.uuid != uuid:
+            uuid_anterior = existente.uuid
             logger.info(
                 "Se reasigna la identidad de %s#%s: %s → %s",
                 tabla,
                 id_local,
-                existente.uuid,
+                uuid_anterior,
                 uuid,
             )
             existente.uuid = uuid
+            # El estado de mezcla (marcas por campo y versión de fila) quedó
+            # registrado bajo el UUID anterior: si no se migra, las marcas
+            # viejas se pierden y una escritura remota antigua puede pisar
+            # datos locales más recientes.
+            _migrar_estado_mezcla(session, tabla, uuid_anterior, uuid)
         return existente
 
     vinculo = SyncId(tabla=tabla, uuid=uuid, id_local=id_local)
     session.add(vinculo)
     return vinculo
+
+
+def _migrar_estado_mezcla(session, tabla: str, uuid_anterior: str, uuid_nuevo: str) -> None:
+    """Traslada marcas de campos y versión de fila al UUID unificado"""
+    try:
+        for modelo in (CampoRemoto, VersionFila):
+            # Si el UUID nuevo ya tenía estado propio (el mismo registro
+            # visto antes por otra vía), el más reciente manda: se descarta
+            # el duplicado antes de mover las filas del UUID anterior.
+            session.query(modelo).filter(
+                modelo.tabla == tabla, modelo.fila_uuid == uuid_nuevo
+            ).delete(synchronize_session=False)
+            for fila in (
+                session.query(modelo)
+                .filter(modelo.tabla == tabla, modelo.fila_uuid == uuid_anterior)
+                .all()
+            ):
+                fila.fila_uuid = uuid_nuevo
+    except SQLAlchemyError:
+        logger.warning(
+            "No se pudo migrar el estado de mezcla de %s (%s → %s)",
+            tabla,
+            uuid_anterior[:8],
+            uuid_nuevo[:8],
+            exc_info=True,
+        )
 
 
 def uuid_por_clave_natural(session, tabla: str, valor: Any) -> str | None:

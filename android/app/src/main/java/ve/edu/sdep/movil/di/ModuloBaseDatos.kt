@@ -49,6 +49,7 @@ object ModuloBaseDatos {
             .addMigrations(
                 BaseDatosSdep.MIGRATION_1_2,
                 BaseDatosSdep.MIGRATION_2_3,
+                BaseDatosSdep.MIGRATION_3_4,
             )
             .build()
 

@@ -25,6 +25,7 @@ el contexto por petición antes de ejecutar una acción del móvil.
 from __future__ import annotations
 
 import logging
+import threading
 
 from sqlalchemy import event, false, func
 from sqlalchemy import inspect as sa_inspect
@@ -53,6 +54,7 @@ from src.utils.security import PermissionChecker
 logger = logging.getLogger(__name__)
 
 _INSTALADO = False
+_INSTALADO_LOCK = threading.Lock()
 
 
 class ErrorAislamiento(ValueError):
@@ -63,8 +65,18 @@ class ErrorAislamiento(ValueError):
 # Utilidades
 # ----------------------------------------------------------------------
 def _cedula_sql(modelo):
-    """Expresión SQL de la cédula sin puntos ni espacios, en mayúsculas."""
-    return func.upper(func.replace(func.replace(modelo.cedula, ".", ""), " ", ""))
+    """Expresión SQL de la cédula sin puntos ni espacios, en mayúsculas.
+
+    ``normalizar_cedula`` (Python) elimina todo lo que no sea alfanumérico
+    o guion; SQLite no tiene una clase de caracteres equivalente, así que
+    aquí se quitan los separadores habituales. Una cédula guardada con otro
+    signo exótico podría no coincidir: las altas nuevas conviene guardarlas
+    ya normalizadas.
+    """
+    columna = modelo.cedula
+    for separador in (".", " ", "/", ",", "_"):
+        columna = func.replace(columna, separador, "")
+    return func.upper(columna)
 
 
 def _criterio(entidad, contexto: ContextoSesion):
@@ -84,8 +96,12 @@ def _criterio(entidad, contexto: ContextoSesion):
         return Usuario.id == contexto.usuario_id
     if entidad is RegistroMovil:
         # Los registros de campo se identifican por la cuenta que los capturó;
-        # no existe una cédula de empleado asociada a la fila.
-        return RegistroMovil.usuario == contexto.username
+        # no existe una cédula de empleado asociada a la fila. Se compara sin
+        # distinguir mayúsculas ni espacios sobrantes por si la fila llegó
+        # desde el móvil con el nombre escrito distinto.
+        return func.lower(func.trim(RegistroMovil.usuario)) == (
+            contexto.username or ""
+        ).strip().lower()
     if entidad is Configuracion:
         # Parámetros institucionales sin datos personales: la lectura sigue
         # disponible para que la política de contraseñas se pueda consultar.
@@ -176,7 +192,9 @@ def puede_ver_objeto(obj, session: Session, contexto: ContextoSesion | None = No
     if isinstance(obj, Usuario):
         return getattr(obj, "id", None) == contexto.usuario_id
     if isinstance(obj, RegistroMovil):
-        return (obj.usuario or "") == contexto.username
+        return (obj.usuario or "").strip().lower() == (
+            contexto.username or ""
+        ).strip().lower()
     if isinstance(obj, Grado):
         return getattr(obj, "profesor_id", None) == contexto.usuario_id
     if isinstance(obj, NotaFinal):
@@ -239,7 +257,7 @@ def _motivo_escritura(
         return None
 
     if isinstance(obj, RegistroMovil):
-        if (obj.usuario or "") != contexto.username:
+        if (obj.usuario or "").strip().lower() != (contexto.username or "").strip().lower():
             return "El registro de campo pertenece a otra cuenta."
         if es_baja:
             return "Los registros de campo se desactivan, no se borran."
@@ -314,9 +332,14 @@ def _verificar_escrituras(session: Session, _flush_context, _instances) -> None:
 def instalar() -> None:
     """Instala los dos oyentes una sola vez por proceso."""
     global _INSTALADO
+    # Doble comprobación bajo candado: varios hilos pueden llamar a
+    # ``instalar`` a la vez al arrancar el servidor y los servicios.
     if _INSTALADO:
         return
-    event.listen(Session, "do_orm_execute", _filtrar_consulta)
-    event.listen(Session, "before_flush", _verificar_escrituras)
-    _INSTALADO = True
-    logger.debug("Aislamiento por cédula instalado en SQLAlchemy")
+    with _INSTALADO_LOCK:
+        if _INSTALADO:
+            return
+        event.listen(Session, "do_orm_execute", _filtrar_consulta)
+        event.listen(Session, "before_flush", _verificar_escrituras)
+        _INSTALADO = True
+        logger.debug("Aislamiento por cédula instalado en SQLAlchemy")

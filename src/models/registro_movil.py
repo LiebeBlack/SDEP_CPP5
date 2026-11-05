@@ -46,7 +46,12 @@ class RegistroMovil(Base, BaseModel):
     # guardan como columnas propias (no se confunden con la auditoría del
     # modelo) porque el motor de mezcla las compara entre equipos.
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=_ahora, nullable=False)
-    actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=_ahora, nullable=False)
+    # ``onupdate`` es imprescindible: estas marcas alimentan el motor de
+    # mezcla LWW entre equipos; sin él, una edición conservaba la marca de
+    # creación y la versión vieja podía quedar como vigente.
+    actualizado_en: Mapped[datetime] = mapped_column(
+        DateTime, default=_ahora, onupdate=_ahora, nullable=False
+    )
 
     dispositivo: Mapped[str | None] = mapped_column(String(120), nullable=True)
     usuario: Mapped[str | None] = mapped_column(String(120), nullable=True)

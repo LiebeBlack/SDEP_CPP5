@@ -442,6 +442,10 @@ class AuditLogger:
 
         if not output_file:
             output_file = f"audit_export_{start_date}_{end_date}.json"
+        else:
+            # Solo el nombre del archivo: un ``../`` en el nombre escribiría
+            # fuera del directorio de exportaciones.
+            output_file = Path(output_file).name
 
         from src.config.settings import settings
 

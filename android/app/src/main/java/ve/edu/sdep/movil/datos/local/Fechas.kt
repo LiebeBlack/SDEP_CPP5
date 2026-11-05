@@ -17,14 +17,26 @@ import java.time.format.DateTimeFormatter
  */
 object Fechas {
 
-    private val FORMATO = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+    private val FORMATO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
 
-    /** Milisegundos desde la época a texto ISO 8601 en UTC sin zona */
-    fun isoDesde(millis: Long): String =
-        Instant.ofEpochMilli(millis)
-            .atOffset(ZoneOffset.UTC)
-            .toLocalDateTime()
-            .format(FORMATO)
+    /**
+     * Milisegundos desde la época a texto ISO 8601 en UTC sin zona.
+     *
+     * Siempre se emiten los segundos y, si hay fracción, con seis dígitos
+     * (como ``datetime.isoformat()`` de Python). Antes se usaba
+     * ``ISO_LOCAL_DATE_TIME``, que omite los segundos en punto y la fracción
+     * en cero: dos marcas del mismo ancho aparente podían ordenar mal al
+     * compararse como texto en el motor de mezcla.
+     */
+    fun isoDesde(millis: Long): String {
+        val fecha = Instant.ofEpochMilli(millis).atOffset(ZoneOffset.UTC).toLocalDateTime()
+        val base = fecha.format(FORMATO)
+        val nano = fecha.nano
+        if (nano == 0) return base
+        // Seis dígitos como Python; los milisegundos del epoch siempre son
+        // múltiplos de 1.000.000 de nanosegundos.
+        return base + "." + (nano / 1_000).toString().padStart(6, '0')
+    }
 
     /**
      * Texto ISO a milisegundos, aceptando las tres formas que pueden llegar:

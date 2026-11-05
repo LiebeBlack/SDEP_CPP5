@@ -38,9 +38,11 @@ data class Sesion(
     /** Cédula normalizada para comparar filas del espejo. */
     val cedulaNormalizada: String get() = normalizarCedula(cedula)
 
-    /** La sesión abierta sin red solo sirve dentro de su ventana de gracia */
+    /** La sesión abierta sin red solo sirve dentro de su ventana de gracia.
+     *  ``expiraEn <= 0`` significa "sin caducidad informada" y NO es vigente:
+     *  antes se interpretaba como sesión eterna. */
     fun vigente(ahora: Long = System.currentTimeMillis()): Boolean =
-        expiraEn <= 0L || ahora <= expiraEn
+        expiraEn > 0L && ahora <= expiraEn
 
     val etiquetaRol: String get() = rol.etiqueta
 }

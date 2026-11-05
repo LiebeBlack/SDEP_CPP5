@@ -93,6 +93,13 @@ class EmpleadoViewModel @Inject constructor(
 
     fun guardar() {
         if (_estado.value.guardando || _estado.value.cargando) return
+        // Validar antes de tocar la entidad: antes un texto inválido se
+        // convertía en 0.0 (o null) y se sincronizaba al escritorio como si
+        // el usuario hubiera escrito cero.
+        _estado.value.errorDecimal()?.let { mensaje ->
+            _estado.update { it.copy(error = mensaje) }
+            return
+        }
         _estado.update { it.copy(guardando = true, error = null) }
         viewModelScope.launch {
             when (val resultado = repositorio.guardar(_estado.value.id, _estado.value.aEntidad())) {
@@ -149,6 +156,27 @@ private fun Map<String, String>.texto(clave: String): String? =
 
 private fun Map<String, String>.decimal(clave: String): Double? =
     texto(clave)?.replace(',', '.')?.toDoubleOrNull()
+
+/** Mensaje de error si algún campo numérico tiene texto que no es un número */
+private fun EstadoEmpleado.errorDecimal(): String? {
+    val salario = valores.texto("salarioBase")
+    if (salario == null) {
+        return "El salario base es obligatorio."
+    }
+    val numero = salario.replace(',', '.').toDoubleOrNull()
+    if (numero == null || !numero.isFinite() || numero < 0.0) {
+        return "El salario base debe ser un número igual o mayor que cero."
+    }
+    for (clave in listOf("peso", "altura")) {
+        val texto = valores.texto(clave) ?: continue
+        val valor = texto.replace(',', '.').toDoubleOrNull()
+        if (valor == null || !valor.isFinite() || valor <= 0.0) {
+            val etiqueta = if (clave == "peso") "peso" else "altura"
+            return "El $etiqueta debe ser un número mayor que cero."
+        }
+    }
+    return null
+}
 
 private fun EmpleadoEntity.aValores(): Map<String, String> = mapOf(
     "nombres" to nombres,

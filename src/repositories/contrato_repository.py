@@ -220,26 +220,39 @@ class ContratoRepository(BaseRepository[Contrato]):
                 .scalar()
                 or 0
             )
+            indefinidos_vigentes = int(
+                self.session.query(func.count(Contrato.id))
+                .filter(
+                    and_(
+                        Contrato.tipo == TipoContrato.INDEFINIDO.value,
+                        Contrato.estado == EstadoContrato.VIGENTE.value,
+                    )
+                )
+                .scalar()
+                or 0
+            )
             return {
                 "total": self.count(),
                 "por_estado": por_estado,
                 "por_tipo": por_tipo,
                 "vigentes": vigentes,
-                "indefinidos": por_tipo.get(TipoContrato.INDEFINIDO.value, 0),
+                # Antes contaba TODOS los indefinidos aunque estuvieran
+                # terminados o vencidos, mezclando universos con "vigentes".
+                "indefinidos": indefinidos_vigentes,
             }
         except SQLAlchemyError as e:
             logger.error(f"Error obteniendo estadísticas de contratos: {e}")
             return {"total": 0, "por_estado": {}, "por_tipo": {}, "vigentes": 0, "indefinidos": 0}
 
     def contar_activos_por_empleado(self, empleado_id: int) -> int:
-        """Cantidad de contratos no terminados de un empleado"""
+        """Cantidad de contratos vigentes de un empleado"""
         try:
             return (
                 self.session.query(func.count(Contrato.id))
                 .filter(
                     and_(
                         Contrato.empleado_id == empleado_id,
-                        Contrato.estado != EstadoContrato.TERMINADO.value,
+                        Contrato.estado == EstadoContrato.VIGENTE.value,
                     )
                 )
                 .scalar()

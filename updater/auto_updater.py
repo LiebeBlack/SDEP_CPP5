@@ -692,8 +692,15 @@ def run_check(install: bool) -> int:
         log("ERROR: el instalador de la Release no tiene URL de descarga")
         return 1
 
-    destino = state_dir() / "updates" / asset["name"]
-    log(f"Descargando {asset['name']} " f"({asset['size'] / (1024 * 1024):.1f} MB) desde GitHub...")
+    # El nombre del asset viene de la respuesta de la API de GitHub: se
+    # reduce a su componente final para que un nombre con separadores de
+    # ruta ("..\..\...") no pueda escribir fuera del directorio de updates.
+    nombre_asset = Path(asset["name"]).name
+    if not nombre_asset or nombre_asset in (".", ".."):
+        log(f"ERROR: nombre de asset inválido en la Release: {asset['name']!r}")
+        return 1
+    destino = state_dir() / "updates" / nombre_asset
+    log(f"Descargando {nombre_asset} " f"({asset['size'] / (1024 * 1024):.1f} MB) desde GitHub...")
     try:
         download(asset["url"], destino, expected_size=asset["size"])
     except RuntimeError as exc:

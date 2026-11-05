@@ -132,7 +132,7 @@ def test_alta_desde_el_movil_crea_la_fila(sesion):
 
 
 def test_el_mismo_registro_no_se_duplica(sesion):
-    """Reenviar el alta con otro ``fila_uuid`` reconoce la fila por su clave"""
+    """Reenviar la misma operación (reintento de red) no duplica la fila"""
     uuid, payload = _payload()
     aplicador = AplicadorRemoto(sesion, "nodo-central")
     aplicador.aplicar(_operacion(uuid, payload))

@@ -14,7 +14,6 @@ import ve.edu.sdep.movil.datos.remoto.LoginDto
 import ve.edu.sdep.movil.datos.remoto.PerfilDto
 import ve.edu.sdep.movil.datos.remoto.mensajeDelServidor
 import ve.edu.sdep.movil.datos.seguridad.Boveda
-import ve.edu.sdep.movil.dominio.modelo.Permiso
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import ve.edu.sdep.movil.dominio.modelo.Rol
 import ve.edu.sdep.movil.dominio.modelo.Sesion

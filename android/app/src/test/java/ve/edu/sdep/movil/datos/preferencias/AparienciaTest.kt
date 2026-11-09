@@ -38,7 +38,8 @@ class AparienciaTest {
 
     @Test
     fun `cada modo guarda un codigo estable`() {
-        assertEquals(ModoApariencia.entries.size, ModoApariencia.entries.map { it.codigo }.toSet().size)
+        val codigos = ModoApariencia.entries.map { it.codigo }
+        assertEquals(ModoApariencia.entries.size, codigos.toSet().size)
         ModoApariencia.entries.forEach { modo ->
             assertEquals(modo, ModoApariencia.desde(modo.codigo))
         }

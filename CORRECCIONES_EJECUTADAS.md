@@ -469,7 +469,7 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 | `ui/tablas/TablaViewModel.kt` | Una excepción al leer columnas o filas dejaba el indicador de carga activo y no mostraba nada al usuario. | La lectura se envuelve en `try/catch`, se limpia `noDisponible` al iniciar, se apaga `cargando` y se muestra un aviso; `CancellationException` se vuelve a lanzar. |
 | `ui/registros/RegistrosViewModel.kt` | Si la sincronización lanzaba una excepción, `sincronizando` quedaba en `true` y el botón no volvía a responder. | `try/catch/finally` garantiza el cierre del indicador; los fallos inesperados se informan sin tragar la cancelación. |
 | `sincronizacion/TrabajoSincronizacion.kt` | El trabajo periódico solo comprobaba `activa`; un nodo aún incompleto podía intentar sincronizar sin configuración útil. | También exige `completa` antes de gastar red o batería. |
-| `AndroidManifest.xml` | La actividad no declaraba el callback de retroceso predictivo. | `android:enableOnBackInvokedCallback="true"` en `<application>`. |
+| `AndroidManifest.xml` | La actividad no declaraba el callback de retroceso predictivo. | Se añadió `android:enableOnBackInvokedCallback="true"`; se revirtió en la Tanda 17 por incompatibilidad con Navigation 2.7.7. |
 
 ## Verificación
 
@@ -478,3 +478,25 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 - Sin líneas Kotlin de más de 110 caracteres en los archivos modificados.
 - Comprobación estática de equilibrio de llaves, corchetes y paréntesis en los 15 archivos Kotlin modificados: correcta.
 - **No verificado:** compilación, `ktlint`, `lint`, APK y ejecución en emulador. En este equipo no hay Java, Gradle, SDK de Android ni emulador (`java`, `javac`, `kotlinc` y `gradle` no están instalados), así que la validación es únicamente estática.
+
+# Tanda 17 — Corrección final de Android (2026-11-09)
+
+**Origen:** auditoría línea a línea posterior a la Tanda 16: se revisaron los 86 archivos Kotlin, los 11 XML, el manifiesto, Gradle y los recursos, y se repitieron las comprobaciones de Python.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `AndroidManifest.xml` | La Tanda 16 activó `enableOnBackInvokedCallback`, pero Navigation Compose 2.7.7 no soporta la API de predictive back; la documentación exige Navigation 2.8.0 o superior. | Se retira el atributo para no alterar el gesto ni el botón atrás hasta poder actualizar y compilar Navigation. |
+| `datos/local/Espejo.kt`, `datos/repositorio/AutenticacionRepositorio.kt`, `ui/ajustes/UserProfileScreen.kt`, `ui/ajustes/UserProfileViewModel.kt` | Imports sin uso: `booleanOrNull`, `Permiso`, `Edit`, `FragmentActivity`, `Dispatchers` y `withContext`. | Se eliminaron; no cambian el comportamiento. |
+| `test/.../AparienciaTest.kt` | Una aserción superaba los 100 caracteres. | Se dividió en dos líneas. |
+
+## Verificación
+
+- `pytest -q --no-cov`: 642 pruebas superadas, 5 avisos de deprecación.
+- `flake8`, `black --check` e `isort --check-only`: sin hallazgos.
+- `mypy src sync_agent updater build.py`: 107 archivos sin errores; `mypy --follow-imports=skip tools`: 4 archivos sin errores.
+- `tools/verify_docs.py`: 21 documentos y copias sincronizadas, todo correcto.
+- 11 XML Android parseados sin errores; 86 archivos Kotlin con llaves, corchetes y paréntesis balanceados; sin imports detectados como no usados por la comprobación estática.
+- CRLF y `git diff --check`: limpios.
+- **No verificado:** compilación, `ktlint`, `lint`, pruebas unitarias Android, APK y emulador. En este equipo no hay Java, Gradle ni SDK de Android. El workflow `build-android` de GitHub Actions ejecutará `testDebugUnitTest`, `assembleDebug` y `assembleRelease` cuando se autorice el push.

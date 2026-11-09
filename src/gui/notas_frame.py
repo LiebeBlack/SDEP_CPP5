@@ -44,6 +44,15 @@ logger = logging.getLogger(__name__)
 TODOS = "Todos"
 
 
+def _numero_o_cero(valor: object) -> float:
+    """Convierte un dato numérico y neutraliza valores corruptos de la base."""
+    try:
+        return float(valor or 0)
+    except (TypeError, ValueError):
+        logger.warning("Valor académico no numérico: %r", valor)
+        return 0.0
+
+
 class NotasFrame(ctk.CTkFrame):
     """Frame del módulo de calificaciones y periodos académicos"""
 
@@ -458,7 +467,7 @@ class NotasFrame(ctk.CTkFrame):
             ]
         self._notas = list(notas)
         for indice, nota in enumerate(self._notas):
-            calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
+            calif = _numero_o_cero(nota.calificacion)
             aprobada = calif >= self._nota_aprobatoria
             self.tree.insert(
                 "",
@@ -657,7 +666,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         filas = []
         for nota in self._notas:
-            calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
+            calif = _numero_o_cero(nota.calificacion)
             filas.append(
                 {
                     "Estudiante": self._nombre_estudiante(nota),
@@ -693,7 +702,7 @@ class NotasFrame(ctk.CTkFrame):
             return
         filas = []
         for nota in self._notas:
-            calif = float(nota.calificacion) if nota.calificacion is not None else 0.0
+            calif = _numero_o_cero(nota.calificacion)
             filas.append(
                 [
                     self._nombre_estudiante(nota),
@@ -987,7 +996,7 @@ class NotaDialog(_DialogoBase):
         self.calificacion_entry = ctk.CTkEntry(contenedor, width=110)
         self.calificacion_entry.grid(row=fila, column=1, sticky="w", pady=6)
         if self.nota is not None:
-            calif = float(self.nota.calificacion) if self.nota.calificacion is not None else 0.0
+            calif = _numero_o_cero(self.nota.calificacion)
             self.calificacion_entry.insert(0, f"{calif:g}")
         fila += 1
 
@@ -1233,7 +1242,7 @@ class ConsolidadoDialog(ctk.CTkToplevel):
                     fila.get("estudiante", ""),
                     fila.get("cedula") or "-",
                     fila.get("materia", ""),
-                    f"{float(fila.get('calificacion', 0)):g}",
+                    f"{_numero_o_cero(fila.get('calificacion')):g}",
                 ),
                 tags=etiqueta_fila(indice),
             )
@@ -1322,7 +1331,7 @@ class BoletinDialog(ctk.CTkToplevel):
         if notas:
             for nota in notas:
                 materia = str(nota.get("materia", "-"))
-                calificacion = float(nota.get("calificacion") or 0)
+                calificacion = _numero_o_cero(nota.get("calificacion"))
                 lineas.append(f"  {materia:<30} {calificacion:>6.2f}")
         else:
             lineas.append("  (sin notas registradas)")
@@ -1330,9 +1339,9 @@ class BoletinDialog(ctk.CTkToplevel):
         promedio = datos.get("promedio")
         lineas.append(f"Promedio: {promedio if promedio is not None else '-'}")
         lineas.append(
-            f"Escala: {float(datos.get('nota_minima') or 0):g} a "
-            f"{float(datos.get('nota_maxima') or 0):g} · "
-            f"Aprobatoria: {float(datos.get('nota_aprobatoria') or 0):g}"
+            f"Escala: {_numero_o_cero(datos.get('nota_minima')):g} a "
+            f"{_numero_o_cero(datos.get('nota_maxima')):g} · "
+            f"Aprobatoria: {_numero_o_cero(datos.get('nota_aprobatoria')):g}"
         )
         InfoDialog(self, f"Boletín — {nombre_estudiante}", "\n".join(lineas))
 
@@ -1387,7 +1396,7 @@ class ActaDialog(ctk.CTkToplevel):
         arbol.configure(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_horizontal.set)
         configurar_cebra(arbol)
 
-        aprobatoria = float(datos.get("nota_aprobatoria", 0) or 0)
+        aprobatoria = _numero_o_cero(datos.get("nota_aprobatoria"))
         for indice, fila in enumerate(datos.get("filas") or []):
             notas = fila.get("notas") or {}
             valores: list[Any] = [fila.get("estudiante", ""), fila.get("cedula") or "-"]
@@ -1397,11 +1406,12 @@ class ActaDialog(ctk.CTkToplevel):
                 if calificacion is None:
                     valores.append("-")
                 else:
-                    valores.append(f"{float(calificacion):g}")
-                    if float(calificacion) < aprobatoria:
+                    calificacion_num = _numero_o_cero(calificacion)
+                    valores.append(f"{calificacion_num:g}")
+                    if calificacion_num < aprobatoria:
                         reprobadas = True
             promedio = fila.get("promedio")
-            valores.append(f"{float(promedio):g}" if promedio is not None else "-")
+            valores.append(f"{_numero_o_cero(promedio):g}" if promedio is not None else "-")
             arbol.insert(
                 "",
                 "end",
@@ -1415,8 +1425,8 @@ class ActaDialog(ctk.CTkToplevel):
 
         leyenda = (
             f"Profesor: {datos.get('profesor') or '-'} · "
-            f"Escala: {float(datos.get('nota_minima') or 0):g} a "
-            f"{float(datos.get('nota_maxima') or 0):g} · "
+            f"Escala: {_numero_o_cero(datos.get('nota_minima')):g} a "
+            f"{_numero_o_cero(datos.get('nota_maxima')):g} · "
             f"Aprobatoria: {aprobatoria:g}"
         )
         ctk.CTkLabel(

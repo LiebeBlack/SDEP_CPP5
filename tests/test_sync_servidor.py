@@ -35,6 +35,23 @@ def central(tmp_path):
     nucleo.cerrar()
 
 
+def test_configuracion_por_defecto_no_expone_red_ni_abre_emparejamiento():
+    config = ServidorConfig()
+    assert config.host == "127.0.0.1"
+    assert config.emparejamiento_abierto is False
+
+
+def test_el_emparejamiento_automatico_requiere_activacion_explicita(central):
+    with pytest.raises(ErrorPeticion) as error:
+        central.emparejar("Teléfono", "192.168.1.20")
+    assert error.value.codigo == 403
+
+    central.config.emparejamiento_abierto = True
+    datos = central.emparejar("Teléfono", "192.168.1.20")
+    assert datos["dispositivo_id"]
+    assert datos["token"]
+
+
 def _emparejar(nucleo, nombre="Secretaría"):
     """Da de alta un puesto y devuelve (identificador, token, dispositivo ORM)"""
     dispositivo_id, token = nucleo.crear_dispositivo(nombre)

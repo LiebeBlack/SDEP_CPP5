@@ -86,7 +86,7 @@ class ServidorConfig:
 
     url_db: str = "sqlite:///sync_central.db"
     dir_blobs: Path = field(default_factory=lambda: Path("sync_blobs"))
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     puerto: int = 8765
     max_ops_por_lote: int = MAX_OPS_POR_LOTE
     max_bytes_peticion: int = MAX_BYTES_PETICION
@@ -101,13 +101,10 @@ class ServidorConfig:
     # con puerto HTTP efímero o instalaciones donde la difusión no se permite).
     puerto_descubrimiento: int = PUERTO_DESCUBRIMIENTO
     nombre_equipo: str = ""
-    # Une automáticamente cualquier teléfono de la red al nodo central, sin
-    # código previo (decisión del propietario del sistema). Se puede apagar
-    # desde la configuración del escritorio si en el futuro se quiere exigir
-    # un emparejamiento supervisado; mientras tanto, la única protecciones son
-    # el límite de peticiones y el hecho de que el login de usuario sigue
-    # exigiendo una cuenta válida de la base institucional.
-    emparejamiento_abierto: bool = True
+    # El alta automática de teléfonos es opt-in. El servidor embebido y la CLI
+    # la activan porque se usan para atender la red; el valor por defecto de
+    # la clase queda cerrado para usos programáticos y pruebas.
+    emparejamiento_abierto: bool = False
     # Cuando está activo, los lotes pasan por el staging y se publican como
     # ciclos (reconstrucción histórica). Desactivarlo recupera el motor
     # anterior, que aplicaba cada operación al recibirla: solo para volver
@@ -1551,16 +1548,18 @@ class NucleoCentral:
                 return api.marcar_pagado(sesion_usuario, entero(1, "pago"))
 
         elif grupo == "incidencias":
+            # El segmento puede ser el id local del nodo o el UUID global con
+            # el que el teléfono identifica la fila; ApiAcciones resuelve ambos.
             if len(resto) == 3 and resto[2] == "aprobar":
-                return api.aprobar_incidencia(sesion_usuario, entero(1, "incidencia"), cuerpo)
+                return api.aprobar_incidencia(sesion_usuario, resto[1], cuerpo)
             if len(resto) == 3 and resto[2] == "rechazar":
-                return api.rechazar_incidencia(sesion_usuario, entero(1, "incidencia"), cuerpo)
+                return api.rechazar_incidencia(sesion_usuario, resto[1], cuerpo)
 
         elif grupo == "contratos":
             if len(resto) == 3 and resto[2] == "renovar":
-                return api.renovar_contrato(sesion_usuario, entero(1, "contrato"), cuerpo)
+                return api.renovar_contrato(sesion_usuario, resto[1], cuerpo)
             if len(resto) == 3 and resto[2] == "terminar":
-                return api.terminar_contrato(sesion_usuario, entero(1, "contrato"), cuerpo)
+                return api.terminar_contrato(sesion_usuario, resto[1], cuerpo)
 
         elif grupo == "academicos":
             return NucleoCentral._despachar_academico(api, sesion_usuario, resto[1:], cuerpo)

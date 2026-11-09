@@ -36,8 +36,8 @@ escrituras se encolan en la misma transacción que el dato (offline-first).
 | **Panel** | Indicadores, avisos de vencimientos, gráficos | Sí (consultas locales) | `GET /consultas/dashboard` | **No aplica**: panel del escritorio retirado del menú móvil |
 | **Empleados** | Listar, buscar, ficha completa, alta, edición, baja lógica, documentos del empleado, exportar | Sí (`empleados`, `documentos`, `blobs`) | — (push) | CRUD **hecho**; exportaciones y foto, fase de cierre |
 | **Documentos** | Listar, vencidos/por vencer, alta, edición, baja, descarga | Sí (metadatos + blob) | `/archivos/subir`, `/blob/{hash}` | CRUD de metadatos **hecho**; carga de archivo desde el teléfono, pendiente |
-| **Incidencias** | Listar, filtrar por estado, alta, edición, baja, aprobar, rechazar | Sí | `POST /acciones/incidencias/{id}/aprobar`, `/rechazar` | CRUD **hecho**; aprobar/rechazar siguen en el servidor |
-| **Contratos** | Listar, vencimientos, alta, edición, renovar, terminar, PDF | Sí | `POST /acciones/contratos/{id}/renovar`, `/terminar` | CRUD **hecho**; renovar/terminar/PDF en el servidor |
+| **Incidencias** | Listar, filtrar por estado, alta, edición, baja, aprobar, rechazar | Sí | `POST /acciones/incidencias/{id}/aprobar`, `/rechazar` | CRUD y aprobar/rechazar **hecho**; el nodo valida y aplica la acción |
+| **Contratos** | Listar, vencimientos, alta, edición, renovar, terminar, PDF | Sí | `POST /acciones/contratos/{id}/renovar`, `/terminar` | CRUD, renovar y terminar **hecho**; PDF sigue en el servidor |
 | **Nómina** | Registros de pago, detalle por empleado, marcar pagado, recibo y planilla PDF | Sí (`pagos`) | `POST /acciones/nomina/generar`, `/resumen`, `/pagos/{id}/pagado` | Registros editables **hecho**; cálculo, pago y PDF en el servidor |
 | **Configuración** | Usuarios, auditoría, institución, preferencias, respaldos | Parcial (usuarios **no** se replican) | `/admin/usuarios`, `/consultas/auditoria` | **No aplica**: panel del escritorio eliminado del teléfono |
 | **Estudiantes** | Listar, buscar, legajo, alta, edición, baja, exportar | Sí | — (push) | CRUD **hecho**; exportaciones pendientes |
@@ -114,9 +114,10 @@ del binario; los metadatos y su huella ya se editan.
 
 ### Fase 2 — Operación laboral
 **Entregado**: incidencias y contratos con alta, edición y baja; los
-vencimientos y estados se siguen calculando en el servidor. Aprobar/rechazar
-una incidencia y renovar/terminar un contrato siguen siendo acciones del nodo
-central (el teléfono edita el registro que las origina).
+vencimientos y estados se siguen calculando en el servidor. La ficha permite
+aprobar o rechazar una incidencia y renovar o terminar un contrato: el teléfono
+envía la acción con el UUID global de la fila, el nodo la ejecuta con los
+servicios del escritorio y la respuesta se refleja en el espejo local.
 
 ### Fase 3 — Nómina
 **Entregado**: los registros de pago se crean, editan y dan de baja con el

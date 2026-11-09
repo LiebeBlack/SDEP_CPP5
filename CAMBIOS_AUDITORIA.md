@@ -44,11 +44,11 @@ updater, GUI, utilidades y configuración).
 - Validación de operaciones antes de aplicar; las operaciones malformadas o no
   soportadas se rechazan en vez de aplicarse como `upsert`.
 
-> **Pendiente conocido:** los defaults de `ServidorConfig`
-> (`host="0.0.0.0"`, `emparejamiento_abierto=True`) siguen siendo permisivos en
-> la clase; el endurecimiento efectivo se hace desde `iniciar_servidor.py` y la
-> configuración. Se recomienda cambiarlos a `127.0.0.1`/`False` en una próxima
-> iteración junto con la revisión de los puntos de sync listados en §5.
+> **Resuelto en la revisión actual:** `ServidorConfig` usa
+> `host="127.0.0.1"` y `emparejamiento_abierto=False` por defecto. El servidor
+> embebido y los comandos de red de `sync_agent` activan el alta móvil de
+> forma explícita; `iniciar_servidor.py` solo la abre si la configuración lo
+> indica (su configuración estándar la incluye).
 
 ---
 
@@ -278,10 +278,9 @@ updater, GUI, utilidades y configuración).
 
 ## 7. Ítems conocidos pendientes (próxima iteración)
 
-- `ServidorConfig`: cambiar defaults de clase a `host="127.0.0.1"` y
-  `emparejamiento_abierto=False`; exposición LAN solo por configuración
-  explícita. (La opción ya es configurable vía `iniciar_servidor.py`;
-  queda pendiente endurecer el default de la clase sin romper el alta móvil.)
+- ~~`ServidorConfig`: cambiar defaults de clase a `host="127.0.0.1"` y
+  `emparejamiento_abierto=False`~~ → resuelto: defaults de loopback y
+  emparejamiento cerrado; el alta móvil queda como opt-in explícito.
 - ~~Cuota de disco en `POST /api/v1/blob/{hash}`~~ → resuelta en la tercera
   pasada (`max_bytes_blobs_total`, respuesta 507 al exceder).
 - Migración explícita `Empleado.salario_base` Float→Numeric en bases existentes.

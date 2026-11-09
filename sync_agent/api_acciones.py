@@ -267,6 +267,30 @@ class ApiAcciones:
             logger.error("Fallo de base de datos en una acción del móvil", exc_info=True)
             raise ErrorApi("Error interno de base de datos", 500) from error
 
+    @staticmethod
+    def _id_de_accion(db, tabla: str, referencia: int | str) -> int:
+        """Resuelve el id local del nodo a partir del id o del UUID global.
+
+        El teléfono identifica las filas por el UUID de ``sync_ids`` porque su
+        id de Room es local. Aceptar ambos mantiene compatibles las rutas
+        numéricas que ya usaba el escritorio y evita aprobar o renovar la fila
+        equivocada cuando los autoincrementales no coinciden.
+        """
+        if isinstance(referencia, int):
+            return referencia
+        texto = str(referencia or "").strip()
+        if not texto:
+            raise ErrorApi("Falta el identificador del registro", 400)
+        if texto.isdigit():
+            return int(texto)
+
+        from sync_agent.identidad import id_local_de
+
+        id_local = id_local_de(db, tabla, texto)
+        if id_local is None:
+            raise ErrorApi("El registro indicado no existe en este nodo", 404)
+        return int(id_local)
+
     # ==================================================================
     # Autenticación
     # ==================================================================
@@ -632,15 +656,19 @@ class ApiAcciones:
     # ==================================================================
     # Incidencias (módulo incidencias)
     # ==================================================================
-    def aprobar_incidencia(self, sesion: SesionValida, incidencia_id: int, cuerpo: dict) -> dict:
+    def aprobar_incidencia(
+        self, sesion: SesionValida, incidencia_id: int | str, cuerpo: dict
+    ) -> dict:
         """Aprueba una incidencia a nombre del usuario de la sesión"""
         exigir_permiso(sesion, "update", "incidencias")
         from src.services.incidencia_service import IncidenciaService
 
         db = self._sesion()
         try:
+            incidencia_id = self._id_de_accion(db, "incidencias", incidencia_id)
+            servicio = IncidenciaService(db)
             correcto = self._ejecutar(
-                lambda: IncidenciaService(db).aprobar_incidencia(
+                lambda: servicio.aprobar_incidencia(
                     incidencia_id,
                     aprobado_por=sesion.username,
                     comentarios=cuerpo.get("comentarios"),
@@ -656,19 +684,24 @@ class ApiAcciones:
                 incidencia_id,
                 {"operacion": "aprobar"},
             )
-            return {"correcto": True}
+            actual = servicio.repository.get_by_id(incidencia_id)
+            return {"correcto": True, "incidencia": serializar(actual)}
         finally:
             db.close()
 
-    def rechazar_incidencia(self, sesion: SesionValida, incidencia_id: int, cuerpo: dict) -> dict:
+    def rechazar_incidencia(
+        self, sesion: SesionValida, incidencia_id: int | str, cuerpo: dict
+    ) -> dict:
         """Rechaza una incidencia a nombre del usuario de la sesión"""
         exigir_permiso(sesion, "update", "incidencias")
         from src.services.incidencia_service import IncidenciaService
 
         db = self._sesion()
         try:
+            incidencia_id = self._id_de_accion(db, "incidencias", incidencia_id)
+            servicio = IncidenciaService(db)
             correcto = self._ejecutar(
-                lambda: IncidenciaService(db).rechazar_incidencia(
+                lambda: servicio.rechazar_incidencia(
                     incidencia_id,
                     rechazado_por=sesion.username,
                     comentarios=cuerpo.get("comentarios"),
@@ -683,22 +716,26 @@ class ApiAcciones:
                 incidencia_id,
                 {"operacion": "rechazar"},
             )
-            return {"correcto": True}
+            actual = servicio.repository.get_by_id(incidencia_id)
+            return {"correcto": True, "incidencia": serializar(actual)}
         finally:
             db.close()
 
     # ==================================================================
     # Contratos (módulo contratos)
     # ==================================================================
-    def renovar_contrato(self, sesion: SesionValida, contrato_id: int, cuerpo: dict) -> dict:
+    def renovar_contrato(self, sesion: SesionValida, contrato_id: int | str, cuerpo: dict) -> dict:
         """Renueva un contrato vigente, encadenado al anterior"""
         exigir_permiso(sesion, "update", "contratos")
         from src.services.contrato_service import ContratoService
 
         db = self._sesion()
         try:
+            contrato_id = self._id_de_accion(db, "contratos", contrato_id)
+            servicio = ContratoService(db)
+            anterior = servicio.repository.get_by_id(contrato_id)
             nuevo = self._ejecutar(
-                lambda: ContratoService(db).renovar_contrato(
+                lambda: servicio.renovar_contrato(
                     contrato_id,
                     nueva_fecha_fin=_fecha(cuerpo, "nueva_fecha_fin"),
                     nuevo_salario=cuerpo.get("nuevo_salario"),
@@ -714,11 +751,23 @@ class ApiAcciones:
                 getattr(nuevo, "id", None),
                 {"operacion": "renovar", "anterior": contrato_id},
             )
-            return {"contrato": serializar(nuevo)}
+            from sync_agent.identidad import nuevo_uuid, registrar, uuid_de_fila
+
+            nuevo_id = getattr(nuevo, "id", None)
+            fila_uuid = uuid_de_fila(db, "contratos", nuevo_id)
+            if fila_uuid is None and nuevo_id is not None:
+                fila_uuid = nuevo_uuid()
+                registrar(db, "contratos", fila_uuid, int(nuevo_id))
+                db.commit()
+            return {
+                "contrato": serializar(nuevo),
+                "anterior": serializar(anterior),
+                "fila_uuid": fila_uuid,
+            }
         finally:
             db.close()
 
-    def terminar_contrato(self, sesion: SesionValida, contrato_id: int, cuerpo: dict) -> dict:
+    def terminar_contrato(self, sesion: SesionValida, contrato_id: int | str, cuerpo: dict) -> dict:
         """Termina un contrato y genera su finiquito con el motor del escritorio"""
         exigir_permiso(sesion, "update", "contratos")
         motivo = str(cuerpo.get("motivo") or "").strip()
@@ -728,6 +777,7 @@ class ApiAcciones:
 
         db = self._sesion()
         try:
+            contrato_id = self._id_de_accion(db, "contratos", contrato_id)
             resultado = self._ejecutar(
                 lambda: ContratoService(db).terminar_contrato(
                     contrato_id,

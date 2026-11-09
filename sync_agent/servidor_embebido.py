@@ -262,6 +262,9 @@ class ServidorEmbebido:
                 # para no chocar con otra instancia en la misma máquina.
                 puerto_descubrimiento=PUERTO_DESCUBRIMIENTO if self.puerto else 0,
                 nombre_equipo=socket.gethostname(),
+                # Este nodo se anuncia en la LAN y el teléfono se registra
+                # solo; es el punto que opta explícitamente por ello.
+                emparejamiento_abierto=True,
             )
             servidor = ServidorSync(config)
             nucleo = servidor.nucleo

@@ -44,6 +44,14 @@ def test_arranca_y_responde_el_ping(servidor):
     assert servidor.estado()["estado"] == ESTADO_DETENIDO
 
 
+def test_el_servidor_embebido_habilita_el_emparejamiento_para_el_movil(servidor):
+    estado = servidor.iniciar(esperar=True)
+    assert estado["estado"] == ESTADO_ACTIVO
+    assert servidor._servidor is not None
+    assert servidor._servidor.nucleo.config.emparejamiento_abierto is True
+    assert servidor._servidor.nucleo.config.host == "0.0.0.0"
+
+
 def test_auto_configura_usuarios_y_puesto_cliente(servidor, tmp_path):
     estado = servidor.iniciar(esperar=True)
     assert estado["estado"] == ESTADO_ACTIVO

@@ -376,6 +376,9 @@ def cmd_servidor(args: argparse.Namespace) -> int:
         puerto=args.puerto,
         certificado=args.cert,
         clave=args.key,
+        # La consola se usa para levantar un nodo de red; el default seguro
+        # de la clase no aplica a este comando explícito.
+        emparejamiento_abierto=True,
     )
     print(
         f"Nodo central escuchando en http{'s' if config.certificado else ''}://"
@@ -445,6 +448,8 @@ def cmd_autoconfig(args: argparse.Namespace) -> int:
         puerto=args.puerto,
         certificado=args.cert,
         clave=args.key,
+        # El modo autoconfigurado existe para que el móvil descubra el nodo.
+        emparejamiento_abierto=True,
     )
 
     protocolo = "https" if config.certificado else "http"

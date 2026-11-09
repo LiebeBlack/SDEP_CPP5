@@ -80,9 +80,9 @@ def cargar_config(ruta_config: str | None = None) -> dict:
         "max_bytes_peticion": 3 * 1024 * 1024,
         "max_bytes_blob": 64 * 1024 * 1024,
         "peticiones_por_minuto": 120,
-        # La app móvil se da de alta sola en la red; si la instalación quiere
-        # exigir alta supervisada, poner "emparejamiento_abierto": false y
-        # crear los dispositivos desde la consola (sync_agent __main__).
+        # La configuración estándar habilita el alta de la app móvil en la
+        # red; un archivo personalizado debe activarlo explícitamente y puede
+        # desactivarlo para exigir alta supervisada desde la consola.
         "emparejamiento_abierto": True,
     }
 
@@ -169,7 +169,7 @@ def crear_usuarios_por_defecto(config: dict) -> None:
 
 def crear_dispositivo_por_defecto(
     config: dict, nombre: str = "Computadora Principal"
-) -> tuple[str, str]:
+) -> tuple[str | None, str | None]:
     """Crea un dispositivo por defecto para conexión local"""
     from sync_agent.servidor import NucleoCentral, ServidorConfig
 
@@ -213,7 +213,10 @@ def iniciar_servidor(config: dict) -> None:
         max_bytes_peticion=config.get("max_bytes_peticion", 3 * 1024 * 1024),
         max_bytes_blob=config.get("max_bytes_blob", 64 * 1024 * 1024),
         peticiones_por_minuto=config.get("peticiones_por_minuto", 120),
-        emparejamiento_abierto=config.get("emparejamiento_abierto", True),
+        # El alta móvil es opt-in: la configuración estándar la activa
+        # explícitamente; un archivo personalizado que omita la clave
+        # conserva el nodo cerrado.
+        emparejamiento_abierto=config.get("emparejamiento_abierto", False),
     )
 
     ip_local = obtener_ip_local()
@@ -303,7 +306,8 @@ def main():
         iniciar_servidor(config)
     else:
         logger.info(
-            "Inicialización completada. Use --sin-solo-inicializar para iniciar el servidor."
+            "Inicialización completada. Ejecute de nuevo sin --solo-inicializar para "
+            "iniciar el servidor."
         )
 
 

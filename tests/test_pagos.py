@@ -92,6 +92,39 @@ def test_actualizar_pago_recalcula(session, empleado):
     assert float(actualizado.monto_bruto) == pytest.approx(2350.0)
 
 
+def test_editar_pago_prorrateado_conserva_los_dias_y_el_salario(session, empleado):
+    servicio = PagoService(session)
+    pago = servicio.crear_pago(
+        _pago_base(
+            empleado.id,
+            salario_base=3000.0,
+            dias_trabajados=15,
+            dias_periodo=30,
+            prorratear=True,
+        )
+    )
+    assert float(pago.salario_base) == pytest.approx(1500.0)
+    assert pago.dias_laborados == 15
+    assert pago.dias_periodo == 30
+    assert bool(pago.prorrateado) is True
+
+    actualizado = servicio.actualizar_pago(pago.id, {"bonificaciones": 200.0})
+    assert float(actualizado.salario_base) == pytest.approx(1500.0)
+    assert actualizado.dias_laborados == 15
+    assert actualizado.dias_periodo == 30
+    assert bool(actualizado.prorrateado) is True
+    # 1500 de salario + 200 de bonificación + 50 de horas extra
+    assert float(actualizado.monto_bruto) == pytest.approx(1750.0)
+
+    con_salario = servicio.actualizar_pago(
+        pago.id, {"salario_base": 1500.0, "bonificaciones": 250.0}
+    )
+    assert float(con_salario.salario_base) == pytest.approx(1500.0)
+
+    aumentado = servicio.actualizar_pago(pago.id, {"salario_base": 3600.0})
+    assert float(aumentado.salario_base) == pytest.approx(1800.0)
+
+
 def test_generar_nomina_empleado(session, empleado):
     servicio = PagoService(session)
     pago = servicio.generar_nominas_empleado(empleado.id, date(2026, 2, 1), date(2026, 2, 28))

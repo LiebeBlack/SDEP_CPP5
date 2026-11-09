@@ -570,6 +570,10 @@ class PagoService:
                 prorrateado
                 and pago.prorrateado
                 and pago.dias_laborados
+                # Sin salario ni días en la petición (solo se editó otro
+                # concepto) no hay que invertir el prorrateo: el importe
+                # guardado ya es el efectivo del período.
+                and (campos_prorrateo & datos.keys() or "salario_base" in datos)
                 and _mismo_importe(salario_motor, pago.salario_base)
             ):
                 periodo_guardado = int(pago.dias_periodo or 30)

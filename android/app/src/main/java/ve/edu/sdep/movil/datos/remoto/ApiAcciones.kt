@@ -106,20 +106,22 @@ interface ApiAcciones {
     // ------------------------------------------------------------------
     // Incidencias
     // ------------------------------------------------------------------
+    // El nodo acepta el UUID global en el segmento del id: es la identidad
+    // que comparten el Room del teléfono y la tabla sync_ids del servidor.
     @POST("api/v1/acciones/incidencias/{id}/aprobar")
-    suspend fun aprobarIncidencia(@Path("id") id: Long, @Body cuerpo: JsonElement): CorrectoDto
+    suspend fun aprobarIncidencia(@Path("id") id: String, @Body cuerpo: JsonElement): JsonElement
 
     @POST("api/v1/acciones/incidencias/{id}/rechazar")
-    suspend fun rechazarIncidencia(@Path("id") id: Long, @Body cuerpo: JsonElement): CorrectoDto
+    suspend fun rechazarIncidencia(@Path("id") id: String, @Body cuerpo: JsonElement): JsonElement
 
     // ------------------------------------------------------------------
     // Contratos
     // ------------------------------------------------------------------
     @POST("api/v1/acciones/contratos/{id}/renovar")
-    suspend fun renovarContrato(@Path("id") id: Long, @Body cuerpo: JsonElement): JsonElement
+    suspend fun renovarContrato(@Path("id") id: String, @Body cuerpo: JsonElement): JsonElement
 
     @POST("api/v1/acciones/contratos/{id}/terminar")
-    suspend fun terminarContrato(@Path("id") id: Long, @Body cuerpo: JsonElement): JsonElement
+    suspend fun terminarContrato(@Path("id") id: String, @Body cuerpo: JsonElement): JsonElement
 
     // ------------------------------------------------------------------
     // Académico

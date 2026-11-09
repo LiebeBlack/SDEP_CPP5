@@ -19,8 +19,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -52,13 +55,30 @@ fun PantallaFichaModulo(
     alVolver: () -> Unit,
     alEditar: (() -> Unit)? = null,
     vistaModelo: ModulosViewModel = hiltViewModel(),
+    accionesViewModel: AccionesLaboralesViewModel = hiltViewModel(),
 ) {
     val modulo = Modulo.desde(rutaModulo)
     val catalogo by vistaModelo.catalogo.collectAsStateWithLifecycle()
     val ficha = remember(catalogo, modulo, id) { modulo?.let { catalogo.ficha(it, id) } }
     val permitido = modulo != null && sesion.puedeAbrir(modulo)
+    val acciones by accionesViewModel.estado.collectAsStateWithLifecycle()
+    val barra = remember { SnackbarHostState() }
+    val puedeGestionar = sesion.puede(Permiso.EDITAR) && !sesion.esTrabajador
+
+    LaunchedEffect(modulo, id) { accionesViewModel.cargar(modulo, id) }
+    LaunchedEffect(acciones.mensaje) {
+        val texto = acciones.mensaje ?: return@LaunchedEffect
+        barra.showSnackbar(texto)
+        accionesViewModel.limpiarMensaje()
+    }
+    LaunchedEffect(acciones.error) {
+        val texto = acciones.error ?: return@LaunchedEffect
+        barra.showSnackbar(texto)
+        accionesViewModel.limpiarMensaje()
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(barra) },
         topBar = {
             BarraSuperior(
                 titulo = modulo?.etiqueta ?: "Detalle",
@@ -100,6 +120,37 @@ fun PantallaFichaModulo(
                 item(key = "encabezado", contentType = "encabezado") {
                     EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR))
                 }
+                val hayAccion = modoDeAccion(modulo, acciones.incidencia, acciones.contrato)
+                if (hayAccion && puedeGestionar) {
+                    item(key = "acciones", contentType = "acciones") {
+                        TarjetaAccionesLaborales(
+                            modulo = modulo,
+                            incidencia = acciones.incidencia,
+                            contrato = acciones.contrato,
+                            conectado = acciones.conectado,
+                            puedeGestionar = puedeGestionar,
+                            ejecutando = acciones.ejecutando,
+                            alAprobar = { comentarios, dias ->
+                                accionesViewModel.aprobar(id, comentarios, dias)
+                            },
+                            alRechazar = { comentarios ->
+                                accionesViewModel.rechazar(id, comentarios)
+                            },
+                            alRenovar = { fecha, salario, tipo, clausulas ->
+                                accionesViewModel.renovar(id, fecha, salario, tipo, clausulas)
+                            },
+                            alTerminar = { motivo, fecha, liquidacion, metodo ->
+                                accionesViewModel.terminar(
+                                    id,
+                                    motivo,
+                                    fecha,
+                                    liquidacion,
+                                    metodo,
+                                )
+                            },
+                        )
+                    }
+                }
                 // Clave por posición: los títulos se repiten entre fichas y una
                 // clave duplicada haría fallar la lista en tiempo de ejecución.
                 itemsIndexed(
@@ -112,6 +163,16 @@ fun PantallaFichaModulo(
             }
         }
     }
+}
+
+private fun modoDeAccion(
+    modulo: Modulo?,
+    incidencia: ve.edu.sdep.movil.datos.local.entidad.IncidenciaEntity?,
+    contrato: ve.edu.sdep.movil.datos.local.entidad.ContratoEntity?,
+): Boolean = when (modulo) {
+    Modulo.INCIDENCIAS -> incidencia?.estado == "pendiente"
+    Modulo.CONTRATOS -> contrato != null && contrato.estado != "terminado"
+    else -> false
 }
 
 @Composable

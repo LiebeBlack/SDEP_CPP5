@@ -128,7 +128,7 @@ fun PantallaFormulario(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
+                item(contentType = "ayuda") {
                     Text(
                         text = if (estado.puedeEscribir) {
                             "Los cambios se guardan en el teléfono y viajan al nodo central " +
@@ -142,10 +142,14 @@ fun PantallaFormulario(
                 }
 
                 estado.error?.let { mensaje ->
-                    item { MensajeError(mensaje) }
+                    item(contentType = "error") { MensajeError(mensaje) }
                 }
 
-                itemsIndexed(estado.campos, key = { _, campo -> campo.nombre }) { indice, campo ->
+                itemsIndexed(
+                    estado.campos,
+                    key = { _, campo -> campo.nombre },
+                    contentType = { _, campo -> campo.tipo.name },
+                ) { indice, campo ->
                     CampoEditable(
                         campo = campo,
                         valor = estado.valores[campo.nombre].orEmpty(),
@@ -159,7 +163,7 @@ fun PantallaFormulario(
                     )
                 }
 
-                item { Spacer(Modifier.height(24.dp)) }
+                item(contentType = "espacio") { Spacer(Modifier.height(24.dp)) }
             }
         }
     }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,7 +87,7 @@ fun PantallaConflictos(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(conflictos, key = { it.id }) { conflicto ->
+                items(conflictos, key = { it.id }, contentType = { "conflicto" }) { conflicto ->
                     TarjetaConflicto(
                         conflicto = conflicto,
                         alRevisar = { vistaModelo.marcarRevisado(conflicto.id) },
@@ -99,7 +100,10 @@ fun PantallaConflictos(
 
 @Composable
 private fun TarjetaConflicto(conflicto: ConflictoEntity, alRevisar: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

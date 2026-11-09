@@ -27,9 +27,10 @@ class TrabajoSincronizacion @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val actual = configuracion.cargar()
-        // Si el administrador desactivó la sincronización, no se gasta batería
-        // ni se insiste contra un servicio que no corresponde.
-        if (!actual.activa) return Result.success()
+        // Si el administrador desactivó la sincronización o aún faltan datos
+        // del nodo, no se gasta batería ni se insiste contra un servicio que
+        // no corresponde.
+        if (!actual.activa || !actual.completa) return Result.success()
 
         return when (val resultado = sincronizacion.sincronizar()) {
             is Resultado.Exito -> Result.success()

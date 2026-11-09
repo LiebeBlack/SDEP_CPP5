@@ -63,6 +63,7 @@ fun TarjetaFila(fila: FilaCatalogo, alAbrir: () -> Unit) {
             .fillMaxWidth()
             .clickable(onClick = alAbrir),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -139,7 +140,10 @@ fun CampoDetalle(campo: CampoFicha) {
 /** Sección de una ficha: título, campos y, si la hay, una nota al pie */
 @Composable
 fun TarjetaSeccion(seccion: SeccionFicha) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),

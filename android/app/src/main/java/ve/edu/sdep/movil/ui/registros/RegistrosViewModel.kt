@@ -3,6 +3,7 @@ package ve.edu.sdep.movil.ui.registros
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -99,19 +100,25 @@ class RegistrosViewModel @Inject constructor(
         if (_sincronizando.value) return
         viewModelScope.launch {
             _sincronizando.value = true
-            when (val resultado = sincronizacion.sincronizar()) {
-                is Resultado.Exito -> {
-                    val resumen = resultado.valor
-                    _mensaje.value = if (resumen.enviadas == 0 && resumen.recibidas == 0) {
-                        "Todo al día: no hay cambios pendientes."
-                    } else {
-                        "Enviados ${resumen.enviadas} y recibidos ${resumen.recibidas} cambios."
+            try {
+                when (val resultado = sincronizacion.sincronizar()) {
+                    is Resultado.Exito -> {
+                        val resumen = resultado.valor
+                        _mensaje.value = if (resumen.enviadas == 0 && resumen.recibidas == 0) {
+                            "Todo al día: no hay cambios pendientes."
+                        } else {
+                            "Enviados ${resumen.enviadas} y recibidos ${resumen.recibidas} cambios."
+                        }
                     }
-                }
 
-                is Resultado.Fallo -> _mensaje.value = resultado.mensaje
+                    is Resultado.Fallo -> _mensaje.value = resultado.mensaje
+                }
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                _mensaje.value = "No se pudo sincronizar. Se reintentará automáticamente."
+            } finally {
+                _sincronizando.value = false
             }
-            _sincronizando.value = false
         }
     }
 

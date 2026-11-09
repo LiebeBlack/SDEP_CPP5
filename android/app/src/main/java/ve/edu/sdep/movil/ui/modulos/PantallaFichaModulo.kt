@@ -97,10 +97,16 @@ fun PantallaFichaModulo(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                item(key = "encabezado") { EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR)) }
+                item(key = "encabezado", contentType = "encabezado") {
+                    EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR))
+                }
                 // Clave por posición: los títulos se repiten entre fichas y una
                 // clave duplicada haría fallar la lista en tiempo de ejecución.
-                itemsIndexed(actual.secciones, key = { indice, _ -> indice }) { _, seccion ->
+                itemsIndexed(
+                    actual.secciones,
+                    key = { indice, _ -> indice },
+                    contentType = { _, _ -> "seccion" },
+                ) { _, seccion ->
                     TarjetaSeccion(seccion)
                 }
             }

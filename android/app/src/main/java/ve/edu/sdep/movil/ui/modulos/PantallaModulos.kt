@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -105,7 +106,7 @@ fun PantallaModulos(
                 }
             }
 
-            items(modulos, key = { it.name }) { modulo ->
+            items(modulos, key = { it.name }, contentType = { "modulo" }) { modulo ->
                 TarjetaModulo(
                     modulo = modulo,
                     conteo = conteo(catalogo, modulo),
@@ -126,6 +127,7 @@ private fun TarjetaModulo(modulo: Modulo, conteo: Int?, alAbrir: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = alAbrir),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
             modifier = Modifier.padding(14.dp),

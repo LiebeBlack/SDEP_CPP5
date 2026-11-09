@@ -180,7 +180,7 @@ private fun ContenidoLista(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(filas, key = { it.id }) { fila ->
+                items(filas, key = { it.id }, contentType = { "fila" }) { fila ->
                     TarjetaFila(fila = fila, alAbrir = { alAbrir(fila.id) })
                 }
             }

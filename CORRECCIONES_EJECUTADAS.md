@@ -454,3 +454,27 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 - `pytest -q --no-cov`: 642 pruebas superadas, sin fallos.
 - `flake8`, `black --check` e `isort --check-only`: sin hallazgos.
 - **No verificado:** la aplicación en pantalla.
+
+# Tanda 16 — Aplicación Android afinada (2026-11-09)
+
+**Origen:** revisión estática de la aplicación Android para reducir recomposiciones y trabajo de lista, cerrar estados de carga ante fallos y uniformar la presentación. No se modificaron versiones de AGP, Kotlin, Compose ni dependencias.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `ui/inicio/PantallaInicio.kt` | `remember` dependía de ocho lambdas de navegación que el grafo recrea; cualquier recomposición reconstruía todas las categorías y soluciones. | Los callbacks se leen con `rememberUpdatedState` y el catálogo se memoriza solo por sesión y datos. Se añadió `contentType` a categorías y soluciones, y elevación de 1 dp a las tarjetas. |
+| `ui/modulos/ComponentesModulo.kt`, `ui/modulos/PantallaModulos.kt`, `ui/modulos/PantallaFichaModulo.kt`, `ui/modulos/PantallaListaModulo.kt`, `ui/empleados/PantallaEmpleado.kt`, `ui/tablas/PantallaTabla.kt`, `ui/registros/PantallaRegistros.kt`, `ui/conflictos/PantallaConflictos.kt`, `ui/formulario/PantallaFormulario.kt` | Listas perezosas sin `contentType`: Compose no podía reutilizar composiciones entre elementos de distinto tipo. | Se declaró `contentType` en encabezados, filas, campos, chips y tarjetas; las listas conservan sus `key`. |
+| `ui/modulos/ComponentesModulo.kt`, `ui/modulos/PantallaModulos.kt`, `ui/tablas/PantallaTabla.kt`, `ui/registros/PantallaRegistros.kt`, `ui/conflictos/PantallaConflictos.kt`, `ui/ajustes/PantallaAjustes.kt`, `ui/ajustes/UserProfileScreen.kt` | Tarjetas de contenido sin elevación, con una jerarquía visual plana frente a las tarjetas de inicio. | Elevación de 1 dp en las tarjetas de contenido, sin sombras profundas ni cambios de color. |
+| `ui/tablas/TablaViewModel.kt` | Una excepción al leer columnas o filas dejaba el indicador de carga activo y no mostraba nada al usuario. | La lectura se envuelve en `try/catch`, se limpia `noDisponible` al iniciar, se apaga `cargando` y se muestra un aviso; `CancellationException` se vuelve a lanzar. |
+| `ui/registros/RegistrosViewModel.kt` | Si la sincronización lanzaba una excepción, `sincronizando` quedaba en `true` y el botón no volvía a responder. | `try/catch/finally` garantiza el cierre del indicador; los fallos inesperados se informan sin tragar la cancelación. |
+| `sincronizacion/TrabajoSincronizacion.kt` | El trabajo periódico solo comprobaba `activa`; un nodo aún incompleto podía intentar sincronizar sin configuración útil. | También exige `completa` antes de gastar red o batería. |
+| `AndroidManifest.xml` | La actividad no declaraba el callback de retroceso predictivo. | `android:enableOnBackInvokedCallback="true"` en `<application>`. |
+
+## Verificación
+
+- `git diff --check`: limpio.
+- 16 archivos Android con CRLF completo (líneas = CRLF).
+- Sin líneas Kotlin de más de 110 caracteres en los archivos modificados.
+- Comprobación estática de equilibrio de llaves, corchetes y paréntesis en los 15 archivos Kotlin modificados: correcta.
+- **No verificado:** compilación, `ktlint`, `lint`, APK y ejecución en emulador. En este equipo no hay Java, Gradle, SDK de Android ni emulador (`java`, `javac`, `kotlinc` y `gradle` no están instalados), así que la validación es únicamente estática.

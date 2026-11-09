@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -144,14 +145,14 @@ fun PantallaRegistros(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    item {
+                    item(contentType = "todas") {
                         FilterChip(
                             selected = estado.categoriaSeleccionada.isEmpty(),
                             onClick = { vistaModelo.filtrarCategoria("") },
                             label = { Text("Todas") },
                         )
                     }
-                    items(estado.categorias, key = { it }) { categoria ->
+                    items(estado.categorias, key = { it }, contentType = { "categoria" }) { categoria ->
                         FilterChip(
                             selected = estado.categoriaSeleccionada == categoria,
                             onClick = { vistaModelo.filtrarCategoria(categoria) },
@@ -198,7 +199,7 @@ fun PantallaRegistros(
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(estado.registros, key = { it.uuid }) { registro ->
+                    items(estado.registros, key = { it.uuid }, contentType = { "registro" }) { registro ->
                         TarjetaRegistro(registro = registro, alEditar = alEditar)
                     }
                 }
@@ -267,6 +268,7 @@ private fun TarjetaRegistro(registro: Registro, alEditar: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { alEditar(registro.uuid) },
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

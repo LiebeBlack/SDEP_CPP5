@@ -10,6 +10,7 @@
     <application
         android:name=".SdepApplication"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:hardwareAccelerated="true"
         android:dataExtractionRules="@xml/reglas_extraccion"
         android:fullBackupContent="@xml/reglas_respaldo"

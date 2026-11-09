@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,9 +78,17 @@ fun PantallaInicio(
     val catalogo by vistaModelo.catalogo.collectAsStateWithLifecycle()
     val datos = catalogo.datos
 
-    val categorias = remember(
-        sesion, datos, alAbrirModulo, alAbrirTabla, alCaptura, alAjustes, alConflictos, alHerramientasPdf,
-    ) {
+    // Los callbacks de navegación se recrean en cada recomposición del grafo.
+    // Recordarlos aquí evita reconstruir todo el catálogo de tarjetas cuando
+    // solo cambia su identidad, no los datos ni la sesión.
+    val abrirModuloActual by rememberUpdatedState(alAbrirModulo)
+    val abrirTablaActual by rememberUpdatedState(alAbrirTabla)
+    val capturaActual by rememberUpdatedState(alCaptura)
+    val ajustesActual by rememberUpdatedState(alAjustes)
+    val conflictosActual by rememberUpdatedState(alConflictos)
+    val pdfActual by rememberUpdatedState(alHerramientasPdf)
+
+    val categorias = remember(sesion, datos) {
         buildList {
             add(
                 Categoria(
@@ -89,17 +99,17 @@ fun PantallaInicio(
                             sesion, Modulo.EMPLEADOS, "Empleados",
                             "Datos personales, laborales y de salud",
                             Icons.Filled.Badge, datos.empleados.size,
-                        ) { alAbrirModulo(Modulo.EMPLEADOS) },
+                        ) { abrirModuloActual(Modulo.EMPLEADOS) },
                         solucion(
                             sesion, Modulo.DOCUMENTOS, "Documentos",
                             "Legajo, vencimientos y archivos",
                             Icons.Filled.Description, datos.documentos.size,
-                        ) { alAbrirModulo(Modulo.DOCUMENTOS) },
+                        ) { abrirModuloActual(Modulo.DOCUMENTOS) },
                         solucion(
                             sesion, Modulo.INCIDENCIAS, "Incidencias",
                             "Permisos, reposos y ausencias",
                             Icons.Filled.EventBusy, datos.incidencias.size,
-                        ) { alAbrirModulo(Modulo.INCIDENCIAS) },
+                        ) { abrirModuloActual(Modulo.INCIDENCIAS) },
                         if (sesion.puedeAbrir(Modulo.EMPLEADOS) &&
                             (sesion.puede(ve.edu.sdep.movil.dominio.modelo.Permiso.REPORTAR) ||
                                 (sesion.puedeAbrir(Modulo.DOCUMENTOS) &&
@@ -110,7 +120,7 @@ fun PantallaInicio(
                                 detalle = "Generar, cargar y compartir documentos del personal",
                                 icono = Icons.Filled.Description,
                                 conteo = null,
-                                alAbrir = alHerramientasPdf,
+                                alAbrir = pdfActual,
                             )
                         } else null,
                     ),
@@ -125,27 +135,27 @@ fun PantallaInicio(
                             sesion, Modulo.ESTUDIANTES, "Estudiantes",
                             "Expediente y representantes",
                             Icons.Filled.School, datos.estudiantes.size,
-                        ) { alAbrirModulo(Modulo.ESTUDIANTES) },
+                        ) { abrirModuloActual(Modulo.ESTUDIANTES) },
                         solucion(
                             sesion, Modulo.NOTAS, "Calificaciones",
                             "Notas por materia y grupo",
                             Icons.Filled.Grade, datos.notas.size,
-                        ) { alAbrirModulo(Modulo.NOTAS) },
+                        ) { abrirModuloActual(Modulo.NOTAS) },
                         solucion(
                             sesion, Modulo.NOTAS, "Períodos",
                             "Apertura y cierre de períodos",
                             Icons.Filled.DateRange, datos.periodos.size,
-                        ) { alAbrirTabla("periodos_academicos") },
+                        ) { abrirTablaActual("periodos_academicos") },
                         solucion(
                             sesion, Modulo.NOTAS, "Grados",
                             "Grupos, secciones y niveles",
                             Icons.Filled.School, datos.grados.size,
-                        ) { alAbrirTabla("grados") },
+                        ) { abrirTablaActual("grados") },
                         solucion(
                             sesion, Modulo.NOTAS, "Matrículas",
                             "Inscripción de estudiantes en grados",
                             Icons.Filled.Description, datos.matriculas.size,
-                        ) { alAbrirTabla("matriculas") },
+                        ) { abrirTablaActual("matriculas") },
                     ),
                 ),
             )
@@ -158,12 +168,12 @@ fun PantallaInicio(
                             sesion, Modulo.CONTRATOS, "Contratos",
                             "Vigencias, cargos y salarios pactados",
                             Icons.Filled.Gavel, datos.contratos.size,
-                        ) { alAbrirModulo(Modulo.CONTRATOS) },
+                        ) { abrirModuloActual(Modulo.CONTRATOS) },
                         solucion(
                             sesion, Modulo.NOMINA, "Nómina",
                             "Recibos, deducciones y pagos",
                             Icons.Filled.Payments, datos.pagos.size,
-                        ) { alAbrirModulo(Modulo.NOMINA) },
+                        ) { abrirModuloActual(Modulo.NOMINA) },
                     ),
                 ),
             )
@@ -177,21 +187,21 @@ fun PantallaInicio(
                             detalle = "Registrar una novedad desde el teléfono",
                             icono = Icons.Filled.Tune,
                             conteo = null,
-                            alAbrir = alCaptura,
+                            alAbrir = capturaActual,
                         ),
                         Solucion(
                             titulo = "Conflictos",
                             detalle = "Valores que compitieron entre equipos",
                             icono = Icons.Filled.EventBusy,
                             conteo = null,
-                            alAbrir = alConflictos,
+                            alAbrir = conflictosActual,
                         ),
                         Solucion(
                             titulo = "Sincronización",
                             detalle = "Nodo central, cola de salida y conflictos",
                             icono = Icons.Filled.Settings,
                             conteo = null,
-                            alAbrir = alAjustes,
+                            alAbrir = ajustesActual,
                         ),
                     ),
                 ),
@@ -246,7 +256,7 @@ fun PantallaInicio(
             }
 
             categorias.forEach { categoria ->
-                item(key = "cat-${categoria.titulo}") {
+                item(key = "cat-${categoria.titulo}", contentType = "categoria") {
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = categoria.titulo,
@@ -259,9 +269,11 @@ fun PantallaInicio(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                items(categoria.soluciones, key = { solucion ->
-                    "${categoria.titulo}-${solucion.titulo}"
-                }) { solucion ->
+                items(
+                    categoria.soluciones,
+                    key = { solucion -> "${categoria.titulo}-${solucion.titulo}" },
+                    contentType = { "solucion" },
+                ) { solucion ->
                     TarjetaSolucion(solucion, Modifier.fillMaxWidth())
                 }
             }
@@ -278,7 +290,10 @@ fun PantallaInicio(
 
 @Composable
 private fun TarjetaSolucion(solucion: Solucion, modificador: Modifier) {
-    Card(modifier = modificador.clickable(onClick = solucion.alAbrir)) {
+    Card(
+        modifier = modificador.clickable(onClick = solucion.alAbrir),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,

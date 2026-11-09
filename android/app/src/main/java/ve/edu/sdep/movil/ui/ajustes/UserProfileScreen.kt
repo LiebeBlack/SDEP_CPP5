@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -194,7 +195,10 @@ fun UserProfileScreen(
 private fun TarjetaPerfil(perfil: PerfilDto?) {
     if (perfil == null) return
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Perfil de usuario", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))

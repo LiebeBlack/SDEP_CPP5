@@ -3,6 +3,7 @@ package ve.edu.sdep.movil.ui.tablas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,7 +47,12 @@ class TablaViewModel @Inject constructor(
         tablaActual = tabla
         viewModelScope.launch {
             _estado.update {
-                it.copy(tabla = tabla, titulo = EsquemaTabla.titulo(tabla), cargando = true)
+                it.copy(
+                    tabla = tabla,
+                    titulo = EsquemaTabla.titulo(tabla),
+                    cargando = true,
+                    noDisponible = null,
+                )
             }
             val sesion = sesionRepositorio.actual
             val modulo = EsquemaTabla.moduloDeTabla(tabla)
@@ -59,8 +65,20 @@ class TablaViewModel @Inject constructor(
                 }
                 return@launch
             }
-            val columnas = repositorio.columnas(tabla)
-            val filas = repositorio.listar(tabla).map { valores -> resumir(valores, columnas) }
+            val filas = try {
+                val columnas = repositorio.columnas(tabla)
+                repositorio.listar(tabla).map { valores -> resumir(valores, columnas) }
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                _estado.update {
+                    it.copy(
+                        cargando = false,
+                        noDisponible = "No se pudo leer la tabla en este teléfono. " +
+                            "Vuelva a intentarlo tras la próxima sincronización.",
+                    )
+                }
+                return@launch
+            }
             _estado.update {
                 it.copy(
                     filas = filas,

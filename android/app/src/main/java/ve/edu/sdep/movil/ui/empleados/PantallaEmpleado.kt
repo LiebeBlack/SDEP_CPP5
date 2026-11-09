@@ -129,7 +129,7 @@ fun PantallaEmpleado(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (estado.error != null) {
-                item {
+                item(contentType = "error") {
                     Card(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -146,7 +146,7 @@ fun PantallaEmpleado(
             }
 
             SECCIONES.forEach { seccion ->
-                item(key = "seccion-${seccion.titulo}") {
+                item(key = "seccion-${seccion.titulo}", contentType = "seccion") {
                     Text(
                         text = seccion.titulo,
                         style = MaterialTheme.typography.titleSmall,
@@ -154,7 +154,11 @@ fun PantallaEmpleado(
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                items(seccion.campos, key = { "${seccion.titulo}-${it.clave}" }) { campo ->
+                items(
+                    seccion.campos,
+                    key = { "${seccion.titulo}-${it.clave}" },
+                    contentType = { "campo" },
+                ) { campo ->
                     CampoEmpleado(
                         campo = campo,
                         valor = estado.valores[campo.clave].orEmpty(),

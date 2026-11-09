@@ -814,7 +814,7 @@ class ContratoService:
         salario o cargo, la ficha del empleado queda alineada.
         """
         try:
-            empleado.salario_base = float(contrato.salario_pactado or 0)
+            empleado.salario_base = a_decimal(contrato.salario_pactado or 0)
             if contrato.cargo:
                 empleado.cargo = contrato.cargo
             if contrato.departamento:

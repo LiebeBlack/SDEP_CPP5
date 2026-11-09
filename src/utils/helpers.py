@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -214,7 +215,7 @@ def parse_int_estricto(valor: object, etiqueta: str = "valor") -> int | None:
     return int(numero)
 
 
-def format_currency(monto: float, simbolo: str = "$") -> str:
+def format_currency(monto: float | Decimal | None, simbolo: str = "$") -> str:
     """
     Formatea un monto como moneda
 

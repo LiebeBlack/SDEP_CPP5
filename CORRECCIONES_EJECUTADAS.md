@@ -435,3 +435,22 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 - `pytest -q --no-cov`: 642 pruebas superadas, sin fallos.
 - `flake8`, `black --check` e `isort --check-only` sobre todo el proyecto: sin hallazgos.
 - **No verificado:** la aplicación en pantalla.
+
+# Tanda 15 — Tipos de dinero unificados (2026-11-09)
+
+**Origen:** `mypy` en modo normal sobre la aplicación (sin los stubs globales de PyQt6) encontró cinco errores de tipo en el manejo de importes.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `src/utils/helpers.py` | `format_currency` declaraba `monto: float`, pero varios llamadores pasan `Decimal` (salarios y totales de nómina); en ejecución funcionaba por la conversión interna, pero `mypy` rechazaba las llamadas. | La firma acepta `float | Decimal | None`; la conversión a `float` para mostrar se mantiene. |
+| `src/services/contrato_service.py` | `_sincronizar_empleado` asignaba `float(...)` a `Empleado.salario_base`, mapeado como `Numeric`/`Decimal`. | La asignación usa `a_decimal(...)`, la misma conversión que el resto del servicio. |
+
+## Verificación
+
+- `mypy src sync_agent updater build.py`: sin errores en 107 archivos.
+- `mypy --follow-imports=skip tools`: sin errores en 4 archivos.
+- `pytest -q --no-cov`: 642 pruebas superadas, sin fallos.
+- `flake8`, `black --check` e `isort --check-only`: sin hallazgos.
+- **No verificado:** la aplicación en pantalla.

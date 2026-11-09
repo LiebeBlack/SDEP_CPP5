@@ -132,10 +132,11 @@ class TestMainWindow:
 
     def test_instanciacion_basica(self, main_window):
         from src.config import settings
+        from src.gui.brand import NOMBRE_CORTO, NOMBRE_PRODUCTO
         from src.gui.frames import DashboardFrame
 
-        assert main_window.title() == settings.app_name
-        assert main_window.version_label.cget("text") == f"v{settings.app_version}"
+        assert main_window.title() == f"Panel de control · {NOMBRE_PRODUCTO}"
+        assert main_window.version_label.cget("text") == f"{NOMBRE_CORTO} v{settings.app_version}"
         assert set(main_window.sidebar_buttons) == set(MODULOS)
         assert isinstance(main_window.current_frame, DashboardFrame)
         assert set(main_window.current_frame.stats_cards) == {
@@ -541,12 +542,13 @@ class TestLogin:
     """Ventana de inicio de sesión y diálogo de cambio de contraseña"""
 
     def test_login_window(self, session):
+        from src.gui.brand import NOMBRE_COMPLETO, NOMBRE_PRODUCTO
         from src.gui.login_window import LoginWindow
 
         win = LoginWindow()
         try:
             win.update()
-            assert win.title() == "Iniciar Sesión — Sistema de Gestión de Personal"
+            assert win.title() == f"Acceder · {NOMBRE_PRODUCTO} — {NOMBRE_COMPLETO}"
             assert win.username_entry is not None
             assert win.password_entry is not None
             assert win.hint_label.cget("text") != ""

@@ -418,3 +418,20 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 - `ConfigSync` confirmado en ejecución: expone `max_bytes_binario` y no `max_bytes_blob`.
 - CRLF conservado en los archivos reformateados y `git diff --check` limpio.
 - **No verificado:** `pytest` (no se ejecutaron pruebas por indicación expresa) ni la aplicación en pantalla.
+
+# Tanda 14 — Pruebas de GUI alineadas con la marca (2026-11-09)
+
+**Origen:** primera ejecución completa de `pytest` con CPython 3.15.2 en este equipo: 640 pruebas superadas y 2 fallidas.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `tests/test_gui_smoke.py` | `test_instanciacion_basica` esperaba el título antiguo (`settings.app_name`) y la etiqueta de versión sin marca; la ventana ya muestra «Panel de control · SDEP Escritorio» y «SDEP v3.0.1». | El test compara con `NOMBRE_PRODUCTO` y `NOMBRE_CORTO` de `src.gui.brand`. |
+| `tests/test_gui_smoke.py` | `test_login_window` esperaba «Iniciar Sesión — Sistema de Gestión de Personal»; el login ya usa «Acceder · SDEP Escritorio — Sistema de Gestión de Personal». | El test compone el título con `NOMBRE_PRODUCTO` y `NOMBRE_COMPLETO`. |
+
+## Verificación
+
+- `pytest -q --no-cov`: 642 pruebas superadas, sin fallos.
+- `flake8`, `black --check` e `isort --check-only` sobre todo el proyecto: sin hallazgos.
+- **No verificado:** la aplicación en pantalla.

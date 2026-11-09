@@ -99,9 +99,10 @@ def _criterio(entidad, contexto: ContextoSesion):
         # no existe una cédula de empleado asociada a la fila. Se compara sin
         # distinguir mayúsculas ni espacios sobrantes por si la fila llegó
         # desde el móvil con el nombre escrito distinto.
-        return func.lower(func.trim(RegistroMovil.usuario)) == (
-            contexto.username or ""
-        ).strip().lower()
+        return (
+            func.lower(func.trim(RegistroMovil.usuario))
+            == (contexto.username or "").strip().lower()
+        )
     if entidad is Configuracion:
         # Parámetros institucionales sin datos personales: la lectura sigue
         # disponible para que la política de contraseñas se pueda consultar.
@@ -192,9 +193,7 @@ def puede_ver_objeto(obj, session: Session, contexto: ContextoSesion | None = No
     if isinstance(obj, Usuario):
         return getattr(obj, "id", None) == contexto.usuario_id
     if isinstance(obj, RegistroMovil):
-        return (obj.usuario or "").strip().lower() == (
-            contexto.username or ""
-        ).strip().lower()
+        return (obj.usuario or "").strip().lower() == (contexto.username or "").strip().lower()
     if isinstance(obj, Grado):
         return getattr(obj, "profesor_id", None) == contexto.usuario_id
     if isinstance(obj, NotaFinal):

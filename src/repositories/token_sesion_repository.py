@@ -76,9 +76,7 @@ class TokenSesionRepository(BaseRepository[TokenSesion]):
         contexto = actual()
         if contexto is not None and contexto.es_trabajador:
             if usuario_id != contexto.usuario_id:
-                logger.warning(
-                    "Intento de revocar tokens de otro usuario (id=%s)", usuario_id
-                )
+                logger.warning("Intento de revocar tokens de otro usuario (id=%s)", usuario_id)
                 return 0
         try:
             query = self.session.query(TokenSesion).filter(

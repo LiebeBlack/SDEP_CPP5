@@ -4296,9 +4296,7 @@ Estado: {'Pagado' if pago.pagado else 'Pendiente'}
 
             pdf_gen = PDFGenerator()
             pdf_gen.generate_reporte_nomina(filas, file_path, titulo_periodo=titulo_periodo)
-            messagebox.showinfo(
-                "Éxito", f"Planilla de nómina generada exitosamente:\n{file_path}"
-            )
+            messagebox.showinfo("Éxito", f"Planilla de nómina generada exitosamente:\n{file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al generar planilla: {str(e)}")
 
@@ -5257,9 +5255,7 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
     def _on_sincronizar_ahora(self):
         """Solicita un ciclo inmediato y refresca los contadores"""
-        if not _verificar_permiso_accion(
-            self.main_window, "config", "solicitar la sincronización"
-        ):
+        if not _verificar_permiso_accion(self.main_window, "config", "solicitar la sincronización"):
             return
         try:
             from sync_agent import sincronizar_ahora
@@ -6330,9 +6326,7 @@ class PagoDialog(ctk.CTkToplevel):
                 dias_trabajados = parse_int_estricto(
                     self.dias_trabajados_entry.get(), "Días trabajados"
                 )
-                dias_periodo = parse_int_estricto(
-                    self.dias_periodo_entry.get(), "Días del período"
-                )
+                dias_periodo = parse_int_estricto(self.dias_periodo_entry.get(), "Días del período")
                 if dias_trabajados is None or dias_periodo is None:
                     messagebox.showerror(
                         "Error",

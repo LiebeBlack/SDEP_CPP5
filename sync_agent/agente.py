@@ -738,8 +738,7 @@ class AgenteSincronizacion:
                 # guardara el momento de recepción, la mezcla LWW compararía
                 # marcas más nuevas de lo que la operación realmente tenía.
                 creado_en=(
-                    consolidacion.momento_de_texto(operacion.get("creado_en"))
-                    or ahora_utc()
+                    consolidacion.momento_de_texto(operacion.get("creado_en")) or ahora_utc()
                 ),
                 estado=DIFERIDA,
                 direccion=DIRECCION_ENTRADA,
@@ -928,7 +927,7 @@ class AgenteSincronizacion:
                 return False
             self._marcar_blob(pendiente["hash"], BLOB_POR_BAJAR, incrementar=True)
             return False
-        if len(contenido) > self.config.max_bytes_blob:
+        if len(contenido) > self.config.max_bytes_binario:
             self._marcar_blob(pendiente["hash"], BLOB_OMITIDO)
             logger.warning(
                 "El archivo %s supera el tamaño máximo; se omite", pendiente["hash"][:12]

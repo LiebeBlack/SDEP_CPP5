@@ -525,9 +525,7 @@ class BaseRepository[T: BaseModel]:
 
             # Los comodines de LIKE se escapan para que un "%" o "_" en el
             # término buscado no actúe como patrón.
-            termino = (
-                value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            )
+            termino = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             result = (
                 self.session.query(self.model)
                 .filter(getattr(self.model, field_name).like(f"%{termino}%", escape="\\"))

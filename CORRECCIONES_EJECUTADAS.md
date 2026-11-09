@@ -395,3 +395,26 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 
 - `git diff --check` limpio y ninguna línea nueva por encima de los 100 caracteres.
 - **No verificado:** sin intérprete Python no se ejecutó `pytest` ni se abrió Tk. Queda pendiente probar los cuatro atajos de período, el filtro por empleado en tabla y exportación, el prorrateo con período parcial, la vista previa con y sin deducciones y el cierre con un cálculo pendiente.
+
+# Tanda 13 — Corrección real de tipos y formato (2026-11-09)
+
+**Origen:** revisión final con CPython 3.15.2 y las dependencias instaladas, ya disponibles en el equipo.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `sync_agent/agente.py` | `_bajar_blob` comparaba el tamaño descargado con `self.config.max_bytes_blob`, atributo que existe en la configuración del servidor pero no en `ConfigSync`; al bajar un archivo habría lanzado `AttributeError`. | La comparación usa `self.config.max_bytes_binario`, el límite real del agente, ya empleado al subir. |
+| `src/gui/frames.py`, `src/repositories/base_repository.py`, `src/repositories/token_sesion_repository.py`, `src/security/aislamiento.py`, `sync_agent/agente.py` | `black` 26.10.1 (la versión que instala el CI a partir de `black>=25.9.0`) unía líneas que caben en 100 caracteres y rechazaba tres cortes manuales de más. | Se aplicó el formato de `black` a los cinco archivos; no cambia el comportamiento. |
+
+## Verificación
+
+- `python -m flake8 src sync_agent updater tools build.py`: sin hallazgos.
+- `python -m black --check src sync_agent updater tools tests build.py`: 150 archivos sin cambios.
+- `python -m isort --check-only src sync_agent updater tools tests build.py`: sin hallazgos.
+- `python -m mypy src sync_agent updater tools build.py`: sin errores en 111 archivos al omitir los stubs globales de PyQt6 6.12.0, ajenos al proyecto.
+- `python tools/verify_docs.py`: 21 documentos, espejos y contenido embebido correctos.
+- Sintaxis: 150 archivos Python parseados con `ast`, sin errores.
+- `ConfigSync` confirmado en ejecución: expone `max_bytes_binario` y no `max_bytes_blob`.
+- CRLF conservado en los archivos reformateados y `git diff --check` limpio.
+- **No verificado:** `pytest` (no se ejecutaron pruebas por indicación expresa) ni la aplicación en pantalla.

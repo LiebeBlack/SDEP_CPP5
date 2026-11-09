@@ -500,3 +500,31 @@ Motivada por los commits `ceb8407` y `0c8dcb8` (corrigieron `empleadoId` → `em
 - 11 XML Android parseados sin errores; 86 archivos Kotlin con llaves, corchetes y paréntesis balanceados; sin imports detectados como no usados por la comprobación estática.
 - CRLF y `git diff --check`: limpios.
 - **No verificado:** compilación, `ktlint`, `lint`, pruebas unitarias Android, APK y emulador. En este equipo no hay Java, Gradle ni SDK de Android. El workflow `build-android` de GitHub Actions ejecutará `testDebugUnitTest`, `assembleDebug` y `assembleRelease` cuando se autorice el push.
+
+# Tanda 18 — Corrección de cancelación y estados (2026-11-09)
+
+**Origen:** auditoría lógica posterior a la Tanda 17: se revisaron autenticación, espejo, sincronización, identidades Room y el trabajo en segundo plano. El árbol estaba limpio y la suite Python seguía en verde.
+
+## Hallazgos y cambios
+
+| Archivo | Hallazgo | Cambio |
+|---|---|---|
+| `datos/repositorio/AutenticacionRepositorio.kt` | Varios `catch (Exception)` convertían `CancellationException` en un fallo normal; además, un error al guardar el caché o la llave biométrica después de un login aceptado podía tumbar la corrutina. | Se propaga la cancelación en `entrar`, `entrarConBiometria`, `cambiarPassword`, `obtenerPerfil`, `actualizarPerfil` y `prepararEspejo`; el caché posterior al login se guarda de forma tolerante y la activación biométrica no bloquea el ingreso. |
+| `datos/repositorio/AutenticacionRepositorio.kt` | `actualizarPerfil` no refrescaba la sesión ni el caché; nombre, cédula y rol podían quedar viejos hasta cerrar sesión. | Tras una respuesta válida se actualiza `SesionRepositorio` y el caché, comprobando que la sesión siga siendo la misma. |
+| `datos/local/AplicadorEspejo.kt` | `aplicar` registraba una cancelación como error de la operación. | `CancellationException` se vuelve a lanzar. |
+| `datos/repositorio/SincronizacionRepositorio.kt` | `probarConexion` y `descargarBlob` tragaban la cancelación; una descarga cancelada se marcaba como fallida. Además, 401/403 se marcaban reintentables. | Se propaga la cancelación y solo 429/5xx se reintentan; el reemparejamiento único se conserva. |
+| `datos/local/dao/DaosEspejo.kt` | `IdentidadDao.vincular` usaba `IGNORE`; una identidad huérfana podía seguir apuntando a una fila borrada. | Se usa `REPLACE` para reasignar el UUID al id local recreado. |
+| `ui/formulario/FormularioViewModel.kt` | Un fallo de WorkManager tras guardar podía dejar `guardando` activo. | Las llamadas a `sincronizarAhora` pasan por un helper que no propaga el fallo de encolado. |
+| `SdepApplication.kt` | Una excepción al cargar la configuración en el arranque podía tumbar el proceso. | El arranque captura fallos, conserva la cancelación y evita programar si no hay configuración. |
+| `ui/ajustes/AjustesViewModel.kt` | Un fallo al reprogramar WorkManager podía dejar `redescubriendo` u `ocupado` bloqueados. | Las reprogramaciones usan un helper que devuelve éxito/fallo y la pantalla informa el problema sin quedar bloqueada. |
+| `ui/tablas/TablaViewModel.kt` | Cambiar de tabla durante una carga permitía que una respuesta vieja sobrescribiera la nueva. | Se cancela el trabajo anterior y una generación de carga impide que una respuesta vieja publique su resultado. |
+
+## Verificación
+
+- `pytest -q --no-cov`: 642 pruebas superadas, 5 avisos de deprecación.
+- 11 XML Android parseados sin errores.
+- 86 archivos Kotlin con llaves, corchetes y paréntesis balanceados; imports nuevos comprobados manualmente.
+- `git diff --check`: limpio.
+- CRLF conservado en los archivos modificados.
+- `tools/verify_docs.py`: documentos y copias sincronizadas.
+- **No verificado:** compilación, `ktlint`, `lint`, pruebas unitarias Android, APK y emulador. En este equipo no hay Java, Gradle ni SDK de Android. El workflow `build-android` de GitHub Actions lo validará cuando se autorice el push.

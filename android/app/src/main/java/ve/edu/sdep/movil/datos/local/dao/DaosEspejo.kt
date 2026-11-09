@@ -26,7 +26,12 @@ interface IdentidadDao {
     @Query("SELECT uuid FROM identidades WHERE tabla = :tabla AND idLocal = :idLocal LIMIT 1")
     suspend fun uuidDe(tabla: String, idLocal: Long): String?
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    /**
+     * `REPLACE` reasigna una identidad huérfana: si la fila local se borró
+     * físicamente pero el UUID global sobrevivió, el nuevo id debe sustituir
+     * al viejo en vez de conservar un vínculo roto.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun vincular(identidad: IdentidadEntity)
 
     @Query("SELECT COUNT(*) FROM identidades")

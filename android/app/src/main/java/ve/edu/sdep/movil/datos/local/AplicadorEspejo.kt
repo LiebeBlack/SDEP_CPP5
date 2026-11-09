@@ -1,6 +1,7 @@
 package ve.edu.sdep.movil.datos.local
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -88,6 +89,8 @@ class AplicadorEspejo @Inject constructor(
                 }
                 resultado
             }
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             ResultadoAplicacion.Error("${MOTIVO_ERROR}:${error.message ?: "sin detalle"}")
         }

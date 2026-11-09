@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,11 +42,15 @@ class TablaViewModel @Inject constructor(
     val estado: StateFlow<Estado> = _estado.asStateFlow()
 
     private var tablaActual: String? = null
+    private var carga: Job? = null
+    private var generacionCarga = 0
 
     fun cargar(tabla: String, forzar: Boolean = false) {
         if (!forzar && tablaActual == tabla && _estado.value.filas.isNotEmpty()) return
         tablaActual = tabla
-        viewModelScope.launch {
+        val solicitud = ++generacionCarga
+        carga?.cancel()
+        carga = viewModelScope.launch {
             _estado.update {
                 it.copy(
                     tabla = tabla,
@@ -70,15 +75,18 @@ class TablaViewModel @Inject constructor(
                 repositorio.listar(tabla).map { valores -> resumir(valores, columnas) }
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                _estado.update {
-                    it.copy(
-                        cargando = false,
-                        noDisponible = "No se pudo leer la tabla en este teléfono. " +
-                            "Vuelva a intentarlo tras la próxima sincronización.",
-                    )
+                if (solicitud == generacionCarga) {
+                    _estado.update {
+                        it.copy(
+                            cargando = false,
+                            noDisponible = "No se pudo leer la tabla en este teléfono. " +
+                                "Vuelva a intentarlo tras la próxima sincronización.",
+                        )
+                    }
                 }
                 return@launch
             }
+            if (solicitud != generacionCarga) return@launch
             _estado.update {
                 it.copy(
                     filas = filas,

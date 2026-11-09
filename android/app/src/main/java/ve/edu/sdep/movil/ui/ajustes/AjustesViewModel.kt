@@ -139,8 +139,12 @@ class AjustesViewModel @Inject constructor(
             when (val resultado = conector.revincular()) {
                 is Resultado.Exito -> {
                     val config = resultado.valor
-                    withContext(Dispatchers.IO) {
-                        if (config.activa) programador.programar(configuracion.periodoMinutos)
+                    val programado = withContext(Dispatchers.IO) {
+                        if (config.activa) {
+                            programarSeguro { programador.programar(configuracion.periodoMinutos) }
+                        } else {
+                            true
+                        }
                     }
                     _estado.update {
                         it.copy(
@@ -149,8 +153,13 @@ class AjustesViewModel @Inject constructor(
                             urlServidor = config.url,
                             activa = config.activa,
                             periodoMinutos = configuracion.periodoMinutos,
-                            mensaje = "Teléfono vinculado con el sistema de escritorio.",
-                            esError = false,
+                            mensaje = if (programado) {
+                                "Teléfono vinculado con el sistema de escritorio."
+                            } else {
+                                "Teléfono vinculado, pero no se pudo programar la " +
+                                    "sincronización automática."
+                            },
+                            esError = !programado,
                         )
                     }
                 }
@@ -183,15 +192,24 @@ class AjustesViewModel @Inject constructor(
                 }
                 return@launch
             }
-            if (_estado.value.activa) {
-                withContext(Dispatchers.IO) { programador.programar(nuevo) }
+            val programado = if (_estado.value.activa) {
+                withContext(Dispatchers.IO) {
+                    programarSeguro { programador.programar(nuevo) }
+                }
+            } else {
+                true
             }
             _estado.update {
                 it.copy(
                     ocupado = false,
                     periodoMinutos = nuevo,
-                    mensaje = "Intervalo automático ajustado a $nuevo minutos.",
-                    esError = false,
+                    mensaje = if (programado) {
+                        "Intervalo automático ajustado a $nuevo minutos."
+                    } else {
+                        "El intervalo se guardó, pero no se pudo reprogramar la " +
+                            "sincronización automática."
+                    },
+                    esError = !programado,
                 )
             }
         }
@@ -214,17 +232,24 @@ class AjustesViewModel @Inject constructor(
                 }
                 return@launch
             }
-            withContext(Dispatchers.IO) {
-                if (valor) programador.programar(configuracion.periodoMinutos) else programador.cancelar()
+            val programado = withContext(Dispatchers.IO) {
+                programarSeguro {
+                    if (valor) {
+                        programador.programar(configuracion.periodoMinutos)
+                    } else {
+                        programador.cancelar()
+                    }
+                }
             }
             _estado.update {
                 it.copy(
-                    mensaje = if (valor) {
-                        "Sincronización automática activada."
-                    } else {
-                        "Sincronización automática desactivada."
+                    mensaje = when {
+                        !programado -> "La preferencia se guardó, pero no se pudo " +
+                            "aplicar al planificador."
+                        valor -> "Sincronización automática activada."
+                        else -> "Sincronización automática desactivada."
                     },
-                    esError = false,
+                    esError = !programado,
                 )
             }
         }
@@ -370,6 +395,18 @@ class AjustesViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Ejecuta una operación de WorkManager sin permitir que una excepción de
+     * encolado deje la pantalla bloqueada o tumbe la corrutina.
+     */
+    private fun programarSeguro(accion: () -> Unit): Boolean =
+        try {
+            accion()
+            true
+        } catch (_: Exception) {
+            false
+        }
 
     fun cerrarSesion() {
         viewModelScope.launch {

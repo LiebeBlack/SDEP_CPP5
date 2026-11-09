@@ -1,5 +1,6 @@
 package ve.edu.sdep.movil.datos.repositorio
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -106,6 +107,8 @@ class AutenticacionRepositorio @Inject constructor(
                 error,
                 reintentable = true,
             )
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             return@withContext Resultado.Fallo(
                 "No se pudo iniciar sesión: ${error.message ?: "error inesperado"}.",
@@ -138,9 +141,21 @@ class AutenticacionRepositorio @Inject constructor(
         // nuevo; si no se puede enviar, se rechaza el cambio.
         val cambio = prepararEspejo(sesion.usuario)
         if (cambio is Resultado.Fallo) return@withContext cambio
-        guardarCaché(sesion)
+        // Un fallo al escribir el caché o la bóveda no puede convertir un
+        // ingreso ya aceptado por el nodo en un error visible ni tumbar la
+        // corrutina: la sesión en memoria sigue siendo válida.
+        guardarCachéSeguro(sesion)
         sesionRepositorio.iniciar(sesion)
-        if (activarBiometria) activarBiometria(sesion)
+        if (activarBiometria) {
+            try {
+                activarBiometria(sesion)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // El sensor o el Keystore pueden no estar disponibles; el
+                // ingreso con contraseña ya quedó completo.
+            }
+        }
         Resultado.Exito(sesion)
     }
 
@@ -184,7 +199,7 @@ class AutenticacionRepositorio @Inject constructor(
             val cambio = prepararEspejo(sesion.usuario)
             if (cambio is Resultado.Fallo) return@withContext cambio
             boveda.guardarSesionToken(par.token)
-            guardarCaché(sesion)
+            guardarCachéSeguro(sesion)
             sesionRepositorio.iniciar(sesion)
             Resultado.Exito(sesion)
         } catch (error: HttpException) {
@@ -235,6 +250,8 @@ class AutenticacionRepositorio @Inject constructor(
             )
             sesionRepositorio.iniciar(sesion)
             Resultado.Exito(sesion)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             Resultado.Fallo(
                 "No se pudo abrir la sesión: ${error.message ?: "error inesperado"}.",
@@ -289,7 +306,7 @@ class AutenticacionRepositorio @Inject constructor(
                 if (sesion.debeCambiarPassword) {
                     val actualizada = sesion.copy(debeCambiarPassword = false)
                     sesionRepositorio.iniciar(actualizada)
-                    guardarCaché(actualizada)
+                    guardarCachéSeguro(actualizada)
                 }
                 Resultado.Exito(Unit)
             } catch (error: HttpException) {
@@ -311,6 +328,8 @@ class AutenticacionRepositorio @Inject constructor(
                     error,
                     reintentable = true,
                 )
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 Resultado.Fallo(
                     "No se pudo cambiar la contraseña: ${error.message ?: "error inesperado"}.",
@@ -332,6 +351,8 @@ class AutenticacionRepositorio @Inject constructor(
         try {
             val perfil = apiFactory.acciones(config, sesion.token).perfil()
             Resultado.Exito(perfil)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             Resultado.Fallo(
                 "No se pudo cargar el perfil: ${error.message ?: "error inesperado"}.",
@@ -353,7 +374,25 @@ class AutenticacionRepositorio @Inject constructor(
             }
             try {
                 val perfil = apiFactory.acciones(config, sesion.token).actualizarPerfil(dto)
+                // La sesión en memoria conserva nombre, cédula y rol; si no se
+                // refresca, la barra superior y los filtros siguen mostrando
+                // los datos anteriores hasta cerrar sesión. Se comprueba que
+                // siga siendo la misma sesión para no revivir una cerrada.
+                val vigente = sesionRepositorio.actual
+                if (vigente != null && vigente.usuario == sesion.usuario &&
+                    vigente.token == sesion.token
+                ) {
+                    val actualizada = vigente.copy(
+                        nombre = perfil.nombre_completo ?: vigente.nombre,
+                        cedula = perfil.cedula ?: vigente.cedula,
+                        rol = Rol.desde(perfil.rol),
+                    )
+                    sesionRepositorio.iniciar(actualizada)
+                    guardarCachéSeguro(actualizada)
+                }
                 Resultado.Exito(perfil)
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 Resultado.Fallo(
                     "No se pudo actualizar el perfil: ${error.message ?: "error inesperado"}.",
@@ -390,6 +429,8 @@ class AutenticacionRepositorio @Inject constructor(
      */
     private suspend fun prepararEspejo(usuario: String): Resultado<Unit> = try {
         sincronizacion.prepararCambioDeUsuario(usuario)
+    } catch (error: CancellationException) {
+        throw error
     } catch (error: Exception) {
         Resultado.Fallo(
             "No se pudo preparar el almacenamiento local. Cierre otras tareas y reintente.",
@@ -412,6 +453,20 @@ class AutenticacionRepositorio @Inject constructor(
             ),
         )
         if (sesion.token.isNotBlank()) boveda.guardarSesionToken(sesion.token)
+    }
+
+    /**
+     * Igual que [guardarCaché], pero un fallo local no invalida la operación
+     * remota que ya terminó. La cancelación sí se propaga.
+     */
+    private suspend fun guardarCachéSeguro(sesion: Sesion) {
+        try {
+            guardarCaché(sesion)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // Sin caché offline; la sesión en memoria sigue operativa.
+        }
     }
 
     private fun vigente(expiraEn: Long): Boolean =

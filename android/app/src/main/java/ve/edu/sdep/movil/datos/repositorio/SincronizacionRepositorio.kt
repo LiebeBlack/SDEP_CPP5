@@ -196,6 +196,8 @@ class SincronizacionRepositorio @Inject constructor(
         withContext(Dispatchers.IO) {
         val api = try {
             apiFactory.protocolo(configuracion, tokenSesion)
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (error: Exception) {
             return@withContext Resultado.Fallo(
                 "La dirección del servidor no es válida: «${configuracion.url}».",
@@ -227,10 +229,9 @@ class SincronizacionRepositorio @Inject constructor(
             Resultado.Fallo(
                 mensaje,
                 error,
-                reintentable = error.code() == 401 ||
-                    error.code() == 403 ||
-                    error.code() == 429 ||
-                    error.code() >= 500,
+                // 401/403 no se reintentan: el reemparejamiento ya se intentó
+                // una vez y un token rechazado no se arregla solo.
+                reintentable = error.code() == 429 || error.code() >= 500,
             )
         } catch (error: IOException) {
             val mensaje = "Sin conexión con el nodo central. Los cambios quedan guardados " +
@@ -305,6 +306,8 @@ class SincronizacionRepositorio @Inject constructor(
                 error,
                 reintentable = true,
             )
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (error: Exception) {
             Resultado.Fallo("La prueba de conexión falló: ${error.message ?: "error inesperado"}.", error)
         }
@@ -502,6 +505,8 @@ class SincronizacionRepositorio @Inject constructor(
         } catch (_: IOException) {
             // Sin red: se reintenta en el próximo ciclo
             false
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (_: Exception) {
             marcarBlobFallido(blob)
             false

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,11 +49,17 @@ class SdepApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         alcance.launch {
-            val actual = configuracion.cargar()
-            if (actual.activa && actual.completa) {
-                programador.programar(configuracion.periodoMinutos)
-            } else {
-                programador.cancelar()
+            try {
+                val actual = configuracion.cargar()
+                if (actual.activa && actual.completa) {
+                    programador.programar(configuracion.periodoMinutos)
+                } else {
+                    programador.cancelar()
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Sin configuración no se programa nada; Ajustes permite reintentar.
             }
         }
     }

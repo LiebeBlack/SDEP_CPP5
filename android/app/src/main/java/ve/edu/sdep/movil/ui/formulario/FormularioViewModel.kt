@@ -138,7 +138,7 @@ class FormularioViewModel @Inject constructor(
                 is Resultado.Exito -> {
                     // El cambio ya está en la cola: se pide el ciclo de subida
                     // sin esperar al periodo automático.
-                    programadorSync.sincronizarAhora()
+                    pedirSincronizacion()
                     _estado.update { it.copy(guardando = false, guardado = true) }
                 }
 
@@ -164,7 +164,7 @@ class FormularioViewModel @Inject constructor(
         viewModelScope.launch {
             when (val resultado = repositorio.eliminar(actual.tabla, id)) {
                 is Resultado.Exito -> {
-                    programadorSync.sincronizarAhora()
+                    pedirSincronizacion()
                     _estado.update { it.copy(guardando = false, eliminado = true) }
                 }
 
@@ -172,6 +172,18 @@ class FormularioViewModel @Inject constructor(
                     it.copy(guardando = false, error = resultado.mensaje)
                 }
             }
+        }
+    }
+
+    /**
+     * Pide el ciclo inmediato sin convertir un fallo de WorkManager en un
+     * fallo del guardado: la operación ya quedó encolada en Room.
+     */
+    private fun pedirSincronizacion() {
+        try {
+            programadorSync.sincronizarAhora()
+        } catch (_: Exception) {
+            // El trabajo periódico recogerá el cambio.
         }
     }
 

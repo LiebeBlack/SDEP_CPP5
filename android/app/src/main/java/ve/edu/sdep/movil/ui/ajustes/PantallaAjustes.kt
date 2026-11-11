@@ -78,6 +78,7 @@ fun PantallaAjustes(
     alCerrarSesion: () -> Unit,
     alVerConflictos: () -> Unit,
     alEditarPerfil: () -> Unit,
+    soloCambioPassword: Boolean = false,
     vistaModelo: AjustesViewModel = hiltViewModel(),
 ) {
     val estado by vistaModelo.estado.collectAsStateWithLifecycle()
@@ -97,6 +98,12 @@ fun PantallaAjustes(
         vistaModelo.limpiarMensaje()
     }
 
+    LaunchedEffect(sesion.debeCambiarPassword) {
+        if (sesion.debeCambiarPassword && !sesion.offline) {
+            dialogoPassword = true
+        }
+    }
+
     fun pedirHuella() {
         if (actividad == null) {
             vistaModelo.registrarMensaje("Este equipo no puede mostrar el diálogo biométrico.", true)
@@ -112,7 +119,11 @@ fun PantallaAjustes(
     }
 
     Scaffold(
-        topBar = { BarraSuperior(titulo = "Ajustes", alVolver = alVolver) },
+        topBar = {
+            if (!soloCambioPassword) {
+                BarraSuperior(titulo = "Ajustes", alVolver = alVolver)
+            }
+        },
         snackbarHost = { SnackbarHost(barra) },
     ) { relleno ->
         Column(
@@ -142,32 +153,45 @@ fun PantallaAjustes(
                 alCambiarContrasena = { dialogoPassword = true },
                 alSalir = { confirmarSalida = true },
                 alEditarPerfil = alEditarPerfil,
+                soloCambioPassword = soloCambioPassword,
             )
 
-            TarjetaApariencia(
-                modo = modoApariencia,
-                alCambiar = vistaModelo::cambiarApariencia,
-            )
+            if (!soloCambioPassword) {
+                TarjetaApariencia(
+                    modo = modoApariencia,
+                    alCambiar = vistaModelo::cambiarApariencia,
+                )
 
-            TarjetaServidor(
-                estado = estado,
-                alRedescubrir = vistaModelo::redescubrir,
-                alProbar = vistaModelo::probarConexion,
-                alCambiarActiva = vistaModelo::cambiarActiva,
-                periodoMinutos = estado.periodoMinutos,
-                alCambiarPeriodo = vistaModelo::cambiarPeriodo,
-            )
+                TarjetaServidor(
+                    estado = estado,
+                    alRedescubrir = vistaModelo::redescubrir,
+                    alProbar = vistaModelo::probarConexion,
+                    alCambiarActiva = vistaModelo::cambiarActiva,
+                    periodoMinutos = estado.periodoMinutos,
+                    alCambiarPeriodo = vistaModelo::cambiarPeriodo,
+                )
 
-            TarjetaSincronizacion(
-                estado = estado,
-                alSincronizar = vistaModelo::sincronizarAhora,
-            )
+                TarjetaSincronizacion(
+                    estado = estado,
+                    alSincronizar = vistaModelo::sincronizarAhora,
+                )
 
-            TarjetaConflictos(cantidad = estado.conflictos, alVer = alVerConflictos)
+                TarjetaConflictos(cantidad = estado.conflictos, alVer = alVerConflictos)
+            }
+
+            if (soloCambioPassword) {
+                Text(
+                    text = "Por seguridad, cambie la contraseña inicial antes de acceder " +
+                        "a los datos usando el mínimo de longitud informado por el servidor.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
 
             if (dialogoPassword) {
                 DialogoCambioPassword(
                     ocupado = estado.ocupado,
+                    soloObligatorio = soloCambioPassword,
                     alCambiar = { actual, nueva, confirmacion ->
                         vistaModelo.cambiarPassword(actual, nueva, confirmacion)
                     },
@@ -213,6 +237,7 @@ private fun TarjetaCuenta(
     alCambiarContrasena: () -> Unit,
     alSalir: () -> Unit,
     alEditarPerfil: () -> Unit,
+    soloCambioPassword: Boolean = false,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -281,26 +306,35 @@ private fun TarjetaCuenta(
                 Switch(
                     checked = biometriaActiva,
                     onCheckedChange = alAlternarBiometria,
-                    enabled = biometriaDisponible,
+                    enabled = biometriaDisponible && !sesion.debeCambiarPassword,
                 )
             }
 
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
                 onClick = alCambiarContrasena,
+                enabled = !soloCambioPassword || !sesion.offline,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Filled.Lock, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Cambiar contraseña")
+                Text(
+                    if (sesion.debeCambiarPassword) {
+                        "Cambiar contraseña ahora"
+                    } else {
+                        "Cambiar contraseña"
+                    },
+                )
             }
 
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = alEditarPerfil,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Editar perfil")
+            if (!soloCambioPassword) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = alEditarPerfil,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Editar perfil")
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -623,6 +657,7 @@ private fun TarjetaConflictos(cantidad: Int, alVer: () -> Unit) {
 @Composable
 private fun DialogoCambioPassword(
     ocupado: Boolean,
+    soloObligatorio: Boolean = false,
     alCambiar: (actual: String, nueva: String, confirmacion: String) -> Unit,
     alCerrar: () -> Unit,
 ) {
@@ -631,13 +666,20 @@ private fun DialogoCambioPassword(
     var confirmacion by remember { mutableStateOf("") }
 
     AlertDialog(
-        onDismissRequest = alCerrar,
+        onDismissRequest = {
+            if (!soloObligatorio) alCerrar()
+        },
         title = { Text("Cambiar contraseña") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "La contraseña se actualiza en la base institucional: " +
-                        "la misma que usa en el escritorio.",
+                    text = if (soloObligatorio) {
+                        "Debe reemplazar la contraseña inicial por una nueva antes de " +
+                            "acceder a los datos. Se actualizará también en el escritorio."
+                    } else {
+                        "La contraseña se actualiza en la base institucional: " +
+                            "la misma que usa en el escritorio."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -654,7 +696,11 @@ private fun DialogoCambioPassword(
                     value = nueva,
                     onValueChange = { nueva = it },
                     label = { Text("Contraseña nueva") },
-                    supportingText = { Text("Al menos 8 caracteres, con letras y números") },
+                    supportingText = {
+                        Text(
+                            "Al menos ${sesion.minLongitudPassword} caracteres; use una frase larga y única.",
+                        )
+                    },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
@@ -679,7 +725,9 @@ private fun DialogoCambioPassword(
             }
         },
         dismissButton = {
-            TextButton(onClick = alCerrar) { Text("Cancelar") }
+            if (!soloObligatorio) {
+                TextButton(onClick = alCerrar) { Text("Cancelar") }
+            }
         },
     )
 }

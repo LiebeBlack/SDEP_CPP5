@@ -40,6 +40,7 @@ from src.gui.theme import (
     aplicar_modo_apariencia,
     centrar_ventana,
     configurar_fuentes_seguras,
+    configure_ttk_styles,
     enable_windows_dpi_awareness,
     estilo_boton_moderno,
     estilo_tarjeta_moderna,
@@ -1396,7 +1397,9 @@ class MainWindow(ctk.CTk):
             puede_guardar_preferencia = self.tiene_permiso("config")
             if puede_guardar_preferencia:
                 self.config_service.establecer_valor("apariencia_modo", nuevo)
+            configure_ttk_styles(self)
             self._recolorear_chrome()
+            self._recolorear_tablas(self.content_frame)
             # Recrear el frame activo para que tome la paleta nueva
             self._show_frame(self.current_frame_name or "dashboard")
             self.apariencia_btn.configure(text="☀️ Claro" if nuevo == "Dark" else "🌙 Oscuro")
@@ -1406,6 +1409,26 @@ class MainWindow(ctk.CTk):
             self.status_label.configure(text=mensaje)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo cambiar el tema: {str(e)}")
+
+    @staticmethod
+    def _recolorear_tablas(contenedor) -> None:
+        """Actualiza tablas y avisos vacíos con la paleta del tema activo."""
+        from tkinter import ttk
+
+        from src.gui.widgets.tabla import EstadoTabla, configurar_cebra
+
+        pendientes = [contenedor]
+        while pendientes:
+            widget = pendientes.pop()
+            try:
+                if isinstance(widget, ttk.Treeview):
+                    configurar_cebra(widget)
+                for atributo in vars(widget).values():
+                    if isinstance(atributo, EstadoTabla):
+                        atributo.recolorear()
+                pendientes.extend(widget.winfo_children())
+            except (tk.TclError, AttributeError):
+                continue
 
     def _recolorear_chrome(self):
         """Reaplica la paleta a la barra lateral, cabecera y barra de estado"""

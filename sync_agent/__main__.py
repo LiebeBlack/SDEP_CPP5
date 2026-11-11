@@ -475,24 +475,21 @@ def cmd_autoconfig(args: argparse.Namespace) -> int:
         nucleo = NucleoCentral(config)
         try:
             from src.services.auth_service import AuthService
+            from sync_agent.cuentas_iniciales import preparar_cuentas_iniciales
 
             sesion = nucleo.SessionFactory()
             try:
                 servicio = AuthService(sesion)
-                usuarios = [
-                    ("admin", "Admin1234", "admin", "Administrador del Sistema"),
-                    ("manager", "Gestor1234", "manager", "Gestor Principal"),
-                    ("user", "Usuario1234", "user", "Usuario Estándar"),
-                    ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura"),
-                ]
-                for username, password, rol, nombre_completo in usuarios:
-                    if servicio.usuario_por_username(username) is None:
-                        servicio.crear_usuario(
-                            username, password, rol, nombre_completo, debe_cambiar_password=False
-                        )
-                        print(f"  ✓ Usuario '{username}' creado (contraseña: {password})")
-                    else:
-                        print(f"  - Usuario '{username}' ya existe")
+                creadas, requieren_cambio = preparar_cuentas_iniciales(servicio)
+                for username in creadas:
+                    print(
+                        f"  ✓ Cuenta '{username}' creada; use la clave inicial "
+                        "y cámbiela en el primer acceso"
+                    )
+                for username in requieren_cambio:
+                    print(f"  ! La cuenta '{username}' debe cambiar su clave inicial")
+                if not creadas and not requieren_cambio:
+                    print("  - Las cuentas genéricas ya existen; no se modificaron")
                 sesion.commit()
             finally:
                 sesion.close()

@@ -375,7 +375,7 @@ Defina las políticas de personal:
 ### Cambiar Contraseña
 
 1. Haga clic en **Cambiar Contraseña** (abajo en Configuración)
-2. Ingrese la contraseña actual y la nueva (mínimo 6 caracteres)
+2. Ingrese la contraseña actual y una nueva de al menos 8 caracteres (mínimo configurable por la institución).
 3. Confirme la nueva contraseña y guarde
 
 Política de credenciales del sistema:

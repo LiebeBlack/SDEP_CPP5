@@ -32,8 +32,8 @@ PALETA_OSCURA = {
     "campo_fondo": "#1e293b",  # slate-800 (fondo de campos)
     "texto": "#f8fafc",  # slate-50 (texto principal)
     "texto_suave": "#94a3b8",  # slate-400 (texto secundario)
-    "acento": "#3b82f6",  # blue-500 (acento Windows 11)
-    "acento_hover": "#60a5fa",  # blue-400 (acento hover)
+    "acento": "#1f6b4f",  # Verde SDEP
+    "acento_hover": "#2d8a67",  # Verde SDEP en hover
     "borde": "#475569",  # slate-600 (bordes sutiles)
     "sombra": "#000000",  # sombra (simulada con capas)
     "exito": "#10b981",  # emerald-500
@@ -51,8 +51,8 @@ PALETA_CLARA = {
     "campo_fondo": "#ffffff",  # blanco (fondo de campos)
     "texto": "#0f172a",  # slate-900 (texto principal)
     "texto_suave": "#64748b",  # slate-500 (texto secundario)
-    "acento": "#2563eb",  # blue-600 (acento Windows 11)
-    "acento_hover": "#3b82f6",  # blue-500 (acento hover)
+    "acento": "#1f6b4f",  # Verde SDEP
+    "acento_hover": "#2d8a67",  # Verde SDEP en hover
     "borde": "#cbd5e1",  # slate-200 (bordes sutiles)
     "sombra": "#000000",  # sombra (simulada con capas)
     "exito": "#059669",  # emerald-600

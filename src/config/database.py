@@ -607,7 +607,7 @@ CONFIGURACION_ADICIONAL: tuple[dict[str, Any], ...] = (
     },
     {
         "clave": "password_min_longitud",
-        "valor": "6",
+        "valor": "8",
         "descripcion": "Longitud mínima de contraseña exigida por el sistema",
         "tipo_dato": "int",
         "categoria": "seguridad",

@@ -75,6 +75,18 @@ fun NavegacionPrincipal(vistaModelo: SesionViewModel = hiltViewModel()) {
 private fun NavegacionInterna(sesion: Sesion, alSalir: () -> Unit) {
     val navegador = rememberNavController()
 
+    if (sesion.debeCambiarPassword) {
+        PantallaAjustes(
+            sesion = sesion,
+            alVolver = {},
+            alCerrarSesion = alSalir,
+            alVerConflictos = {},
+            alEditarPerfil = {},
+            soloCambioPassword = true,
+        )
+        return
+    }
+
     NavHost(navegador, startDestination = Rutas.INICIO) {
         composable(Rutas.INICIO) {
             PantallaInicio(

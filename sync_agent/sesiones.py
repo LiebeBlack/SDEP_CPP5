@@ -129,6 +129,16 @@ class GestorSesiones:
         sesion = self._fabrica()
         try:
             servicio = AuthService(sesion)
+            from src.services.auth_service import (
+                CLAVES_INICIALES_ANTERIORES,
+                CUENTAS_INICIALES,
+            )
+
+            clave_inicial = any(
+                username == nombre
+                and password in (clave, *CLAVES_INICIALES_ANTERIORES.get(nombre, ()))
+                for nombre, clave, _rol, _descripcion in CUENTAS_INICIALES
+            )
             try:
                 usuario = servicio.autenticar(username or "", password or "")
             except ValueError as error:
@@ -136,20 +146,26 @@ class GestorSesiones:
                 # es la contraseña que el usuario cambió en el escritorio con
                 # el sistema ya abierto. Si la contraseña presentada sí es la
                 # de la base institucional, se refresca la copia y se
-                # reintenta una sola vez. Una clave incorrecta no refresca
-                # nada, así que el bloqueo por intentos sigue intacto.
+                # reintenta una sola vez. Una clave incorrecta nunca refresca
+                # ni desbloquea nada.
                 if not cuentas.refrescar_desde_escritorio(
                     self.url_central, username or "", password or ""
                 ):
-                    # El AuthService redacta los mensajes exactos que ya
-                    # conoce el usuario del escritorio (cuenta bloqueada,
-                    # inactiva, intentos restantes…): se conservan sin tocar.
                     raise ErrorSesion(str(error), codigo_de_credencial(str(error))) from None
                 sesion.rollback()
                 try:
                     usuario = AuthService(sesion).autenticar(username or "", password or "")
                 except ValueError as repetido:
                     raise ErrorSesion(str(repetido), codigo_de_credencial(str(repetido))) from None
+            if clave_inicial and not usuario.debe_cambiar_password:
+                usuario.debe_cambiar_password = 1
+                usuario.fecha_cambio_password = None
+                if usuario.rol_valor != "user" or normalizar_cedula(usuario.cedula):
+                    sesion.commit()
+            if usuario.rol_valor == "user" and not normalizar_cedula(usuario.cedula):
+                # No emitir sesión ni revelar que existe una cuenta personal
+                # pendiente de asociar a un trabajador real.
+                raise ErrorSesion("Usuario o contraseña incorrectos", 401)
             minimo_password = servicio.longitud_minima_password()
             token = secrets.token_urlsafe(LONGITUD_TOKEN)
             ahora = ahora_utc()
@@ -179,8 +195,8 @@ class GestorSesiones:
                 "debe_cambiar_password": bool(usuario.debe_cambiar_password),
                 "expira_en": registro.expira_en.isoformat(),
                 "vida_relativa_horas": self.vida_relativa,
-                # La app valida el cambio de contraseña con la misma regla
-                # del servidor, no con una copia inventada del cliente.
+                # La app informa la misma regla mínima que aplica el servidor;
+                # el cliente no inventa ni relaja la política.
                 "password_min_longitud": minimo_password,
             }
         except SQLAlchemyError:
@@ -324,6 +340,11 @@ class GestorSesiones:
             if usuario is None:
                 raise ErrorSesion("La cuenta ya no existe", 401)
             AuthService(sesion).cambiar_password(usuario, nueva, actual)
+            if usuario.rol_valor == "user" and not normalizar_cedula(usuario.cedula):
+                raise ErrorSesion(
+                    "La cuenta no puede activarse sin una cédula asignada por administración.",
+                    403,
+                )
 
             # El cambio invalida las demás sesiones abiertas de la cuenta, pero
             # la que hizo el cambio sigue viva para no expulsar al usuario.
@@ -341,6 +362,9 @@ class GestorSesiones:
             # El escritorio usa la misma cuenta: si el cambio se hizo desde el
             # móvil, allí debe valer la contraseña nueva de inmediato.
             cuentas.espejar_en_escritorio(self.url_central, usuario.username)
+        except ErrorSesion:
+            sesion.rollback()
+            raise
         except ValueError as error:
             sesion.rollback()
             raise ErrorSesion(str(error), 400) from None

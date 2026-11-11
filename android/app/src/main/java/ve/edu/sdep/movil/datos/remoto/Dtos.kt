@@ -122,7 +122,10 @@ data class SesionInfoDto(
 )
 
 @Serializable
-data class CorrectoDto(val correcto: Boolean = true)
+data class CorrectoDto(
+    val correcto: Boolean = true,
+    @SerialName("password_min_longitud") val passwordMinLongitud: Int? = null,
+)
 
 /**
  * Respuesta del auto-emparejamiento: el par que convierte a este teléfono en

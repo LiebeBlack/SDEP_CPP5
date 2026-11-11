@@ -43,15 +43,8 @@ ESTADO_ACTIVO = "activo"
 ESTADO_OCUPADO = "ocupado"
 ESTADO_ERROR = "error"
 
-# Mismas cuentas que documenta README.md y que crea `iniciar_servidor.py`.
-# Se crean solo si faltan: una instalación existente conserva sus claves.
-USUARIOS_INICIALES = (
-    ("admin", "Admin1234", "admin", "Administrador del Sistema", None),
-    ("manager", "Gestor1234", "manager", "Gestor Principal", None),
-    ("user", "Usuario1234", "user", "Usuario Estándar", "12345678"),
-    ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura", None),
-)
-
+# El catálogo común conserva cuentas genéricas y exige rotar cualquier clave
+# inicial conocida; ver ``sync_agent.cuentas_iniciales``.
 # Códigos de "dirección en uso" en Windows (WSAEADDRINUSE) y POSIX.
 _CODIGOS_PUERTO_OCUPADO = {errno.EADDRINUSE, 10048}
 
@@ -353,25 +346,20 @@ class ServidorEmbebido:
         usada conserva sus contraseñas).
         """
         from src.services.auth_service import AuthService
+        from sync_agent.cuentas_iniciales import preparar_cuentas_iniciales
 
         sesion = nucleo.SessionFactory()
         try:
             servicio = AuthService(sesion)
             copiadas = ServidorEmbebido._copiar_usuarios_locales(sesion, servicio)
-            for username, password, rol, nombre_completo, cedula in USUARIOS_INICIALES:
-                if servicio.usuario_por_username(username) is None:
-                    servicio.crear_usuario(
-                        username,
-                        password,
-                        rol,
-                        nombre_completo,
-                        debe_cambiar_password=False,
-                        cedula=cedula,
-                    )
-                    logger.info("Cuenta inicial creada en el nodo central: %s", username)
+            creadas, requieren_cambio = preparar_cuentas_iniciales(servicio)
             sesion.commit()
             if copiadas:
                 logger.info("Cuentas del escritorio copiadas al nodo central: %s", copiadas)
+            for username in creadas:
+                logger.info("Cuenta genérica inicial creada; debe cambiar su clave: %s", username)
+            for username in requieren_cambio:
+                logger.warning("Cuenta inicial con clave conocida; se exigirá rotarla: %s", username)
             return True
         except Exception:
             sesion.rollback()

@@ -27,14 +27,15 @@ def _familia() -> str:
 
 
 def configurar_cebra(arbol: ttk.Treeview) -> None:
-    """Registra las dos etiquetas de fondo alterno.
+    """Registra o actualiza las etiquetas alternas con la paleta vigente.
 
-    Se llama una sola vez, al construir la tabla. Los colores se derivan de la
-    paleta activa para que el contraste se mantenga en tema claro y oscuro.
+    Se puede llamar tanto al crear la tabla como al cambiar la apariencia: las
+    filas existentes se recolorean junto con las etiquetas para mantener el
+    contraste sin forzar una recarga de datos ni perder la selección.
     """
     try:
-        arbol.tag_configure("fila_par", background=COLORES["panel"])
-        arbol.tag_configure("fila_impar", background=COLORES["fondo"])
+        arbol.tag_configure("fila_par", background=COLORES["panel"], foreground=COLORES["texto"])
+        arbol.tag_configure("fila_impar", background=COLORES["fondo"], foreground=COLORES["texto"])
     except tk.TclError:  # pragma: no cover - árbol ya destruido
         return
 
@@ -110,6 +111,17 @@ class EstadoTabla:
             self.ocultar()
         else:
             self.mostrar(mensaje, detalle)
+
+    def recolorear(self) -> None:
+        """Actualiza el aviso de tabla vacía tras cambiar la apariencia."""
+        if self._etiqueta is None:
+            return
+        try:
+            if self._etiqueta.winfo_exists():
+                self._etiqueta.configure(bg=COLORES["panel"], fg=COLORES["texto"])
+        except tk.TclError:  # pragma: no cover - widgets ya destruidos
+            self._etiqueta = None
+            self._visible = False
 
     def destroy(self) -> None:
         if self._etiqueta is not None and self._etiqueta.winfo_exists():

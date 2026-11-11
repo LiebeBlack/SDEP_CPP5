@@ -338,7 +338,7 @@ class ApiAcciones:
                 logger.warning(
                     "No se pudo leer la política de contraseñas para la sesión", exc_info=True
                 )
-                minimo = 6
+                minimo = 8
         finally:
             db.close()
         return {
@@ -356,8 +356,18 @@ class ApiAcciones:
         """Cambia la contraseña con la misma política del escritorio"""
         nueva = str(cuerpo.get("nueva") or "")
         actual = cuerpo.get("actual")
+        sesion = self.gestor_sesiones.validar(token, deslizar=False)
         self.gestor_sesiones.cambiar_password(token, nueva, actual)
-        return {"correcto": True}
+        respuesta = {"correcto": True}
+        if sesion.debe_cambiar_password:
+            db = self._sesion()
+            try:
+                from src.services.auth_service import AuthService
+
+                respuesta["password_min_longitud"] = AuthService(db).longitud_minima_password()
+            finally:
+                db.close()
+        return respuesta
 
     def perfil(self, token: str) -> dict:
         """Perfil del usuario autenticado: nombre, rol, cédula y estado"""

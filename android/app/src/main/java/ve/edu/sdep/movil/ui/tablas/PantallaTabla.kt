@@ -81,19 +81,16 @@ fun PantallaTabla(
     }
 
     val filtradas = remember(estado.filas, consulta) {
-        val texto = consulta.trim().lowercase()
-        if (texto.isEmpty()) {
-            estado.filas
-        } else {
-            estado.filas.filter { fila ->
-                fila.titulo.lowercase().contains(texto) ||
-                    fila.subtitulo.lowercase().contains(texto)
-            }
-        }
+        vistaModelo.buscar(estado.filas, consulta)
     }
 
     Scaffold(
-        topBar = { BarraSuperior(titulo = estado.titulo.ifBlank { "Registros" }, alVolver = alVolver) },
+        topBar = {
+            BarraSuperior(
+                titulo = estado.titulo.ifBlank { "Registros" },
+                alVolver = alVolver,
+            )
+        },
         floatingActionButton = {
             if (estado.puedeCrear) {
                 ExtendedFloatingActionButton(
@@ -183,23 +180,41 @@ fun PantallaTabla(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { alEditar(fila.id) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = fila.titulo,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    if (fila.subtitulo.isNotBlank()) {
                                         Text(
-                                            text = fila.titulo,
-                                            style = MaterialTheme.typography.titleSmall,
+                                            text = fila.subtitulo,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
-                                        if (fila.subtitulo.isNotBlank()) {
-                                            Spacer(Modifier.height(2.dp))
+                                    }
+                                    fila.detalles.forEach { (etiqueta, valor) ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
                                             Text(
-                                                text = fila.subtitulo,
-                                                style = MaterialTheme.typography.bodySmall,
+                                                text = etiqueta,
+                                                style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = valor,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                             )
                                         }
                                     }

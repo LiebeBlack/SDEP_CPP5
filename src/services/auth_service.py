@@ -22,11 +22,25 @@ from src.utils.security import SecurityValidator
 logger = logging.getLogger(__name__)
 
 MAX_INTENTOS_FALLIDOS = 5
-LONGITUD_MINIMA_PASSWORD = 6
+LONGITUD_MINIMA_PASSWORD = 8
 
 # Credenciales del usuario administrador creado en el primer arranque
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "admin123"
+
+# Solo se aprovisiona automáticamente la cuenta administradora. Las claves
+# heredadas se mantienen únicamente para detectar cuentas antiguas que aún
+# deben rotarse; nunca crean cuentas manager/user/viewer nuevas.
+CUENTAS_INICIALES: tuple[tuple[str, str, str, str], ...] = (
+    (DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, "admin", "Administrador del Sistema"),
+)
+
+CLAVES_INICIALES_ANTERIORES: dict[str, tuple[str, ...]] = {
+    "admin": ("Admin1234",),
+    "manager": ("Gestor1234",),
+    "user": ("Usuario1234",),
+    "viewer": ("Lector1234",),
+}
 
 
 class AuthService:
@@ -50,8 +64,8 @@ class AuthService:
         Autentica un usuario con nombre de usuario y contraseña
 
         Raises:
-            ValueError: Si las credenciales son inválidas o la cuenta
-                está inactiva o bloqueada
+            ValueError: Si las credenciales son inválidas, la cuenta está
+                inactiva, bloqueada o el trabajador carece de cédula asignada.
         """
         username = (username or "").strip()
         usuario = self.repository.get_by_username(username)
@@ -73,15 +87,6 @@ class AuthService:
             self._audit_fallido(username, "cuenta inactiva")
             raise ValueError("La cuenta está desactivada. Contacte al administrador.")
 
-        if usuario.rol_valor == RolUsuario.USER.value and not normalizar_cedula(usuario.cedula):
-            # La regla es parte de la identidad, no de la pantalla: una cuenta
-            # WORKER sin cédula no puede aislar nada y no debe entrar.
-            self._audit_fallido(username, "cuenta de trabajador sin cédula")
-            raise ValueError(
-                "Esta cuenta de trabajador no tiene cédula asignada. "
-                "Contacte al administrador para completarla."
-            )
-
         max_intentos = self.max_intentos_fallidos()
         if not SecurityValidator.verify_password(password, usuario.password_hash):
             usuario.intentos_fallidos = (usuario.intentos_fallidos or 0) + 1
@@ -99,13 +104,27 @@ class AuthService:
             )
 
         # Éxito: migrar hashes heredados a PBKDF2 antes de retirar el formato
-        # legado, y registrar el acceso en la misma confirmación.
+        # legado. Las claves genéricas distribuidas por versiones anteriores
+        # se aceptan para facilitar la actualización, pero se marcan de inmediato
+        # para rotación, también en los puestos de escritorio independientes.
         if not usuario.password_hash.startswith("pbkdf2$"):
             usuario.password_hash = SecurityValidator.hash_password(password)
+        claves_iniciales = {
+            nombre: (clave, *CLAVES_INICIALES_ANTERIORES.get(nombre, ()))
+            for nombre, clave, _rol, _descripcion in CUENTAS_INICIALES
+        }
+        if password in claves_iniciales.get(username, ()):
+            usuario.debe_cambiar_password = 1
+            usuario.fecha_cambio_password = None
         self.marcar_cambio_obligatorio_si_caducada(usuario)
         usuario.intentos_fallidos = 0
         usuario.ultimo_login = self._now()
         self._commit()
+        if usuario.rol_valor == RolUsuario.USER.value and not normalizar_cedula(usuario.cedula):
+            # No emitir sesión ni revelar la existencia de una cuenta cuya
+            # identidad no se haya asociado a un trabajador real.
+            self._audit_fallido(username, "cuenta de trabajador sin cédula")
+            raise ValueError("Usuario o contraseña incorrectos") from None
         self._audit_exitoso(AuditEventType.USER_LOGIN, username)
         return usuario
 
@@ -216,6 +235,10 @@ class AuthService:
             raise ValueError("Ya existe un usuario con ese nombre")
 
         minimo = self.longitud_minima_password()
+        if debe_cambiar_password:
+            # La cuenta temporal inicial de admin debe poder aprovisionarse
+            # incluso si una institución elevó su mínimo para claves propias.
+            minimo = min(minimo, len(DEFAULT_ADMIN_PASSWORD))
         if len(password or "") < minimo:
             raise ValueError(f"La contraseña debe tener al menos {minimo} caracteres")
 
@@ -393,8 +416,11 @@ class AuthService:
         return max(1, self._config_int("bloqueo_minutos", 15))
 
     def longitud_minima_password(self) -> int:
-        """Longitud mínima exigida a una contraseña"""
-        return max(1, self._config_int("password_min_longitud", LONGITUD_MINIMA_PASSWORD))
+        """Longitud mínima configurable, con un piso de seguridad de 8."""
+        return max(
+            LONGITUD_MINIMA_PASSWORD,
+            self._config_int("password_min_longitud", LONGITUD_MINIMA_PASSWORD),
+        )
 
     def historial_password(self) -> int:
         """Contraseñas anteriores que no se pueden repetir"""
@@ -561,11 +587,11 @@ class AuthService:
 
 def ensure_default_admin(session: Session) -> Usuario | None:
     """
-    Crea el usuario administrador por defecto si no existe ningún usuario
+    Crea el administrador inicial si aún no hay ninguna cuenta.
 
-    Se invoca en el arranque del sistema la primera vez. La contraseña
-    por defecto se documenta en la guía de usuario y se solicita su
-    cambio en el primer inicio de sesión.
+    Se invoca en el primer arranque. La clave se mantiene por compatibilidad,
+    pero queda marcada para rotación y solo permite completar el cambio
+    obligatorio de contraseña.
     """
     service = AuthService(session)
     if service.repository.count_activos() == 0 and service.repository.count() == 0:

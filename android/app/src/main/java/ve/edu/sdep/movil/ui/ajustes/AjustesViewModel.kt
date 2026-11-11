@@ -374,6 +374,15 @@ class AjustesViewModel @Inject constructor(
      */
     fun cambiarPassword(actual: String, nueva: String, confirmacion: String) {
         if (_estado.value.ocupado) return
+        if (sesionRepositorio.actual?.offline == true) {
+            _estado.update {
+                it.copy(
+                    mensaje = "Conéctese al servidor para cambiar la contraseña.",
+                    esError = true,
+                )
+            }
+            return
+        }
         if (nueva != confirmacion) {
             _estado.update { it.copy(mensaje = "Las contraseñas no coinciden.", esError = true) }
             return

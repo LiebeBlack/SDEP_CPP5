@@ -31,12 +31,8 @@ from src.gui.theme import (
 )
 from src.models import Usuario
 from src.security.contexto import establecer, limpiar
-from src.services.auth_service import (
-    DEFAULT_ADMIN_PASSWORD,
-    AuthService,
-)
+from src.services.auth_service import AuthService
 from src.utils.helpers import mantener_ventana_al_frente
-from src.utils.security import SecurityValidator
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +151,7 @@ class CambiarPasswordDialog(ctk.CTkToplevel):
             container,
             text=(
                 "La contraseña debe tener al menos "
-                f"{self.auth_service.longitud_minima_password()} caracteres."
+                f"{max(self.auth_service.longitud_minima_password(), 12)} caracteres."
             ),
             text_color=COLORES["texto_suave"],
             font=ctk.CTkFont(size=11),
@@ -368,19 +364,15 @@ class LoginWindow(ctk.CTk):
         self.password_entry.focus_set()
 
     def _show_initial_hint(self):
-        """Muestra las credenciales iniciales solo mientras no se hayan cambiado"""
+        """Indica que la cuenta debe reemplazar su clave de aprovisionamiento."""
         try:
             session = db_config.get_session()
             try:
                 admin = session.query(Usuario).filter(Usuario.username == "admin").first()
                 if admin is not None and admin.debe_cambiar_password:
-                    if SecurityValidator.verify_password(
-                        DEFAULT_ADMIN_PASSWORD, admin.password_hash
-                    ):
-                        self.hint_label.configure(
-                            text="Primer acceso: usuario 'admin' · contraseña "
-                            "'admin123'. Deberá cambiarla al ingresar."
-                        )
+                    self.hint_label.configure(
+                        text="Esta cuenta debe cambiar su contraseña antes de continuar."
+                    )
             finally:
                 db_config.close_session(session)
         except Exception:

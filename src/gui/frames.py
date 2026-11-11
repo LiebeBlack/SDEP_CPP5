@@ -266,6 +266,13 @@ def _ordenar_por_columna(tree, columna) -> None:
         filas.sort(key=lambda par: _clave_orden(par[0]), reverse=not ascendente)
         for indice, (_, item) in enumerate(filas):
             tree.move(item, "", indice)
+            etiquetas = [
+                etiqueta
+                for etiqueta in tree.item(item, "tags")
+                if etiqueta not in ("fila_par", "fila_impar")
+            ]
+            etiquetas.append("fila_par" if indice % 2 == 0 else "fila_impar")
+            tree.item(item, tags=tuple(etiquetas))
         tree._orden_asc[columna] = not ascendente
         tree._orden_columna = columna
         _marcar_encabezado_orden(tree, columna, ascendente)
@@ -6509,6 +6516,13 @@ class UsuarioDialog(ctk.CTkToplevel):
                         "activo": 1 if self.activo_var.get() else 0,
                         "cedula": self.cedula_entry.get() or None,
                     }
+                    rol_nuevo = self.rol_combo.get().strip()
+                    if rol_nuevo == "user" and not self.cedula_entry.get().strip():
+                        messagebox.showerror(
+                            "Cédula requerida",
+                            "Asigne una cédula real antes de guardar una cuenta de trabajador.",
+                        )
+                        return
                     nueva_pass = self.password_entry.get()
                     if nueva_pass:
                         datos["password"] = nueva_pass
@@ -6517,12 +6531,21 @@ class UsuarioDialog(ctk.CTkToplevel):
                     )
                     messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
                 else:
+                    if (
+                        self.rol_combo.get().strip() == "user"
+                        and not self.cedula_entry.get().strip()
+                    ):
+                        messagebox.showerror(
+                            "Cédula requerida",
+                            "Asigne una cédula real antes de crear una cuenta de trabajador.",
+                        )
+                        return
                     auth.crear_usuario(
                         username=self.username_entry.get(),
                         password=self.password_entry.get(),
                         rol=self.rol_combo.get(),
                         nombre_completo=self.nombre_entry.get(),
-                        debe_cambiar_password=False,
+                        debe_cambiar_password=True,
                         cedula=self.cedula_entry.get() or None,
                     )
                     messagebox.showinfo("Éxito", "Usuario creado correctamente")

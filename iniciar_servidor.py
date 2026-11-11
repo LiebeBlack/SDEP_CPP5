@@ -113,7 +113,7 @@ def inicializar_base_de_datos(config: dict) -> None:
 
 
 def crear_usuarios_por_defecto(config: dict) -> None:
-    """Crea usuarios administrativos por defecto si no existen"""
+    """Aprovisiona las cuentas genéricas iniciales sin reemplazar cuentas propias."""
     from sync_agent.servidor import NucleoCentral, ServidorConfig
 
     logger.info("Creando usuarios por defecto...")
@@ -129,35 +129,16 @@ def crear_usuarios_por_defecto(config: dict) -> None:
 
     try:
         from src.services.auth_service import AuthService
+        from sync_agent.cuentas_iniciales import preparar_cuentas_iniciales
 
         sesion = nucleo.SessionFactory()
         try:
             servicio = AuthService(sesion)
-
-            # Usuarios por defecto. Las cuentas privilegiadas nacen con la
-            # obligación de cambiar la contraseña en el primer inicio: las
-            # claves documentadas aquí son públicas y no deben seguir siendo
-            # válidas después del primer acceso.
-            usuarios = [
-                ("admin", "Admin1234", "admin", "Administrador del Sistema", True),
-                ("manager", "Gestor1234", "manager", "Gestor Principal", True),
-                ("user", "Usuario1234", "user", "Usuario Estándar", False),
-                ("viewer", "Lector1234", "viewer", "Lector de Solo Lectura", False),
-            ]
-
-            for username, password, rol, nombre_completo, debe_cambiar in usuarios:
-                if servicio.usuario_por_username(username) is None:
-                    servicio.crear_usuario(
-                        username,
-                        password,
-                        rol,
-                        nombre_completo,
-                        debe_cambiar_password=debe_cambiar,
-                    )
-                    logger.info(f"Usuario '{username}' creado con rol '{rol}'")
-                else:
-                    logger.info(f"Usuario '{username}' ya existe, omitiendo")
-
+            creadas, requieren_cambio = preparar_cuentas_iniciales(servicio)
+            for username in creadas:
+                logger.info("Cuenta genérica '%s' creada; use su clave inicial y cámbiela", username)
+            for username in requieren_cambio:
+                logger.warning("La cuenta '%s' conserva una clave inicial conocida; debe rotarla", username)
             sesion.commit()
         finally:
             sesion.close()

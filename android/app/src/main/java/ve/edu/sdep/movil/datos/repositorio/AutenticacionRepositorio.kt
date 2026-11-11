@@ -146,7 +146,7 @@ class AutenticacionRepositorio @Inject constructor(
         // corrutina: la sesión en memoria sigue siendo válida.
         guardarCachéSeguro(sesion)
         sesionRepositorio.iniciar(sesion)
-        if (activarBiometria) {
+        if (activarBiometria && !sesion.debeCambiarPassword) {
             try {
                 activarBiometria(sesion)
             } catch (error: CancellationException) {
@@ -171,6 +171,31 @@ class AutenticacionRepositorio @Inject constructor(
     suspend fun entrarConBiometria(): Resultado<Sesion> = withContext(Dispatchers.IO) {
         val par = boveda.leerCredencialBiometrica()
             ?: return@withContext Resultado.Fallo("No hay una huella habilitada. Entre con su contraseña.")
+        val sesionPendiente = sesionRepositorio.actual ?: sesionUsuarioDao.obtener()?.let { cache ->
+            Sesion(
+                usuario = cache.usuario,
+                nombre = cache.nombreCompleto ?: cache.usuario,
+                rol = Rol.desde(cache.rol),
+                cedula = cache.cedula,
+                token = par.token,
+                expiraEn = cache.expiraEn,
+                debeCambiarPassword = cache.debeCambiarPassword,
+            )
+        }
+        if (sesionPendiente?.offline == true && sesionPendiente.debeCambiarPassword) {
+            boveda.olvidarCredencialBiometrica()
+            boveda.olvidarSesionToken()
+            sesionUsuarioDao.limpiar()
+            return@withContext Resultado.Fallo(
+                "La clave inicial debe cambiarse con el servidor conectado. " +
+                    "Entre con su contraseña cuando vuelva a haber red.",
+            )
+        }
+        if (sesionPendiente?.debeCambiarPassword == true) {
+            return@withContext Resultado.Fallo(
+                "Cambie la contraseña inicial antes de usar el desbloqueo con huella.",
+            )
+        }
 
         val config = configuracionRepositorio.cargar()
         if (!config.completa) {
@@ -235,6 +260,17 @@ class AutenticacionRepositorio @Inject constructor(
                     reintentable = true,
                 )
             }
+            if (caché.debeCambiarPassword) {
+                boveda.olvidarCredencialBiometrica()
+                boveda.olvidarSesionToken()
+                sesionUsuarioDao.limpiar()
+                return@withContext Resultado.Fallo(
+                    "La cuenta requiere cambiar su contraseña en el servidor. " +
+                        "Conéctese a la red e ingrese con su contraseña.",
+                    error,
+                    reintentable = true,
+                )
+            }
             val sesion = Sesion(
                 usuario = caché.usuario,
                 nombre = caché.nombreCompleto ?: caché.usuario,
@@ -244,8 +280,8 @@ class AutenticacionRepositorio @Inject constructor(
                 expiraEn = caché.expiraEn,
                 debeCambiarPassword = caché.debeCambiarPassword,
                 offline = true,
-                // Sin red no se conoce el mínimo vigente; se usa el del
-                // escritorio por omisión y el servidor validará al guardar.
+                // El caché solo conoce los metadatos de la sesión; sin red no
+                // se puede consultar ni rotar la credencial en el servidor.
                 minLongitudPassword = 6,
             )
             sesionRepositorio.iniciar(sesion)
@@ -301,13 +337,17 @@ class AutenticacionRepositorio @Inject constructor(
             }
 
             try {
-                apiFactory.acciones(config, sesion.token)
+                val respuesta = apiFactory.acciones(config, sesion.token)
                     .cambiarPassword(CambioPasswordDto(actual = actual, nueva = nueva))
-                if (sesion.debeCambiarPassword) {
-                    val actualizada = sesion.copy(debeCambiarPassword = false)
-                    sesionRepositorio.iniciar(actualizada)
-                    guardarCachéSeguro(actualizada)
-                }
+                val actualizada = sesion.copy(
+                    debeCambiarPassword = false,
+                    minLongitudPassword = maxOf(
+                        sesion.minLongitudPassword,
+                        respuesta.passwordMinLongitud ?: sesion.minLongitudPassword,
+                    ),
+                )
+                sesionRepositorio.iniciar(actualizada)
+                guardarCachéSeguro(actualizada)
                 Resultado.Exito(Unit)
             } catch (error: HttpException) {
                 val mensaje = error.mensajeDelServidor(json)

@@ -1987,15 +1987,28 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 accion = ruta.path[len(RUTA_AUTH) + 1 :]
                 token = self._token_sesion()
                 if accion == "sesion" and metodo == "GET":
+                    _dispositivo, _sesion = self._autenticar_sesion_de_dispositivo(
+                        token, permitir_rotacion=True
+                    )
                     self._responder_json(200, self.nucleo.api.info_sesion(token))
                 elif accion == "logout" and metodo == "POST":
+                    self._autenticar_sesion_de_dispositivo(token, permitir_rotacion=True)
                     self._responder_json(200, self.nucleo.api.cerrar_sesion(token))
                 elif accion == "cambiar-password" and metodo == "POST":
+                    dispositivo, sesion = self._autenticar_sesion_de_dispositivo(
+                        token, permitir_rotacion=True
+                    )
                     datos = self.nucleo.api.cambiar_password(token, self._leer_json())
+                    if dispositivo.es_movil and sesion.debe_cambiar_password:
+                        datos["password_min_longitud"] = max(
+                            datos.get("password_min_longitud", 8), 8
+                        )
                     self._responder_json(200, datos)
                 elif accion == "perfil" and metodo == "GET":
+                    self._autenticar_sesion_de_dispositivo(token)
                     self._responder_json(200, self.nucleo.api.perfil(token))
                 elif accion == "perfil" and metodo == "PUT":
+                    self._autenticar_sesion_de_dispositivo(token)
                     datos = self.nucleo.api.actualizar_perfil(token, self._leer_json())
                     self._responder_json(200, datos)
                 else:
@@ -2006,9 +2019,11 @@ class ManejadorSync(BaseHTTPRequestHandler):
             self.nucleo.limitar_tasa(dispositivo.dispositivo_id)
 
             if ruta.path == RUTA_EVENTOS and metodo == "GET":
-                # Los avisos no llevan datos personales, pero un móvil sigue
-                # obligado a presentar la sesión de la persona que lo usa.
-                self._sesion_opcional(dispositivo)
+                # Un flujo SSE también revela cuándo cambia la información:
+                # exige sesión válida del móvil y nunca se entrega antes de
+                # completar la rotación obligatoria de la clave inicial.
+                sesion_eventos = self._sesion_opcional(dispositivo, exigir=False)
+                self._exigir_rotacion_password(dispositivo, sesion_eventos)
                 self._transmitir_eventos()
                 return
 
@@ -2019,6 +2034,7 @@ class ManejadorSync(BaseHTTPRequestHandler):
                 # ``epochs`` el manifiesto completo. La comprobación se hace
                 # una sola vez aquí, antes de cualquier canal de datos.
                 raise ErrorPeticion("El teléfono debe iniciar sesión para acceder a los datos", 401)
+            self._exigir_rotacion_password(dispositivo, sesion_usuario)
 
             if ruta.path == RUTA_PULL and metodo == "GET":
                 parametros = parse_qs(ruta.query)
@@ -2115,7 +2131,9 @@ class ManejadorSync(BaseHTTPRequestHandler):
         if dispositivo.es_movil:
             # Un móvil necesita sesión también para los binarios: el hash es
             # una capacidad, pero no se entrega a un equipo sin identidad.
-            self._sesion_opcional(dispositivo)
+            # El token de sesión no autoriza descargas hasta rotar la clave.
+            sesion = self._sesion_opcional(dispositivo)
+            self._exigir_rotacion_password(dispositivo, sesion)
         if metodo == "POST":
             self._responder_json(
                 200, self.nucleo.guardar_blob(dispositivo, hash_archivo, self._cuerpo)
@@ -2137,6 +2155,44 @@ class ManejadorSync(BaseHTTPRequestHandler):
         """Token de sesión de usuario (cabecera ``X-Sesion``)"""
         return (self.headers.get("X-Sesion") or "").strip()
 
+    def _autenticar_sesion_de_dispositivo(
+        self, token: str, *, permitir_rotacion: bool = False
+    ) -> tuple[DispositivoSync, SesionValida]:
+        """Valida conjuntamente credencial de equipo y sesión personal.
+
+        Los tokens de sesión móvil quedan ligados al dispositivo que los
+        obtuvo. Los endpoints de cambio de contraseña son la única excepción a
+        la guarda de rotación; no eximen de comprobar la pareja equipo/sesión.
+        """
+        dispositivo = self._autenticar()
+        sesion = self.nucleo.api.validar(token)
+        if (
+            dispositivo.es_movil
+            and sesion.dispositivo_id
+            and sesion.dispositivo_id != dispositivo.dispositivo_id
+        ):
+            raise ErrorPeticion("La sesión pertenece a otro equipo", 403)
+        if not permitir_rotacion:
+            self._exigir_rotacion_password(dispositivo, sesion)
+        return dispositivo, sesion
+
+    @staticmethod
+    def _exigir_rotacion_password(
+        dispositivo: DispositivoSync, sesion: SesionValida | None
+    ) -> None:
+        """Bloquea las APIs del teléfono hasta rotar su contraseña inicial.
+
+        El login, la consulta de sesión, el cambio de contraseña y el cierre
+        de sesión se enrutan antes de autenticar el dispositivo. Todas las
+        demás rutas móviles, incluida la sincronización y los archivos, pasan
+        por esta guarda. Las cuentas de escritorio no cambian su flujo.
+        """
+        if dispositivo.es_movil and sesion is not None and sesion.debe_cambiar_password:
+            raise ErrorPeticion(
+                "Debe cambiar la contraseña inicial antes de acceder a los datos",
+                403,
+            )
+
     def _sesion_opcional(
         self, dispositivo: DispositivoSync, exigir: bool = True
     ) -> SesionValida | None:
@@ -2145,15 +2201,15 @@ class ManejadorSync(BaseHTTPRequestHandler):
         Los puestos de escritorio siguen autenticándose solo con su token de
         equipo: son equipos de confianza administrados por la institución. Un
         teléfono, en cambio, debe presentar además la sesión de su usuario; sin
-        ella el token del equipo no sirve para leer ni escribir.
+        ella el token del equipo no sirve para leer ni escribir. ``exigir=False``
+        permite omitir la sesión únicamente para puestos de escritorio, nunca
+        para teléfonos.
         """
         if not dispositivo.es_movil:
             return None
         token = self._token_sesion()
         if not token:
-            if exigir:
-                raise ErrorPeticion("El teléfono debe iniciar sesión para acceder a los datos", 401)
-            return None
+            raise ErrorPeticion("El teléfono debe iniciar sesión para acceder a los datos", 401)
         sesion = self.nucleo.api.validar(token)
         if sesion.dispositivo_id and sesion.dispositivo_id != dispositivo.dispositivo_id:
             raise ErrorPeticion("La sesión pertenece a otro equipo", 403)

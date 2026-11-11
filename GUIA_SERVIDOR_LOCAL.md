@@ -38,22 +38,19 @@ python iniciar_servidor.py
 Esto:
 - Crea la base de datos `sync_central.db` si no existe
 - Inicializa el esquema necesario
-- Crea 4 usuarios por defecto
-- Crea un dispositivo por defecto
+- Conserva las cuentas institucionales existentes y solo crea `admin` si falta
+- Crea un dispositivo para conexión
 - Inicia el servidor en el puerto 8765
 
-### Usuarios Por Defecto
+### Cuenta administradora inicial
 
-El script crea estos usuarios automáticamente:
+En una instalación nueva se crea únicamente `admin` con la clave temporal
+`admin123`. El primer inicio obliga a cambiarla; no reutilice esa clave en otras
+instalaciones. Las cuentas `manager`, `user` y `viewer` no se crean
+automáticamente, y las cuentas ya existentes se conservan.
 
-| Usuario | Contraseña | Rol | Descripción |
-|---------|------------|-----|-------------|
-| admin | Admin1234 | admin | Administrador total del sistema |
-| manager | Gestor1234 | manager | Gestor con permisos de edición |
-| user | Usuario1234 | user | Usuario estándar (lectura limitada) |
-| viewer | Lector1234 | viewer | Solo lectura |
-
-**IMPORTANTE:** Cambie estas contraseñas después del primer inicio por seguridad.
+El rol `user` es una cuenta de trabajador y requiere una cédula real asignada
+por administración. No se admite una identidad compartida o inventada.
 
 ### Opciones Avanzadas
 
@@ -175,9 +172,9 @@ La aplicación móvil usa el protocolo 2 con autenticación de usuario:
    - Ejemplo: `http://192.168.1.100:8765`
 
 2. **Autenticación de usuario**:
-   - Usuario: uno de los usuarios creados (admin, manager, user, viewer)
-   - Contraseña: la contraseña correspondiente
-   - Ejemplo: `admin` / `Admin1234`
+   - Usuario: una de las cuentas genéricas (admin, manager, user, viewer).
+   - En una instalación nueva, las claves temporales están en la sección «Cuentas genéricas iniciales»; reemplácelas por contraseñas personales de al menos 8 caracteres.
+   - La cuenta `user` requiere una cédula real asignada por administración antes de poder entrar.
 
 3. **Verificar conexión**:
    - La app debería poder hacer login
@@ -265,7 +262,7 @@ curl http://localhost:8765/api/v1/ping
 curl -X POST http://localhost:8765/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "X-Dispositivo: equipo-test" \
-  -d '{"username": "admin", "password": "Admin1234"}'
+  -d '{"username": "admin", "password": "<clave-inicial-temporal>"}'
 ```
 
 ## Gestión del Servidor

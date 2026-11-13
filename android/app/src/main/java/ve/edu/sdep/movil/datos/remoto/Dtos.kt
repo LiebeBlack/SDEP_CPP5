@@ -208,3 +208,7 @@ data class DocenteDto(
     val uuid: String = "",
     val nombre: String = "",
 )
+
+/** Directorio de docentes del nodo: resuelve ``profesor_uuid`` en los grados */
+@Serializable
+data class DocentesDto(val docentes: List<DocenteDto> = emptyList())

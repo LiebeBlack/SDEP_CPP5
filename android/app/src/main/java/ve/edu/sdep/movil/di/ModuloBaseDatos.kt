@@ -51,6 +51,7 @@ object ModuloBaseDatos {
                 BaseDatosSdep.MIGRATION_2_3,
                 BaseDatosSdep.MIGRATION_3_4,
                 BaseDatosSdep.MIGRATION_4_5,
+                BaseDatosSdep.MIGRATION_5_6,
             )
             .build()
 

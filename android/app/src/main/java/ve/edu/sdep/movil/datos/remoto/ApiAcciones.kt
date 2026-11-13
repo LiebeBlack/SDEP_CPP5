@@ -74,7 +74,7 @@ interface ApiAcciones {
     suspend fun auditoria(@Query("limite") limite: Int = 100): AuditoriaDto
 
     @GET("api/v1/consultas/docentes")
-    suspend fun docentes(): List<DocenteDto>
+    suspend fun docentes(): DocentesDto
 
     // ------------------------------------------------------------------
     // Administración de usuarios (solo admin)

@@ -91,6 +91,8 @@ data class Datos(
     val matriculas: List<MatriculaEntity> = emptyList(),
     val notas: List<NotaFinalEntity> = emptyList(),
     val configuraciones: List<ConfiguracionEntity> = emptyList(),
+    /** UUID del docente → nombre, resuelto contra ``consultas/docentes`` */
+    val docentes: Map<String, String> = emptyMap(),
 )
 
 // ----------------------------------------------------------------------
@@ -688,6 +690,10 @@ class Catalogo(val datos: Datos) {
                         CampoFicha("Nivel", etiquetaEstado(grado.nivel)),
                         CampoFicha("Nombre", texto(grado.nombre)),
                         CampoFicha("Sección", texto(grado.seccion)),
+                        CampoFicha(
+                            "Profesor",
+                            texto(grado.profesorUuid?.let { datos.docentes[it] }),
+                        ),
                         CampoFicha("Matriculados", matriculados.size.toString()),
                         CampoFicha("Notas registradas", notas.size.toString()),
                         CampoFicha("Promedio del grupo", promedio(notas.map { it.calificacion })),

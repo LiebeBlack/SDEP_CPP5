@@ -3,14 +3,18 @@ package ve.edu.sdep.movil.ui.modulos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import ve.edu.sdep.movil.datos.local.dao.ConfiguracionDao
 import ve.edu.sdep.movil.datos.local.dao.ContratoDao
 import ve.edu.sdep.movil.datos.local.dao.DocumentoDao
 import ve.edu.sdep.movil.datos.local.dao.EmpleadoDao
+import ve.edu.sdep.movil.datos.local.dao.EstadoSyncDao
 import ve.edu.sdep.movil.datos.local.dao.EstudianteDao
 import ve.edu.sdep.movil.datos.local.dao.GradoDao
 import ve.edu.sdep.movil.datos.local.dao.IncidenciaDao
@@ -29,6 +33,7 @@ import ve.edu.sdep.movil.datos.local.entidad.NotaFinalEntity
 import ve.edu.sdep.movil.datos.local.entidad.PagoEntity
 import ve.edu.sdep.movil.datos.local.entidad.PeriodoAcademicoEntity
 import ve.edu.sdep.movil.datos.local.entidad.ConfiguracionEntity
+import ve.edu.sdep.movil.datos.repositorio.DocentesRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Sesion
 import ve.edu.sdep.movil.dominio.modelo.normalizarCedula
@@ -61,7 +66,40 @@ class ModulosViewModel @Inject constructor(
     notaFinalDao: NotaFinalDao,
     configuracionDao: ConfiguracionDao,
     sesionRepositorio: SesionRepositorio,
+    estadoSyncDao: EstadoSyncDao,
+    docentesRepositorio: DocentesRepositorio,
 ) : ViewModel() {
+
+    /**
+     * Capacidades que el nodo central anunció en su ``ping`` (negociación
+     * automática). ``null`` mientras no se haya negociado nada: en ese caso
+     * ningún módulo se oculta y el teléfono trabaja desde su espejo local.
+     */
+    val capacidades: StateFlow<Set<String>?> = estadoSyncDao.observar()
+        .map { estado ->
+            estado?.capacidades
+                ?.split(',')
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.toSet()
+                ?.takeIf { it.isNotEmpty() }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
+
+    /** Nombres de los docentes del nodo, para resolver ``profesor_uuid`` */
+    private val nombresDocentes = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    init {
+        // Mejor esfuerzo: sin red el mapa queda vacío y las fichas muestran
+        // el campo sin resolver; la próxima vez que haya sesión se reintenta.
+        viewModelScope.launch {
+            nombresDocentes.value = docentesRepositorio.directorio()
+        }
+    }
 
     private data class GrupoPersonal(
         val empleados: List<EmpleadoEntity>,
@@ -121,7 +159,8 @@ class ModulosViewModel @Inject constructor(
             Triple(personas, trabajo, academia)
         },
         sesionRepositorio.sesion,
-    ) { grupos, sesion ->
+        nombresDocentes,
+    ) { grupos, sesion, docentes ->
         val (personas, trabajo, academia) = grupos
         Catalogo(
             Datos(
@@ -136,6 +175,7 @@ class ModulosViewModel @Inject constructor(
                 matriculas = academia.matriculas,
                 notas = academia.notas,
                 configuraciones = academia.configuraciones,
+                docentes = docentes,
             ).visiblePara(sesion),
         )
     }.stateIn(

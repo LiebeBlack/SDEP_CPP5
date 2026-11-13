@@ -72,7 +72,12 @@ fun PantallaModulos(
     vistaModelo: ModulosViewModel = hiltViewModel(),
 ) {
     val catalogo by vistaModelo.catalogo.collectAsStateWithLifecycle()
-    val modulos = ORDEN_DE_MODULOS.filter { sesion.puedeAbrir(it) }
+    val capacidades by vistaModelo.capacidades.collectAsStateWithLifecycle()
+    // La lista se filtra por el rol y por la negociación con el nodo central:
+    // un módulo cuya capacidad no anunció el nodo no se ofrece en el teléfono.
+    val modulos = ORDEN_DE_MODULOS.filter {
+        sesion.puedeAbrir(it) && it.disponibleEn(capacidades)
+    }
 
     Scaffold(topBar = { BarraSuperior(titulo = "Módulos", alVolver = alVolver) }) { relleno ->
         LazyColumn(

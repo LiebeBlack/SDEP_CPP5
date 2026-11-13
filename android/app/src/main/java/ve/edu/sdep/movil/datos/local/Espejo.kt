@@ -845,6 +845,16 @@ object Espejo {
             nivel = texto(campos, "nivel") ?: e.nivel,
             nombre = texto(campos, "nombre") ?: e.nombre,
             seccion = texto(campos, "seccion") ?: e.seccion,
+            // El docente viaja como UUID global de su cuenta (que no se
+            // replica) y solo se guarda aquí: el nombre se resuelve contra el
+            // nodo (`consultas/docentes`) y este equipo nunca escribe el campo.
+            profesorUuid = when {
+                campos.containsKey("profesor_uuid") ->
+                    texto(campos, "profesor_uuid") ?: e.profesorUuid
+                campos.containsKey("profesor_id") ->
+                    texto(campos, "profesor_id") ?: e.profesorUuid
+                else -> e.profesorUuid
+            },
             observaciones = textoO(campos, "observaciones", e.observaciones),
             creadoEn = fecha(campos, "created_at") ?: e.creadoEn,
             actualizadoEn = fecha(campos, "updated_at") ?: e.actualizadoEn,

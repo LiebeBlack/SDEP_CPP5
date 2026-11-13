@@ -206,6 +206,10 @@ class SincronizacionRepositorio @Inject constructor(
         }
 
         try {
+            // Negociación automática: antes de intercambiar datos, el nodo
+            // anuncia su versión y sus capacidades y el teléfono decide qué
+            // módulos ofrecer. Es mejor esfuerzo: si falla, el ciclo sigue.
+            negociarCapacidades(api)
             // Las diferidas de otros ciclos pueden resolverse ahora que quizá
             // haya llegado su registro padre por otra vía.
             aplicador.reintentarDiferidas()
@@ -261,6 +265,38 @@ class SincronizacionRepositorio @Inject constructor(
     }
 
     /**
+     * Negociación automática con el nodo central.
+     *
+     * El ``ping`` anuncia la versión del protocolo y las capacidades (las
+     * secciones de la API que este nodo ofrece). El teléfono guarda esa lista
+     * en su estado y con ella decide qué módulos mostrar; al quedar cacheada,
+     * la decisión sigue vigente cuando el teléfono se queda sin red.
+     *
+     * Es un paso silencioso y de mejor esfuerzo: si el nodo no responde, el
+     * ciclo sigue y cualquier problema real se reporta en su primer envío.
+     */
+    private suspend fun negociarCapacidades(api: ProtocoloApi) {
+        try {
+            val ping = api.ping()
+            val horaServidor = Fechas.desdeIso(ping.hora)
+            val desfase = horaServidor?.let { (System.currentTimeMillis() - it) / 1000 }
+            val previo = estadoDao.obtener() ?: EstadoSyncEntity()
+            estadoDao.guardar(
+                previo.copy(
+                    servidor = ping.servidor,
+                    versionProtocolo = ping.versionProtocolo,
+                    desfaseSegundos = desfase ?: previo.desfaseSegundos,
+                    capacidades = ping.acciones.joinToString(","),
+                ),
+            )
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // Mejor esfuerzo: la sincronización no depende de este paso.
+        }
+    }
+
+    /**
      * Comprueba el servicio sin enviar ni recibir datos.
      *
      * Devuelve la versión del protocolo y el desfase de reloj: un teléfono con
@@ -286,6 +322,7 @@ class SincronizacionRepositorio @Inject constructor(
                     servidor = ping.servidor,
                     versionProtocolo = ping.versionProtocolo,
                     desfaseSegundos = desfase,
+                    capacidades = ping.acciones.joinToString(","),
                     ultimoError = null,
                 ),
             )
@@ -295,6 +332,7 @@ class SincronizacionRepositorio @Inject constructor(
                     versionProtocolo = ping.versionProtocolo,
                     desfaseSegundos = desfase,
                     tablas = ping.tablas,
+                    capacidades = ping.acciones,
                 ),
             )
         } catch (error: retrofit2.HttpException) {
@@ -613,6 +651,8 @@ class SincronizacionRepositorio @Inject constructor(
         val versionProtocolo: String,
         val desfaseSegundos: Long?,
         val tablas: List<String>,
+        /** Capacidades que el nodo anunció en la negociación automática */
+        val capacidades: List<String> = emptyList(),
     )
 
     private fun OperacionPendienteEntity.aDto(): OperacionDto = OperacionDto(

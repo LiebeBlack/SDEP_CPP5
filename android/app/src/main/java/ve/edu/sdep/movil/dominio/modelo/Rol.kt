@@ -62,23 +62,53 @@ enum class Permiso(val etiqueta: String) {
 }
 
 /** Módulos del sistema con control de acceso (los mismos del escritorio) */
-enum class Modulo(val etiqueta: String, val ruta: String) {
-    DASHBOARD("Panel de control", "dashboard"),
+enum class Modulo(
+    val etiqueta: String,
+    val ruta: String,
+    /**
+     * Capacidad del nodo central que este módulo necesita para operar.
+     *
+     * Es la sección de la API que ``ping`` anuncia en la negociación
+     * automática (``auth``, ``consultas``, ``admin``, ``nomina``,
+     * ``incidencias``, ``contratos``, ``academicos``, ``archivos``). ``null``
+     * indica que el módulo no depende de ninguna sección: el espejo local y el
+     * canal de sincronización básica lo sostienen sin red.
+     */
+    val capacidad: String? = null,
+) {
+    DASHBOARD("Panel de control", "dashboard", "consultas"),
     EMPLEADOS("Empleados", "empleados"),
     DOCUMENTOS("Documentos", "documentos"),
-    INCIDENCIAS("Incidencias", "incidencias"),
-    CONTRATOS("Contratos", "contratos"),
-    NOMINA("Nómina", "nomina"),
-    CONFIGURACION("Configuración", "configuracion"),
-    ESTUDIANTES("Estudiantes", "estudiantes"),
-    NOTAS("Calificaciones", "notas"),
+    INCIDENCIAS("Incidencias", "incidencias", "incidencias"),
+    CONTRATOS("Contratos", "contratos", "contratos"),
+    NOMINA("Nómina", "nomina", "nomina"),
+    CONFIGURACION("Configuración", "configuracion", "admin"),
+    ESTUDIANTES("Estudiantes", "estudiantes", "academicos"),
+    NOTAS("Calificaciones", "notas", "academicos"),
     REGISTROS("Registros de campo", "registros"),
     ;
+
+    /**
+     * Negociación automática: ¿ofrece el nodo central lo que este módulo
+     * necesita?
+     *
+     * Con capacidades desconocidas (``null``: todavía no se negoció, o el
+     * teléfono está sin red) el módulo se ofrece igual: las pantallas leen el
+     * espejo local y la escritura queda en cola. Solo cuando el nodo anunció
+     * su lista se ocultan los módulos cuya capacidad no vino en ella.
+     */
+    fun disponibleEn(capacidades: Set<String>?): Boolean {
+        val necesaria = capacidad ?: return true
+        return capacidades == null || capacidades.anuncia(necesaria)
+    }
 
     companion object {
         fun desde(ruta: String?): Modulo? = entries.firstOrNull { it.ruta == ruta }
     }
 }
+
+/** Indica si la negociación con el nodo anunció la capacidad indicada */
+fun Set<String>?.anuncia(capacidad: String): Boolean = this == null || capacidad in this
 
 object PoliticaRoles {
 

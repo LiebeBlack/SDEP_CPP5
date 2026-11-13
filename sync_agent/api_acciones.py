@@ -503,6 +503,44 @@ class ApiAcciones:
         )
         return {"eventos": serializar(eventos)}
 
+    def docentes(self, sesion: SesionValida) -> dict:
+        """
+        Directorio de docentes para que el teléfono resuelva nombres
+
+        Las cuentas ``usuarios`` no se replican entre equipos, pero los grados
+        referencian a su profesor por el UUID global de la cuenta. Este
+        catálogo entrega solo el par UUID/nombre, de modo que el teléfono
+        muestra el nombre del docente sin replicar cuentas ni credenciales.
+        Cualquier sesión válida puede leerlo: son los nombres que ya aparecen
+        en los grados del escritorio.
+        """
+        from src.models import Usuario
+        from sync_agent import identidad
+
+        db = self._sesion()
+        try:
+            usuarios = (
+                db.query(Usuario)
+                .filter(Usuario.activo == 1)
+                .order_by(Usuario.nombre_completo, Usuario.username)
+                .all()
+            )
+            docentes = []
+            for usuario in usuarios:
+                uuid = identidad.asegurar_uuid(db, "usuarios", usuario.id)
+                if not uuid:
+                    continue
+                docentes.append(
+                    {
+                        "uuid": uuid,
+                        "nombre": usuario.nombre_completo or usuario.username,
+                    }
+                )
+            db.commit()
+            return {"docentes": docentes}
+        finally:
+            db.close()
+
     # ==================================================================
     # Administración de usuarios (solo admin)
     # ==================================================================

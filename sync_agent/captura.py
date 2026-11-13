@@ -301,6 +301,13 @@ def _payload(
         uuid_padre = uuid_por_fila.get((tabla_padre, valor))
         if uuid_padre is None:
             uuid_padre = identidad.uuid_de_padre(session, tabla_padre, valor)
+        if uuid_padre is None and registro.entidad(tabla_padre) is None:
+            # El padre puede no ser replicable (``profesor_id`` → ``usuarios``):
+            # la referencia viaja igualmente como UUID global adoptado, que el
+            # receptor solo traduce si el padre también se replica. En el
+            # teléfono basta para resolver el nombre contra
+            # ``/api/v1/consultas/docentes`` sin replicar cuentas.
+            uuid_padre = identidad.asegurar_uuid(session, tabla_padre, valor)
         if uuid_padre is None:
             logger.warning(
                 "Se omite %s.%s: no se pudo identificar el registro %s#%s",

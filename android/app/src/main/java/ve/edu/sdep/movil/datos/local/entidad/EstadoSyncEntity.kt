@@ -10,6 +10,9 @@ import androidx.room.PrimaryKey
  * aplicado: el servidor devuelve las operaciones posteriores y el teléfono no
  * vuelve a pedir lo que ya tiene. ``servidor`` y ``versionProtocolo`` se
  * guardan tras cada prueba de conexión para mostrarlos en Ajustes.
+ * ``capacidades`` guarda la lista que el nodo anunció en su ``ping`` (secciones
+ * de la API): es el resultado de la negociación automática y decide qué
+ * módulos se ofrecen; ``null`` significa que todavía no se negoció nada.
  */
 @Entity(tableName = "estado_sincronizacion")
 data class EstadoSyncEntity(
@@ -21,4 +24,5 @@ data class EstadoSyncEntity(
     val servidor: String? = null,
     val versionProtocolo: String? = null,
     val desfaseSegundos: Long? = null,
+    val capacidades: String? = null,
 )

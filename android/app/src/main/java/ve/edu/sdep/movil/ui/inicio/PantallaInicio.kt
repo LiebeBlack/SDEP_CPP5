@@ -50,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ve.edu.sdep.movil.dominio.modelo.Modulo
 import ve.edu.sdep.movil.dominio.modelo.Sesion
+import ve.edu.sdep.movil.dominio.modelo.anuncia
 import ve.edu.sdep.movil.ui.comun.BarraSuperior
 import ve.edu.sdep.movil.ui.comun.MensajeVacio
 import ve.edu.sdep.movil.ui.modulos.ModulosViewModel
@@ -76,6 +77,7 @@ fun PantallaInicio(
     vistaModelo: ModulosViewModel = hiltViewModel(),
 ) {
     val catalogo by vistaModelo.catalogo.collectAsStateWithLifecycle()
+    val capacidades by vistaModelo.capacidades.collectAsStateWithLifecycle()
     val datos = catalogo.datos
 
     // Los callbacks de navegación se recrean en cada recomposición del grafo.
@@ -88,7 +90,7 @@ fun PantallaInicio(
     val conflictosActual by rememberUpdatedState(alConflictos)
     val pdfActual by rememberUpdatedState(alHerramientasPdf)
 
-    val categorias = remember(sesion, datos) {
+    val categorias = remember(sesion, datos, capacidades) {
         buildList {
             add(
                 Categoria(
@@ -96,21 +98,22 @@ fun PantallaInicio(
                     detalle = "Fichas, legajo documental y novedades del personal",
                     soluciones = listOfNotNull(
                         solucion(
-                            sesion, Modulo.EMPLEADOS, "Empleados",
+                            sesion, capacidades, Modulo.EMPLEADOS, "Empleados",
                             "Datos personales, laborales y de salud",
                             Icons.Filled.Badge, datos.empleados.size,
                         ) { abrirModuloActual(Modulo.EMPLEADOS) },
                         solucion(
-                            sesion, Modulo.DOCUMENTOS, "Documentos",
+                            sesion, capacidades, Modulo.DOCUMENTOS, "Documentos",
                             "Legajo, vencimientos y archivos",
                             Icons.Filled.Description, datos.documentos.size,
                         ) { abrirModuloActual(Modulo.DOCUMENTOS) },
                         solucion(
-                            sesion, Modulo.INCIDENCIAS, "Incidencias",
+                            sesion, capacidades, Modulo.INCIDENCIAS, "Incidencias",
                             "Permisos, reposos y ausencias",
                             Icons.Filled.EventBusy, datos.incidencias.size,
                         ) { abrirModuloActual(Modulo.INCIDENCIAS) },
                         if (sesion.puedeAbrir(Modulo.EMPLEADOS) &&
+                            capacidades.anuncia("archivos") &&
                             (sesion.puede(ve.edu.sdep.movil.dominio.modelo.Permiso.REPORTAR) ||
                                 (sesion.puedeAbrir(Modulo.DOCUMENTOS) &&
                                     sesion.puede(ve.edu.sdep.movil.dominio.modelo.Permiso.CREAR)))
@@ -132,27 +135,27 @@ fun PantallaInicio(
                     detalle = "Estudiantes, calificaciones y estructura escolar",
                     soluciones = listOfNotNull(
                         solucion(
-                            sesion, Modulo.ESTUDIANTES, "Estudiantes",
+                            sesion, capacidades, Modulo.ESTUDIANTES, "Estudiantes",
                             "Expediente y representantes",
                             Icons.Filled.School, datos.estudiantes.size,
                         ) { abrirModuloActual(Modulo.ESTUDIANTES) },
                         solucion(
-                            sesion, Modulo.NOTAS, "Calificaciones",
+                            sesion, capacidades, Modulo.NOTAS, "Calificaciones",
                             "Notas por materia y grupo",
                             Icons.Filled.Grade, datos.notas.size,
                         ) { abrirModuloActual(Modulo.NOTAS) },
                         solucion(
-                            sesion, Modulo.NOTAS, "Períodos",
+                            sesion, capacidades, Modulo.NOTAS, "Períodos",
                             "Apertura y cierre de períodos",
                             Icons.Filled.DateRange, datos.periodos.size,
                         ) { abrirTablaActual("periodos_academicos") },
                         solucion(
-                            sesion, Modulo.NOTAS, "Grados",
+                            sesion, capacidades, Modulo.NOTAS, "Grados",
                             "Grupos, secciones y niveles",
                             Icons.Filled.School, datos.grados.size,
                         ) { abrirTablaActual("grados") },
                         solucion(
-                            sesion, Modulo.NOTAS, "Matrículas",
+                            sesion, capacidades, Modulo.NOTAS, "Matrículas",
                             "Inscripción de estudiantes en grados",
                             Icons.Filled.Description, datos.matriculas.size,
                         ) { abrirTablaActual("matriculas") },
@@ -165,12 +168,12 @@ fun PantallaInicio(
                     detalle = "Relación laboral y pagos",
                     soluciones = listOfNotNull(
                         solucion(
-                            sesion, Modulo.CONTRATOS, "Contratos",
+                            sesion, capacidades, Modulo.CONTRATOS, "Contratos",
                             "Vigencias, cargos y salarios pactados",
                             Icons.Filled.Gavel, datos.contratos.size,
                         ) { abrirModuloActual(Modulo.CONTRATOS) },
                         solucion(
-                            sesion, Modulo.NOMINA, "Nómina",
+                            sesion, capacidades, Modulo.NOMINA, "Nómina",
                             "Recibos, deducciones y pagos",
                             Icons.Filled.Payments, datos.pagos.size,
                         ) { abrirModuloActual(Modulo.NOMINA) },
@@ -332,9 +335,13 @@ private fun TarjetaSolucion(solucion: Solucion, modificador: Modifier) {
     }
 }
 
-/** Construye una solución solo si el rol puede abrir el módulo */
+/**
+ * Tarjeta de la portada, o null si el rol no la ve o el nodo no anuncia la
+ * capacidad que el módulo necesita (negociación automática).
+ */
 private fun solucion(
     sesion: Sesion,
+    capacidades: Set<String>?,
     modulo: Modulo,
     titulo: String,
     detalle: String,
@@ -343,6 +350,7 @@ private fun solucion(
     alAbrir: () -> Unit,
 ): Solucion? {
     if (!sesion.puedeAbrir(modulo)) return null
+    if (!modulo.disponibleEn(capacidades)) return null
     return Solucion(titulo, detalle, icono, conteo, alAbrir)
 }
 

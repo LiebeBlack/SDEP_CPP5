@@ -51,7 +51,7 @@ import ve.edu.sdep.movil.datos.local.entidad.*
         OpAplicadaEntity::class,
         BlobPendienteEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class BaseDatosSdep : RoomDatabase() {
@@ -144,6 +144,21 @@ abstract class BaseDatosSdep : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE blobs_pendientes")
                 db.execSQL("ALTER TABLE blobs_pendientes_nueva RENAME TO blobs_pendientes")
+            }
+        }
+
+        /**
+         * v5 → v6: el estado de sincronización guarda las capacidades negociadas.
+         *
+         * El ``ping`` del nodo central anuncia qué secciones de la API ofrece y
+         * el teléfono decide qué módulos mostrar según esa lista. Se cachea en
+         * ``estado_sincronizacion`` para que la decisión siga vigente sin red;
+         * ``null`` (fila nueva o actualizada antes de esta versión) significa
+         * que todavía no se negoció nada y no se oculta ningún módulo.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE estado_sincronizacion ADD COLUMN capacidades TEXT")
             }
         }
 

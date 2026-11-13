@@ -73,6 +73,22 @@ from sync_agent.sesiones import ErrorSesion, SesionValida
 logger = logging.getLogger(__name__)
 
 VERSION_PROTOCOLO = "2"
+
+# Secciones de la API que este nodo anuncia en ``ping``. Es el lado servidor
+# de la negociación automática: el teléfono decide qué pantallas ofrecer según
+# esta lista, así que una sección retirada del nodo desaparece del móvil sin
+# actualizar la aplicación.
+CAPACIDADES_PROTOCOLO = (
+    "auth",
+    "consultas",
+    "admin",
+    "nomina",
+    "incidencias",
+    "contratos",
+    "academicos",
+    "archivos",
+)
+
 MAX_OPS_POR_LOTE = 500
 MAX_BYTES_PETICION = 3 * 1024 * 1024
 MAX_BYTES_BLOB = 64 * 1024 * 1024
@@ -328,16 +344,7 @@ class NucleoCentral:
             "tablas": registro.tablas_sincronizadas(),
             # Capacidades del protocolo 2: el móvil decide qué pantallas
             # ofrecer según lo que el nodo central anuncia.
-            "acciones": [
-                "auth",
-                "consultas",
-                "admin",
-                "nomina",
-                "incidencias",
-                "contratos",
-                "academicos",
-                "archivos",
-            ],
+            "acciones": list(CAPACIDADES_PROTOCOLO),
         }
 
     def push(
@@ -1490,6 +1497,8 @@ class NucleoCentral:
             if resto == ["auditoria"]:
                 limite = int((parametros.get("limite") or ["100"])[0] or 100)
                 return api.auditoria(sesion_usuario, limite)
+            if resto == ["docentes"]:
+                return api.docentes(sesion_usuario)
             raise ErrorApi("recurso no encontrado", 404)
 
         if seccion == "admin":

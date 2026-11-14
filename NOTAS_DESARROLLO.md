@@ -36,6 +36,20 @@ El proyecto se encuentra en un estado estable y funcional con todas las funciona
 - La propiedad de la fila sigue forzándose con la cédula de la sesión: cada
   usuario escribe solo sobre sus registros.
 
+### Rendimiento del cliente Android (renderizado y recursos)
+
+- `Catalogo` construye cada lista de módulo **una sola vez** por cambio de
+  datos (antes: pintar, contar y buscar la reconstruían; el bloque de
+  calificaciones agrupa, ordena y promedia por fila) y abre fichas con índices
+  por id en lugar de recorrer la tabla.
+- `EsquemaTabla` cachea las columnas por tabla: el `PRAGMA table_info` se lanza
+  una vez por proceso, no dos veces por cada pantalla de lista.
+- La búsqueda de las listas genéricas usa el texto normalizado precalculado al
+  cargar la fila: filtrar por tecla ya no re-normaliza cientos de cadenas.
+- Las listas `LazyColumn` conservan `key` y `contentType` estables (identidad
+  de elemento para reutilizar composición) y los flujos de Room se combinan con
+  `SharingStarted.WhileSubscribed`, sin trabajo cuando la pantalla no se ve.
+
 ### Versión vigente: 3.0.1
 
 Esta versión hace alcanzable el **subdominio académico** que existía en la capa de

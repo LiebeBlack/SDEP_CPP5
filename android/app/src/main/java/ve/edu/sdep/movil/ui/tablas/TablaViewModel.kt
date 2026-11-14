@@ -36,6 +36,8 @@ class TablaViewModel @Inject constructor(
         val titulo: String,
         val subtitulo: String,
         val detalles: List<Pair<String, String>> = emptyList(),
+        /** Texto visible ya normalizado, para filtrar sin re-normalizar por tecla */
+        val textoBusqueda: String = "",
     )
 
     data class Estado(
@@ -61,11 +63,9 @@ class TablaViewModel @Inject constructor(
     fun buscar(filas: List<Fila>, consulta: String): List<Fila> {
         val termino = normalizarBusqueda(consulta.trim())
         if (termino.isEmpty()) return filas
-        return filas.filter { fila ->
-            sequenceOf(fila.titulo, fila.subtitulo)
-                .plus(fila.detalles.asSequence().flatMap { sequenceOf(it.first, it.second) })
-                .any { normalizarBusqueda(it).contains(termino) }
-        }
+        // El texto normalizado de cada fila se calcula al cargarla: filtrar por
+        // tecla ya no vuelve a normalizar cientos de cadenas en cada pulsación.
+        return filas.filter { fila -> fila.textoBusqueda.contains(termino) }
     }
 
     fun cargar(tabla: String, forzar: Boolean = false) {
@@ -170,11 +170,18 @@ class TablaViewModel @Inject constructor(
             }
             .take(3)
             .toList()
+        val subtitulo =
+            disponibles.firstOrNull()?.let { (etiqueta, valor) -> "$etiqueta: $valor" }.orEmpty()
+        val detallesFinales = (disponibles.drop(1) + detalles).take(4)
+        val visibles = sequenceOf(titulo, subtitulo)
+            .plus(detallesFinales.asSequence().flatMap { sequenceOf(it.first, it.second) })
+            .joinToString(" ")
         return Fila(
             id = id,
             titulo = titulo,
-            subtitulo = disponibles.firstOrNull()?.let { (etiqueta, valor) -> "$etiqueta: $valor" }.orEmpty(),
-            detalles = (disponibles.drop(1) + detalles).take(4),
+            subtitulo = subtitulo,
+            detalles = detallesFinales,
+            textoBusqueda = normalizarBusqueda(visibles),
         )
     }
 

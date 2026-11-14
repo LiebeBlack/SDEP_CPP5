@@ -94,8 +94,20 @@ object EsquemaTabla {
      * sus metadatos de transporte: el archivo viaja por el canal de binarios,
      * no dentro del formulario.
      */
+    /**
+     * Columnas por tabla, calculadas una sola vez por proceso.
+     *
+     * El esquema solo cambia con las migraciones de Room, que se aplican al
+     * abrir la base y antes de la primera consulta: volver a lanzar
+     * `PRAGMA table_info` en cada pantalla, lista o guardado solo añadía
+     * trabajo (dos veces por cada pantalla de lista, además).
+     */
+    private val cacheColumnas =
+        java.util.concurrent.ConcurrentHashMap<String, List<ColumnaTabla>>()
+
     fun columnas(baseDatos: BaseDatosSdep, tabla: String): List<ColumnaTabla> {
         if (!esAdministrable(tabla)) return emptyList()
+        cacheColumnas[tabla]?.let { return it }
         val resultado = mutableListOf<ColumnaTabla>()
         val foraneas = Espejo.CLAVES_FORANEAS[tabla].orEmpty()
         val cursor = baseDatos.openHelper.readableDatabase.query("PRAGMA table_info($tabla)")
@@ -135,6 +147,7 @@ object EsquemaTabla {
                 )
             }
         }
+        cacheColumnas[tabla] = resultado
         return resultado
     }
 

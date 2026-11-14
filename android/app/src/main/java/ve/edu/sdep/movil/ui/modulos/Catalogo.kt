@@ -107,6 +107,15 @@ class Catalogo(val datos: Datos) {
     private val gradosPorId: Map<Long, GradoEntity> = datos.grados.associateBy { it.id }
     private val periodosPorId: Map<Long, PeriodoAcademicoEntity> =
         datos.periodos.associateBy { it.id }
+    // Índices de las tablas restantes: abrir la ficha deja de recorrer la
+    // lista completa en busca del id.
+    private val documentosPorId: Map<Long, DocumentoEntity> = datos.documentos.associateBy { it.id }
+    private val incidenciasPorId: Map<Long, IncidenciaEntity> =
+        datos.incidencias.associateBy { it.id }
+    private val contratosPorId: Map<Long, ContratoEntity> = datos.contratos.associateBy { it.id }
+    private val pagosPorId: Map<Long, PagoEntity> = datos.pagos.associateBy { it.id }
+    private val configuracionesPorId: Map<Long, ConfiguracionEntity> =
+        datos.configuraciones.associateBy { it.id }
 
     // ---- Nombres resueltos ---------------------------------------------
 
@@ -130,7 +139,20 @@ class Catalogo(val datos: Datos) {
      * [Modulo.REGISTROS] no pasa por aquí: tiene su propia pantalla, y
      * [Modulo.DASHBOARD] se pinta con [indicadores] y [alertas].
      */
-    fun filas(modulo: Modulo): List<FilaCatalogo> = when (modulo) {
+    /**
+     * Resultado de [filas] por módulo.
+     *
+     * Las pantallas piden la misma lista para pintar, para contar y para
+     * buscar; se construye una sola vez por catálogo y las tres lecturas
+     * reutilizan el resultado, en especial el bloque de calificaciones, que
+     * agrupa, ordena y promedia por cada fila.
+     */
+    private val filasPorModulo = mutableMapOf<Modulo, List<FilaCatalogo>>()
+
+    fun filas(modulo: Modulo): List<FilaCatalogo> =
+        filasPorModulo.getOrPut(modulo) { construirFilas(modulo) }
+
+    private fun construirFilas(modulo: Modulo): List<FilaCatalogo> = when (modulo) {
         Modulo.DASHBOARD, Modulo.REGISTROS -> emptyList()
         // Room ya devuelve estas tablas en este orden; no volver a ordenar
         // listas completas en memoria, especialmente en teléfonos básicos.
@@ -273,14 +295,13 @@ class Catalogo(val datos: Datos) {
     /** Detalle de una fila; null si la fila ya no existe en el espejo */
     fun ficha(modulo: Modulo, id: Long): FichaCatalogo? = when (modulo) {
         Modulo.EMPLEADOS -> empleadosPorId[id]?.let(::fichaEmpleado)
-        Modulo.DOCUMENTOS -> datos.documentos.firstOrNull { it.id == id }?.let(::fichaDocumento)
-        Modulo.INCIDENCIAS -> datos.incidencias.firstOrNull { it.id == id }?.let(::fichaIncidencia)
-        Modulo.CONTRATOS -> datos.contratos.firstOrNull { it.id == id }?.let(::fichaContrato)
-        Modulo.NOMINA -> datos.pagos.firstOrNull { it.id == id }?.let(::fichaPago)
+        Modulo.DOCUMENTOS -> documentosPorId[id]?.let(::fichaDocumento)
+        Modulo.INCIDENCIAS -> incidenciasPorId[id]?.let(::fichaIncidencia)
+        Modulo.CONTRATOS -> contratosPorId[id]?.let(::fichaContrato)
+        Modulo.NOMINA -> pagosPorId[id]?.let(::fichaPago)
         Modulo.ESTUDIANTES -> estudiantesPorId[id]?.let(::fichaEstudiante)
         Modulo.NOTAS -> gradosPorId[id]?.let(::fichaGrado)
-        Modulo.CONFIGURACION ->
-            datos.configuraciones.firstOrNull { it.id == id }?.let(::fichaConfiguracion)
+        Modulo.CONFIGURACION -> configuracionesPorId[id]?.let(::fichaConfiguracion)
         Modulo.DASHBOARD, Modulo.REGISTROS -> null
     }
 

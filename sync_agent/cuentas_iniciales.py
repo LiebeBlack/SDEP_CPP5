@@ -12,9 +12,9 @@ from __future__ import annotations
 import logging
 
 from src.services.auth_service import (
-    AuthService,
     CLAVES_INICIALES_ANTERIORES,
     CUENTAS_INICIALES,
+    AuthService,
 )
 from src.utils.security import SecurityValidator
 

@@ -192,6 +192,7 @@ fun PantallaAjustes(
                 DialogoCambioPassword(
                     ocupado = estado.ocupado,
                     soloObligatorio = soloCambioPassword,
+                    minLongitudPassword = sesion.minLongitudPassword,
                     alCambiar = { actual, nueva, confirmacion ->
                         vistaModelo.cambiarPassword(actual, nueva, confirmacion)
                     },
@@ -658,6 +659,8 @@ private fun TarjetaConflictos(cantidad: Int, alVer: () -> Unit) {
 private fun DialogoCambioPassword(
     ocupado: Boolean,
     soloObligatorio: Boolean = false,
+    /** Longitud mínima que exige el nodo central para la contraseña */
+    minLongitudPassword: Int = 6,
     alCambiar: (actual: String, nueva: String, confirmacion: String) -> Unit,
     alCerrar: () -> Unit,
 ) {
@@ -698,7 +701,7 @@ private fun DialogoCambioPassword(
                     label = { Text("Contraseña nueva") },
                     supportingText = {
                         Text(
-                            "Al menos ${sesion.minLongitudPassword} caracteres; use una frase larga y única.",
+                            "Al menos $minLongitudPassword caracteres; use una frase larga y única.",
                         )
                     },
                     singleLine = true,

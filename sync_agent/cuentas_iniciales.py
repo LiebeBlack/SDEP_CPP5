@@ -66,7 +66,9 @@ def preparar_cuentas_iniciales(servicio: AuthService) -> tuple[list[str], list[s
         servicio.session.commit()
 
     for username in creadas:
-        logger.info("Cuenta administradora inicial creada; requiere cambiar la contraseña: %s", username)
+        logger.info(
+            "Cuenta administradora inicial creada; requiere cambiar la contraseña: %s", username
+        )
     for username in requieren_cambio:
         logger.warning("La cuenta admin conserva una clave inicial conocida; se exigirá rotarla")
 

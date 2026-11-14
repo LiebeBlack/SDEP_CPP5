@@ -359,7 +359,9 @@ class ServidorEmbebido:
             for username in creadas:
                 logger.info("Cuenta genérica inicial creada; debe cambiar su clave: %s", username)
             for username in requieren_cambio:
-                logger.warning("Cuenta inicial con clave conocida; se exigirá rotarla: %s", username)
+                logger.warning(
+                    "Cuenta inicial con clave conocida; se exigirá rotarla: %s", username
+                )
             return True
         except Exception:
             sesion.rollback()

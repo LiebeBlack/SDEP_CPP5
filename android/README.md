@@ -157,9 +157,18 @@ La app usa los mismos tres puntos que el agente de escritorio, con las cabeceras
 
 | Método | Ruta | Uso |
 |---|---|---|
-| `GET` | `/api/v1/ping` | Versión del protocolo, hora del servidor y tablas |
+| `GET` | `/api/v1/ping` | Negociación: versión del protocolo, capacidades, hora y tablas |
+| `POST` | `/api/v1/auth/emparejar` | Alta automática del teléfono como puesto (token de equipo) |
 | `POST` | `/api/v1/push` | Lote de hasta 200 operaciones |
 | `GET` | `/api/v1/pull?cursor=N&limite=200` | Novedades posteriores al cursor |
+| `GET` | `/api/v1/consultas/docentes` | Directorio UUID → nombre para resolver `profesor_uuid` |
+
+**Negociación automática.** El `ping` anuncia `version_protocolo`,
+`min_version_protocolo`, la lista de `acciones` (secciones de la API) y si el
+`emparejamiento_abierto` está activo. La app solo se da de alta contra un nodo
+que admita su versión, decide qué módulos mostrar según las capacidades
+anunciadas y las cachea en `estado_sincronizacion` para seguir decidiendo sin
+red.
 
 Una operación viaja así (el `payload` es **texto JSON**, igual que lo almacena y
 lo devuelve el servidor):

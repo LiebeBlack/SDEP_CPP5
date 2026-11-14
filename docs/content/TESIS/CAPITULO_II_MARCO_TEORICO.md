@@ -1,5 +1,7 @@
 # CAPÍTULO II: MARCO TEÓRICO
 
+> **Documento sustituido.** Esta versión se conserva como antecedente de trabajo. El contenido vigente, ampliado con la revisión 2016-2026 y el marco legal venezolano, se desarrolla en [`02-marco-teorico-y-metodologico.md`](02-marco-teorico-y-metodologico.md). No debe citarse en la entrega definitiva.
+
 ## 2.1 INTRODUCCIÓN
 
 El presente capítulo establece el fundamento teórico y conceptual que sustenta el desarrollo del Sistema de Gestión de Personal y Nómina para instituciones educativas. Se presentan los antecedentes de la investigación, las bases teóricas que fundamentan el diseño e implementación del sistema, el marco legal pertinente, y las definiciones de términos básicos necesarios para comprender el estudio.

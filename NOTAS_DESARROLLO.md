@@ -4,6 +4,38 @@
 
 El proyecto se encuentra en un estado estable y funcional con todas las funcionalidades principales implementadas y documentadas.
 
+### Integración Android ⇄ nodo central: negociación automática
+
+- `GET /api/v1/ping` anuncia ahora el rango de versiones aceptadas
+  (`version_protocolo`, `min_version_protocolo`), las capacidades de la API y el
+  estado del alta automática. `Protocolo.kt` (móvil) y `CAPACIDADES_PROTOCOLO`
+  (nodo) son las únicas fuentes de esos valores.
+- El teléfono solo se empareja con nodos compatibles y muestra los módulos según
+  las capacidades anunciadas, cacheadas en `estado_sincronizacion` (Room v6, con
+  su migración). Sin negociar, no se oculta ningún módulo (offline-first).
+- Nuevo `GET /api/v1/consultas/docentes`: directorio UUID → nombre para resolver
+  el docente de cada grado sin replicar cuentas. `DocentesRepositorio` lo cachea
+  con vigencia y sirve la última copia buena ante cortes de red.
+- `profesor_uuid` se lee en listas y fichas pero no se edita en el teléfono
+  (columna de solo lectura del formulario dinámico) y jamás viaja en un payload.
+- Las respuestas del nodo llevan `Cache-Control: no-store` y
+  `X-Content-Type-Options: nosniff`.
+- La prueba de conexión de Ajustes informa en claro cuando el nodo y la app
+  hablan versiones incompatibles, en vez de reportar una conexión sana.
+
+### Escritura en el teléfono con control por rol (profesor / administrativo / director)
+
+- Nueva `PoliticaEdicion` (fail-closed): el teléfono admite leer, crear,
+  editar y gestionar, pero cada rol edita solo sus columnas. **Director**
+  (`admin`) y **administrativo** (`manager`) gestionan toda la ficha, incluidos
+  sueldo y banco; el **profesor** (`user`) completa su propia ficha personal y
+  sus documentos e incidencias, y nunca las condiciones de gestión de personal.
+- `TablaRepositorio` valida y escribe solo dentro del ámbito de edición del rol:
+  una columna de gestión que el formulario no muestra no bloquea el guardado ni
+  se envía (la regla de presencia la conserva intacta).
+- La propiedad de la fila sigue forzándose con la cédula de la sesión: cada
+  usuario escribe solo sobre sus registros.
+
 ### Versión vigente: 3.0.1
 
 Esta versión hace alcanzable el **subdominio académico** que existía en la capa de

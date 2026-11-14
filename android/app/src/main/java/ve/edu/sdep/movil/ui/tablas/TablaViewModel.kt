@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.util.Locale
 import ve.edu.sdep.movil.datos.local.EsquemaTabla
+import ve.edu.sdep.movil.datos.repositorio.DocentesRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.TablaRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Permiso
@@ -27,6 +28,7 @@ import javax.inject.Inject
 class TablaViewModel @Inject constructor(
     private val repositorio: TablaRepositorio,
     private val sesionRepositorio: SesionRepositorio,
+    private val docentesRepositorio: DocentesRepositorio,
 ) : ViewModel() {
 
     data class Fila(
@@ -51,6 +53,9 @@ class TablaViewModel @Inject constructor(
     private var tablaActual: String? = null
     private var carga: Job? = null
     private var generacionCarga = 0
+
+    /** UUID del docente → nombre, para no mostrar UUID crudos en los resúmenes */
+    private var nombresDocentes: Map<String, String> = emptyMap()
 
     /** Búsqueda local sin distinguir mayúsculas ni acentos en todos los datos visibles. */
     fun buscar(filas: List<Fila>, consulta: String): List<Fila> {
@@ -89,6 +94,9 @@ class TablaViewModel @Inject constructor(
                 return@launch
             }
             val filas = try {
+                // Mejor esfuerzo y con caché: si el nodo no responde se usa la
+                // última copia buena y los UUID quedan sin resolver.
+                nombresDocentes = docentesRepositorio.directorio()
                 val columnas = repositorio.columnas(tabla)
                 repositorio.listar(tabla).map { valores -> resumir(tabla, valores, columnas) }
             } catch (error: Exception) {
@@ -135,14 +143,18 @@ class TablaViewModel @Inject constructor(
             if (tabla == "matriculas") "${etiquetas[nombre] ?: nombre}: $valor" else valor
         }.joinToString(" · ").ifBlank { "Registro #$id" }
         val resumenCampos = when (tabla) {
-            "grados" -> listOf("nivel", "periodo_id", "profesor_id")
+            "grados" -> listOf("nivel", "periodo_id", "profesor_uuid")
             "periodos_academicos" -> listOf("fecha_inicio", "fecha_fin", "estado")
             "matriculas" -> listOf("fecha_matricula", "activa", "observaciones")
             else -> listOf("cedula", "cargo", "estado", "fecha_inicio", "fecha_matricula")
         }
         val disponibles = resumenCampos.mapNotNull { campo ->
             valores[campo]?.trim()?.takeIf(String::isNotEmpty)?.let { valor ->
-                etiquetas[campo]?.let { etiqueta -> etiqueta to valor }
+                // El docente viaja como UUID global de su cuenta: en pantalla
+                // va su nombre, resuelto contra el directorio del nodo.
+                val mostrable =
+                    if (campo == "profesor_uuid") nombresDocentes[valor] ?: valor else valor
+                etiquetas[campo]?.let { etiqueta -> etiqueta to mostrable }
             }
         }
         val camposConsumidos = tituloCampos + resumenCampos

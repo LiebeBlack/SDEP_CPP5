@@ -587,6 +587,15 @@ sincronización del escritorio y guarda su propio espejo de datos en el disposit
 - **Mismo contrato que el escritorio.** El teléfono se autentica contra el nodo
   con el mismo usuario y contraseña, y sus operaciones se aplican con el mismo
   aplicador, incluida la deduplicación por clave natural.
+- **Negociación automática.** Antes de emparejar o sincronizar, el teléfono
+  consulta `/api/v1/ping`: el nodo anuncia el rango de versiones del protocolo
+  que acepta y las capacidades (secciones de la API) que ofrece. La app solo se
+  da de alta contra un nodo compatible y muestra únicamente los módulos que el
+  nodo anuncia (`Protocolo.kt` en el móvil, `CAPACIDADES_PROTOCOLO` en el nodo).
+- **Nombres que no se replican.** El docente asignado a un grado viaja como
+  UUID global de su cuenta y su nombre se resuelve contra
+  `/api/v1/consultas/docentes`, con caché en el teléfono. La asignación se lee
+  en listas y fichas pero nunca se edita desde el móvil.
 - **Documentos en el teléfono.** La generación de constancias (incluidas las de
   plantilla `.md`) y las herramientas PDF se ejecutan localmente y el resultado se
   comparte mediante un proveedor de archivos privado, sin exponer rutas.

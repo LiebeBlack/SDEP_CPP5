@@ -101,7 +101,9 @@ class ConectorNodo @Inject constructor(
 
     private fun mensajeSinNodo(): String =
         "No se encontró el sistema de escritorio en esta red. Compruebe que la " +
-            "aplicación de escritorio esté abierta y que el teléfono esté en la misma Wi-Fi."
+            "aplicación de escritorio esté abierta y que el teléfono esté en la misma Wi-Fi. " +
+            "Si el escritorio está abierto y aun así no aparece, el alta automática de " +
+            "teléfonos puede estar desactivada en el nodo central; actívela allí e inténtelo de nuevo."
 
     private companion object {
         const val ESPERA_ENTRE_BUSQUEDAS_MS = 20_000L

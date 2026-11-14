@@ -158,12 +158,17 @@ escritorio y aterrizan en la tabla `registros_moviles`, visible desde la base
 institucional.
 
 - Ingreso con contraseña (PBKDF2) y desbloqueo con huella o rostro.
+- **Conexión sin configurar**: la app descubre el escritorio por difusión UDP, se
+  da de alta sola y negocia automáticamente la versión del protocolo y las
+  funciones disponibles; solo muestra los módulos que el nodo central ofrece.
 - Roles de administrador, editor y consulta.
 - CRUD completo con búsqueda, categorías y valor numérico.
 - **Constancias y herramientas PDF en el teléfono**: ficha, constancia de trabajo o de
   estudios, constancia desde plantilla `.md` y reportes por periodo, con apertura y
   compartición del PDF mediante un proveedor de archivos privado.
 - Cola de salida transaccional, cursor de sincronización y bandeja de conflictos.
+- Los grados muestran el nombre del profesor asignado, resuelto contra el nodo
+  sin replicar cuentas de usuario.
 - Sin dependencia de servicios en la nube: habla solo con el nodo del colegio.
 
 Instrucciones de compilación, emparejamiento y contrato del protocolo en
@@ -208,27 +213,25 @@ con la aplicación, incluso antes de iniciar sesión, y queda visible en el
 está disponible para el teléfono.
 
 La auto-configuración copia al nodo central las cuentas de este equipo que aún
-no existan allí, con su misma contraseña (solo el hash), y crea las cuentas
-iniciales que falten, de modo que el teléfono entra con el mismo usuario y
-contraseña que la computadora. También deja este equipo como puesto cliente del nodo local.
+no existan allí, con su mismo hash. Si se instala una base central vacía, solo
+aprovisiona la cuenta `admin`; no crea cuentas genéricas adicionales. También
+deja este equipo como puesto cliente del nodo local.
 Desde el icono se puede copiar la URL de red para el teléfono, ver los datos
 de conexión, iniciar o detener el servidor y salir. Si el servicio se cayera,
 la aplicación lo vuelve a levantar sola; al salir, se cierra de forma ordenada.
 
-### Usuarios Por Defecto
+### Cuentas iniciales
 
-| Usuario | Contraseña | Rol |
-|---------|------------|-----|
-| admin | Admin1234 | Administrador total |
-| manager | Gestor1234 | Gestor con permisos de edición |
-| user | Usuario1234 | Usuario estándar |
-| viewer | Lector1234 | Solo lectura |
+En una instalación nueva solo se aprovisiona automáticamente la cuenta
+administradora: `admin` / `admin123`. Esa contraseña es temporal y conocida;
+cámbiela por una clave personal antes de trabajar.
+No reutilice la clave inicial en otras instalaciones.
 
-**IMPORTANTE:** Cambie estas contraseñas después del primer inicio.
-
-> En el arranque automático, las cuentas que ya existen en el equipo se copian
-> al nodo central con su contraseña actual; la tabla anterior solo se aplica a
-> las cuentas que falten o al script manual.
+Las cuentas institucionales `manager`, `user` y `viewer` no se crean por
+omisión. Administración puede darlas de alta según la organización; las cuentas
+existentes se conservan y nunca se borran ni se restablecen automáticamente.
+La cuenta `user` representa a un trabajador y requiere una cédula real antes de
+permitir el acceso; no se inventa ni se comparte una identidad.
 
 ### Conectar Clientes al Servidor
 

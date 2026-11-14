@@ -74,6 +74,13 @@ logger = logging.getLogger(__name__)
 
 VERSION_PROTOCOLO = "2"
 
+# Versión más antigua que este nodo todavía acepta. El canal heredado
+# (``aplicar_lote_heredado``) sigue vivo, así que un cliente de protocolo 1
+# puede operar; un cliente más nuevo que ``VERSION_PROTOCOLO`` se acepta solo
+# si declara compatibilidad en su propio rango. Es el lado servidor de la
+# negociación de versión: el teléfono la comprueba antes de emparejar.
+VERSION_PROTOCOLO_MINIMA = "1"
+
 # Secciones de la API que este nodo anuncia en ``ping``. Es el lado servidor
 # de la negociación automática: el teléfono decide qué pantallas ofrecer según
 # esta lista, así que una sección retirada del nodo desaparece del móvil sin
@@ -334,10 +341,13 @@ class NucleoCentral:
     # Operaciones del protocolo
     # ------------------------------------------------------------------
     def ping(self) -> dict:
-        """Estado básico del servicio (incluye la hora para medir desfases)"""
+        """Estado del servicio, la negociación y la hora (para medir desfases)"""
         return {
             "servidor": "nodo-central-sincronizacion",
             "version_protocolo": VERSION_PROTOCOLO,
+            # Negociación de versión: rango [min_version_protocolo,
+            # version_protocolo] que este nodo acepta.
+            "min_version_protocolo": VERSION_PROTOCOLO_MINIMA,
             "hora": ahora_utc().isoformat(),
             "epoch_actual": self._epoch_cache,
             "ciclos": True,
@@ -345,6 +355,11 @@ class NucleoCentral:
             # Capacidades del protocolo 2: el móvil decide qué pantallas
             # ofrecer según lo que el nodo central anuncia.
             "acciones": list(CAPACIDADES_PROTOCOLO),
+            # Estado operativo para el asistente del teléfono: si el alta
+            # automática está cerrada, la app lo dice en claro en vez de
+            # reportarlo como un fallo de red.
+            "emparejamiento_abierto": bool(self.config.emparejamiento_abierto),
+            "nombre": self.config.nombre_equipo or "",
         }
 
     def push(
@@ -2338,6 +2353,10 @@ class ManejadorSync(BaseHTTPRequestHandler):
             self.send_response(codigo)
             self.send_header("Content-Type", tipo)
             self.send_header("Content-Length", str(len(cuerpo)))
+            # Endurecimiento de un API de datos: nada de sniffing de tipos ni
+            # cachés intermedios con nóminas, sesiones o credenciales.
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(cuerpo)
         except (

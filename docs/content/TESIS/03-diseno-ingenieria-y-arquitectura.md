@@ -420,6 +420,10 @@ El nodo central expone cuatro rutas versionadas. Todas exigen el token del dispo
 
 El intercambio de `push` es idempotente. Si el cliente reenvía un lote porque perdió la respuesta, el servidor reconoce las operaciones por su `op_id`, no las aplica de nuevo y devuelve el mismo resultado. El intercambio de `pull` es paginado: el cliente envía su cursor y el servidor devuelve un lote acotado con el cursor siguiente. La paginación evita que un puesto que estuvo desconectado durante semanas reciba un lote de tamaño inmanejable.
 
+El `ping` es, además de diagnóstico, el punto de **negociación automática** del protocolo. El nodo anuncia el rango de versiones que acepta (`version_protocolo` y `min_version_protocolo`), las capacidades o secciones de la API que ofrece y si el alta automática de teléfonos está abierta. Un cliente solo se empareja con un nodo cuyo rango incluya su versión y decide qué funciones ofrecer según las capacidades anunciadas: una sección retirada del nodo desaparece del cliente sin actualizar su software. La decisión se cachea en el terminal para que siga vigente cuando este queda sin red.
+
+El contrato distingue también los datos que no se replican. Las cuentas de usuario no viajan entre equipos, pero los grados referencian a su profesor por el UUID global de la cuenta; el nombre se resuelve contra un catálogo de solo lectura (`/api/v1/consultas/docentes`) que devuelve el par UUID y nombre. De ese modo el teléfono muestra el docente asignado sin replicar cuentas ni credenciales, y la autoridad de asignación permanece en el escritorio.
+
 ```text
   PUESTO A                       NODO CENTRAL                      PUESTO B
   --------                       ------------                      --------

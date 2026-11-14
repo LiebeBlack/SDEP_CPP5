@@ -94,10 +94,13 @@ class ModulosViewModel @Inject constructor(
     private val nombresDocentes = MutableStateFlow<Map<String, String>>(emptyMap())
 
     init {
-        // Mejor esfuerzo: sin red el mapa queda vacío y las fichas muestran
-        // el campo sin resolver; la próxima vez que haya sesión se reintenta.
+        // Carga inicial y recarga al cambiar de sesión (el directorio vive en
+        // el nodo). La caché del repositorio evita consultas repetidas y, sin
+        // red, las fichas conservan lo último resuelto.
         viewModelScope.launch {
-            nombresDocentes.value = docentesRepositorio.directorio()
+            sesionRepositorio.sesion.collect {
+                nombresDocentes.value = docentesRepositorio.directorio()
+            }
         }
     }
 

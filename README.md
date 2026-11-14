@@ -158,12 +158,17 @@ escritorio y aterrizan en la tabla `registros_moviles`, visible desde la base
 institucional.
 
 - Ingreso con contraseña (PBKDF2) y desbloqueo con huella o rostro.
+- **Conexión sin configurar**: la app descubre el escritorio por difusión UDP, se
+  da de alta sola y negocia automáticamente la versión del protocolo y las
+  funciones disponibles; solo muestra los módulos que el nodo central ofrece.
 - Roles de administrador, editor y consulta.
 - CRUD completo con búsqueda, categorías y valor numérico.
 - **Constancias y herramientas PDF en el teléfono**: ficha, constancia de trabajo o de
   estudios, constancia desde plantilla `.md` y reportes por periodo, con apertura y
   compartición del PDF mediante un proveedor de archivos privado.
 - Cola de salida transaccional, cursor de sincronización y bandeja de conflictos.
+- Los grados muestran el nombre del profesor asignado, resuelto contra el nodo
+  sin replicar cuentas de usuario.
 - Sin dependencia de servicios en la nube: habla solo con el nodo del colegio.
 
 Instrucciones de compilación, emparejamiento y contrato del protocolo en

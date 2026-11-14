@@ -375,7 +375,7 @@ Defina las políticas de personal:
 ### Cambiar Contraseña
 
 1. Haga clic en **Cambiar Contraseña** (abajo en Configuración)
-2. Ingrese la contraseña actual y la nueva (mínimo 6 caracteres)
+2. Ingrese la contraseña actual y una nueva de al menos 8 caracteres (mínimo configurable por la institución).
 3. Confirme la nueva contraseña y guarde
 
 Política de credenciales del sistema:
@@ -606,6 +606,11 @@ para seguir operando sin red.
 3. Ingrese con el mismo usuario y contraseña que usa en la computadora
 4. Autorice la huella o el rostro si desea entrar sin escribir la contraseña cada vez
 
+> El alta del teléfono es automática: no hay que escribir tokens ni configurar
+> nada a mano. Si el escritorio está abierto pero el teléfono no lo encuentra,
+> puede que el alta automática esté desactivada en el nodo central; se activa
+> desde el escritorio y la búsqueda vuelve a funcionar.
+
 ### Qué se puede hacer desde el teléfono
 
 - **Ficha del empleado**: consultar datos personales, laborales y de contacto
@@ -614,6 +619,11 @@ para seguir operando sin red.
 - **Herramientas PDF**: cargar un PDF al expediente y emitir reportes de empleados,
   nómina o incidencias por periodo
 - **Registros de campo**: altas y ediciones con búsqueda, categorías y valor numérico
+- **Módulos institucionales**: el teléfono ofrece los módulos que el nodo central
+  anuncia (personal, académico, nómina, contratos…). Si una función no está
+  disponible en el escritorio, tampoco aparece en el teléfono
+- **Grados y calificaciones**: cada grupo muestra el profesor asignado, con el
+  mismo nombre que ve en la computadora
 - **Conflictos**: revisar las operaciones que el nodo rechazó por edición simultánea
 - **Ajustes y perfil**: servidor, sesión y sincronización manual
 

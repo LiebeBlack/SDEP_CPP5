@@ -114,6 +114,8 @@ La secuencia no fue casual. Los módulos de personal se construyeron antes que l
 
 **Errores del dominio con nombre propio.** Las reglas de negocio lanzan excepciones específicas, no excepciones genéricas. La interfaz las traduce a mensajes comprensibles y la auditoría registra el código. Esa práctica permitió distinguir en los registros entre un error del usuario y un defecto del sistema.
 
+**Negociación declarada en el protocolo.** El `ping` del nodo central anuncia el rango de versiones que acepta y las capacidades que ofrece, y el cliente decide en consecuencia: no se empareja con nodos incompatibles y solo muestra las funciones que el nodo anuncia. La lista se cachea localmente y solo se acepta dentro del rango de versiones, de modo que un nodo y un cliente de versiones distintas fallan con un mensaje claro en vez de comportarse de forma imprevisible. Los nombres que no se replican —el docente asignado a cada grado— se resuelven con un catálogo de solo lectura, en lugar de duplicar las cuentas de usuario entre equipos.
+
 ### 4.3.3 Fragmentos representativos
 
 El enganche de captura se registra una sola vez y cubre todas las sesiones:

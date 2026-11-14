@@ -20,6 +20,7 @@ import ve.edu.sdep.movil.datos.local.dao.OperacionDao
 import ve.edu.sdep.movil.datos.local.entidad.IdentidadEntity
 import ve.edu.sdep.movil.datos.local.entidad.OperacionPendienteEntity
 import ve.edu.sdep.movil.dominio.modelo.Permiso
+import ve.edu.sdep.movil.dominio.modelo.PoliticaEdicion
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import ve.edu.sdep.movil.dominio.modelo.normalizarCedula
 import java.util.UUID
@@ -162,7 +163,15 @@ class TablaRepositorio @Inject constructor(
             if (problema != null) return Resultado.Fallo(problema)
         }
         val datos = datosBase.filterKeys { clave -> esquema.any { it.nombre == clave } }
-        val problema = withContext(Dispatchers.IO) { validar(esquema, datos) }
+        // Ámbito de escritura del rol: lo que su perfil edita, más lo que esta
+        // escritura ya traía (los campos de propiedad que se fuerzan más
+        // arriba). Fuera de ese ámbito no se valida ni se envía nada: una
+        // columna de gestión que el formulario no muestra no puede bloquear el
+        // guardado, y al no viajar la regla de presencia la conserva tal cual.
+        val ambito = esquema.filter {
+            PoliticaEdicion.editable(it.nombre, sesion.rol) || it.nombre in datos
+        }
+        val problema = withContext(Dispatchers.IO) { validar(ambito, datos) }
         if (problema != null) return Resultado.Fallo(problema)
 
         val equipo = configuracionRepositorio.cargar().equipo.ifBlank { "movil" }
@@ -182,7 +191,7 @@ class TablaRepositorio @Inject constructor(
                 )
                 val iso = Fechas.isoDesde(ahora)
 
-                val campos = camposDe(esquema, datos).toMutableMap()
+                val campos = camposDe(ambito, datos).toMutableMap()
                 campos["updated_at"] = JsonPrimitive(iso)
                 if (base == null) campos["created_at"] = JsonPrimitive(iso)
 
@@ -459,6 +468,9 @@ class TablaRepositorio @Inject constructor(
     ): Map<String, JsonElement> {
         val campos = mutableMapOf<String, JsonElement>()
         for (columna in columnas) {
+            // Regla de presencia: una columna que el formulario no envió no se
+            // toca. Solo viajan las que el rol editó, aunque vengan vacías.
+            if (columna.nombre !in datos) continue
             val texto = datos[columna.nombre]?.trim().orEmpty()
             campos[columna.nombre] = when {
                 texto.isEmpty() -> JsonNull

@@ -15,6 +15,7 @@ import ve.edu.sdep.movil.datos.local.TipoCampo
 import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.TablaRepositorio
 import ve.edu.sdep.movil.dominio.modelo.Permiso
+import ve.edu.sdep.movil.dominio.modelo.PoliticaEdicion
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import ve.edu.sdep.movil.sincronizacion.ProgramadorSync
 import java.time.LocalDate
@@ -84,7 +85,14 @@ class FormularioViewModel @Inject constructor(
                 }
                 return@launch
             }
+            // Cada rol edita solo sus columnas: las de solo lectura las filtra
+            // EsquemaTabla y las de gestión de personal, PoliticaEdicion. Lo
+            // que el formulario no muestra, la escritura lo conserva tal cual.
             val campos = repositorio.columnas(tabla)
+                .filter {
+                    EsquemaTabla.esEditable(it.nombre) &&
+                        PoliticaEdicion.editable(it.nombre, sesion.rol)
+                }
             if (campos.isEmpty()) {
                 _estado.update {
                     it.copy(cargando = false, noDisponible = "La tabla no admite edición.")

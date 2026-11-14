@@ -323,6 +323,26 @@ completa, así que el resultado es el mismo que si hubiera estado en línea.
 | `GET` | `/api/v1/epochs?desde=&limite=` | Ciclos publicados con manifiesto y filas consolidadas |
 | `POST` | `/api/v1/ack` | Confirma el ciclo aplicado por el puesto |
 
+### Negociación automática
+
+`GET /api/v1/ping` es el punto de negociación entre el nodo y sus clientes:
+
+| Campo | Significado |
+|---|---|
+| `version_protocolo` / `min_version_protocolo` | Rango de versiones del protocolo que el nodo acepta |
+| `acciones` | Secciones de la API que ofrece; el cliente decide qué funciones mostrar |
+| `emparejamiento_abierto` | Si el alta automática de teléfonos está activa |
+| `hora` | Hora del nodo, para medir desfases de reloj |
+
+Las respuestas del API llevan `Cache-Control: no-store` y
+`X-Content-Type-Options: nosniff`: son datos de personal y nómina y no deben
+quedar en cachés intermedias.
+
+Los usuarios no se replican entre equipos. El profesor asignado a un grado viaja
+como UUID global de su cuenta y el nombre se resuelve con
+`GET /api/v1/consultas/docentes`, que devuelve el par UUID → nombre de las
+cuentas activas.
+
 ### Límites conocidos
 
 * El log crece sin límite: la compactación por snapshots todavía no está

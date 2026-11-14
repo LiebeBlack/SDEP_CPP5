@@ -21,6 +21,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import ve.edu.sdep.movil.dominio.modelo.Protocolo
 
 /**
  * Encuentra solo el nodo central de escritorio en la red local y se da de alta
@@ -39,6 +40,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
  *
  * Antes de emparejarse, la respuesta se confirma con `GET /api/v1/ping`: un
  * servicio cualquiera que ocupe el puerto no puede hacerse pasar por el nodo.
+ * Esa misma llamada es la negociación automática: el nodo anuncia el rango de
+ * versiones de protocolo que acepta y solo se da de alta contra uno con el que
+ * esta aplicación pueda hablar.
  */
 @Singleton
 class Descubrimiento @Inject constructor(
@@ -157,8 +161,10 @@ class Descubrimiento @Inject constructor(
             }
 
             val limite = System.currentTimeMillis() + ESPERA_DIFUSION_MS
+            // Un solo buffer por búsqueda: el bucle recibe cientos de datagramas
+            // y reasignarlo en cada vuelta solo daba trabajo al recolector.
+            val buffer = ByteArray(2048)
             while (System.currentTimeMillis() < limite) {
-                val buffer = ByteArray(2048)
                 val paquete = DatagramPacket(buffer, buffer.size)
                 try {
                     socket.receive(paquete)
@@ -284,7 +290,12 @@ class Descubrimiento @Inject constructor(
                 if (!respuesta.isSuccessful) return false
                 val cuerpo = respuesta.body?.string() ?: return false
                 val ping = json.decodeFromString(PingDto.serializer(), cuerpo)
-                ping.servidor == IDENTIDAD_NODO
+                // Negociación automática: además de la identidad, el rango de
+                // protocolo que el nodo anuncia debe admitir a esta versión de
+                // la aplicación. Un servicio con el que no se pueda hablar no
+                // cuenta como nodo para este teléfono.
+                ping.servidor == IDENTIDAD_NODO &&
+                    Protocolo.compatible(ping.versionProtocolo, ping.minVersionProtocolo)
             }
         } catch (_: Throwable) {
             false

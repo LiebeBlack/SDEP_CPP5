@@ -10,7 +10,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import retrofit2.http.QueryMap
 
 /**
  * Cliente del protocolo 2 del nodo central: autenticación de usuario,
@@ -177,9 +176,4 @@ interface ApiAcciones {
         @Path("hash") hash: String,
         @Body cuerpo: ByteArray,
     ): Response<Unit>
-
-
-    /** Compatibilidad con lecturas que llegan como pares clave-valor */
-    @GET("api/v1/ping")
-    suspend fun ping(@QueryMap parametros: Map<String, String> = emptyMap()): PingDto
 }

@@ -31,6 +31,7 @@ import ve.edu.sdep.movil.datos.remoto.PushDto
 import ve.edu.sdep.movil.datos.seguridad.Boveda
 import ve.edu.sdep.movil.dominio.modelo.ConfiguracionSync
 import ve.edu.sdep.movil.dominio.modelo.EstadoSincronizacion
+import ve.edu.sdep.movil.dominio.modelo.Protocolo
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import java.io.IOException
 import javax.inject.Inject
@@ -209,7 +210,13 @@ class SincronizacionRepositorio @Inject constructor(
             // Negociación automática: antes de intercambiar datos, el nodo
             // anuncia su versión y sus capacidades y el teléfono decide qué
             // módulos ofrecer. Es mejor esfuerzo: si falla, el ciclo sigue.
-            negociarCapacidades(api)
+            try {
+                negociar(api)
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Mejor esfuerzo: la sincronización no depende de este paso.
+            }
             // Las diferidas de otros ciclos pueden resolverse ahora que quizá
             // haya llegado su registro padre por otra vía.
             aplicador.reintentarDiferidas()
@@ -272,28 +279,41 @@ class SincronizacionRepositorio @Inject constructor(
      * en su estado y con ella decide qué módulos mostrar; al quedar cacheada,
      * la decisión sigue vigente cuando el teléfono se queda sin red.
      *
-     * Es un paso silencioso y de mejor esfuerzo: si el nodo no responde, el
-     * ciclo sigue y cualquier problema real se reporta en su primer envío.
+     * Es la única implementación de la negociación: la usa el ciclo de
+     * sincronización como paso silencioso y de mejor esfuerzo, y la prueba de
+     * conexión de Ajustes, donde cualquier fallo se reporta al usuario.
      */
-    private suspend fun negociarCapacidades(api: ProtocoloApi) {
-        try {
-            val ping = api.ping()
-            val horaServidor = Fechas.desdeIso(ping.hora)
-            val desfase = horaServidor?.let { (System.currentTimeMillis() - it) / 1000 }
-            val previo = estadoDao.obtener() ?: EstadoSyncEntity()
-            estadoDao.guardar(
-                previo.copy(
-                    servidor = ping.servidor,
-                    versionProtocolo = ping.versionProtocolo,
-                    desfaseSegundos = desfase ?: previo.desfaseSegundos,
-                    capacidades = ping.acciones.joinToString(","),
-                ),
-            )
-        } catch (error: kotlinx.coroutines.CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            // Mejor esfuerzo: la sincronización no depende de este paso.
-        }
+    private suspend fun negociar(api: ProtocoloApi): DetalleConexion {
+        val ping = api.ping()
+        val horaServidor = Fechas.desdeIso(ping.hora)
+        val desfase = horaServidor?.let { (System.currentTimeMillis() - it) / 1000 }
+        // Solo se negocian capacidades dentro del rango de versiones del nodo:
+        // fuera de él su lista no significa lo mismo y ocultar módulos por ella
+        // sería una suposición.
+        val compatible =
+            Protocolo.compatible(ping.versionProtocolo, ping.minVersionProtocolo)
+        val previo = estadoDao.obtener() ?: EstadoSyncEntity()
+        estadoDao.guardar(
+            previo.copy(
+                servidor = ping.servidor,
+                versionProtocolo = ping.versionProtocolo,
+                desfaseSegundos = desfase ?: previo.desfaseSegundos,
+                capacidades = if (compatible) {
+                    ping.acciones.joinToString(",")
+                } else {
+                    previo.capacidades
+                },
+                ultimoError = null,
+            ),
+        )
+        return DetalleConexion(
+            servidor = ping.servidor,
+            versionProtocolo = ping.versionProtocolo,
+            desfaseSegundos = desfase,
+            tablas = ping.tablas,
+            capacidades = ping.acciones,
+            compatible = compatible,
+        )
     }
 
     /**
@@ -313,28 +333,7 @@ class SincronizacionRepositorio @Inject constructor(
         }
         return try {
             val api = apiFactory.protocolo(configuracion, sesion = null)
-            val ping = api.ping()
-            val horaServidor = Fechas.desdeIso(ping.hora)
-            val desfase = horaServidor?.let { (System.currentTimeMillis() - it) / 1000 }
-            val previo = estadoDao.obtener() ?: EstadoSyncEntity()
-            estadoDao.guardar(
-                previo.copy(
-                    servidor = ping.servidor,
-                    versionProtocolo = ping.versionProtocolo,
-                    desfaseSegundos = desfase,
-                    capacidades = ping.acciones.joinToString(","),
-                    ultimoError = null,
-                ),
-            )
-            Resultado.Exito(
-                DetalleConexion(
-                    servidor = ping.servidor,
-                    versionProtocolo = ping.versionProtocolo,
-                    desfaseSegundos = desfase,
-                    tablas = ping.tablas,
-                    capacidades = ping.acciones,
-                ),
-            )
+            Resultado.Exito(negociar(api))
         } catch (error: retrofit2.HttpException) {
             Resultado.Fallo(mensajeDeHttp(error), error)
         } catch (error: IOException) {
@@ -653,6 +652,8 @@ class SincronizacionRepositorio @Inject constructor(
         val tablas: List<String>,
         /** Capacidades que el nodo anunció en la negociación automática */
         val capacidades: List<String> = emptyList(),
+        /** false si el rango de versiones del nodo no admite a esta aplicación */
+        val compatible: Boolean = true,
     )
 
     private fun OperacionPendienteEntity.aDto(): OperacionDto = OperacionDto(

@@ -151,6 +151,21 @@ object EsquemaTabla {
         "documento_soporte_nombre",
     )
 
+    /**
+     * Columnas visibles pero que el teléfono nunca edita.
+     *
+     * ``profesor_uuid`` es la asignación del docente: la decide el escritorio
+     * y este equipo solo la lee y resuelve su nombre. Aparece en las listas y
+     * las fichas, pero no en el formulario, y jamás viaja en un payload de
+     * salida (``Espejo.payload`` no lo emite).
+     */
+    private val SOLO_LECTURA = setOf(
+        "profesor_uuid",
+    )
+
+    /** Indica si una columna se puede escribir desde el formulario del teléfono */
+    fun esEditable(nombre: String): Boolean = nombre !in SOLO_LECTURA
+
     /** Enteros que en realidad son sí/no */
     private val BOOLEANOS = setOf(
         "activo",
@@ -299,6 +314,7 @@ object EsquemaTabla {
         "nombre" to "Nombre",
         "seccion" to "Sección",
         "nivel" to "Nivel",
+        "profesor_uuid" to "Profesor",
         "materia" to "Materia",
         "calificacion" to "Calificación",
         "fecha_matricula" to "Fecha de matrícula",

@@ -19,6 +19,7 @@ import ve.edu.sdep.movil.datos.repositorio.ConectorNodo
 import ve.edu.sdep.movil.datos.repositorio.ConfiguracionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SesionRepositorio
 import ve.edu.sdep.movil.datos.repositorio.SincronizacionRepositorio
+import ve.edu.sdep.movil.dominio.modelo.Protocolo
 import ve.edu.sdep.movil.dominio.modelo.Resultado
 import ve.edu.sdep.movil.sincronizacion.ProgramadorSync
 import javax.inject.Inject
@@ -284,13 +285,22 @@ class AjustesViewModel @Inject constructor(
                             "El reloj del teléfono difiere ${kotlin.math.abs(segundos)} s del servidor."
                         }
                     } ?: "El servidor no informó su hora."
+                    // Negociación de versión: si el rango del nodo no admite a
+                    // esta aplicación, se dice en claro y se marca como error
+                    // para que no se confunda con una conexión sana.
+                    val aviso = if (detalle.compatible) {
+                        ""
+                    } else {
+                        " ATENCIÓN: el nodo habla el protocolo ${detalle.versionProtocolo} y " +
+                            "esta aplicación el ${Protocolo.VERSION}; actualice una de las dos."
+                    }
                     _estado.update {
                         it.copy(
                             probando = false,
                             conectado = true,
                             mensaje = "Conexión correcta con ${detalle.servidor.ifBlank { "el nodo central" }} " +
-                                "(protocolo ${detalle.versionProtocolo}). $desfase",
-                            esError = false,
+                                "(protocolo ${detalle.versionProtocolo}). $desfase$aviso",
+                            esError = !detalle.compatible,
                         )
                     }
                 }

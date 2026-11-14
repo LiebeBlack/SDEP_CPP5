@@ -269,6 +269,8 @@ cx_Freeze, Nuitka, Briefcase, GitLab CI, CircleCI, conda, poetry y pipenv.
 🔁 Nodo central con ThreadingHTTPServer (biblioteca estándar, sin dependencias)
 🔁 SQLite central en WAL con seq global autoritativo (único escritor)
 🔁 Token de puesto hasheado (PBKDF2) + límite de peticiones + TLS opcional
+🔁 Negociación automática: el nodo anuncia versión y capacidades y el cliente decide qué ofrece
+🔁 Catálogo de solo lectura para resolver nombres que no se replican (docentes de cada grado)
 🔁 Binarios por hash (deduplicados), con límite de tamaño configurable
 🔁 Hilo de fondo con espera interrumpible y reintentos 30→300 s con jitter
 ```

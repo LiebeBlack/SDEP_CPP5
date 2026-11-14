@@ -515,7 +515,8 @@ class ApiAcciones:
         en los grados del escritorio.
         """
         from src.models import Usuario
-        from sync_agent import identidad
+        from sync_agent.comun import nuevo_uuid
+        from sync_agent.esquema import SyncId
 
         db = self._sesion()
         try:
@@ -525,11 +526,22 @@ class ApiAcciones:
                 .order_by(Usuario.nombre_completo, Usuario.username)
                 .all()
             )
+            # Identidad global resuelta en una sola consulta por directorio, no
+            # una por cuenta: la variante N+1 costaba un SELECT por usuario en
+            # una lista que el teléfono pide en cada ventana de caché.
+            identidades = {
+                id_local: uuid
+                for id_local, uuid in db.query(SyncId.id_local, SyncId.uuid)
+                .filter(SyncId.tabla == "usuarios")
+                .all()
+            }
             docentes = []
             for usuario in usuarios:
-                uuid = identidad.asegurar_uuid(db, "usuarios", usuario.id)
-                if not uuid:
-                    continue
+                uuid = identidades.get(usuario.id)
+                if uuid is None:
+                    uuid = nuevo_uuid()
+                    db.add(SyncId(tabla="usuarios", uuid=uuid, id_local=usuario.id))
+                    identidades[usuario.id] = uuid
                 docentes.append(
                     {
                         "uuid": uuid,

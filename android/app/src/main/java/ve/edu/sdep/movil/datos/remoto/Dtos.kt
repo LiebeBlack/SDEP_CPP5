@@ -69,9 +69,15 @@ data class PullRespuestaDto(
 data class PingDto(
     val servidor: String = "",
     @SerialName("version_protocolo") val versionProtocolo: String = "",
+    /** Versión más antigua que el nodo todavía acepta (negociación) */
+    @SerialName("min_version_protocolo") val minVersionProtocolo: String = "",
     val hora: String = "",
     val tablas: List<String> = emptyList(),
     @SerialName("acciones") val acciones: List<String> = emptyList(),
+    /** false si el nodo cerró el alta automática de teléfonos */
+    @SerialName("emparejamiento_abierto") val emparejamientoAbierto: Boolean = true,
+    /** Nombre visible del equipo servidor, para etiquetar la vinculación */
+    val nombre: String = "",
 )
 
 // ----------------------------------------------------------------------

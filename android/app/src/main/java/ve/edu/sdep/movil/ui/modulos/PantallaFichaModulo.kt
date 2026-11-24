@@ -56,16 +56,27 @@ fun PantallaFichaModulo(
     alEditar: (() -> Unit)? = null,
     vistaModelo: ModulosViewModel = hiltViewModel(),
     accionesViewModel: AccionesLaboralesViewModel = hiltViewModel(),
+    adjuntosViewModel: AdjuntosViewModel = hiltViewModel(),
 ) {
     val modulo = Modulo.desde(rutaModulo)
     val catalogo by vistaModelo.catalogo.collectAsStateWithLifecycle()
     val ficha = remember(catalogo, modulo, id) { modulo?.let { catalogo.ficha(it, id) } }
     val permitido = modulo != null && sesion.puedeAbrir(modulo)
     val acciones by accionesViewModel.estado.collectAsStateWithLifecycle()
+    val adjuntos by adjuntosViewModel.estado.collectAsStateWithLifecycle()
     val barra = remember { SnackbarHostState() }
     val puedeGestionar = sesion.puede(Permiso.EDITAR) && !sesion.esTrabajador
+    // Tablas que admiten adjunto binario; el resto de fichas no muestra la tarjeta.
+    val tablaAdjunto = when (modulo) {
+        Modulo.DOCUMENTOS -> "documentos"
+        Modulo.INCIDENCIAS -> "incidencias"
+        else -> null
+    }
 
     LaunchedEffect(modulo, id) { accionesViewModel.cargar(modulo, id) }
+    LaunchedEffect(tablaAdjunto, id) {
+        if (tablaAdjunto != null && permitido) adjuntosViewModel.cargar(tablaAdjunto, id)
+    }
     LaunchedEffect(acciones.mensaje) {
         val texto = acciones.mensaje ?: return@LaunchedEffect
         barra.showSnackbar(texto)
@@ -75,6 +86,16 @@ fun PantallaFichaModulo(
         val texto = acciones.error ?: return@LaunchedEffect
         barra.showSnackbar(texto)
         accionesViewModel.limpiarMensaje()
+    }
+    LaunchedEffect(adjuntos.mensaje) {
+        val texto = adjuntos.mensaje ?: return@LaunchedEffect
+        barra.showSnackbar(texto)
+        adjuntosViewModel.limpiarMensaje()
+    }
+    LaunchedEffect(adjuntos.error) {
+        val texto = adjuntos.error ?: return@LaunchedEffect
+        barra.showSnackbar(texto)
+        adjuntosViewModel.limpiarError()
     }
 
     Scaffold(
@@ -119,6 +140,22 @@ fun PantallaFichaModulo(
             ) {
                 item(key = "encabezado", contentType = "encabezado") {
                     EncabezadoFicha(actual, sesion.puede(Permiso.EDITAR))
+                }
+                if (tablaAdjunto != null) {
+                    item(key = "adjunto", contentType = "adjunto") {
+                        TarjetaAdjunto(
+                            estado = adjuntos,
+                            puedeAdjuntar = sesion.puede(Permiso.EDITAR) ||
+                                (sesion.esTrabajador && sesion.puede(Permiso.CREAR)),
+                            alAdjuntar = { nombre, mime, bytes ->
+                                adjuntosViewModel.adjuntar(nombre, mime, bytes)
+                            },
+                            alPedirContenido = { compartir ->
+                                adjuntosViewModel.pedirContenido(compartir)
+                            },
+                            alConsumirContenido = { adjuntosViewModel.consumirContenido() },
+                        )
+                    }
                 }
                 val hayAccion = modoDeAccion(modulo, acciones.incidencia, acciones.contrato)
                 if (hayAccion && puedeGestionar) {

@@ -159,6 +159,22 @@ interface DocumentoDao {
     @Query("SELECT * FROM documentos WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): DocumentoEntity?
 
+    /** Metadatos del adjunto sin materializar el BLOB durante la lectura de ficha. */
+    @Query(
+        "SELECT nombre_archivo AS nombre, contenido_hash AS hash, tipo_mime AS mime, " +
+            "COALESCE(tamano_bytes, 0) AS tamano, " +
+            "(contenido_binario IS NOT NULL) AS disponible " +
+            "FROM documentos WHERE id = :id LIMIT 1",
+    )
+    suspend fun metadatosAdjunto(id: Long): MetadatosAdjunto?
+
+    /** Copia solo el binario al pulsar Abrir/Compartir. */
+    @Query("SELECT contenido_binario FROM documentos WHERE id = :id LIMIT 1")
+    suspend fun contenidoAdjunto(id: Long): ByteArray?
+
+    @Query("SELECT empleado_id FROM documentos WHERE id = :id LIMIT 1")
+    suspend fun empleadoIdDe(id: Long): Long?
+
     @Query("SELECT * FROM documentos WHERE id = :id LIMIT 1")
     fun observarPorId(id: Long): Flow<DocumentoEntity?>
 
@@ -214,6 +230,22 @@ interface IncidenciaDao {
 
     @Query("SELECT * FROM incidencias WHERE id = :id LIMIT 1")
     suspend fun buscarPorId(id: Long): IncidenciaEntity?
+
+    /** Metadatos del soporte sin materializar el BLOB durante la lectura de ficha. */
+    @Query(
+        "SELECT documento_soporte_nombre AS nombre, documento_soporte_hash AS hash, " +
+            "NULL AS mime, COALESCE(length(documento_soporte_binario), 0) AS tamano, " +
+            "(documento_soporte_binario IS NOT NULL) AS disponible " +
+            "FROM incidencias WHERE id = :id LIMIT 1",
+    )
+    suspend fun metadatosSoporte(id: Long): MetadatosAdjunto?
+
+    /** Copia solo el binario al pulsar Abrir/Compartir. */
+    @Query("SELECT documento_soporte_binario FROM incidencias WHERE id = :id LIMIT 1")
+    suspend fun contenidoSoporte(id: Long): ByteArray?
+
+    @Query("SELECT empleado_id FROM incidencias WHERE id = :id LIMIT 1")
+    suspend fun empleadoIdDe(id: Long): Long?
 
     @Query("SELECT * FROM incidencias WHERE id = :id LIMIT 1")
     fun observarPorId(id: Long): Flow<IncidenciaEntity?>

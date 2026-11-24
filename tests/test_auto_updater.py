@@ -21,17 +21,17 @@ FIXTURE_RELEASE = {
     "assets": [
         {
             "name": "SistemaGestionPersonal-Linux-2.79.tar.gz",
-            "browser_download_url": "https://example.invalid/linux.tar.gz",
+            "browser_download_url": "https://github.com/LiebeBlack/SDEP_CPP5/releases/download/v2.79/Linux.tar.gz",
             "size": 100,
         },
         {
             "name": "SistemaGestionPersonal-Setup-2.79.exe",
-            "browser_download_url": "https://example.invalid/Setup.exe",
+            "browser_download_url": "https://github.com/LiebeBlack/SDEP_CPP5/releases/download/v2.79/Setup.exe",
             "size": 200,
         },
         {
             "name": "SistemaGestionPersonal-Windows-2.79.zip",
-            "browser_download_url": "https://example.invalid/windows.zip",
+            "browser_download_url": "https://github.com/LiebeBlack/SDEP_CPP5/releases/download/v2.79/Windows.zip",
             "size": 300,
         },
     ],
@@ -41,7 +41,8 @@ FIXTURE_RELEASE = {
 @pytest.fixture()
 def release_file(tmp_path):
     """Crea una Release JSON local y la usa como API 'latest'."""
-    ruta = tmp_path / "release.json"
+    ruta = tmp_path / "pytest" / "release.json"
+    ruta.parent.mkdir(parents=True, exist_ok=True)
     ruta.write_text(json.dumps(FIXTURE_RELEASE), encoding="utf-8")
     updater.API_LATEST_URL = ruta.as_uri()
     updater.INSTALL_IF_MISSING = True
@@ -124,6 +125,86 @@ def test_fetch_latest(release_file):
     assert release["tag"] == "continuous-v2.79.55"
     assert len(release["assets"]) == 3
     assert release["assets"][1]["url"].endswith("Setup.exe")
+
+
+def test_fetch_latest_rechaza_url_remota_no_oficial(monkeypatch):
+    monkeypatch.setattr(updater, "API_LATEST_URL", "https://attacker.example/releases.json")
+    with pytest.raises(RuntimeError, match="no está permitida"):
+        updater.fetch_latest()
+
+
+def test_api_url_valida_especificamente_repo_ruta_puerto_y_credenciales():
+    valida = updater._url_api_actualizaciones_valida
+    assert valida("https://api.github.com/repos/LiebeBlack/SDEP_CPP5/releases/latest")
+    for url in (
+        "http://api.github.com/repos/LiebeBlack/SDEP_CPP5/releases/latest",
+        "https://usuario:token@api.github.com/repos/LiebeBlack/SDEP_CPP5/releases/latest",
+        "https://api.github.com:444/repos/LiebeBlack/SDEP_CPP5/releases/latest",
+        "https://api.github.com/repos/otro/repo/releases/latest",
+        "https://api.github.com/repos/LiebeBlack/SDEP_CPP5/releases/latest?token=x",
+    ):
+        assert not valida(url)
+
+
+def test_fetch_latest_rechaza_file_fuera_de_pytest(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        updater, "API_LATEST_URL", (tmp_path / "pytest" / "release.json").as_uri()
+    )
+    with pytest.raises(RuntimeError, match="no está permitida"):
+        updater.fetch_latest()
+
+
+def test_fetch_latest_rechaza_json_no_objeto(release_file):
+    release_file.write_text('["formato inesperado"]', encoding="utf-8")
+    with pytest.raises(RuntimeError, match="API oficial") as error:
+        updater.fetch_latest()
+    assert "formato inesperado" not in str(error.value)
+
+
+def test_descarga_rechaza_redireccion_fuera_del_cdn():
+    from urllib.request import Request
+
+    handler = updater._RedireccionActivosGithub()
+    respuesta = handler.redirect_request(
+        Request("https://github.com/LiebeBlack/SDEP_CPP5/releases/download/v3/Setup.exe"),
+        None,
+        302,
+        "Found",
+        {},
+        "https://attacker.example/Setup.exe",
+    )
+    assert respuesta is None
+
+
+def test_descarga_permite_redireccion_a_cdn_de_github():
+    from urllib.request import Request
+
+    handler = updater._RedireccionActivosGithub()
+    respuesta = handler.redirect_request(
+        Request("https://github.com/LiebeBlack/SDEP_CPP5/releases/download/v3/Setup.exe"),
+        None,
+        302,
+        "Found",
+        {},
+        "https://release-assets.githubusercontent.com/github-production-release-asset/file?sig=abc",
+    )
+    assert respuesta is not None
+    assert respuesta.full_url.startswith("https://release-assets.githubusercontent.com/")
+
+
+def test_download_rechaza_origen_y_tamano_no_confiables(tmp_path):
+    destino = tmp_path / "Setup.exe"
+    with pytest.raises(RuntimeError, match="origen.*no está permitido"):
+        updater.download("http://github.com/LiebeBlack/SDEP_CPP5/releases/Setup.exe", destino)
+    with pytest.raises(RuntimeError, match="origen.*no está permitido"):
+        updater.download("https://attacker.example/Setup.exe", destino)
+    with pytest.raises(RuntimeError, match="tamaño.*máximo"):
+        updater.download(
+            "https://github.com/LiebeBlack/SDEP_CPP5/releases/download/v3/Setup.exe",
+            destino,
+            expected_size=updater.MAX_RELEASE_ASSET_BYTES + 1,
+        )
+    assert not destino.exists()
 
 
 def test_fetch_latest_error(tmp_path, monkeypatch):

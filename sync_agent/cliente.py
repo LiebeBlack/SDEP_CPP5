@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from sync_agent.comun import dumps, hash_bytes
+from sync_agent.config import url_servidor_valida
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,13 @@ RUTA_ACK = "/api/v1/ack"
 RUTA_BLOB = "/api/v1/blob"
 
 USER_AGENT = "SDEP-SyncAgent/1.0"
+
+
+class _SinRedireccion(urllib.request.HTTPRedirectHandler):
+    """No reenvía cabeceras con credenciales a otro destino por un 3xx."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
 class ErrorSincronizacion(Exception):
@@ -86,8 +94,14 @@ class ClienteSync:
             verificar_ssl: Validar el certificado del servidor (no desactivar
                 salvo en una intranet con certificado propio)
         """
-        self.base = url_servidor.rstrip("/")
-        self.token = token
+        if not url_servidor_valida(url_servidor):
+            raise ValueError("La URL del servidor debe ser HTTP(S), absoluta y sin credenciales")
+        if not token or not token.strip():
+            raise ValueError("Falta el token del equipo")
+        if not dispositivo or not dispositivo.strip():
+            raise ValueError("Falta el identificador del equipo")
+        self.base = url_servidor.strip().rstrip("/")
+        self.token = token.strip()
         self.dispositivo = dispositivo
         self.timeout = timeout
         if verificar_ssl:
@@ -95,6 +109,17 @@ class ClienteSync:
         else:
             logger.warning("Verificación TLS desactivada: solo para pruebas de intranet")
             self.contexto = ssl._create_unverified_context()
+        self._opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=self.contexto), _SinRedireccion()
+        )
+        # build_opener conserva su handler HTTPRedirectHandler por defecto si
+        # recibe una subclase; retirarlo evita que esa instancia siga 302.
+        self._opener.handlers = [
+            handler
+            for handler in self._opener.handlers
+            if not isinstance(handler, urllib.request.HTTPRedirectHandler)
+            or isinstance(handler, _SinRedireccion)
+        ]
 
     # ------------------------------------------------------------------
     # Operaciones del protocolo
@@ -210,37 +235,40 @@ class ClienteSync:
 
         peticion = urllib.request.Request(url, data=datos, headers=cabeceras, method=metodo)
         try:
-            with urllib.request.urlopen(
-                peticion, timeout=self.timeout, context=self.contexto
-            ) as resp:
+            with self._opener.open(peticion, timeout=self.timeout) as resp:
                 crudo = resp.read()
         except urllib.error.HTTPError as error:
             raise self._clasificar(error) from error
         except (urllib.error.URLError, TimeoutError, OSError) as error:
-            raise ErrorRed(f"Sin conexión con {self.base}: {error}") from error
+            raise ErrorRed("Sin conexión con el servidor central") from error
 
         if binario:
             return Respuesta({"binario": crudo})
         if not crudo:
             return Respuesta({})
         try:
-            return Respuesta(json.loads(crudo.decode("utf-8")))
+            datos = json.loads(crudo.decode("utf-8"))
         except (UnicodeDecodeError, ValueError) as error:
-            raise ErrorProtocolo(f"Respuesta ilegible del servidor: {error}") from error
+            raise ErrorProtocolo(
+                "Respuesta ilegible del servidor (se esperaba JSON UTF-8)"
+            ) from error
+        if not isinstance(datos, dict):
+            raise ErrorProtocolo("Respuesta inválida del servidor (se esperaba un objeto JSON)")
+        return Respuesta(datos)
 
     @staticmethod
     def _clasificar(error: urllib.error.HTTPError) -> ErrorSincronizacion:
         """Traduce un código HTTP en el error que corresponde al agente"""
-        try:
-            detalle = error.read().decode("utf-8", errors="replace")[:300]
-        except Exception:  # pragma: no cover - cuerpo no legible
-            detalle = ""
+        # No propagar el cuerpo: puede repetir datos de la petición y acabar
+        # en el log persistente o en el estado visible del agente.
         if error.code == 401:
             return ErrorAutenticacion("El token del equipo no es válido o fue revocado")
         if error.code == 404:
-            return ErrorNoSoportado(f"Recurso no encontrado ({error.code}): {detalle}")
+            return ErrorNoSoportado(f"Recurso no encontrado ({error.code})")
         if error.code in (413, 422):
-            return ErrorProtocolo(f"Lote rechazado por el servidor ({error.code}): {detalle}")
+            return ErrorProtocolo(f"Lote rechazado por el servidor ({error.code})")
+        if 300 <= error.code < 400:
+            return ErrorProtocolo("El servidor redirigió la solicitud; revise la URL configurada")
         if error.code == 429:
-            return ErrorRed(f"El servidor pidió esperar ({error.code}): {detalle}")
-        return ErrorRed(f"El servidor respondió {error.code}: {detalle}")
+            return ErrorRed(f"El servidor pidió esperar ({error.code})")
+        return ErrorRed(f"El servidor respondió {error.code}")

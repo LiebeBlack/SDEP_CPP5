@@ -1,5 +1,7 @@
 # CAPÍTULO V: CONCLUSIONES Y RECOMENDACIONES
 
+> **DOCUMENTO HISTÓRICO, NO VIGENTE PARA ENTREGA.** Sus conclusiones presuponen diagnóstico, ejecución de pruebas, funcionamiento y conclusiones no acreditadas en la revisión del 23/11/2026. Antes de presentar, reescriba el capítulo a partir de resultados realmente registrados; consulte los límites de `BORRADOR/CAPITULO_4_RESULTADOS.md`.
+
 ## 5.1 INTRODUCCIÓN
 
 El presente capítulo expone las conclusiones que se desprenden de la investigación y las recomendaciones que de ella derivan. Se presentan, en primer lugar, las conclusiones generales referidas al desarrollo del sistema, a su arquitectura, a la metodología empleada y a las condiciones de adopción; en segundo lugar, las conclusiones específicas vinculadas a cada objetivo planteado; y, finalmente, las recomendaciones dirigidas a las instituciones educativas, a los desarrolladores e investigadores y a la comunidad académica, junto con las limitaciones que delimitan el alcance de lo afirmado.

@@ -1,5 +1,7 @@
 # RESUMEN DE LA INVESTIGACIÓN
 
+> **DOCUMENTO HISTÓRICO, NO VIGENTE PARA ENTREGA.** Contiene afirmaciones de diagnóstico, ejecución de pruebas, piloto e impacto no acreditadas en la revisión del 23/11/2026. El resumen de trabajo vigente para este borrador se incluye en `INDICE_GENERAL.md`; requiere revisión del tutor y no sustituye la validación pendiente.
+
 ## SISTEMA DE GESTIÓN DE PERSONAL Y NÓMINA PARA INSTITUCIONES EDUCATIVAS
 
 **Documento autónomo para efectos de presentación institucional**

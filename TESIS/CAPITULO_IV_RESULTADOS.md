@@ -1,5 +1,7 @@
 # CAPÍTULO IV: RESULTADOS
 
+> **DOCUMENTO HISTÓRICO, NO VIGENTE PARA ENTREGA.** Contiene afirmaciones y cifras anteriores a la revisión del 23/11/2026, incluida ejecución de pruebas que no se verificó en esta sesión. Consulte `BORRADOR/CAPITULO_4_RESULTADOS.md` y sus evidencias; no cite este texto como resultado actual hasta armonizarlo.
+
 ## 4.1 INTRODUCCIÓN
 
 El presente capítulo expone los resultados obtenidos durante el desarrollo del Sistema de Gestión de Personal y Nómina para instituciones educativas y durante las pruebas técnicas aplicadas sobre el repositorio del proyecto. Se describe, en primer lugar, el sistema efectivamente construido —su arquitectura, sus módulos y sus características técnicas—; en segundo lugar, se presentan los hallazgos de la suite de pruebas automatizadas, de integración y de seguridad; y, finalmente, se define la estructura de registro de los resultados de usabilidad, de la implementación piloto y de la validación de hipótesis, cuya evidencia empírica se incorporará una vez concluida la aplicación del sistema en las instituciones participantes.

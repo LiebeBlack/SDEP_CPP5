@@ -21,7 +21,11 @@ fun HttpException.mensajeDelServidor(json: Json): String? = try {
     if (cuerpo.isNullOrBlank()) {
         null
     } else {
-        json.decodeFromString(ErrorDto.serializer(), cuerpo).error.trim().ifEmpty { null }
+        json.decodeFromString(ErrorDto.serializer(), cuerpo).error
+            .filter { it == '\\n' || it == '\\t' || !it.isISOControl() }
+            .trim()
+            .take(500)
+            .ifEmpty { null }
     }
 } catch (_: Throwable) {
     null

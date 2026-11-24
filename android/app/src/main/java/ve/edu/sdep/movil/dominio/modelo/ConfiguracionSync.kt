@@ -15,11 +15,25 @@ data class ConfiguracionSync(
 ) {
     /** Indica si hay datos suficientes para intentar sincronizar */
     val completa: Boolean
-        get() = url.isNotBlank() && equipo.isNotBlank() && token.isNotBlank()
+        get() = urlServidorValida(url) && equipo.isNotBlank() && token.isNotBlank()
 
     /** URL normalizada para Retrofit (siempre termina en «/») */
     fun urlNormalizada(): String {
         val limpia = url.trim().removeSuffix("/")
+        require(urlServidorValida(limpia)) { "La dirección del nodo central no es válida" }
         return "$limpia/"
     }
+}
+
+private fun urlServidorValida(url: String): Boolean = try {
+    val uri = java.net.URI(url)
+    val puerto = uri.port
+    uri.scheme.lowercase() in setOf("http", "https") &&
+        !uri.host.isNullOrBlank() && uri.rawUserInfo == null &&
+        uri.rawQuery == null && uri.rawFragment == null &&
+        uri.rawPath.orEmpty() in setOf("", "/") &&
+        (puerto == -1 || puerto in 1..65535)
+} catch (_: Exception) {
+    false
+}
 }

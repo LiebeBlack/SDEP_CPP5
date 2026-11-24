@@ -5028,9 +5028,13 @@ class ConfiguracionFrame(ctk.CTkFrame):
 
         try:
             config = cargar_sync()
+            from sync_agent.config import url_servidor_visible
+
             self.sync_habilitado_var.set(bool(config.habilitado))
             self.sync_url_entry.delete(0, tk.END)
-            self.sync_url_entry.insert(0, config.url_servidor or "")
+            # No reinsertar una URL heredada con userinfo/query en el campo,
+            # donde se mostraría sin enmascarar.
+            self.sync_url_entry.insert(0, url_servidor_visible(config.url_servidor))
             self.sync_token_entry.delete(0, tk.END)
             self.sync_token_entry.insert(0, config.token or "")
             self.sync_equipo_entry.delete(0, tk.END)
@@ -5043,12 +5047,12 @@ class ConfiguracionFrame(ctk.CTkFrame):
             estado = estado_sincronizacion()
             self._pintar_estado_sync(estado, config)
             self._load_conflictos_sync()
-        except Exception as e:
-            # Nunca se abre un diálogo modal por esto: la pestaña es informativa
-            # y un fallo aquí no debe bloquear la configuración del sistema.
-            logger.warning("No se pudo cargar la sincronización: %s", e, exc_info=True)
+        except Exception:
+            # La excepción puede contener una URL o datos sensibles de la red.
+            # Nunca abrir un diálogo modal ni copiar su texto a la interfaz.
+            logger.warning("No se pudo cargar la sincronización", exc_info=True)
             try:
-                self.sync_estado_label.configure(text=f"Estado: no disponible ({e})")
+                self.sync_estado_label.configure(text="Estado: no disponible")
             except tk.TclError:
                 logger.debug("Etiqueta de sincronización no disponible")
 
@@ -5148,8 +5152,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 nombre_equipo=self.sync_equipo_entry.get().strip(),
                 intervalo_segundos=intervalo,
             )
-        except Exception as e:
-            messagebox.showerror("Error", f"No se pudo guardar la configuración: {e}")
+        except Exception:
+            logger.warning("No se pudo guardar la configuración de sincronización", exc_info=True)
+            messagebox.showerror("Error", "No se pudo guardar la configuración de sincronización")
             return
 
         # La captura de cambios debe estar enganchada ANTES de arrancar el
@@ -5197,17 +5202,25 @@ class ConfiguracionFrame(ctk.CTkFrame):
         try:
             from sync_agent.cliente import ClienteSync
             from sync_agent.config import cargar as cargar_sync
-            from sync_agent.config import guardar as guardar_sync
+            from sync_agent.config import guardar as guardar_sync, url_servidor_valida
         except Exception:
             messagebox.showerror("Error", "El agente de sincronización no está disponible")
+            return
+
+        if not url_servidor_valida(url):
+            messagebox.showwarning(
+                "Dirección no válida",
+                "Indique una URL HTTP(S) válida del nodo central, sin credenciales ni parámetros.",
+            )
             return
 
         # Se guarda primero lo escrito: probar y guardar son la misma decisión.
         try:
             guardar_sync(url_servidor=url, token=token)
             config = cargar_sync()
-        except Exception as e:
-            messagebox.showerror("Error", f"No se pudo guardar la configuración: {e}")
+        except Exception:
+            logger.warning("No se pudo guardar la configuración de sincronización", exc_info=True)
+            messagebox.showerror("Error", "No se pudo guardar la configuración de sincronización")
             return
 
         self._set_sync_botones(estado="disabled")
@@ -5228,8 +5241,11 @@ class ConfiguracionFrame(ctk.CTkFrame):
                     f"Hora del servidor: {datos.get('hora', '—')}\n"
                     f"Protocolo: {datos.get('protocolo', '—')}"
                 )
-            except Exception as error:
-                mensaje = f"No se pudo conectar con el servidor central:\n\n{error}"
+            except Exception:
+                mensaje = (
+                    "No se pudo conectar con el servidor central. "
+                    "Revise la dirección, la red y las credenciales."
+                )
             self._sync_resultados.put((self._mostrar_resultado_conexion, (mensaje,), {}))
 
         threading.Thread(target=_probar, name="sync-prueba", daemon=True).start()
@@ -5274,8 +5290,9 @@ class ConfiguracionFrame(ctk.CTkFrame):
                 )
                 return
             self._sync_refresh_id = self.after(1500, self._load_sincronizacion)
-        except Exception as e:
-            messagebox.showerror("Error", f"No se pudo sincronizar: {e}")
+        except Exception:
+            logger.warning("No se pudo solicitar la sincronización", exc_info=True)
+            messagebox.showerror("Error", "No se pudo solicitar la sincronización")
 
     def _on_adoptar_datos(self):
         """Da identidad global a los datos que ya existían en este equipo"""

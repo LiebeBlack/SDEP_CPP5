@@ -55,7 +55,7 @@ class ConfigSync:
     @property
     def configurado(self) -> bool:
         """Indica si hay servidor y token para intentar sincronizar"""
-        return bool(self.url_servidor and self.token and self.dispositivo_id)
+        return bool(url_servidor_valida(self.url_servidor) and self.token and self.dispositivo_id)
 
     @property
     def activo(self) -> bool:
@@ -67,8 +67,13 @@ class ConfigSync:
         fallos: list[str] = []
         if not self.url_servidor:
             fallos.append("Falta la dirección del servidor central")
-        elif not _url_valida(self.url_servidor):
-            fallos.append(f"La dirección del servidor no es válida: {self.url_servidor}")
+        elif not url_servidor_valida(self.url_servidor):
+            # No repetir la entrada: una URL mal formada puede contener
+            # accidentalmente credenciales u otros datos sensibles.
+            fallos.append(
+                "La dirección del servidor no es válida "
+                "(se requiere una URL HTTP(S) sin credenciales)"
+            )
         if not self.token:
             fallos.append("Falta el token del equipo (lo entrega el servidor central)")
         if not self.dispositivo_id:
@@ -83,13 +88,42 @@ class ConfigSync:
         """Representación en diccionario (sin el token, para mostrar en pantalla)"""
         datos = asdict(self)
         datos["token"] = "configurado" if self.token else ""
+        datos["url_servidor"] = url_servidor_visible(self.url_servidor)
         return datos
 
 
-def _url_valida(url: str) -> bool:
-    """Comprueba que la dirección sea http(s) con host"""
-    partes = urlparse(url)
-    return partes.scheme in ("http", "https") and bool(partes.netloc)
+def url_servidor_visible(url: str) -> str:
+    """Origen apto para mostrar, sin usuario, contraseña, ruta ni query."""
+    if not url:
+        return ""
+    if not url_servidor_valida(url):
+        return "(dirección no válida)"
+    partes = urlparse(url.strip())
+    host = partes.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    puerto = f":{partes.port}" if partes.port is not None else ""
+    return f"{partes.scheme.lower()}://{host}{puerto}"
+
+
+def url_servidor_valida(url: str) -> bool:
+    """Comprueba URL HTTP(S) absoluta, sin credenciales ni destino ambiguo."""
+    try:
+        partes = urlparse(url.strip())
+        puerto = partes.port  # También valida el formato y rango del puerto.
+        return bool(
+            partes.scheme.lower() in ("http", "https")
+            and partes.hostname
+            and not any(caracter.isspace() for caracter in partes.hostname)
+            and partes.path in ("", "/")
+            and partes.username is None
+            and partes.password is None
+            and not partes.query
+            and not partes.fragment
+            and (puerto is None or 1 <= puerto <= 65535)
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
 
 
 def _a_bool(valor, por_defecto: bool = False) -> bool:

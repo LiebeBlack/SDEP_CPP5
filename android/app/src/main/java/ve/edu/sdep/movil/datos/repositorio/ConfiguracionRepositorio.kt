@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import ve.edu.sdep.movil.datos.seguridad.Boveda
 import ve.edu.sdep.movil.dominio.modelo.ConfiguracionSync
+import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,7 +44,7 @@ class ConfiguracionRepositorio @Inject constructor(
             if (forzar || !cargada.get()) {
                 val almacenada = boveda.leerConfiguracion()
                 _configuracion.value = ConfiguracionSync(
-                    url = almacenada.url.trim().trimEnd('/'),
+                    url = normalizarUrlServidor(almacenada.url).orEmpty(),
                     equipo = almacenada.equipo.trim(),
                     token = almacenada.token.trim(),
                     activa = almacenada.activa,
@@ -70,8 +71,8 @@ class ConfiguracionRepositorio @Inject constructor(
         activa: Boolean,
         periodoMinutos: Int,
     ): Boolean = withContext(Dispatchers.IO) {
-        val normalizada = normalizarUrl(url)
-        if (normalizada.isBlank() || equipo.isBlank() || token.isBlank()) return@withContext false
+        val normalizada = normalizarUrlServidor(url) ?: return@withContext false
+        if (equipo.isBlank() || token.isBlank()) return@withContext false
         val periodo = periodoMinutos.coerceIn(15, 360)
         val guardado = boveda.guardarConfiguracion(
             url = normalizada,
@@ -120,14 +121,28 @@ class ConfiguracionRepositorio @Inject constructor(
 
     /** ¿Hay vinculación completa con el nodo central? */
     suspend fun hayConfiguracion(): Boolean = cargar().completa
+}
 
-    /** Acepta «192.168.1.10:8765» y lo convierte en una URL utilizable */
-    private fun normalizarUrl(url: String): String {
-        var limpia = url.trim().trimEnd('/')
-        if (limpia.isEmpty()) return ""
-        if (!limpia.startsWith("http://") && !limpia.startsWith("https://")) {
-            limpia = "http://$limpia"
-        }
-        return limpia
+/** Acepta «192.168.1.10:8765» y devuelve solo un origen HTTP(S) válido. */
+internal fun normalizarUrlServidor(url: String): String? {
+    var limpia = url.trim().removeSuffix("/")
+    if (limpia.isEmpty()) return null
+    if (!limpia.startsWith("http://", ignoreCase = true) &&
+        !limpia.startsWith("https://", ignoreCase = true)
+    ) {
+        limpia = "http://$limpia"
     }
+    return limpia.takeIf(::urlServidorValida)
+}
+
+private fun urlServidorValida(url: String): Boolean = try {
+    val uri = URI(url)
+    val puerto = uri.port
+    uri.scheme.lowercase() in setOf("http", "https") &&
+        !uri.host.isNullOrBlank() && uri.rawUserInfo == null &&
+        uri.rawQuery == null && uri.rawFragment == null &&
+        uri.rawPath.orEmpty() in setOf("", "/") &&
+        (puerto == -1 || puerto in 1..65535)
+} catch (_: Exception) {
+    false
 }

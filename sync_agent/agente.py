@@ -43,7 +43,7 @@ from sync_agent.cliente import (
     ErrorSincronizacion,
 )
 from sync_agent.comun import ahora_utc, dumps, hash_bytes, loads, nuevo_uuid
-from sync_agent.config import ConfigSync, cargar
+from sync_agent.config import ConfigSync, cargar, url_servidor_visible
 from sync_agent.esquema import (
     BLOB_OMITIDO,
     BLOB_POR_BAJAR,
@@ -160,7 +160,7 @@ class AgenteSincronizacion:
             logger.info(
                 "Sincronización iniciada cada %s s contra %s",
                 self.config.intervalo_segundos,
-                self.config.url_servidor,
+                url_servidor_visible(self.config.url_servidor),
             )
             return True
 
@@ -285,10 +285,11 @@ class AgenteSincronizacion:
             logger.warning("Ciclo de sincronización sin éxito: %s", error)
             self._publicar(estado=ESTADO_SIN_CONEXION, ultimo_error=str(error))
             resumen = {"correcto": False, "mensaje": str(error)}
-        except Exception as error:  # pragma: no cover - red de seguridad del hilo
+        except Exception:  # pragma: no cover - red de seguridad del hilo
             logger.error("Fallo inesperado en el ciclo de sincronización", exc_info=True)
-            self._publicar(estado=ESTADO_SIN_CONEXION, ultimo_error=str(error))
-            resumen = {"correcto": False, "mensaje": str(error)}
+            mensaje = "Fallo inesperado durante la sincronización"
+            self._publicar(estado=ESTADO_SIN_CONEXION, ultimo_error=mensaje)
+            resumen = {"correcto": False, "mensaje": mensaje}
         finally:
             milisegundos = int((ahora_utc() - inicio).total_seconds() * 1000)
             self._publicar(ms_ultimo_ciclo=milisegundos)

@@ -41,13 +41,19 @@ object ModuloRed {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .callTimeout(90, TimeUnit.SECONDS)
+            // Las cabeceras Authorization/X-Sesion son credenciales: no
+            // reenviarlas si el nodo central responde con una redirección.
+            .followRedirects(false)
+            .followSslRedirects(false)
             .retryOnConnectionFailure(true)
 
         if (BuildConfig.DEBUG) {
             val registro = HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BASIC
-                // El token del equipo no debe quedar en el log del teléfono.
+                // BASIC no registra cuerpos (el login contiene contraseña);
+                // redactar ambas credenciales por si se habilitan cabeceras.
                 redactHeader("Authorization")
+                redactHeader("X-Sesion")
             }
             constructor.addInterceptor(registro)
         }

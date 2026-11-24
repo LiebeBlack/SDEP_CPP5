@@ -96,7 +96,7 @@ def _abrir_local():
 
 def _resumen_local(como_json: bool = False) -> dict:
     """Reúne el estado operativo del agente guardado en la base local"""
-    from sync_agent.config import cargar
+    from sync_agent.config import cargar, url_servidor_visible
     from sync_agent.esquema import (
         DIFERIDA,
         DIRECCION_SALIDA,
@@ -127,7 +127,7 @@ def _resumen_local(como_json: bool = False) -> dict:
     return {
         "habilitado": config.habilitado,
         "configurado": config.configurado,
-        "servidor": config.url_servidor or "(sin definir)",
+        "servidor": url_servidor_visible(config.url_servidor) or "(sin definir)",
         "equipo": config.nombre_equipo or "(sin nombre)",
         "dispositivo_id": config.dispositivo_id or "(sin asignar)",
         "intervalo_segundos": config.intervalo_segundos,
@@ -178,7 +178,7 @@ def cmd_agente(args: argparse.Namespace) -> int:
     import time
 
     from sync_agent import iniciar_agente
-    from sync_agent.config import cargar
+    from sync_agent.config import cargar, url_servidor_visible
 
     _abrir_local()
     config = cargar()
@@ -204,7 +204,8 @@ def cmd_agente(args: argparse.Namespace) -> int:
         return SALIDA_INACTIVO
 
     print(
-        f"Sincronizando cada {config.intervalo_segundos} s contra {config.url_servidor}\n"
+        f"Sincronizando cada {config.intervalo_segundos} s contra "
+        f"{url_servidor_visible(config.url_servidor)}\n"
         "Pulse Ctrl+C para detener."
     )
     try:
@@ -648,9 +649,9 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:  # pragma: no cover - interrupción del usuario
         print("\nInterrumpido por el usuario.")
         return SALIDA_CORRECTA
-    except Exception as error:
-        logger.error("La operación falló: %s", error, exc_info=args.verboso)
-        print(f"Error: {error}", file=sys.stderr)
+    except Exception:
+        logger.error("La operación falló", exc_info=args.verboso)
+        print("Error: la operación no pudo completarse.", file=sys.stderr)
         return SALIDA_ERROR
 
 

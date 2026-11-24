@@ -48,6 +48,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict
+from urllib.parse import urlsplit
 
 
 # Los comandos del sistema (``reg``, ``taskkill``, ``tasklist``, ``schtasks``)
@@ -94,6 +95,85 @@ SIGNING_ISSUER_NAME = "LiebeBlack Code Signing Issuing CA v2"
 SIGNING_ROOT_NAME = "LiebeBlack Global Master Root Authority 2026"
 LOCK_MAX_AGE_SECONDS = 30 * 60  # una ejecución no debería durar más de 30 min
 LOG_MAX_BYTES = 1024 * 1024  # rotación simple del log (1 MB)
+MAX_RELEASE_JSON_BYTES = 5 * 1024 * 1024
+MAX_RELEASE_ASSET_BYTES = 1024 * 1024 * 1024
+
+
+class _SinRedireccion(urllib.request.HTTPRedirectHandler):
+    """Bloquea redirecciones de la API, que no necesita seguir ninguna."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class _RedireccionActivosGithub(urllib.request.HTTPRedirectHandler):
+    """Limita la redirección de descarga al CDN de activos de GitHub."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        partes = urlsplit(newurl)
+        try:
+            puerto_permitido = partes.port in (None, 443)
+        except ValueError:
+            return None
+        origen_permitido = (
+            partes.scheme == "https"
+            and puerto_permitido
+            and not partes.username
+            and not partes.password
+            and not partes.fragment
+            and (
+                partes.hostname == "release-assets.githubusercontent.com"
+                and partes.path.startswith("/github-production-release-asset/")
+                or partes.hostname == "github.com"
+                and partes.path.startswith(f"/{REPO}/releases/download/")
+                and not partes.query
+            )
+        )
+        if not origen_permitido:
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _abridor_con_redireccion(handler: urllib.request.HTTPRedirectHandler):
+    """Instala el handler elegido y elimina el redireccionador genérico."""
+    abridor = urllib.request.build_opener(handler)
+    abridor.handlers = [
+        instalado
+        for instalado in abridor.handlers
+        if not isinstance(instalado, urllib.request.HTTPRedirectHandler)
+        or instalado is handler
+    ]
+    return abridor
+
+
+def _url_api_actualizaciones_valida(url: str, permitir_archivo_local: bool = False) -> bool:
+    """Limita la consulta remota a la API latest del repositorio oficial."""
+    try:
+        partes = urlsplit(url)
+        puerto = partes.port
+        if (
+            permitir_archivo_local
+            and partes.scheme == "file"
+            and not partes.netloc
+            and not partes.query
+            and not partes.fragment
+            and partes.path.lower().endswith(".json")
+            and any(parte.lower().startswith("pytest") for parte in Path(partes.path).parts)
+        ):
+            return True
+        return bool(
+            partes.scheme == "https"
+            and partes.hostname == "api.github.com"
+            and puerto in (None, 443)
+            and not partes.username
+            and not partes.password
+            and not partes.query
+            and not partes.fragment
+            and partes.path == f"/repos/{REPO}/releases/latest"
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
+
 
 USER_AGENT = (
     "Mozilla/5.0 (compatible; SDEP_CPP5-AutoUpdater/3.0.0; "
@@ -206,32 +286,56 @@ def save_state(state: dict) -> None:
 # ---------------------------------------------------------------------------
 def fetch_latest() -> dict:
     """Consulta la última Release publicada. Lanza RuntimeError si falla."""
+    url = API_LATEST_URL
+    # file:// se admite exclusivamente para los fixtures de la suite local;
+    # el endpoint operativo es la API oficial por TLS.
+    if not _url_api_actualizaciones_valida(
+        url, permitir_archivo_local=bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    ):
+        raise RuntimeError("La URL de consulta de actualizaciones no está permitida")
+
     last_error: Exception | None = None
     for attempt in range(1, 4):  # 3 intentos con espera creciente
         try:
             request = urllib.request.Request(
-                API_LATEST_URL,
+                url,
                 headers={
                     "User-Agent": USER_AGENT,
                     "Accept": "application/vnd.github+json",
                 },
             )
-            with urllib.request.urlopen(request, timeout=30) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            opener = _abridor_con_redireccion(_SinRedireccion())
+            with opener.open(request, timeout=30) as response:
+                content_length = int(response.headers.get("Content-Length") or 0)
+                if content_length > MAX_RELEASE_JSON_BYTES:
+                    raise ValueError("Respuesta de releases demasiado grande")
+                payload = response.read(MAX_RELEASE_JSON_BYTES + 1)
+            if len(payload) > MAX_RELEASE_JSON_BYTES:
+                raise ValueError("Respuesta de releases demasiado grande")
+            data = json.loads(payload.decode("utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("Formato de respuesta de releases inválido")
             tag = str(data.get("tag_name") or "")
-            assets = [
-                {
-                    "name": str(asset.get("name") or ""),
-                    "url": str(asset.get("browser_download_url") or ""),
-                    "size": int(asset.get("size") or 0),
-                }
-                for asset in data.get("assets") or []
-            ]
+            assets = []
+            for asset in data.get("assets") or []:
+                if not isinstance(asset, dict):
+                    continue
+                try:
+                    size = int(asset.get("size") or 0)
+                except (TypeError, ValueError):
+                    size = 0
+                assets.append(
+                    {
+                        "name": str(asset.get("name") or ""),
+                        "url": str(asset.get("browser_download_url") or ""),
+                        "size": size,
+                    }
+                )
             return {"tag": tag, "name": str(data.get("name") or tag), "assets": assets}
-        except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as exc:
+        except (urllib.error.URLError, OSError, ValueError) as exc:
             last_error = exc
             time.sleep(2 * attempt)
-    raise RuntimeError(f"No se pudo consultar {API_LATEST_URL}: {last_error}")
+    raise RuntimeError("No se pudo consultar la API oficial de actualizaciones") from last_error
 
 
 def find_setup_asset(assets: list[dict]) -> dict | None:
@@ -247,14 +351,37 @@ def find_setup_asset(assets: list[dict]) -> dict | None:
 
 
 def download(url: str, destination: Path, expected_size: int = 0) -> Path:
-    """Descarga un archivo con reintentos y verificación de tamaño."""
+    """Descarga un archivo con reintentos, origen permitido y tamaño acotado."""
+    partes = urlsplit(url)
+    try:
+        puerto_permitido = partes.port in (None, 443)
+    except ValueError:
+        puerto_permitido = False
+    if (
+        partes.scheme != "https"
+        or not puerto_permitido
+        or not (
+            partes.hostname == "github.com"
+            and partes.path.startswith(f"/{REPO}/releases/download/")
+            or partes.hostname == "release-assets.githubusercontent.com"
+            and partes.path.startswith("/github-production-release-asset/")
+        )
+        or partes.username
+        or partes.password
+        or partes.query
+        or partes.fragment
+    ):
+        raise RuntimeError("El origen del instalador no está permitido")
+    if expected_size < 0 or expected_size > MAX_RELEASE_ASSET_BYTES:
+        raise RuntimeError("El tamaño del instalador excede el máximo permitido")
     destination.parent.mkdir(parents=True, exist_ok=True)
     last_error: Exception | None = None
     for attempt in range(1, 4):
         tmp = destination.with_name(destination.name + ".part")
         try:
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(request, timeout=60) as response:
+            opener = _abridor_con_redireccion(_RedireccionActivosGithub())
+            with opener.open(request, timeout=60) as response:
                 try:
                     total = int(response.headers.get("Content-Length") or 0)
                 except (TypeError, ValueError):
@@ -265,6 +392,8 @@ def download(url: str, destination: Path, expected_size: int = 0) -> Path:
                         chunk = response.read(256 * 1024)
                         if not chunk:
                             break
+                        if done + len(chunk) > MAX_RELEASE_ASSET_BYTES:
+                            raise ValueError("El instalador excede el tamaño máximo permitido")
                         fh.write(chunk)
                         done += len(chunk)
                         if on_download is not None:
@@ -279,11 +408,14 @@ def download(url: str, destination: Path, expected_size: int = 0) -> Path:
                 )
             os.replace(tmp, destination)
             return destination
-        except (urllib.error.URLError, OSError, RuntimeError) as exc:
+        except (RuntimeError, ValueError) as exc:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError("No se pudo verificar la descarga oficial") from exc
+        except (urllib.error.URLError, OSError) as exc:
             last_error = exc
             tmp.unlink(missing_ok=True)
             time.sleep(2 * attempt)
-    raise RuntimeError(f"Fallo al descargar {url}: {last_error}")
+    raise RuntimeError("Fallo al descargar el instalador oficial") from last_error
 
 
 def _powershell_executable() -> Path:

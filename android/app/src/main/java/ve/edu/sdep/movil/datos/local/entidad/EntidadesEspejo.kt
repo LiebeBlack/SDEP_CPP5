@@ -151,6 +151,14 @@ data class EmpleadoEntity(
     val nombreCompleto: String get() = "$nombres $apellidos".trim()
 }
 
+data class MetadatosAdjunto(
+    val nombre: String?,
+    val hash: String?,
+    val mime: String?,
+    val tamano: Int,
+    val disponible: Boolean,
+)
+
 @Entity(
     tableName = "documentos",
     indices = [Index("empleado_id"), Index("tipo_documento"), Index("activo")],

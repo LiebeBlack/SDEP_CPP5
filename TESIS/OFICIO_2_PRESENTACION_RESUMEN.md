@@ -1,5 +1,7 @@
 # OFICIO N.º 002-2026
 
+> **BORRADOR NO VIGENTE PARA ENVÍO.** Este oficio declara la presentación de archivos definitivos, resultados e hipótesis que aún no han sido armonizados ni acreditados al 23/11/2026. No enviar ni firmar hasta reemplazar esas afirmaciones por el estado real del expediente y obtener la revisión correspondiente.
+
 **ASUNTO:** Presentación del Resumen de la Investigación y de los archivos definitivos que integran el expediente del trabajo de grado.
 
 ---

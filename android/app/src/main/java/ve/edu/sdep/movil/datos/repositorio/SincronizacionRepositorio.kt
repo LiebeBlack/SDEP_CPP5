@@ -469,8 +469,13 @@ class SincronizacionRepositorio @Inject constructor(
         for (blob in blobDao.pendientesDeSalida(LIMITE_BLOBS_POR_CICLO)) {
             try {
                 val id = baseDatos.identidadDao().idLocalDe(blob.tabla, blob.filaUuid) ?: continue
+                // Ambas tablas con binario por hash: documentos (legajo) e
+                // incidencias (soporte). Antes solo `documentos` se enviaba y
+                // el soporte de una incidencia creada en el teléfono quedaba
+                // anunciado por hash pero sin bytes en el nodo central.
                 val bytes = when (blob.tabla) {
                     "documentos" -> baseDatos.documentoDao().buscarPorId(id)?.contenidoBinario
+                    "incidencias" -> baseDatos.incidenciaDao().buscarPorId(id)?.documentoSoporteBinario
                     else -> null
                 } ?: continue
                 if (bytes.size != blob.tamano || sha256(bytes) != blob.hash) {

@@ -172,7 +172,7 @@
         renderer.code = function (token) {
             const raw = token.text || '';
             const trimmed = raw.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
-            const validLang = token.lang && token.lang.trim() ? token.lang.trim().toLowerCase() : 'text';
+            const validLang = escapeHtml(token.lang && token.lang.trim() ? token.lang.trim().toLowerCase() : 'text');
             const displayText = trimmed || raw;
             const codeHtml = token.escaped ? displayText : escapeHtml(displayText);
             return `
@@ -237,6 +237,14 @@
 
             return `<blockquote>${quote}</blockquote>`;
         };
+
+        // Marked no sanitiza HTML embebido. Se escapa todo el HTML crudo del
+        // Markdown (también el cargado desde GitHub); solo se conserva <br>,
+        // usado por el corpus como salto de línea y sin atributos ejecutables.
+        renderer.html = function (token) {
+            return escapeHtml(token.text || '').replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+        };
+
 
         marked.setOptions({
             renderer: renderer,
@@ -450,18 +458,38 @@
 
     function convertGitHubUrlToRaw(url) {
         if (!url) return '';
-        let clean = url.trim();
-        // Only allow GitHub raw content from the official SDEP repository
-        if (clean.includes('github.com') && clean.includes('/blob/')) {
-            // Restrict to LiebeBlack SDEP_CPP5 repository only
-            if (clean.includes('LiebeBlack/SDEP_CPP5')) {
-                clean = clean.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
-            } else {
-                showToast('URL no permitida: solo se cargan documentos del repositorio oficial');
-                return '';
+        try {
+            const parsed = new URL(url.trim());
+            const rawPath = url.trim().split(/[?#]/, 1)[0].replace(/^https:\/\/[^/]+/i, '');
+            if (parsed.protocol !== 'https:' || parsed.username || parsed.password ||
+                parsed.search || parsed.hash || parsed.port || /%(?:2e|2f|5c)/i.test(rawPath)) {
+                throw new Error('URL no permitida');
             }
+
+            const repoPrefix = '/LiebeBlack/SDEP_CPP5/';
+            let path;
+            if (parsed.hostname === 'github.com' && parsed.pathname.startsWith(repoPrefix + 'blob/')) {
+                path = parsed.pathname.slice((repoPrefix + 'blob/').length);
+            } else if (parsed.hostname === 'raw.githubusercontent.com' &&
+                       parsed.pathname.startsWith(repoPrefix)) {
+                path = parsed.pathname.slice(repoPrefix.length);
+            } else {
+                throw new Error('URL fuera del repositorio oficial');
+            }
+
+            const decodedPath = decodeURIComponent(path);
+            const segments = decodedPath.split('/');
+            if (segments.length < 2 || segments.some(part => !part || part === '.' || part === '..' ||
+                part.includes('\\') || /[\u0000-\u001f\u007f]/.test(part)) ||
+                !segments[segments.length - 1].toLowerCase().endsWith('.md')) {
+                throw new Error('Se requiere un archivo Markdown del repositorio');
+            }
+            return 'https://raw.githubusercontent.com' + repoPrefix +
+                segments.map(part => encodeURIComponent(part)).join('/');
+        } catch (_error) {
+            showToast('URL no permitida: usa un archivo Markdown del repositorio oficial');
+            return '';
         }
-        return clean;
     }
 
     // El corpus se sirve desde docs_data.js: no hay sondeo de red al abrir un
@@ -472,20 +500,51 @@
         if (!rawOrBlobUrl) return;
         const rawUrl = convertGitHubUrlToRaw(rawOrBlobUrl);
 
-        // Check if URL matches any document in our manifest
-        for (const doc of docsData) {
-            if (rawOrBlobUrl.toLowerCase().includes(doc.filename.toLowerCase())) {
-                openDocument(doc.id);
-                return;
-            }
-        }
-
         if (!rawUrl) return;
+
+        // Solo sustituye por la copia local cuando es exactamente el enlace
+        // publicado en el manifiesto; no basta con que la URL mencione el nombre.
+        const docLocal = docsData.find(doc => doc.githubUrl &&
+            convertGitHubUrlToRaw(doc.githubUrl) === rawUrl);
+        if (docLocal) {
+            openDocument(docLocal.id);
+            return;
+        }
         showToast('Cargando archivo desde GitHub...');
-        fetch(rawUrl)
-            .then(res => {
+        const controlador = new AbortController();
+        const temporizador = setTimeout(() => controlador.abort(), 15000);
+        fetch(rawUrl, {
+            signal: controlador.signal,
+            redirect: 'error',
+            headers: { Accept: 'text/markdown' }
+        })
+            .then(async res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.text();
+                if (new URL(res.url).origin !== 'https://raw.githubusercontent.com') {
+                    throw new Error('Origen de respuesta no permitido');
+                }
+                const limiteBytes = 2 * 1024 * 1024;
+                const longitud = Number(res.headers.get('Content-Length'));
+                if (Number.isFinite(longitud) && longitud > limiteBytes) {
+                    throw new Error('El documento excede el tamaño permitido');
+                }
+                if (!res.body || !res.body.getReader) return res.text();
+
+                const lector = res.body.getReader();
+                const decodificador = new TextDecoder();
+                let total = 0;
+                let texto = '';
+                while (true) {
+                    const { done, value } = await lector.read();
+                    if (done) break;
+                    total += value.byteLength;
+                    if (total > limiteBytes) {
+                        await lector.cancel();
+                        throw new Error('El documento excede el tamaño permitido');
+                    }
+                    texto += decodificador.decode(value, { stream: true });
+                }
+                return texto + decodificador.decode();
             })
             .then(markdown => {
                 const filename = rawOrBlobUrl.split('/').pop() || 'DOCUMENTO.md';
@@ -544,10 +603,11 @@
             })
             .catch(err => {
                 console.warn('Error loading custom GitHub URL:', err);
-                showToast('No se pudo conectar a GitHub. Abriendo copia local...');
-                // Fallback to first doc
-                openDocument(docsData[0].id);
-            });
+                showToast(err.name === 'AbortError'
+                    ? 'La descarga tardó demasiado; inténtalo de nuevo'
+                    : 'No se pudo cargar el documento; revisa la conexión y la URL');
+            })
+            .finally(() => clearTimeout(temporizador));
     }
 
     function closeDocument() {

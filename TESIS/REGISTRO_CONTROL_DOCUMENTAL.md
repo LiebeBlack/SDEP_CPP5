@@ -1,5 +1,7 @@
 # REGISTRO DE CONTROL DOCUMENTAL
 
+> **REGISTRO HISTÓRICO, REQUIERE ACTUALIZACIÓN.** Sus métricas y verificaciones (incluidas ejecuciones y validaciones) reflejan cortes previos y no describen necesariamente el estado revisado el 23/11/2026. Para el estado actual, consulte `BORRADOR/EVIDENCIAS/EVIDENCIA_05_BITACORA_VERIFICACION.md`; no usar este registro como certificación vigente.
+
 ## 1. PROPÓSITO Y ALCANCE
 
 Este registro cumple tres funciones dentro del expediente: identificar el conjunto de documentos que integran el informe, dejar constancia de las modificaciones que cada uno ha recibido y registrar las verificaciones de consistencia que se practicaron sobre el contenido. Su finalidad es permitir que un evaluador externo determine qué versión examina, de qué fuente proviene cada dato y cuáles afirmaciones se encuentran pendientes de evidencia.

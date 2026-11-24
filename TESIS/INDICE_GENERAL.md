@@ -23,11 +23,13 @@
 
 ## 2. RESUMEN
 
-La presente investigación tuvo como propósito diseñar, desarrollar e implementar un sistema integral de gestión de personal y nómina para instituciones educativas, con el fin de automatizar los procesos administrativos críticos, garantizar la exactitud de los cálculos financieros, ordenar el control documental y proporcionar información oportuna para la toma de decisiones, empleando tecnologías de información accesibles y sostenibles.
+> **Estado del documento:** resumen de trabajo basado en la revisión del repositorio al 23/11/2026. No sustituye la aprobación del tutor ni constituye un resumen final de tesis; el diagnóstico, las ejecuciones de suites y el piloto siguen pendientes.
 
-El sistema se construyó sobre una arquitectura de capas —presentación, servicios, repositorios, modelos, dominio de nómina y servicios transversales— con Python, SQLAlchemy y CustomTkinter, y se distribuye bajo licencia de código abierto. Comprende nueve módulos funcionales que abarcan la gestión de empleados, el control documental con vencimientos, las incidencias y permisos, los contratos laborales, el cálculo de nómina con deducciones y horas extra, y la configuración institucional. A ello se suman la autenticación con control de acceso por rol, el registro de auditoría, los respaldos, la exportación de datos y la generación de trece tipos de documentos oficiales en formato PDF, más las constancias emitidas desde plantillas Markdown propias de la institución. A estas capas se añaden dos componentes entregados: el cliente Android nativo (SDEP Móvil), con 18 635 líneas en 82 archivos Kotlin, y el nodo central de sincronización. El sistema documentado corresponde a la versión 3.0.1 y alberga 33 601 líneas de código fuente, más 10 904 del paquete independiente de sincronización entre puestos; su calidad técnica se respalda en una suite de 605 funciones de prueba distribuidas en treinta y siete archivos.
+Este trabajo describe el diseño y desarrollo de un sistema de gestión de personal, nómina y funciones académicas dirigido a instituciones educativas. El borrador separa los componentes identificados en el repositorio de las funciones cuya compilación, ejecución y aceptación institucional aún no han sido verificadas. No se anticipan mejoras de eficiencia ni exactitud de cálculos.
 
-La metodología adoptó un enfoque cuantitativo, con investigación aplicada, modalidad de proyecto factible y un diseño que combina el diagnóstico descriptivo, la comparación pretest-postest y un diseño factorial para las pruebas de rendimiento. Los instrumentos son fichas de observación técnica, fichas de registro de métricas, listas de cotejo y el cuestionario SUS. La evidencia técnica se verificó de forma directa sobre el repositorio del proyecto; las mediciones de latencia, tasa de éxito de sincronización y usabilidad se ejecutarán en la Fase IV y se incorporarán al capítulo de resultados conforme al diseño establecido.
+La inspección documentada identifica código Python para escritorio y sincronización, además de un cliente Android nativo. El árbol contiene 625 funciones Python `test_*` en 38 archivos de prueba y 97 archivos Kotlin con 22.558 líneas y 43 anotaciones `@Test`; estos conteos no equivalen a pruebas ejecutadas ni demuestran calidad o cobertura. No se cuenta con salida de pytest o Gradle en esta revisión. Tampoco se localizaron registros suficientes de diagnóstico comunitario, consentimiento, instalación, capacitación o piloto. La revisión legal es documental y parcial, no constituye dictamen ni certificación de conformidad.
+
+La propuesta metodológica combina inspección técnica y un diseño descriptivo para una eventual fase de campo. Los instrumentos, mediciones pre/post, usabilidad y transferencia permanecen pendientes de revisión, autorización y aplicación. Los resultados deberán completarse únicamente con datos fuente y condiciones de medición registradas.
 
 **Palabras clave:** gestión de personal, nómina, instituciones educativas, ingeniería de software, arquitectura modular, tecnologías de código abierto, eficiencia administrativa.
 
@@ -35,11 +37,11 @@ La metodología adoptó un enfoque cuantitativo, con investigación aplicada, mo
 
 ## 3. ABSTRACT
 
-The purpose of this research was to design, develop and implement a comprehensive personnel and payroll management system for educational institutions, aimed at automating critical administrative processes, ensuring the accuracy of financial calculations, organizing document control and providing timely information for decision-making, through accessible and sustainable information technologies.
+This thesis describes the design and development of a personnel, payroll and academic management system for educational institutions. The current draft distinguishes components found in the repository from functions whose build, execution and institutional acceptance have not been verified. No improvement in efficiency or calculation accuracy is presumed.
 
-The system was built on a layered architecture —presentation, services, repositories, models, payroll domain and cross-cutting services— using Python, SQLAlchemy and CustomTkinter, and it is distributed under an open-source license. It comprises nine functional modules covering personnel records, document control with expiry dates, absences and leave, employment contracts, payroll calculation with deductions and overtime, institutional configuration, and the academic domain of students, grades, enrollments and final grades. These are complemented by role-based authentication and access control, audit logging, backup management, data export and the generation of thirteen types of official documents in PDF format, together with certificates produced from institution-specific Markdown templates. Two further delivered components extend these layers: the native Android client (SDEP Móvil), with 18,635 lines across 82 Kotlin files, and the central synchronization node. The documented system corresponds to version 3.0.1 and comprises 33,601 lines of source code, plus 10,904 lines in the standalone peer-to-peer synchronization package; its technical quality is supported by a suite of 605 test functions distributed across thirty-seven files.
+Static inspection identified Python code for desktop and synchronization components, as well as a native Android client. The repository contains 625 Python `test_*` functions in 38 test files and 97 Kotlin files with 22,558 lines and 43 `@Test` annotations; these counts do not represent executed tests or demonstrate quality or coverage. No pytest or Gradle execution output is available for this review. Sufficient records of community diagnosis, consent, installation, training or pilot use were not located. The legal review is partial and documentary; it is neither a legal opinion nor a compliance certification.
 
-The methodology combined applied research with iterative development and action research, supported by defined and validated instruments: semi-structured interviews, direct observation, satisfaction questionnaires and usability protocols. Technical evidence was verified directly on the project repository, whereas the measurement of impact on administrative efficiency will be obtained through pilot implementation in a set of educational institutions and will be incorporated into the results chapter in accordance with the established methodological design.
+The proposed methodology combines technical inspection with a descriptive design for a potential field phase. Instruments, pre/post measurements, usability evaluation and transfer remain subject to review, authorization and application. Results must be completed only from source data and documented measurement conditions.
 
 **Keywords:** personnel management, payroll, educational institutions, software engineering, modular architecture, open-source technologies, administrative efficiency.
 
@@ -47,7 +49,9 @@ The methodology combined applied research with iterative development and action 
 
 ## 4. INVENTARIO DOCUMENTAL
 
-### 4.1 Documentos principales del informe
+### 4.1 Documentos del compendio previo (requieren armonización)
+
+Los archivos de esta tabla son piezas existentes del compendio anterior. No se certifica que sus contenidos correspondan al estado de evidencia del borrador revisado en `BORRADOR/`; sus afirmaciones deben cotejarse antes de usarlos como entrega vigente.
 
 | Orden | Documento | Archivo | Contenido |
 |-------|-----------|---------|-----------|
@@ -57,7 +61,7 @@ The methodology combined applied research with iterative development and action 
 | 4 | Documento 02: Marco teórico y metodológico | `02-marco-teorico-y-metodologico.md` | Antecedentes 2016-2026, bases teóricas, marco legal venezolano, metodología cuantitativa, fases, instrumentos y plan de análisis |
 | 5 | Documento 03: Diseño, ingeniería y arquitectura | `03-diseno-ingenieria-y-arquitectura.md` | Requerimientos, casos de uso, arquitectura de red, modelo de datos, subsistema de sincronización, módulo PDF y diseño de métricas |
 | 6 | Documento 04: Implementación y despliegue | `04-implementacion-y-despliegue.md` | Fases de construcción, decisiones de codificación, estrategia de pruebas, protocolo de evaluación, despliegue y operación |
-| 7 | Capítulo IV: Resultados | `CAPITULO_IV_RESULTADOS.md` | Descripción del sistema, resultados de pruebas técnicas, usabilidad, implementación piloto, análisis comparativo, validación de hipótesis, factores de éxito y limitaciones |
+| 7 | Capítulo IV: Resultados | `CAPITULO_IV_RESULTADOS.md` | Descripción del sistema, pruebas técnicas, usabilidad, piloto, análisis comparativo, hipótesis y limitaciones; no tratar como sustituto de los estados del borrador y evidencias vigentes |
 | 8 | Capítulo V: Conclusiones y recomendaciones | `CAPITULO_V_CONCLUSIONES.md` | Conclusiones generales y por objetivo, recomendaciones, reflexiones, contribuciones, limitaciones y conclusiones finales |
 | 9 | Bibliografía y anexos | `BIBLIOGRAFIA_ANEXOS.md` | Fuentes bibliográficas y diez anexos con instrumentos, diagramas, guía de usuario, código, resultados de pruebas y presupuesto |
 | 10 | Resumen de la investigación | `RESUMEN_INVESTIGACION.md` | Documento autónomo de resumen estructurado para efectos de presentación institucional |
@@ -65,7 +69,26 @@ The methodology combined applied research with iterative development and action 
 | 12 | Oficio de presentación del resumen de la investigación | `OFICIO_2_PRESENTACION_RESUMEN.md` | Comunicación formal que presenta el resumen de la investigación y los archivos definitivos |
 | 13 | Índice general | `INDICE_GENERAL.md` | Este documento |
 
-Los capítulos I, II y III que aún figuran en el repositorio se conservan como versiones anteriores y llevan una nota de sustitución en su encabezado. El contenido vigente de esas materias se desarrolla en los documentos 01 y 02. El capítulo IV y el capítulo V se mantienen como resultados y conclusiones del estudio, y remiten a los documentos 03 y 04 para el detalle técnico.
+Los documentos indicados en el inventario principal corresponden al compendio preexistente y deben leerse junto con el borrador de capítulos I a IV de `BORRADOR/`. Para la entrega de este borrador, sus afirmaciones deben armonizarse con los estados de evidencia y métricas vigentes de los legajos; no deben tratarse textos antiguos como resultados actuales.
+
+### 4.3 Borrador de capítulos I a IV con soportes de planificación y evidencia
+
+La carpeta `BORRADOR/` contiene una redacción de trabajo de los capítulos I a IV y sus soportes. Los conteos e inspecciones están fechados al 23/11/2026; las pruebas ejecutadas, la validación comunitaria y la revisión jurídica integral continúan pendientes:
+
+| Documento | Archivo |
+|-----------|---------|
+| Índice del borrador y regla de integridad | `BORRADOR/INDICE_BORRADOR.md` |
+| Capítulo I: Planteamiento del problema | `BORRADOR/CAPITULO_1_PLANTEAMIENTO.md` |
+| Capítulo II: Marco referencial | `BORRADOR/CAPITULO_2_MARCO_REFERENCIAL.md` |
+| Capítulo III: Marco metodológico | `BORRADOR/CAPITULO_3_MARCO_METODOLOGICO.md` |
+| Marco lógico (matriz completa) | `BORRADOR/MARCO_LOGICO.md` |
+| Marco operativo (matriz completa) | `BORRADOR/MARCO_OPERATIVO.md` |
+| Consolidado de respuestas de los instrumentos | `BORRADOR/RESPUESTAS_INSTRUMENTOS.md` |
+| Capítulo IV: Resultados | `BORRADOR/CAPITULO_4_RESULTADOS.md` |
+| Software Android (SDEP Móvil) a fondo | `BORRADOR/SOFTWARE_ANDROID.md` |
+| Legajos de evidencia (6 documentos) | `BORRADOR/EVIDENCIAS/` |
+
+La regla de integridad del borrador: las cifras técnicas se remiten a mediciones asentadas en los legajos de evidencia; los conteos estáticos no se describen como pruebas ejecutadas y todo dato de campo sin fuente se marca como pendiente.
 
 ### 4.2 Documentos de control del proyecto
 
@@ -93,7 +116,7 @@ SDEP_CPP5/
 │   ├── services/          reglas de negocio (patrón Service Layer)
 │   ├── utils/             seguridad, auditoría, respaldos, PDF y utilidades
 │   └── main.py            punto de entrada de la aplicación
-├── tests/                 treinta y siete archivos con 605 funciones de prueba
+├── tests/                 38 archivos de prueba; 625 funciones test_* inventariadas
 ├── updater/               actualización automática del sistema
 ├── installer/             configuración del instalador para Windows
 ├── docs/                  portal de documentación del proyecto
@@ -144,16 +167,16 @@ Los campos señalados con corchetes en los documentos del informe corresponden a
 - Ciudad, país y fechas de inicio, presentación y aprobación.
 - Firmas del autor, del tutor, del coordinador de carrera y del director de facultad.
 
-### 8.2 Fuentes locales
+### 8.2 Fuentes y revisión jurídica
 
-- Antecedentes locales del Capítulo II, con casos documentados de la región.
-- Confirmación en Gaceta Oficial de las normas venezolanas citadas en el documento 02 (LOTTT, LOE, LOCTI, Infogobierno, LOPNNA y leyes conexas), cuya identificación ya se consignó con su número de Gaceta y fecha.
+- Antecedentes locales del Capítulo II, con referencias bibliográficas verificables del repositorio institucional o de la región.
+- Revisión jurídica integral: cotejo de vigencia y reformas, artículos, aplicabilidad institucional y revisión profesional de parámetros y documentos; la evidencia 04 consigna fuentes consultadas para varias referencias, pero no dictamen ni certificación.
 - Tesis y trabajos de grado del repositorio institucional relacionados con sistemas de información, gestión de personal o nómina.
 
 ### 8.3 Evidencia técnica por actualizar
 
-- Re-medición de la cobertura de código con `pytest --cov=src` sobre la versión 3.0.1.
-- Informe de la última ejecución de la suite de pruebas, con número de pruebas ejecutadas, resultado y fecha.
+- Preparar el entorno y registrar la ejecución de `pytest tests/` y cobertura con versión/commit, dependencias, fecha y salidas reales.
+- Configurar JDK 17 y Android SDK; registrar compilación y ejecución de `./gradlew :app:assembleDebug :app:testDebugUnitTest`.
 
 ### 8.4 Evidencia del piloto
 
@@ -165,7 +188,7 @@ Los campos señalados con corchetes en los documentos del informe corresponden a
 - Resultados cualitativos y lecciones aprendidas.
 - Resultados del tratamiento estadístico y decisión sobre cada hipótesis.
 
-Todos los marcadores `[por completar]` de los capítulos IV y V y de los anexos 3, 8 y 9 deben sustituirse por los valores efectivamente medidos antes de la presentación definitiva.
+Los marcadores pendientes de resultados, capítulos y anexos deben completarse únicamente con registros fuente autorizados; de no realizarse las actividades de campo, deben mantenerse como limitaciones explícitas.
 
 ---
 
@@ -175,28 +198,12 @@ Las tablas numeradas corresponden a los cuadros de resultados del Capítulo IV; 
 
 ### 9.1 Índice de tablas
 
-| Tabla | Título | Fuente |
-|-------|--------|--------|
-| 4.1 | Distribución del código fuente por capa | Medición sobre `src/`, versión 3.0.1 |
-| 4.2 | Componentes de la capa de presentación | Inspección de `src/gui/` |
-| 4.3 | Registro de empleado: contraste proceso manual y sistema | Módulo de empleados y mediciones del piloto |
-| 4.4 | Gestión documental: contraste proceso manual y sistema | Módulo documental y mediciones del piloto |
-| 4.5 | Generación de nómina: contraste proceso manual y sistema | Motor de nómina y mediciones del piloto |
-| 4.6 | Matriz de acceso por rol y módulo | `PermissionChecker` de `src/utils/security.py` |
-| 4.7 | Distribución de funciones de prueba por archivo | Recuento sobre `tests/`, versión 3.0.1 |
-| 4.8 | Cobertura de referencia medida en la versión 1.0.4 | `pytest --cov=src` sobre la versión 1.0.4 |
-| 4.9 | Protocolo de rendimiento y umbrales de aceptación | Protocolo del apartado 3.4.1.5 |
-| 4.10 | Composición de los participantes en las pruebas de usabilidad | Protocolo del Anexo 3 |
-| 4.11 | Resultados por tarea de usabilidad | Protocolo del Anexo 3 |
-| 4.12 | Satisfacción por dimensión | Cuestionario del Anexo 2 y escala SUS |
-| 4.13 | Contraste de percepción antes y después de la implementación | Cuestionario del Anexo 2 |
-| 4.14 | Caracterización de las instituciones piloto | Criterios del apartado 3.3.2.1 |
-| 4.15 | Tiempos de procesamiento antes y después de la implementación | Observación directa del apartado 3.4.1.2 |
-| 4.16 | Tasas de error antes y después de la implementación | Registro institucional de correcciones |
-| 4.17 | Indicadores de satisfacción del personal | Cuestionario del Anexo 2 |
-| 4.18 | Contraste con soluciones comerciales de gestión de personal | Análisis comparativo y rangos de mercado |
-| 4.19 | Contraste con el proceso manual | Análisis estructural y pruebas del sistema |
-| 4.20 | Indicadores de la hipótesis general | Umbrales del anteproyecto |
+| Tabla | Título | Fuente/estado |
+|-------|--------|---------------|
+| 4.1 | Componentes del repositorio y mediciones de código | Evidencias 01 y 06; inventario estático |
+| 4.2 | Distribución de líneas Python por capa | Evidencia 01; conteo estático de `src/` |
+| 4.3 | Distribución de funciones de prueba por archivo | Evidencia 02; inventario, no ejecución |
+| 4.4 | Estructura propuesta para resultados de campo | Pendiente de autorización y aplicación; no contiene resultados |
 
 ### 9.2 Índice de figuras
 

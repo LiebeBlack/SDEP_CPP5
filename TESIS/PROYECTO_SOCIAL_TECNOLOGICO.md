@@ -1,5 +1,7 @@
 # PROYECTO SOCIAL TECNOLÓGICO
 
+> **DOCUMENTO DE PLANIFICACIÓN HISTÓRICO, NO VIGENTE COMO INFORME DE EJECUCIÓN.** Incluye estados de pruebas, implementación y actividades que no están acreditados en la revisión del 23/11/2026. Consulte el marco lógico y operativo de `BORRADOR/`; actualice este texto solo con evidencias y decisiones institucionales reales.
+
 ## SISTEMA DE GESTIÓN DE PERSONAL Y NÓMINA PARA INSTITUCIONES EDUCATIVAS
 
 ---

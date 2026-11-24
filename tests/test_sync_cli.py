@@ -528,7 +528,8 @@ def test_un_comando_que_falla_no_se_lleva_por_delante_la_consola(capsys, monkeyp
 
     capturado = capsys.readouterr()
     assert codigo == SALIDA_ERROR
-    assert "la base está bloqueada" in capturado.err
+    assert "no pudo completarse" in capturado.err
+    assert "la base está bloqueada" not in capturado.err
     assert "la base está bloqueada" not in capturado.out
 
 

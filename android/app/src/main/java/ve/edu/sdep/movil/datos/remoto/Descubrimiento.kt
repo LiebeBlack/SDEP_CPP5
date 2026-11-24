@@ -65,6 +65,8 @@ class Descubrimiento @Inject constructor(
         .connectTimeout(350, TimeUnit.MILLISECONDS)
         .readTimeout(900, TimeUnit.MILLISECONDS)
         .callTimeout(1_200, TimeUnit.MILLISECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .retryOnConnectionFailure(false)
         .build()
 
@@ -73,6 +75,8 @@ class Descubrimiento @Inject constructor(
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(8, TimeUnit.SECONDS)
         .callTimeout(12, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
 
     /**

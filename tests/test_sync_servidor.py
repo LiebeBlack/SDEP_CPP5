@@ -8,10 +8,12 @@ transporte HTTP real sobre ``127.0.0.1`` con el puerto que asigne el sistema.
 """
 
 import threading
+import urllib.error
 
 import pytest
 
 from sync_agent.comun import dumps, hash_bytes, nuevo_uuid
+from sync_agent.cliente import ClienteSync, ErrorProtocolo
 from sync_agent.servidor import (
     ErrorPeticion,
     NucleoCentral,
@@ -33,6 +35,37 @@ def central(tmp_path):
     nucleo = NucleoCentral(config)
     yield nucleo
     nucleo.cerrar()
+
+
+def test_cliente_bloquea_redirecciones_y_no_filtra_cuerpo_de_error():
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header("Location", "http://127.0.0.1:1/robo")
+            self.end_headers()
+
+        def log_message(self, *_args):
+            pass
+
+    servidor = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
+    hilo.start()
+    cliente = ClienteSync(
+        f"http://127.0.0.1:{servidor.server_port}",
+        "secreto-de-prueba",
+        "equipo-prueba",
+        timeout=2,
+    )
+    try:
+        with pytest.raises(ErrorProtocolo, match="redirigió") as error:
+            cliente.ping()
+        assert "secreto-de-prueba" not in str(error.value)
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+        hilo.join(timeout=2)
 
 
 def test_configuracion_por_defecto_no_expone_red_ni_abre_emparejamiento():
@@ -315,6 +348,44 @@ def servicio(tmp_path):
     )
     with ServicioEnMarcha(config) as en_marcha:
         yield en_marcha
+
+
+def test_cliente_rechaza_url_ambigua_y_credenciales_en_url():
+    from sync_agent.cliente import ClienteSync
+    from sync_agent.config import url_servidor_valida, url_servidor_visible
+
+    assert url_servidor_valida("http://servidor:8765")
+    assert url_servidor_valida("https://servidor.institucion")
+    assert not url_servidor_valida("http://usuario:secreto@servidor:8765")
+    assert not url_servidor_valida("http://servidor:99999")
+    assert not url_servidor_valida("http://servidor:8765/ruta")
+    assert url_servidor_visible("http://servidor:8765") == "http://servidor:8765"
+    assert url_servidor_visible("http://usuario:secreto@servidor:8765") == "(dirección no válida)"
+
+    for url in (
+        "ftp://servidor:8765",
+        "http://usuario:secreto@servidor:8765",
+        "http://servidor:puerto",
+        "http://servidor:8765/ruta",
+        "http://servidor:8765/?token=secreto",
+        "http://servidor/",
+    ):
+        with pytest.raises(ValueError):
+            ClienteSync(url, "token", "equipo")
+
+
+def test_cliente_no_sigue_redireccion_con_credenciales(servicio):
+    from sync_agent.cliente import ClienteSync, ErrorProtocolo
+
+    dispositivo, token = servicio.servidor.nucleo.crear_dispositivo("Puesto A")
+    cliente = ClienteSync(f"http://127.0.0.1:{servicio.puerto}", token, dispositivo, timeout=5)
+    cliente._opener.open = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        urllib.error.HTTPError(
+            "http://127.0.0.1/", 302, "Found", {"Location": "http://otro-host/"}, None
+        )
+    )
+    with pytest.raises(ErrorProtocolo, match="redirigió"):
+        cliente.ping()
 
 
 def test_ciclo_http_completo_entre_dos_puestos(servicio):

@@ -98,7 +98,11 @@ conserva además su formulario dedicado de 40 campos.
 Para completar la paridad hace falta:
 
 1. Carga y descarga de **archivos adjuntos** (documentos e incidencias); los
-   metadatos y el hash ya se editan en el teléfono.
+   metadatos y el hash ya se editan en el teléfono. **Entregado**:
+   `AdjuntosRepositorio` + tarjeta de adjunto en la ficha, con adjuntar,
+   reemplazar y abrir; además se corrigió `subirBlobs`, que antes solo
+   enviaba los binarios de `documentos` y dejaba los soportes de
+   `incidencias` anunciados sin bytes en el nodo.
 2. **Acciones de negocio** contra `/api/v1/acciones` (generar nómina, aprobar
    incidencias, renovar contratos, consolidados académicos), que ya existen en
    el nodo y no se reimplementan.

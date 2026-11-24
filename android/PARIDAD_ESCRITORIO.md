@@ -35,8 +35,8 @@ escrituras se encolan en la misma transacción que el dato (offline-first).
 |---|---|---|---|---|
 | **Panel** | Indicadores, avisos de vencimientos, gráficos | Sí (consultas locales) | `GET /consultas/dashboard` | **No aplica**: panel del escritorio retirado del menú móvil |
 | **Empleados** | Listar, buscar, ficha completa, alta, edición, baja lógica, documentos del empleado, exportar | Sí (`empleados`, `documentos`, `blobs`) | — (push) | CRUD **hecho**; exportaciones y foto, fase de cierre |
-| **Documentos** | Listar, vencidos/por vencer, alta, edición, baja, descarga | Sí (metadatos + blob) | `/archivos/subir`, `/blob/{hash}` | CRUD de metadatos **hecho**; carga de archivo desde el teléfono, pendiente |
-| **Incidencias** | Listar, filtrar por estado, alta, edición, baja, aprobar, rechazar | Sí | `POST /acciones/incidencias/{id}/aprobar`, `/rechazar` | CRUD y aprobar/rechazar **hecho**; el nodo valida y aplica la acción |
+| **Documentos** | Listar, vencidos/por vencer, alta, edición, baja, descarga | Sí (metadatos + blob) | `/archivos/subir`, `/blob/{hash}` | CRUD de metadatos **hecho**; adjuntar o reemplazar desde la ficha con SHA-256 **hecho** (`AdjuntosRepositorio`); apertura local del binario replicado **hecha** |
+| **Incidencias** | Listar, filtrar por estado, alta, edición, baja, aprobar, rechazar y consultar soporte | Sí (incluye soporte por hash) | `POST /acciones/incidencias/{id}/aprobar`, `/rechazar`; `/blob/{hash}` | CRUD, aprobar/rechazar y adjuntar/reemplazar/abrir soporte **hecho**; el nodo valida y aplica la acción |
 | **Contratos** | Listar, vencimientos, alta, edición, renovar, terminar, PDF | Sí | `POST /acciones/contratos/{id}/renovar`, `/terminar` | CRUD, renovar y terminar **hecho**; PDF sigue en el servidor |
 | **Nómina** | Registros de pago, detalle por empleado, marcar pagado, recibo y planilla PDF | Sí (`pagos`) | `POST /acciones/nomina/generar`, `/resumen`, `/pagos/{id}/pagado` | Registros editables **hecho**; cálculo, pago y PDF en el servidor |
 | **Configuración** | Usuarios, auditoría, institución, preferencias, respaldos | Parcial (usuarios **no** se replican) | `/admin/usuarios`, `/consultas/auditoria` | **No aplica**: panel del escritorio eliminado del teléfono |
@@ -109,8 +109,7 @@ alta, edición y baja desde el teléfono. Cada escritura guarda la fila y su
 operación de salida en la misma transacción (cola `operaciones_pendientes` +
 payload del protocolo) y pide un ciclo de sincronización inmediato.
 
-Queda la **carga del archivo** de un documento desde el teléfono y la descarga
-del binario; los metadatos y su huella ya se editan.
+**Entregado**: adjuntar o reemplazar el archivo de un documento existente —y el soporte de una incidencia— desde el teléfono, con huella SHA-256, cola transaccional y canal de binarios del nodo central. La descarga automática desde el nodo ya estaba implementada; el teléfono permite ahora abrir el archivo cuando está local.
 
 ### Fase 2 — Operación laboral
 **Entregado**: incidencias y contratos con alta, edición y baja; los
